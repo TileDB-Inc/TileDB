@@ -68,11 +68,21 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ResultTile::ResultTile(shared_ptr<MemoryTracker> memory_tracker)
+ResultTile::ResultTile(
+    const ArraySchema& array_schema,
+    uint64_t cell_num,
+    shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
+    , domain_(&array_schema.domain())
     , frag_idx_(0)
     , tile_idx_(0)
-    , cell_num_(0) {
+    , cell_num_(cell_num)
+    , attr_tiles_(array_schema.attribute_num())
+    , coord_tiles_(domain_->dim_num()) {
+  for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
+    auto attribute = array_schema.attribute(i);
+    attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
+  }
 }
 
 ResultTile::ResultTile(

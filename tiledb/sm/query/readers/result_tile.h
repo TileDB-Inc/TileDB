@@ -397,7 +397,10 @@ class ResultTile {
    *
    * @param memory_tracker The memory tracker to use.
    */
-  ResultTile(shared_ptr<MemoryTracker> memory_tracker);
+  ResultTile(
+      const ArraySchema& array_schema,
+      uint64_t cell_num,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor. The number of dimensions `dim_num` is used to allocate

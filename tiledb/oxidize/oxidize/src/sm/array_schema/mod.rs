@@ -41,6 +41,9 @@ mod ffi {
 
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
+
+        fn set_domain(dimension: Pin<&mut Dimension>, domain: &[u8]) -> Result<()>;
+        fn set_tile_extent(dimension: Pin<&mut Dimension>, extent: &[u8]) -> Result<()>;
     }
 
     #[namespace = "tiledb::sm"]
@@ -52,6 +55,7 @@ mod ffi {
         fn dim_num(&self) -> u32;
         fn dimension_ptr(&self, d: u32) -> *const Dimension;
         fn shared_dimension(&self, name: &CxxString) -> SharedPtr<Dimension>;
+        fn get_dimension_index(&self, name: &CxxString) -> u32;
 
         fn add_dimension(self: Pin<&mut Domain>, dim: SharedPtr<Dimension>);
     }
@@ -65,15 +69,21 @@ mod ffi {
         fn domain(&self) -> &Domain;
         fn attribute_num(&self) -> u32;
 
+        fn is_attr(&self, name: &CxxString) -> bool;
+        fn is_dim(&self, name: &CxxString) -> bool;
+
         #[cxx_name = "attribute"]
         fn attribute_by_idx(&self, idx: u32) -> *const Attribute;
 
         #[cxx_name = "attribute"]
         fn attribute_by_name(&self, name: &CxxString) -> *const Attribute;
 
+        #[cxx_name = "cell_val_num"]
+        fn cell_val_num_cxx(&self, name: &CxxString) -> u32;
+
         fn var_size(&self, name: &CxxString) -> bool;
 
-        fn set_domain(self: Pin<&mut ArraySchema>, domain: SharedPtr<Domain>);
+        fn set_domain(self: Pin<&mut ArraySchema>, domain: SharedPtr<Domain>) -> Result<()>;
         fn add_attribute(
             self: Pin<&mut ArraySchema>,
             attribute: SharedPtr<ConstAttribute>,
@@ -95,9 +105,12 @@ mod ffi {
     impl UniquePtr<ArraySchema> {}
 }
 
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::num::NonZeroU32;
+use std::pin::Pin;
 use std::str::Utf8Error;
+
+use num_traits::ToBytes;
 
 pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain};
 
@@ -157,6 +170,44 @@ impl Dimension {
         // SAFETY: non-zero would have been validated by the ArraySchema
         CellValNum::from_cxx(cxx).unwrap()
     }
+
+    pub fn set_domain<T>(
+        self: Pin<&mut Self>,
+        lower_bound: T,
+        upper_bound: T,
+    ) -> Result<(), cxx::Exception>
+    where
+        T: ToBytes,
+    {
+        let bytes = lower_bound
+            .to_le_bytes()
+            .as_ref()
+            .iter()
+            .chain(upper_bound.to_le_bytes().as_ref().iter())
+            .copied()
+            .collect::<Vec<u8>>();
+        ffi::set_domain(self, &bytes)
+    }
+
+    pub fn set_tile_extent<T>(self: Pin<&mut Self>, extent: T) -> Result<(), cxx::Exception>
+    where
+        T: ToBytes,
+    {
+        let bytes = extent.to_le_bytes();
+        ffi::set_tile_extent(self, bytes.as_ref())
+    }
+}
+
+impl Debug for Dimension {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(
+            f,
+            "{} {}[{}]",
+            self.name(),
+            self.datatype(),
+            self.cell_val_num()
+        )
+    }
 }
 
 impl Attribute {
@@ -168,6 +219,19 @@ impl Attribute {
     }
 }
 
+impl Debug for Attribute {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(
+            f,
+            "{} {}[{}]",
+            self.name(),
+            self.datatype(),
+            self.cell_val_num()
+        )
+    }
+}
+
+#[derive(Debug)]
 pub enum Field<'a> {
     Attribute(&'a Attribute),
     Dimension(&'a Dimension),
@@ -208,6 +272,13 @@ impl Field<'_> {
 }
 
 impl ArraySchema {
+    pub fn cell_val_num(&self, name: &cxx::CxxString) -> CellValNum {
+        let cxx = self.cell_val_num_cxx(name);
+
+        // SAFETY: non-zero would have been validated by the ArraySchema
+        CellValNum::from_cxx(cxx).unwrap()
+    }
+
     pub fn field<'a>(&'a self, name: &str) -> Option<Field<'a>> {
         cxx::let_cxx_string!(cxxname = name);
         self.field_cxx(&cxxname)

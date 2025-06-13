@@ -5,7 +5,7 @@ use arrow::array::{Array as ArrowArray, GenericListArray, PrimitiveArray};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use arrow::record_batch::RecordBatch;
-use tiledb_oxidize::sm::array_schema::ArraySchema;
+use tiledb_oxidize::sm::array_schema::{ArraySchema, CellValNum};
 use tiledb_oxidize::sm::query::readers::ResultTile;
 use tiledb_test_cells::{Cells, FieldData, typed_field_data_go};
 
@@ -31,6 +31,8 @@ pub fn result_tile_from_cells(
     cells: &Cells,
 ) -> anyhow::Result<PackagedResultTile> {
     let result_tile = tiledb_test_support::result_tile::new_result_tile(
+        cells.len() as u64,
+        schema,
         tiledb_test_support::get_test_memory_tracker(),
     );
 
@@ -62,19 +64,46 @@ pub fn result_tile_from_cells(
             assert_eq!(1, column_data.child_data()[0].buffers().len());
 
             (column_data.child_data()[0].buffer::<u8>(0), offsets)
+        } else if let CellValNum::Fixed(nz) = schema.cell_val_num(&field_name) {
+            // also large list due to Cells representation,
+            // but we flatten for the tile data since offsets are unused
+            assert_eq!(1, column_data.child_data().len());
+            assert_eq!(1, column_data.child_data()[0].buffers().len());
+
+            // integrity check: all offsets should match
+            for offset in column_data.buffer::<u64>(0).windows(2) {
+                assert_eq!(offset[1] - offset[0], nz.get() as u64);
+            }
+
+            (column_data.child_data()[0].buffer::<u8>(0), unsafe {
+                std::slice::from_raw_parts::<u64>(std::ptr::NonNull::<u64>::dangling().as_ptr(), 0)
+            })
         } else {
             assert_eq!(0, column_data.child_data().len());
             (column_data.buffer::<u8>(0), unsafe {
                 std::slice::from_raw_parts::<u64>(std::ptr::NonNull::<u64>::dangling().as_ptr(), 0)
             })
         };
-        tiledb_test_support::result_tile::init_attr_tile(
-            cxx::SharedPtr::clone(&result_tile),
-            schema,
-            &field_name,
-            data,
-            offsets,
-        );
+
+        if schema.is_dim(&field_name) {
+            let dim_num = schema.domain().get_dimension_index(&field_name);
+            tiledb_test_support::result_tile::init_coord_tile(
+                cxx::SharedPtr::clone(&result_tile),
+                schema,
+                &field_name,
+                data,
+                offsets,
+                dim_num,
+            );
+        } else {
+            tiledb_test_support::result_tile::init_attr_tile(
+                cxx::SharedPtr::clone(&result_tile),
+                schema,
+                &field_name,
+                data,
+                offsets,
+            );
+        }
     }
 
     Ok(PackagedResultTile {

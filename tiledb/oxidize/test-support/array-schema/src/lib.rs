@@ -1,6 +1,7 @@
 pub mod enums;
 
 use itertools::Itertools;
+use tiledb_common::dimension_constraints_go;
 use tiledb_oxidize::sm::array_schema::{ArraySchema, Attribute, Dimension, Domain};
 use tiledb_pod::array::schema::{AttributeData, DimensionData, DomainData, SchemaData};
 
@@ -20,7 +21,7 @@ pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArrayS
             unreachable!()
         };
 
-        schema.as_mut().set_domain(domain);
+        schema.as_mut().set_domain(domain)?;
 
         pod.attributes
             .iter()
@@ -90,12 +91,24 @@ pub fn dimension_from_pod(pod: &DimensionData) -> anyhow::Result<cxx::SharedPtr<
     );
 
     {
-        let Some(_dimension) = dimension.as_mut() else {
-            unreachable!();
-        };
+        dimension_constraints_go!(
+            pod.constraints,
+            DT,
+            [lower_bound, upper_bound],
+            extent,
+            {
+                dimension
+                    .pin_mut()
+                    .set_domain::<DT>(lower_bound, upper_bound)?;
+                if let Some(extent) = extent {
+                    dimension.pin_mut().set_tile_extent::<DT>(extent)?;
+                }
+            },
+            {
+                // do nothing
+            }
+        );
 
-        // domain
-        // extent
         // filters
     }
 

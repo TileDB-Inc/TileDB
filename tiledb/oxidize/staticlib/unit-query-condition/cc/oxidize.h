@@ -9,7 +9,7 @@ namespace tiledb::test {
 
 using namespace tiledb::sm;
 
-void instance_query_condition_datafusion(
+void instance_query_condition_datafusion_ffi(
     const tiledb::sm::ArraySchema& array_schema,
     const ResultTile& tile,
     const tiledb::sm::ASTNode& ast);

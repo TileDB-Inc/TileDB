@@ -102,7 +102,20 @@ mod ffi {
     unsafe extern "C++" {
         include!("tiledb/oxidize/test-support/cc/result_tile.h");
 
-        fn new_result_tile(memory_tracker: SharedPtr<MemoryTracker>) -> SharedPtr<ResultTile>;
+        fn new_result_tile(
+            cell_num: u64,
+            array_schema: &ArraySchema,
+            memory_tracker: SharedPtr<MemoryTracker>,
+        ) -> SharedPtr<ResultTile>;
+
+        fn init_coord_tile(
+            tile: SharedPtr<ResultTile>,
+            schema: &ArraySchema,
+            field: &CxxString,
+            data: &[u8],
+            offsets: &[u64],
+            dim_idx: u32,
+        );
 
         fn init_attr_tile(
             tile: SharedPtr<ResultTile>,
@@ -131,5 +144,5 @@ pub mod query {
 }
 
 pub mod result_tile {
-    pub use crate::ffi::{init_attr_tile, new_result_tile};
+    pub use crate::ffi::{init_attr_tile, init_coord_tile, new_result_tile};
 }

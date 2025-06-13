@@ -18,6 +18,7 @@ mod ffi {
     unsafe extern "C++" {
         include!("tiledb/oxidize/staticlib/unit-query-condition/cc/oxidize.h");
 
+        #[cxx_name = "instance_query_condition_datafusion_ffi"]
         fn instance_query_condition_datafusion(
             array_schema: &ArraySchema,
             tile: &ResultTile,
@@ -50,7 +51,7 @@ fn instance_query_condition_datafusion(
 
     for qc in condition.iter() {
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(qc)?;
-        ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        let _ = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
     }
 
     Ok(())

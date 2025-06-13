@@ -37,7 +37,9 @@ fn ast_from_predicate(predicate: &Predicate) -> anyhow::Result<cxx::SharedPtr<AS
         Predicate::SetMembership(p) => {
             cxx::let_cxx_string! { field = p.field() };
             let op = enums::convert_set_membership_op(p.operation());
-            if let Some((values_ptr, values_size)) = p.members().as_ptr_and_size() {
+            let (value_bytes, value_offsets) = if let Some((values_ptr, values_size)) =
+                p.members().as_ptr_and_size()
+            {
                 let value_bytes = if values_size == 0 {
                     unsafe {
                         std::slice::from_raw_parts(std::ptr::NonNull::<u8>::dangling().as_ptr(), 0)
@@ -47,11 +49,16 @@ fn ast_from_predicate(predicate: &Predicate) -> anyhow::Result<cxx::SharedPtr<AS
                         std::slice::from_raw_parts(values_ptr as *const u8, values_size as usize)
                     }
                 };
-                Ok(tiledb_test_support::new_ast_value_node(
-                    &field,
-                    op,
-                    value_bytes,
-                ))
+                let value_offsets =
+                    std::iter::repeat_n(p.members().elem_size() as u64, p.members().len())
+                        .scan(0u64, |state, s| {
+                            let offset = *state;
+                            *state += s;
+                            Some(offset)
+                        })
+                        .collect::<Vec<u64>>();
+
+                (value_bytes.to_vec(), value_offsets)
             } else {
                 let SetMembers::String(strs) = p.members() else {
                     // SAFETY: only way that `as_ptr_and_size()` is `None`
@@ -66,13 +73,14 @@ fn ast_from_predicate(predicate: &Predicate) -> anyhow::Result<cxx::SharedPtr<AS
                         Some(offset)
                     })
                     .collect::<Vec<u64>>();
-                Ok(tiledb_test_support::new_ast_value_node_var(
-                    &field,
-                    op,
-                    &value_bytes,
-                    &value_offsets,
-                ))
-            }
+                (value_bytes, value_offsets)
+            };
+            Ok(tiledb_test_support::new_ast_value_node_var(
+                &field,
+                op,
+                &value_bytes,
+                &value_offsets,
+            ))
         }
         Predicate::Nullness(p) => {
             cxx::let_cxx_string! { field = p.field() };
