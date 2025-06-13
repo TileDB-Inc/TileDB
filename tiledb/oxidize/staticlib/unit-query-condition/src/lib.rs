@@ -14,24 +14,29 @@ mod ffi {
         type ResultTile = tiledb_oxidize::sm::query::readers::ResultTile;
     }
 
-    #[namespace = "tiledb::test"]
+    #[namespace = "tiledb::test::query_condition_datafusion"]
     unsafe extern "C++" {
         include!("tiledb/oxidize/staticlib/unit-query-condition/cc/oxidize.h");
 
-        #[cxx_name = "instance_query_condition_datafusion_ffi"]
+        #[cxx_name = "example_schema"]
+        fn example_schema_query_condition_datafusion() -> SharedPtr<ArraySchema>;
+
+        #[cxx_name = "instance_ffi"]
         fn instance_query_condition_datafusion(
             array_schema: &ArraySchema,
             tile: &ResultTile,
             ast: &ASTNode,
-        ) -> Result<()>;
+        ) -> Result<UniquePtr<CxxVector<u8>>>;
     }
 
     #[namespace = "tiledb::test"]
     extern "Rust" {
+        fn examples_query_condition_datafusion() -> Result<()>;
         fn proptest_query_condition_datafusion() -> Result<()>;
     }
 }
 
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use anyhow::anyhow;
@@ -40,8 +45,8 @@ use proptest::test_runner::{TestCaseError, TestRunner};
 use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
 use tiledb_pod::array::schema::SchemaData;
-use tiledb_test_cells::Cells;
 use tiledb_test_cells::strategy::{CellsParameters, CellsStrategySchema, SchemaWithDomain};
+use tiledb_test_cells::{Cells, FieldData};
 
 fn instance_query_condition_datafusion(
     schema: &SchemaData,
@@ -54,6 +59,93 @@ fn instance_query_condition_datafusion(
     for qc in condition.iter() {
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(qc)?;
         let _ = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+    }
+
+    Ok(())
+}
+
+fn examples_query_condition_datafusion() -> anyhow::Result<()> {
+    let cxx_schema = ffi::example_schema_query_condition_datafusion();
+
+    let cells = Cells::new(HashMap::from([
+        (
+            "d".to_owned(),
+            FieldData::UInt64(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        ),
+        (
+            "a".to_owned(),
+            FieldData::UInt64(vec![
+                1, 22, 333, 4444, 55555, 666666, 7777777, 88888888, 999999999, 1010101010,
+            ]),
+        ),
+        (
+            "v".to_owned(),
+            FieldData::VecUInt8(
+                vec![
+                    "one",
+                    "onetwo",
+                    "onetwothree",
+                    "onetwothreefour",
+                    "onetwothreefourfive",
+                    "onetwothreefourfivesix",
+                    "onetwothreefourfivesixseven",
+                    "onetwothreefourfivesixseveneight",
+                    "onetwothreefourfivesixseveneightnine",
+                    "onetwothreefourfivesixseveneightnineten",
+                ]
+                .into_iter()
+                .map(|s| s.bytes().collect::<Vec<u8>>())
+                .collect::<Vec<Vec<u8>>>(),
+            ),
+        ),
+        (
+            "f".to_owned(),
+            FieldData::VecUInt16(vec![
+                vec![1, 1, 1, 1],
+                vec![2, 2, 2, 2],
+                vec![3, 3, 3, 3],
+                vec![4, 4, 4, 4],
+                vec![5, 5, 5, 5],
+                vec![6, 6, 6, 6],
+                vec![7, 7, 7, 7],
+                vec![8, 8, 8, 8],
+                vec![9, 9, 9, 9],
+                vec![10, 10, 10, 10],
+            ]),
+        ),
+    ]));
+
+    let cxx_tile = tiledb_test_result_tile::result_tile_from_cells(&cxx_schema, &cells)?;
+
+    {
+        let ast = QueryConditionExpr::field("a").lt(100000u64);
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![1, 1, 1, 1, 1, 0, 0, 0, 0, 0]);
+    }
+    {
+        let ast = QueryConditionExpr::field("d").ne(6u64);
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![1, 1, 1, 1, 1, 0, 1, 1, 1, 1]);
+    }
+    {
+        let lhs = QueryConditionExpr::field("d").ge(4u64);
+        let cxx_lhs = tiledb_test_query_condition::ast_from_query_condition(&lhs)?;
+        let result_lhs =
+            ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_lhs)?;
+        assert_eq!(result_lhs.as_slice(), vec![0, 0, 0, 1, 1, 1, 1, 1, 1, 1]);
+
+        let rhs = QueryConditionExpr::field("d").le(8u64);
+        let cxx_rhs = tiledb_test_query_condition::ast_from_query_condition(&rhs)?;
+        let result_rhs =
+            ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_rhs)?;
+        assert_eq!(result_rhs.as_slice(), vec![1, 1, 1, 1, 1, 1, 1, 1, 0, 0]);
+
+        let ast = lhs.clone() & rhs.clone();
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![0, 0, 0, 1, 1, 1, 1, 1, 0, 0]);
     }
 
     Ok(())

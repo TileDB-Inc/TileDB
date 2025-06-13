@@ -41,6 +41,24 @@ static std::pair<ResultTileSizes, ResultTileData> make_tile_initializers(
   }
 }
 
+static void write_tiles(
+    ResultTile& result_tile,
+    const std::string& field,
+    const ResultTileSizes& sizes,
+    const ResultTileData& data) {
+  auto* tuple = result_tile.tile_tuple(field);
+
+  tuple->fixed_tile().write(data.fixed_filtered_data(), 0, sizes.tile_size());
+
+  if (sizes.has_var_tile()) {
+    tuple->var_tile().write(data.var_filtered_data(), 0, sizes.tile_var_size());
+  }
+  if (sizes.has_validity_tile()) {
+    tuple->validity_tile().write(
+        data.validity_filtered_data(), 0, sizes.tile_validity_size());
+  }
+}
+
 void init_coord_tile(
     std::shared_ptr<ResultTile> result_tile,
     const ArraySchema& array_schema,
@@ -56,6 +74,7 @@ void init_coord_tile(
       init.first,
       init.second,
       dim_num);
+  write_tiles(*result_tile, field, init.first, init.second);
 }
 
 void init_attr_tile(
@@ -67,6 +86,7 @@ void init_attr_tile(
   const auto init = make_tile_initializers(values, offsets);
   result_tile->init_attr_tile(
       constants::format_version, array_schema, field, init.first, init.second);
+  write_tiles(*result_tile, field, init.first, init.second);
 }
 
 }  // namespace tiledb::test::oxidize

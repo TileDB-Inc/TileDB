@@ -5,15 +5,17 @@
 #include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 
-namespace tiledb::test {
+namespace tiledb::test::query_condition_datafusion {
 
 using namespace tiledb::sm;
 
-void instance_query_condition_datafusion_ffi(
+std::shared_ptr<ArraySchema> example_schema();
+
+std::unique_ptr<std::vector<uint8_t>> instance_ffi(
     const tiledb::sm::ArraySchema& array_schema,
     const ResultTile& tile,
     const tiledb::sm::ASTNode& ast);
 
-}  // namespace tiledb::test
+}  // namespace tiledb::test::query_condition_datafusion
 
 #endif
