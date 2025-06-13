@@ -14,9 +14,9 @@ tiledb-oxidize = { workspace = true }
 tiledb-pod = { workspace = true }
 tiledb-common = { workspace = true }
 tiledb-test-cells = { workspace = true }
-tiledb-proptest-array-schema = { workspace = true }
-tiledb-proptest-result-tile = { workspace = true }
-tiledb-proptest-query-condition = { workspace = true }
+tiledb-test-array-schema = { workspace = true }
+tiledb-test-result-tile = { workspace = true }
+tiledb-test-query-condition = { workspace = true }
 
 [build-dependencies]
 cxx-build = { workspace = true }

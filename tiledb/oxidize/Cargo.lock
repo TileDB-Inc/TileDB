@@ -3422,50 +3422,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiledb-proptest-array-schema"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cxx",
- "itertools 0.14.0",
- "proptest",
- "tiledb-api",
- "tiledb-common",
- "tiledb-oxidize",
- "tiledb-pod",
- "tiledb-test-support",
-]
-
-[[package]]
 name = "tiledb-proptest-config"
 version = "0.1.0"
 source = "git+https://github.com/TileDB-Inc/tiledb-rs.git?branch=main#d08fa28949a560a9200de3f242d9fc3488a04528"
-
-[[package]]
-name = "tiledb-proptest-query-condition"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cxx",
- "proptest",
- "tiledb-common",
- "tiledb-oxidize",
- "tiledb-test-support",
-]
-
-[[package]]
-name = "tiledb-proptest-result-tile"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "arrow",
- "cells",
- "cxx",
- "proptest",
- "tiledb-arrow",
- "tiledb-oxidize",
- "tiledb-test-support",
-]
 
 [[package]]
 name = "tiledb-sys"
@@ -3494,6 +3453,44 @@ dependencies = [
 name = "tiledb-sys-defs"
 version = "0.1.0"
 source = "git+https://github.com/TileDB-Inc/tiledb-rs.git?branch=main#d08fa28949a560a9200de3f242d9fc3488a04528"
+
+[[package]]
+name = "tiledb-test-array-schema"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cxx",
+ "itertools 0.14.0",
+ "tiledb-api",
+ "tiledb-common",
+ "tiledb-oxidize",
+ "tiledb-pod",
+ "tiledb-test-support",
+]
+
+[[package]]
+name = "tiledb-test-query-condition"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cxx",
+ "tiledb-common",
+ "tiledb-oxidize",
+ "tiledb-test-support",
+]
+
+[[package]]
+name = "tiledb-test-result-tile"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "cells",
+ "cxx",
+ "tiledb-arrow",
+ "tiledb-oxidize",
+ "tiledb-test-support",
+]
 
 [[package]]
 name = "tiledb-test-support"
@@ -3525,9 +3522,9 @@ dependencies = [
  "tiledb-expr",
  "tiledb-oxidize",
  "tiledb-pod",
- "tiledb-proptest-array-schema",
- "tiledb-proptest-query-condition",
- "tiledb-proptest-result-tile",
+ "tiledb-test-array-schema",
+ "tiledb-test-query-condition",
+ "tiledb-test-result-tile",
 ]
 
 [[package]]

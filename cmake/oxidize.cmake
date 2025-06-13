@@ -213,11 +213,11 @@ function(oxidize)
   cmake_parse_arguments(OXIDIZE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if (NOT OXIDIZE_NAME)
-    message(SEND_ERROR "Function oxidize_bundle requires a NAME argument")
+    message(SEND_ERROR "Function 'oxidize' requires a NAME argument")
   endif ()
 
   if (NOT OXIDIZE_EXPORT)
-    message(SEND_ERROR "Function oxidize_bundle requies EXPORT argument")
+    message(SEND_ERROR "Function 'oxidize' requies EXPORT argument")
   endif ()
 
   set(OXIDIZE_STATICLIB "${OXIDIZE_NAME}_rs")

@@ -1,5 +1,5 @@
 [package]
-name = "tiledb-proptest-array-schema"
+name = "tiledb-test-query-condition"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }
@@ -7,10 +7,6 @@ version = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 cxx = { workspace = true }
-itertools = { workspace = true }
-proptest = { workspace = true }
-tiledb-api = { workspace = true }
 tiledb-common = { workspace = true }
-tiledb-pod = { workspace = true }
 tiledb-oxidize = { workspace = true }
 tiledb-test-support = { workspace = true }

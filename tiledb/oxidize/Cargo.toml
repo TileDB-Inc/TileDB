@@ -3,15 +3,15 @@ resolver = "2"
 members = [
   "arithmetic",
   "arrow",
-  "bundle/core-objects",
-  "bundle/unit-arithmetic",
-  "bundle/unit-query-condition",
   "datatype",
   "expr",
   "oxidize",
-  "proptest/array-schema",
-  "proptest/result-tile",
   "test-support",
+  "test-support/array-schema",
+  "test-support/result-tile",
+  "staticlib/core-objects",
+  "staticlib/unit-arithmetic",
+  "staticlib/unit-query-condition",
 ]
 
 [workspace.package]
@@ -36,9 +36,9 @@ tiledb-datatype = { path = "datatype" }
 tiledb-expr = { path = "expr" }
 tiledb-oxidize = { path = "oxidize" }
 tiledb-pod = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
-tiledb-proptest-array-schema = { path = "proptest/array-schema" }
-tiledb-proptest-query-condition = { path = "proptest/query-condition" }
-tiledb-proptest-result-tile = { path = "proptest/result-tile" }
-tiledb-test-support = { path = "test-support" }
+tiledb-test-array-schema = { path = "test-support/array-schema" }
 tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-test-query-condition = { path = "test-support/query-condition" }
+tiledb-test-result-tile = { path = "test-support/result-tile" }
+tiledb-test-support = { path = "test-support" }
 thiserror = { version = "2" }
