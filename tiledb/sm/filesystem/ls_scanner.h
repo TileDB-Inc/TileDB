@@ -129,13 +129,14 @@ using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
  * @tparam scanner_type The LsScanner type that created this iterator.
  * @tparam T The data type stored by this iterator.
  * TODO: Discuss using T for iterator type instead of underlying data type.
+ * @tparam Allocator The data type for the vector's allocator.
  */
-template <class scanner_type, class T>
+template <class scanner_type, class T, class Allocator = std::allocator<T>>
 class LsScanIterator {
  public:
   using value_type = T;
   using difference_type = ptrdiff_t;
-  using pointer = typename std::vector<T>::const_iterator;
+  using pointer = typename std::vector<T, Allocator>::const_iterator;
   using reference = const T&;
   using iterator_category = std::input_iterator_tag;
 
