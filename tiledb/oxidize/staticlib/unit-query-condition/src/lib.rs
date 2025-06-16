@@ -31,8 +31,8 @@ mod ffi {
 
     #[namespace = "tiledb::test"]
     extern "Rust" {
-        fn examples_query_condition_datafusion() -> Result<()>;
-        fn proptest_query_condition_datafusion() -> Result<()>;
+        fn examples_query_condition_datafusion() -> Result<bool>;
+        fn proptest_query_condition_datafusion() -> Result<bool>;
     }
 }
 
@@ -64,7 +64,7 @@ fn instance_query_condition_datafusion(
     Ok(())
 }
 
-fn examples_query_condition_datafusion() -> anyhow::Result<()> {
+fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
     let cxx_schema = ffi::example_schema_query_condition_datafusion();
 
     let cells = Cells::new(HashMap::from([
@@ -117,18 +117,21 @@ fn examples_query_condition_datafusion() -> anyhow::Result<()> {
 
     let cxx_tile = tiledb_test_result_tile::result_tile_from_cells(&cxx_schema, &cells)?;
 
+    // a < 100000
     {
         let ast = QueryConditionExpr::field("a").lt(100000u64);
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
         let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
         assert_eq!(result.as_slice(), vec![1, 1, 1, 1, 1, 0, 0, 0, 0, 0]);
     }
+    // d != 6
     {
         let ast = QueryConditionExpr::field("d").ne(6u64);
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
         let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
         assert_eq!(result.as_slice(), vec![1, 1, 1, 1, 1, 0, 1, 1, 1, 1]);
     }
+    // 4 <= d <= 8
     {
         let lhs = QueryConditionExpr::field("d").ge(4u64);
         let cxx_lhs = tiledb_test_query_condition::ast_from_query_condition(&lhs)?;
@@ -147,8 +150,22 @@ fn examples_query_condition_datafusion() -> anyhow::Result<()> {
         let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
         assert_eq!(result.as_slice(), vec![0, 0, 0, 1, 1, 1, 1, 1, 0, 0]);
     }
+    // v = 'onetwothree'
+    {
+        let ast = QueryConditionExpr::field("v").eq("onetwothree");
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+    }
+    // f IS NOT NULL
+    {
+        let ast = QueryConditionExpr::field("f").not_null();
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    }
 
-    Ok(())
+    Ok(true)
 }
 
 fn strat_query_condition_datafusion()
@@ -176,7 +193,7 @@ fn strat_query_condition_datafusion()
         })
 }
 
-fn proptest_query_condition_datafusion() -> anyhow::Result<()> {
+fn proptest_query_condition_datafusion() -> anyhow::Result<bool> {
     let mut runner = TestRunner::new(Default::default());
     match runner.run(
         &strat_query_condition_datafusion(),
@@ -185,7 +202,7 @@ fn proptest_query_condition_datafusion() -> anyhow::Result<()> {
                 .map_err(|e| TestCaseError::Fail(e.to_string().into()))
         },
     ) {
-        Ok(_) => Ok(()),
+        Ok(_) => Ok(true),
         Err(e) => Err(anyhow!(e.to_string())),
     }
 }

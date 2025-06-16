@@ -5377,11 +5377,11 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
   }
 
   SECTION("Example Oxidized") {
-    tiledb::test::examples_query_condition_datafusion();
+    REQUIRE(tiledb::test::examples_query_condition_datafusion());
   }
 
   SECTION("Proptest") {
-    tiledb::test::proptest_query_condition_datafusion();
+    REQUIRE(tiledb::test::proptest_query_condition_datafusion());
   }
 }
 
