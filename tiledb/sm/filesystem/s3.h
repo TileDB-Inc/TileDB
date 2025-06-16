@@ -1028,7 +1028,10 @@ class S3 : FilesystemBase {
    * Returns the input `path` after adding a `/` character
    * at the front if it does not exist.
    */
-  static std::string add_front_slash(const std::string& path);
+  template <class Allocator>
+  static auto add_front_slash(
+      const std::basic_string<char, std::char_traits<char>, Allocator>& path)
+      -> std::remove_cvref_t<decltype(path)>;
 
   /**
    * Returns the input `path` after removing a potential `/` character
@@ -1037,11 +1040,7 @@ class S3 : FilesystemBase {
   template <class Allocator>
   static auto remove_front_slash(
       const std::basic_string<char, std::char_traits<char>, Allocator>& path)
-      -> std::remove_cvref_t<decltype(path)> {
-    if (path.front() == '/')
-      return path.substr(1, path.length());
-    return path;
-  }
+      -> std::remove_cvref_t<decltype(path)>;
 
   /**
    * Returns the input `path` after removing a potential `/` character

@@ -1333,9 +1333,31 @@ void S3::global_order_write(
   intermediate_chunks.clear();
 }
 
-std::string S3::add_front_slash(const std::string& path) {
+template <class Allocator>
+auto S3::add_front_slash(
+    const std::basic_string<char, std::char_traits<char>, Allocator>& path)
+    -> std::remove_cvref_t<decltype(path)> {
   return (path.front() != '/') ? (std::string("/") + path) : path;
 }
+
+template std::string S3::add_front_slash<std::allocator<char>>(
+    const std::string& path);
+template Aws::String S3::add_front_slash<std::allocator<char>>(
+    const Aws::String& path);
+
+template <class Allocator>
+auto S3::remove_front_slash(
+    const std::basic_string<char, std::char_traits<char>, Allocator>& path)
+    -> std::remove_cvref_t<decltype(path)> {
+  if (path.front() == '/')
+    return path.substr(1, path.length());
+  return path;
+}
+
+template std::string S3::remove_front_slash<std::allocator<char>>(
+    const std::string& path);
+template Aws::String S3::remove_front_slash<std::allocator<char>>(
+    const Aws::String& path);
 
 std::string S3::remove_trailing_slash(const std::string& path) {
   if (path.back() == '/') {
