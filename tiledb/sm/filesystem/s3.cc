@@ -1652,8 +1652,8 @@ Status S3::initiate_multipart_request(
       client_->CreateMultipartUpload(multipart_upload_request);
   if (!multipart_upload_outcome.IsSuccess()) {
     return LOG_STATUS(Status_S3Error(
-        std::string("Failed to create multipart request for object '") +
-        path + outcome_error_message(multipart_upload_outcome)));
+        std::string("Failed to create multipart request for object '") + path +
+        outcome_error_message(multipart_upload_outcome)));
   }
 
   state->part_number = 1;
