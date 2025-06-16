@@ -415,9 +415,12 @@ template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
 class S3Scanner : public LsScanner<F, D> {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
-  template <class scanner_type, class T>
+  template <class scanner_type, class T, class Allocator>
   friend class LsScanIterator;
-  using Iterator = LsScanIterator<S3Scanner<F, D>, Aws::S3::Model::Object>;
+  using Iterator = LsScanIterator<
+      S3Scanner<F, D>,
+      Aws::S3::Model::Object,
+      Aws::Allocator<Aws::S3::Model::Object>>;
 
   /** Constructor. */
   S3Scanner(
