@@ -123,6 +123,7 @@ mod ffi {
             field: &CxxString,
             data: &[u8],
             offsets: &[u64],
+            validity: &[u8],
         );
     }
 }

@@ -36,17 +36,23 @@ mod ffi {
     }
 }
 
-use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::anyhow;
+use arrow::array::{
+    Array as _, FixedSizeListArray, GenericListArray, PrimitiveArray, create_array,
+};
+use arrow::buffer::{NullBuffer, ScalarBuffer};
+use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField, Schema as ArrowSchema};
+use arrow::record_batch::RecordBatch;
 use proptest::prelude::*;
 use proptest::test_runner::{TestCaseError, TestRunner};
 use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
 use tiledb_pod::array::schema::SchemaData;
+use tiledb_test_cells::Cells;
 use tiledb_test_cells::strategy::{CellsParameters, CellsStrategySchema, SchemaWithDomain};
-use tiledb_test_cells::{Cells, FieldData};
 
 fn instance_query_condition_datafusion(
     schema: &SchemaData,
@@ -67,55 +73,76 @@ fn instance_query_condition_datafusion(
 fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
     let cxx_schema = ffi::example_schema_query_condition_datafusion();
 
-    let cells = Cells::new(HashMap::from([
-        (
-            "d".to_owned(),
-            FieldData::UInt64(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-        ),
-        (
-            "a".to_owned(),
-            FieldData::UInt64(vec![
-                1, 22, 333, 4444, 55555, 666666, 7777777, 88888888, 999999999, 1010101010,
-            ]),
-        ),
-        (
-            "v".to_owned(),
-            FieldData::VecUInt8(
-                vec![
-                    "one",
-                    "onetwo",
-                    "onetwothree",
-                    "onetwothreefour",
-                    "onetwothreefourfive",
-                    "onetwothreefourfivesix",
-                    "onetwothreefourfivesixseven",
-                    "onetwothreefourfivesixseveneight",
-                    "onetwothreefourfivesixseveneightnine",
-                    "onetwothreefourfivesixseveneightnineten",
+    let cells = {
+        let d_array = create_array!(UInt64, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let a_array = create_array!(
+            UInt64,
+            [
+                1, 22, 333, 4444, 55555, 666666, 7777777, 88888888, 999999999, 1010101010
+            ]
+        );
+        let v_array = {
+            let utf8_array = arrow::array::LargeStringArray::from_iter(vec![
+                Some("one"),
+                None,
+                Some("onetwo"),
+                None,
+                Some("onetwothree"),
+                None,
+                Some("onetwothreefour"),
+                None,
+                Some("onetwothreefourfive"),
+                Some("onetwothreefourfivesix"),
+            ]);
+            let (offsets, values, nulls) = utf8_array.into_parts();
+            let list_array = GenericListArray::try_new(
+                ArrowField::new_list_field(ArrowDataType::UInt8, false).into(),
+                offsets,
+                Arc::new(PrimitiveArray::<arrow::datatypes::UInt8Type>::new(
+                    ScalarBuffer::<u8>::from(values),
+                    None,
+                )),
+                nulls,
+            )
+            .unwrap();
+            Arc::new(list_array)
+        };
+        let f_array = {
+            let f_value = create_array!(
+                UInt16,
+                [
+                    1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7,
+                    7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10
                 ]
-                .into_iter()
-                .map(|s| s.bytes().collect::<Vec<u8>>())
-                .collect::<Vec<Vec<u8>>>(),
-            ),
-        ),
-        (
-            "f".to_owned(),
-            FieldData::VecUInt16(vec![
-                vec![1, 1, 1, 1],
-                vec![2, 2, 2, 2],
-                vec![3, 3, 3, 3],
-                vec![4, 4, 4, 4],
-                vec![5, 5, 5, 5],
-                vec![6, 6, 6, 6],
-                vec![7, 7, 7, 7],
-                vec![8, 8, 8, 8],
-                vec![9, 9, 9, 9],
-                vec![10, 10, 10, 10],
-            ]),
-        ),
-    ]));
+            );
+            let f_validity = vec![
+                true, true, false, true, true, false, true, true, false, true,
+            ]
+            .into_iter()
+            .collect::<NullBuffer>();
+            let f_array = FixedSizeListArray::new(
+                ArrowField::new_list_field(f_value.data_type().clone(), false).into(),
+                4,
+                f_value,
+                Some(f_validity),
+            );
+            Arc::new(f_array)
+        };
 
-    let cxx_tile = tiledb_test_result_tile::result_tile_from_cells(&cxx_schema, &cells)?;
+        RecordBatch::try_new(
+            ArrowSchema::new(vec![
+                ArrowField::new("d", d_array.data_type().clone(), d_array.is_nullable()),
+                ArrowField::new("a", a_array.data_type().clone(), a_array.is_nullable()),
+                ArrowField::new("v", v_array.data_type().clone(), v_array.is_nullable()),
+                ArrowField::new("f", f_array.data_type().clone(), f_array.is_nullable()),
+            ])
+            .into(),
+            vec![d_array, a_array, v_array, f_array],
+        )
+        .unwrap()
+    };
+
+    let cxx_tile = tiledb_test_result_tile::PackagedResultTile::new(&cxx_schema, cells)?;
 
     // a < 100000
     {
@@ -155,14 +182,47 @@ fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
         let ast = QueryConditionExpr::field("v").eq("onetwothree");
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
         let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
-        assert_eq!(result.as_slice(), vec![0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result.as_slice(), vec![0, 0, 0, 0, 1, 0, 0, 0, 0, 0]);
+    }
+    // v IS NOT NULL
+    {
+        let ast = QueryConditionExpr::field("v").not_null();
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![1, 0, 1, 0, 1, 0, 1, 0, 1, 1]);
+    }
+    // v IS NULL
+    {
+        let ast = QueryConditionExpr::field("v").is_null();
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![0, 1, 0, 1, 0, 1, 0, 1, 0, 0]);
     }
     // f IS NOT NULL
     {
         let ast = QueryConditionExpr::field("f").not_null();
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
         let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
-        assert_eq!(result.as_slice(), vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+        assert_eq!(result.as_slice(), vec![1, 1, 0, 1, 1, 0, 1, 1, 0, 1]);
+    }
+    // d < 4 OR a > 1000000
+    {
+        let lhs = QueryConditionExpr::field("d").lt(4u64);
+        let cxx_lhs = tiledb_test_query_condition::ast_from_query_condition(&lhs)?;
+        let lhs_result =
+            ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_lhs)?;
+        assert_eq!(lhs_result.as_slice(), vec![1, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
+
+        let rhs = QueryConditionExpr::field("a").gt(1000000u64);
+        let cxx_rhs = tiledb_test_query_condition::ast_from_query_condition(&rhs)?;
+        let rhs_result =
+            ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_rhs)?;
+        assert_eq!(rhs_result.as_slice(), vec![0, 0, 0, 0, 0, 0, 1, 1, 1, 1]);
+
+        let ast = lhs.clone() | rhs.clone();
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![1, 1, 1, 0, 0, 0, 1, 1, 1, 1]);
     }
 
     Ok(true)

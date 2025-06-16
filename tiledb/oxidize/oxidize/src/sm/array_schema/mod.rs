@@ -83,6 +83,8 @@ mod ffi {
 
         fn var_size(&self, name: &CxxString) -> bool;
 
+        fn is_nullable(&self, name: &CxxString) -> bool;
+
         fn set_domain(self: Pin<&mut ArraySchema>, domain: SharedPtr<Domain>) -> Result<()>;
         fn add_attribute(
             self: Pin<&mut ArraySchema>,

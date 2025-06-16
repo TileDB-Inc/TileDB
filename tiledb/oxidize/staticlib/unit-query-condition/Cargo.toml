@@ -6,6 +6,7 @@ version = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
+arrow = { workspace = true }
 cxx = { workspace = true }
 proptest = { workspace = true }
 tiledb-arrow = { workspace = true }
