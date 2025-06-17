@@ -281,13 +281,8 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   }
   json profile = it.value();
 
-  if (!profile.is_null()) {
-    for (auto it = profile.begin(); it != profile.end(); ++it) {
-      param_values_[it.key()] = profile[it.key()];
-    }
-  } else {
-    throw RestProfileException(
-        "Failed to load profile; profile '" + name_ + "' does not exist.");
+  for (auto it = profile.begin(); it != profile.end(); ++it) {
+    param_values_[it.key()] = profile[it.key()];
   }
 }
 
