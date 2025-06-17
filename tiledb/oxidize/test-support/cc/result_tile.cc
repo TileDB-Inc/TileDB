@@ -13,21 +13,22 @@ std::shared_ptr<ResultTile> new_result_tile(
 }
 
 static std::pair<ResultTileSizes, ResultTileData> make_tile_initializers(
+    uint64_t num_cells,
     rust::Slice<const uint8_t> values,
     rust::Slice<const uint64_t> offsets,
-    rust::Slice<const uint8_t> validity) {
+    const uint8_t* validity) {
   if (offsets.empty()) {
     ResultTileSizes sizes(
         values.length(),
         0,
         std::nullopt,
         std::nullopt,
-        (validity.empty() ? std::nullopt : std::optional{validity.length()}),
-        (validity.empty() ? std::nullopt : std::optional{0}));
+        (validity == nullptr ? std::nullopt : std::optional{num_cells}),
+        (validity == nullptr ? std::nullopt : std::optional{0}));
     ResultTileData data(
         const_cast<uint8_t*>(values.data()),
         nullptr,
-        (validity.empty() ? nullptr : const_cast<uint8_t*>(validity.data())));
+        const_cast<uint8_t*>(validity));
 
     return std::make_pair(sizes, data);
   } else {
@@ -36,12 +37,12 @@ static std::pair<ResultTileSizes, ResultTileData> make_tile_initializers(
         0,
         values.length(),
         0,
-        (validity.empty() ? std::nullopt : std::optional{validity.length()}),
-        (validity.empty() ? std::nullopt : std::optional{0}));
+        (validity == nullptr ? std::nullopt : std::optional{num_cells}),
+        (validity == nullptr ? std::nullopt : std::optional{0}));
     ResultTileData data(
         const_cast<uint64_t*>(offsets.data()),
         const_cast<uint8_t*>(values.data()),
-        (validity.empty() ? nullptr : const_cast<uint8_t*>(validity.data())));
+        const_cast<uint8_t*>(validity));
     return std::make_pair(sizes, data);
   }
 }
@@ -71,9 +72,8 @@ void init_coord_tile(
     rust::Slice<const uint8_t> values,
     rust::Slice<const uint64_t> offsets,
     uint32_t dim_num) {
-  rust::Slice<const uint8_t> validity(
-      nullptr, 0);  // no need, dimensions are non-NULL
-  const auto init = make_tile_initializers(values, offsets, validity);
+  const auto init =
+      make_tile_initializers(result_tile->cell_num(), values, offsets, nullptr);
   result_tile->init_coord_tile(
       constants::format_version,
       array_schema,
@@ -90,8 +90,9 @@ void init_attr_tile(
     const std::string& field,
     rust::Slice<const uint8_t> values,
     rust::Slice<const uint64_t> offsets,
-    rust::Slice<const uint8_t> validity) {
-  const auto init = make_tile_initializers(values, offsets, validity);
+    const uint8_t* validity) {
+  const auto init = make_tile_initializers(
+      result_tile->cell_num(), values, offsets, validity);
   result_tile->init_attr_tile(
       constants::format_version, array_schema, field, init.first, init.second);
   write_tiles(*result_tile, field, init.first, init.second);

@@ -15,6 +15,10 @@ pub struct PackagedResultTile {
     /// Buffers underlying the [ResultTile].
     #[allow(dead_code)]
     buffers: RecordBatch,
+    /// Buffers for offsets which in the `RecordBatch` are element units and in
+    /// the `ResultTile` are byte units.
+    #[allow(dead_code)]
+    offsets: HashMap<Vec<u8>, Vec<u64>>,
     /// Buffers for validity which is not bit-packed and thus not compatible with arrow.
     /// Since `Cells` does not have nullable fields this can be shared by all fields.
     #[allow(dead_code)]
@@ -56,6 +60,7 @@ fn result_tile_from_record_batch(
         tiledb_test_support::get_test_memory_tracker(),
     );
 
+    let mut offsets = HashMap::new();
     let mut validity = HashMap::new();
 
     for field in batch.schema().fields.iter() {
@@ -69,20 +74,20 @@ fn result_tile_from_record_batch(
         assert_eq!(0, column_data.offset());
         assert_eq!(column.len(), column_data.len());
 
-        let (data, offsets) = if schema.var_size(&field_name) {
+        let (data, value_offsets) = if schema.var_size(&field_name) {
             assert_eq!(1, column_data.buffers().len());
-            let offsets = {
-                let offsets_buffer = column_data.buffers()[0].as_slice();
-                let (pre, offsets, post) = unsafe { offsets_buffer.align_to::<u64>() };
-                assert!(pre.is_empty());
-                assert!(post.is_empty());
-                offsets
-            };
-
             assert_eq!(1, column_data.child_data().len());
             assert_eq!(1, column_data.child_data()[0].buffers().len());
 
-            (column_data.child_data()[0].buffer::<u8>(0), offsets)
+            let value_width = column_data.child_data()[0]
+                .data_type()
+                .primitive_width()
+                .unwrap();
+
+            (
+                column_data.child_data()[0].buffer::<u8>(0),
+                Some((column_data.buffer::<u64>(0), value_width as u64)),
+            )
         } else if let CellValNum::Fixed(nz) = schema.cell_val_num(&field_name) {
             // list type, whether FixedSizeListArray or ListArray is source data dependendent
             assert_eq!(1, column_data.child_data().len());
@@ -99,64 +104,72 @@ fn result_tile_from_record_batch(
                 // source data was a FixedSizeList array
                 assert_eq!(0, column_data.buffers().len());
             }
-            (column_data.child_data()[0].buffer::<u8>(0), unsafe {
-                std::slice::from_raw_parts::<u64>(std::ptr::NonNull::<u64>::dangling().as_ptr(), 0)
-            })
+            (column_data.child_data()[0].buffer::<u8>(0), None)
         } else {
             assert_eq!(1, column_data.buffers().len());
             assert_eq!(0, column_data.child_data().len());
-            (column_data.buffer::<u8>(0), unsafe {
-                std::slice::from_raw_parts::<u64>(std::ptr::NonNull::<u64>::dangling().as_ptr(), 0)
-            })
+            (column_data.buffer::<u8>(0), None)
         };
 
-        let validity_key = field_name.as_bytes().to_vec();
+        let field_key = field_name.as_bytes().to_vec();
+
+        let tile_offsets = if let Some((value_offsets, value_width)) = value_offsets {
+            offsets.insert(
+                field_key.clone(),
+                value_offsets
+                    .iter()
+                    .map(|o| *o * value_width)
+                    .collect::<Vec<u64>>(),
+            );
+            offsets.get(&field_key).map(|v| v.as_slice()).unwrap()
+        } else {
+            unsafe { std::slice::from_raw_parts(std::ptr::NonNull::<u64>::dangling().as_ptr(), 0) }
+        };
 
         if let Some(nulls) = column_data.nulls() {
             validity.insert(
-                validity_key.clone(),
+                field_key.clone(),
                 nulls
                     .iter()
                     .map(|b| if b { 1u8 } else { 0u8 })
                     .collect::<Vec<_>>(),
             );
+        } else if schema.is_nullable(&field_name) {
+            validity.insert(field_key.clone(), vec![1u8; batch.num_rows()]);
         }
 
         if schema.is_dim(&field_name) {
-            assert!(validity.get(&validity_key).is_none());
+            assert!(validity.get(&field_key).is_none());
             let dim_num = schema.domain().get_dimension_index(&field_name);
             tiledb_test_support::result_tile::init_coord_tile(
                 cxx::SharedPtr::clone(&result_tile),
                 schema,
                 &field_name,
                 data,
-                offsets,
+                tile_offsets,
                 dim_num,
             );
         } else {
-            let column_validity =
-                validity
-                    .get(&validity_key)
-                    .map(|v| v.as_ref())
-                    .unwrap_or(unsafe {
-                        std::slice::from_raw_parts::<u8>(
-                            std::ptr::NonNull::<u8>::dangling().as_ptr(),
-                            0,
-                        )
-                    });
-            tiledb_test_support::result_tile::init_attr_tile(
-                cxx::SharedPtr::clone(&result_tile),
-                schema,
-                &field_name,
-                data,
-                offsets,
-                &column_validity,
-            );
+            let column_validity = validity
+                .get(&field_key)
+                .map(|v| v.as_slice().as_ptr())
+                .unwrap_or(std::ptr::null::<u8>());
+            unsafe {
+                tiledb_test_support::result_tile::init_attr_tile(
+                    cxx::SharedPtr::clone(&result_tile),
+                    schema,
+                    &field_name,
+                    data,
+                    tile_offsets,
+                    column_validity,
+                )
+            }
         }
     }
 
     Ok(PackagedResultTile {
         buffers: batch,
+        offsets,
         validity,
         result_tile,
     })

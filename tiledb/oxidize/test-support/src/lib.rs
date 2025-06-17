@@ -117,13 +117,13 @@ mod ffi {
             dim_idx: u32,
         );
 
-        fn init_attr_tile(
+        unsafe fn init_attr_tile(
             tile: SharedPtr<ResultTile>,
             schema: &ArraySchema,
             field: &CxxString,
             data: &[u8],
             offsets: &[u64],
-            validity: &[u8],
+            validity: *const u8,
         );
     }
 }

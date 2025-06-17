@@ -26,7 +26,7 @@ void init_attr_tile(
     const std::string& field,
     rust::Slice<const uint8_t> data,
     rust::Slice<const uint64_t> offsets,
-    rust::Slice<const uint8_t> validity);
+    const uint8_t* validity);
 
 }  // namespace tiledb::test::oxidize
 
