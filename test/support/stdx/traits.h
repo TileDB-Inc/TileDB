@@ -1,11 +1,11 @@
 /**
- * @file compile_nodes_main.cc
+ * @file test/support/stdx/traits.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -15,7 +15,7 @@
  * furnished to do so, subject to the following conditions:
  *
  * The above copyright notice and this permission notice shall be included in
- * all copies or substantial nodeions of the Software.
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,14 +24,32 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines type traits similar to those in the standard library
+ * header <type_traits>.
  */
 
-#include "../nodes.h"
-#include "experimental/tiledb/common/dag/state_machine/fsm.h"
-#include "experimental/tiledb/common/dag/state_machine/policies.h"
-#include "experimental/tiledb/common/dag/state_machine/test/types.h"
+#ifndef TILEDB_TEST_SUPPORT_TYPE_TRAITS_H
+#define TILEDB_TEST_SUPPORT_TYPE_TRAITS_H
 
-using namespace tiledb::common;
+#include <type_traits>
 
-int main() {
-}
+namespace stdx {
+
+template <typename T>
+concept is_fundamental = std::is_fundamental_v<T>;
+
+template <typename T>
+struct is_vector : std::false_type {};
+
+template <typename T>
+struct is_vector<std::vector<T>> : std::true_type {};
+
+template <typename T>
+using is_vector_v = is_vector<T>::value;
+
+}  // namespace stdx
+
+#endif

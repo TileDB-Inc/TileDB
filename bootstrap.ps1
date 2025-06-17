@@ -76,9 +76,6 @@ Unused, kept for compatibility.
 .PARAMETER EnableTools
 Enables building TileDB CLI tools (experimental)
 
-.PARAMETER EnableExperimentalFeatures
-Enables building TileDB Experimental features
-
 .PARAMETER EnableArrowTests
 Enables the compilation of the arrow adapter unit tests
 

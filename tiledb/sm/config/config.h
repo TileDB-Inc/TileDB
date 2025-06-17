@@ -81,6 +81,12 @@ class Config {
   /*        CONFIG DEFAULTS         */
   /* ****************************** */
 
+  /** The default name for the profile. */
+  static const std::string PROFILE_NAME;
+
+  /** The default directory for profiles. */
+  static const std::string PROFILE_DIR;
+
   /** The default address for rest server. */
   static const std::string REST_SERVER_DEFAULT_ADDRESS;
 
@@ -749,18 +755,6 @@ class Config {
    */
   Status unset(const std::string& param);
 
-  /**
-   * Sets the profile to use for the config.
-   *
-   * @param profile_name The name of the profile to set.
-   * @param profile_dir The home directory of the profile to set.
-   *
-   * Throws ConfigException if the profile is not found.
-   */
-  Status set_profile(
-      const std::optional<std::string>& profile_name = std::nullopt,
-      const std::optional<std::string>& profile_dir = std::nullopt);
-
   /** Inherits the **set** parameters of the input `config`. */
   void inherit(const Config& config);
 
@@ -785,11 +779,11 @@ class Config {
   /** Stores the RestProfile loaded. */
   mutable std::optional<RestProfile> rest_profile_;
 
-  /** Stores whether the default REST profile was previously attempted
-   * to be fetched and failed. This is used to avoid repeatedly trying to
-   * fetch the default profile if it has failed once.
+  /**
+   * Indicates whether the REST profile, with the current configuration
+   * parameters, has previously been attempted to be fetched.
    */
-  mutable bool default_rest_profile_not_found_ = false;
+  mutable bool rest_profile_load_attempted_ = false;
 
   /* ********************************* */
   /*          PRIVATE CONSTANTS        */
@@ -837,12 +831,25 @@ class Config {
   const char* get_from_config(const std::string& param, bool* found) const;
 
   /**
+   * Get a parameter from Profile.
+   *
+   * @pre The profile to be parsed has been set using `profile_name` and
+   * `profile_dir` config parameters. Elsewise, the default profile is used if
+   * found.
+   *
+   * @param param parameter to fetch
+   * @param found pointer to bool to set if parameter was found or not
+   * @return parameter value if found or nullptr if not found
+   */
+  const char* get_from_profile(const std::string& param, bool* found) const;
+
+  /**
    * Get a configuration parameter from config object or a fallback
    * (environmental variables or profiles).
    *
    * @pre When using the third (profiles) fallback, the profile to be
-   * parsed has been set on the config using `set_profile`.
-   * Elsewise, the default profile is used if found.
+   * parsed has been set using `profile_name` and `profile_dir` config
+   * parameters. Elsewise, the default profile is used if found.
    *
    * The order we look for values are
    * 1. user-set config parameters

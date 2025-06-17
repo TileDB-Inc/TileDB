@@ -13,18 +13,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [Debug, Release]
-        experimental: [OFF]
         assertions: [ON]
         sanitizer: [OFF]
         include:
           - os: macos-latest # ASAN build
             sanitizer: "address"
             assertions: ON
+            build_type: "Release"
             base_triplet: "arm64-osx"
-          - os: macos-latest # Arbitrary job to run EXPERIMENTAL=ON
-            build_type: Debug
-            sanitizer: OFF
-            experimental: ON
           - os: windows-latest
             build_type: "Debug"
             # Insufficient space on default D:/ for debug build
@@ -32,7 +28,7 @@ jobs:
       fail-fast: false
 
     name: |
-      ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer }} | Experimental: ${{ matrix.experimental }} | Assertions: ${{ matrix.assertions }} | ${{ matrix.build_type }}
+      ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer }} | Assertions: ${{ matrix.assertions }} | ${{ matrix.build_type }}
 
     env:
       TILEDB_NIGHTLY_BUILD: 1
@@ -48,10 +44,9 @@ jobs:
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
           SANITIZER_ARG: ${{ matrix.sanitizer }}
-          EXPERIMENTAL: ${{ matrix.experimental }}
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_SANITIZER=$SANITIZER_ARG -DTILEDB_ASSERTIONS=${{ matrix.assertions }} -DTILEDB_VCPKG_BASE_TRIPLET=${{ matrix.base_triplet }}
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_SANITIZER=$SANITIZER_ARG -DTILEDB_ASSERTIONS=${{ matrix.assertions }} -DTILEDB_VCPKG_BASE_TRIPLET=${{ matrix.base_triplet }}
 
       - name: Configure TileDB CMake (Windows)
         if: contains(matrix.os, 'windows')

@@ -1,3 +1,36 @@
+/**
+ * @file   writing_remote_global.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2025 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This example creates a simple array, write some data to it in chunks in
+ * global order, reads the data back and validates that the data is correct.
+ */
+
 #include <tiledb/tiledb_experimental.h>
 #include <fstream>
 #include <iostream>
@@ -5,12 +38,11 @@
 
 using namespace tiledb;
 
-// This example assumes you have a local deployment of TileDB REST server
-// serving at localhost:8181 where test_gow_rest2 is a registered array.
+// This example assumes you have registered your array to your TileDB Server.
 // The example creates/deletes this array directly from S3, but as long as the
-// array was registered on the REST server, the test should work fine
-std::string array_name("tiledb://demo/test_gow_rest2");
-std::string s3_array("s3://tiledb-robert2/test_gow_rest2");
+// array was registered on the TileDB Server, the test should work fine
+std::string array_name("tiledb://demo/my_array");
+std::string s3_array("s3://my_bucket/my_array");
 
 uint64_t tile_extent = 32;
 uint64_t capacity = tile_extent;
@@ -168,9 +200,10 @@ void read_and_validate(Context& ctx) {
 
 int main() {
   Config cfg;
-  cfg["rest.username"] = "demo";
-  cfg["rest.password"] = "demodemo";
-  cfg["rest.server_address"] = "http://localhost:8181";
+  cfg["rest.token"] = "my_custom_token";  // Replace with your actual token
+  cfg["rest.server_address"] =
+      "https://my.custom.server.address";  // Replace with your actual TileDB
+                                           // server address
 
   Context ctx(cfg);
 

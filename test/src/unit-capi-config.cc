@@ -605,6 +605,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
   all_param_values["filestore.buffer_size"] = "104857600";
+  all_param_values["profile_dir"] = "";
+  all_param_values["profile_name"] = "";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";

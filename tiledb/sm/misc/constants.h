@@ -45,6 +45,8 @@ enum class Datatype : uint8_t;
 enum class Compressor : uint8_t;
 enum class SerializationType : uint8_t;
 
+constexpr uint32_t cell_val_num_var = std::numeric_limits<uint32_t>::max();
+
 namespace constants {
 
 // The following aggregate constants are declared static to avoid a SIOF
@@ -681,9 +683,6 @@ extern const std::string vfsmode_append_str;
 
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];
-
-/** The TileDB serialization base format version number. */
-extern const uint32_t base_format_version;
 
 /** The TileDB serialization format version number. */
 extern const format_version_t format_version;
