@@ -139,7 +139,7 @@ fn result_tile_from_record_batch(
         }
 
         if schema.is_dim(&field_name) {
-            assert!(validity.get(&field_key).is_none());
+            assert!(validity.contains_key(&field_key));
             let dim_num = schema.domain().get_dimension_index(&field_name);
             tiledb_test_support::result_tile::init_coord_tile(
                 cxx::SharedPtr::clone(&result_tile),

@@ -281,7 +281,7 @@ fn strat_query_condition_datafusion()
         attribute_enumeration_likelihood: 0.0,
         ..Default::default()
     };
-    any::<SchemaData>()
+    any_with::<SchemaData>(schema_params.into())
         .prop_flat_map(|schema| {
             let schema = Rc::new(schema);
             let strat_cells = any_with::<Cells>(CellsParameters {
