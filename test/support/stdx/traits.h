@@ -1,11 +1,11 @@
 /**
- * @file   tiledb/common/common.h
+ * @file test/support/stdx/traits.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,42 +27,29 @@
  *
  * @section DESCRIPTION
  *
- * Common facilities of the TileDB library.
- *
- * The common facilities here are common by policy, not by convenience. The
- * elements here are expected to be used as ordinary language features. Each
- * element originates in some included file and then is incorporated into the
- * default namespace with a `using` declaration. The expectation is that common
- * elements be used *without* explicit namespace qualification.
+ * This file defines type traits similar to those in the standard library
+ * header <type_traits>.
  */
 
-#ifndef TILEDB_COMMON_COMMON_H
-#define TILEDB_COMMON_COMMON_H
+#ifndef TILEDB_TEST_SUPPORT_TYPE_TRAITS_H
+#define TILEDB_TEST_SUPPORT_TYPE_TRAITS_H
 
-/*
- * All the standard library commonality is declared in "common-std.h".
- */
-#include "common-std.h"
+#include <type_traits>
 
-namespace tiledb::common {}
-namespace tdb = tiledb::common;
+namespace stdx {
 
-/*
- * Dynamic memory
- */
-#include "dynamic_memory/dynamic_memory.h"
-using std::shared_ptr;
-using tiledb::common::allocator;
-using tiledb::common::make_shared;
+template <typename T>
+concept is_fundamental = std::is_fundamental_v<T>;
 
-/*
- * Exception
- *
- * The exception header also put `class Status` in scope.
- */
-#include "exception/exception.h"
-using tiledb::common::Status;
-using tiledb::common::StatusException;
-using tiledb::common::throw_if_not_ok;
+template <typename T>
+struct is_vector : std::false_type {};
 
-#endif  // TILEDB_COMMON_COMMON_H
+template <typename T>
+struct is_vector<std::vector<T>> : std::true_type {};
+
+template <typename T>
+using is_vector_v = is_vector<T>::value;
+
+}  // namespace stdx
+
+#endif

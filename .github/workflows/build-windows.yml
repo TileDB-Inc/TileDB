@@ -338,6 +338,11 @@ jobs:
           $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\test_app_data")
           Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\") -Filter *.exe |
           Foreach-Object {
+            if ($_.Name -ieq "profile_cpp.exe" -or
+                $_.Name -ieq "writing_remote_global_cpp.exe") {
+              Write-Host "Skipping $_.Name"
+              return
+            }
             try {
               Set-Location -path $TestAppDir
               Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue

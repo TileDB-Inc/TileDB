@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -116,15 +116,15 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
 }
 
 TEST_CASE("Config::set_profile - failures", "[config]") {
-  Config c{};
-  // Check that setting a profile without parameters throws an exception
-  CHECK_THROWS(c.set_profile());
-
   std::string profile_name = "test_profile";
-  tiledb::sm::TemporaryLocalDirectory tempdir_;
-  std::string profile_dir(tempdir_.path());
+  std::string profile_dir = "non_existent_directory";
+  Config c{};
+  CHECK(c.set("profile_name", profile_name).ok());
+  CHECK(c.set("profile_dir", profile_dir).ok());
+
   // Set a profile that does not exist. This will throw an exception.
-  CHECK_THROWS(c.set_profile(profile_name, profile_dir).ok());
+  bool found;
+  CHECK_THROWS(c.get("rest.server_address", &found));
 }
 
 TEST_CASE("Config::set_params - set and unset", "[config]") {
@@ -161,7 +161,8 @@ TEST_CASE("Config::set_profile - found", "[config]") {
   profile.save_to_file();
 
   // Set the profile in the config
-  CHECK(c.set_profile(profile_name, profile_dir).ok());
+  CHECK(c.set("profile_name", profile_name).ok());
+  CHECK(c.set("profile_dir", profile_dir).ok());
 
   // Check that the config has the profile's parameters
   bool found;

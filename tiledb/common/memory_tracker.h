@@ -100,6 +100,7 @@
 #include <functional>
 #include <thread>
 
+#include "external/include/nlohmann/json.hpp"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
@@ -234,12 +235,12 @@ class MemoryTracker {
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
 
   /** Get the id of this MemoryTracker instance. */
-  inline uint64_t get_id() {
+  inline uint64_t get_id() const {
     return id_;
   }
 
   /** Get the type of this memory tracker. */
-  inline MemoryTrackerType get_type() {
+  inline MemoryTrackerType get_type() const {
     std::lock_guard<std::mutex> lg(mutex_);
     return type_;
   }
@@ -259,7 +260,8 @@ class MemoryTracker {
   tdb::pmr::memory_resource* get_resource(MemoryType);
 
   /** Return the total and counts of this tracker. */
-  std::tuple<uint64_t, std::unordered_map<MemoryType, uint64_t>> get_counts();
+  std::tuple<uint64_t, std::unordered_map<MemoryType, uint64_t>> get_counts()
+      const;
 
   /**
    * Take memory from the budget.
@@ -357,6 +359,11 @@ class MemoryTracker {
     memory_budget_.store(new_budget, std::memory_order_relaxed);
   }
 
+  /**
+   * @return a JSON object representing the current state of tracked memory
+   */
+  nlohmann::json to_json() const;
+
  protected:
   /**
    * Constructor.
@@ -390,7 +397,7 @@ class MemoryTracker {
 
  private:
   /** Protects all non-atomic member variables. */
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
 
   /* Legacy memory tracker infrastructure */
 
@@ -524,6 +531,18 @@ class MemoryTrackerReporter {
 
   /** A stop flag to signal shutdown to the background thread. */
   bool stop_;
+};
+
+class PAssertFailureCallbackDumpMemoryTracker {
+ public:
+  PAssertFailureCallbackDumpMemoryTracker(const MemoryTracker& tracker)
+      : tracker_(tracker) {
+  }
+
+  void operator()() const;
+
+ private:
+  const MemoryTracker& tracker_;
 };
 
 }  // namespace tiledb::sm

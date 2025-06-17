@@ -112,7 +112,7 @@ class Domain {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the context that the attribute belongs to. */
+  /** Returns the context that the domain belongs to. */
   const Context& context() const {
     return ctx_;
   }

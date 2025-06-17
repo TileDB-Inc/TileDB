@@ -45,6 +45,8 @@ enum class Datatype : uint8_t;
 enum class Compressor : uint8_t;
 enum class SerializationType : uint8_t;
 
+constexpr uint32_t cell_val_num_var = std::numeric_limits<uint32_t>::max();
+
 namespace constants {
 
 // The following aggregate constants are declared static to avoid a SIOF
@@ -682,9 +684,6 @@ extern const std::string vfsmode_append_str;
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];
 
-/** The TileDB serialization base format version number. */
-extern const uint32_t base_format_version;
-
 /** The TileDB serialization format version number. */
 extern const format_version_t format_version;
 
@@ -766,8 +765,14 @@ extern const std::string rest_header_prefix;
 /** The current RestProfile API version. */
 extern const format_version_t rest_profile_version;
 
-/** Filepath for the special local RestProfile files used in TileDB. */
-extern const std::string rest_profile_filepath;
+/**
+ * Foldername that the REST profiles are stored
+ * in when using the home directory.
+ */
+extern const std::string rest_profile_foldername;
+
+/** The filename of the REST profiles file. */
+extern const std::string rest_profile_filename;
 
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;

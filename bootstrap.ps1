@@ -76,9 +76,6 @@ Unused, kept for compatibility.
 .PARAMETER EnableTools
 Enables building TileDB CLI tools (experimental)
 
-.PARAMETER EnableExperimentalFeatures
-Enables building TileDB Experimental features
-
 .PARAMETER EnableArrowTests
 Enables the compilation of the arrow adapter unit tests
 
@@ -87,6 +84,9 @@ Enables AWS S3 configuration for unit tests
 
 .PARAMETER DisableWebP
 Disables building of WebP and simple linkage test
+
+.PARAMETER EnableRust
+Enables building Rust tests
 
 .Parameter DisableWerror
 Disable use of warnings-as-errors (/WX) during build.
@@ -139,6 +139,7 @@ Param(
     [switch]$EnableArrowTests,
     [switch]$EnableAwsS3Config,
     [switch]$DisableWebP,
+    [switch]$EnableRust,
     [switch]$DisableWerror,
     [switch]$DisableCppApi,
     [switch]$DisableTests,
@@ -249,6 +250,11 @@ if ($DisableWebP.IsPresent) {
   $BuildWebP="OFF"
 }
 
+$BuildRust="OFF"
+if ($EnableRust.IsPresent) {
+  $BuildRust="ON"
+}
+
 $BuildSharedLibs = "ON";
 if ($Linkage -eq "static") {
     $BuildSharedLibs = "OFF"
@@ -329,7 +335,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake $ArchFlag -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" $VcpkgBaseTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_REMOVE_DEPRECATIONS=$_RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake $ArchFlag -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" $VcpkgBaseTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_REMOVE_DEPRECATIONS=$_RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_RUST=$BuildRust -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

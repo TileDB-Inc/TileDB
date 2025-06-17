@@ -227,3 +227,27 @@ TEST_CASE_METHOD(
 
   REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
 }
+
+TEST_CASE_METHOD(
+    CAPINDRectangleFx,
+    "C API: ndrectangle: dump_str",
+    "[capi][ndrectangle][dump_str]") {
+  tiledb_ndrectangle_t* ndr = nullptr;
+  REQUIRE(tiledb_ndrectangle_alloc(ctx, domain_, &ndr) == TILEDB_OK);
+
+  tiledb_string_t* str = nullptr;
+  REQUIRE(tiledb_ndrectangle_dump_str(ctx, ndr, &str) == TILEDB_OK);
+  REQUIRE(str != nullptr);
+
+  const char* c_str = nullptr;
+  size_t len = 0;
+  REQUIRE(tiledb_string_view(str, &c_str, &len) == TILEDB_OK);
+  REQUIRE(c_str != nullptr);
+  REQUIRE(len > 0);
+
+  std::string output(c_str, len);
+  CHECK(output.find("NDRectangle ###") != std::string::npos);
+
+  tiledb_string_free(&str);
+  tiledb_ndrectangle_free(&ndr);
+}

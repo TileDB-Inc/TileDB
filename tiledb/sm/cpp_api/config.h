@@ -237,28 +237,6 @@ class Config {
     impl::check_config_error(err);
   }
 
-  /**
-   * Sets the profile to use for the current config object.
-   *
-   * @param profile_name The name of the profile to use. If not provided,
-   *                     the default profile will be used.
-   * @param profile_dir The directory where the profile is located. If not
-   *                    provided, the home directory will be used.
-   */
-  void set_profile(
-      const std::optional<std::string>& profile_name = std::nullopt,
-      const std::optional<std::string>& profile_dir = std::nullopt) {
-    tiledb_error_t* err;
-
-    tiledb_config_set_profile(
-        config_.get(),
-        profile_name.has_value() ? profile_name->c_str() : nullptr,
-        profile_dir.has_value() ? profile_dir->c_str() : nullptr,
-        &err);
-
-    impl::check_config_error(err);
-  }
-
   /** Compares configs for equality. */
   bool operator==(const Config& rhs) const {
     uint8_t equal;
@@ -892,6 +870,12 @@ class Config {
    * - `config.logging_format` <br>
    *    The logging format configured (DEFAULT or JSON)
    *    **Default**: "DEFAULT"
+   * - `profile_name` <br>
+   *    The name of the Profile to be used for REST configuration. <br>
+   *    **Default**: ""
+   * - `profile_dir` <br>
+   *    The directory where the user profiles are stored. <br>
+   *    **Default**: ""
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
    *    **Default**: "https://api.tiledb.com"

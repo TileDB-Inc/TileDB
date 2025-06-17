@@ -295,7 +295,7 @@ const uint32_t path_max_len = PATH_MAX;
 #endif
 
 /** Special value indicating a variable number of elements. */
-const uint32_t var_num = std::numeric_limits<unsigned int>::max();
+const uint32_t var_num = cell_val_num_var;
 
 /** String describing no compression. */
 const std::string no_compression_str = "NO_COMPRESSION";
@@ -690,18 +690,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 22;
-
-/**
- * The TileDB serialization format version number.
- *
- * Conditionally set the high bit on the base_format_version to
- * easily identify that the build is experimental.
- **/
-const format_version_t format_version =
-    is_experimental_build ?
-        0b10000000000000000000000000000000 | base_format_version :
-        base_format_version;
+const format_version_t format_version = 22;
 
 /** The lowest version supported for back compat writes. */
 const format_version_t back_compat_writes_min_format_version = 7;
@@ -778,8 +767,14 @@ const std::string rest_header_prefix = "rest.custom_headers.";
 /** The current RestProfile API version. */
 const format_version_t rest_profile_version = 1;
 
-/** Filepath for the special local RestProfile files used in TileDB. */
-const std::string rest_profile_filepath = ".tiledb/profiles.json";
+/**
+ * Foldername that the REST profiles are stored
+ * in when using the home directory.
+ */
+const std::string rest_profile_foldername = ".tiledb";
+
+/** The filename of the REST profiles file. */
+const std::string rest_profile_filename = "profiles.json";
 
 /** String describing MIME_AUTODETECT. */
 const std::string mime_autodetect_str = "AUTODETECT";

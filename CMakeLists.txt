@@ -230,6 +230,10 @@ else()
   message(STATUS "Building with std::pmr")
 endif()
 
+if (TILEDB_RUST)
+  include(FindCargo)
+endif ()
+
 #######################################################
 # Header Files
 #######################################################
@@ -377,6 +381,10 @@ if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
+if (TILEDB_RUST)
+    add_compile_definitions("HAVE_RUST")
+endif ()
+
 if (TILEDB_ASSERTIONS)
   string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)
   add_compile_definitions(TILEDB_ASSERTIONS)
@@ -502,25 +510,11 @@ add_custom_target(all_unit_tests)
 # Subdirectories
 # -------------------------------------------------------
 
-# Build the TileDB library experimental features
-add_subdirectory(experimental)
-if (TILEDB_TESTS)
-  # Isolate the experimental unit tests into their own target
-  add_custom_target(experimental_unit_tests)
-  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
-  if (${Unit_Tests})
-    add_dependencies(experimental_unit_tests ${Unit_Tests})
-  endif()
-  reset_accumulator(ACCUMULATOR unit_test_targets)
-endif()
-
 # Build the TileDB library
 add_subdirectory(tiledb)
 
 # Build examples
 add_subdirectory(examples)
-
-add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
@@ -542,7 +536,6 @@ if (TILEDB_TESTS)
   add_custom_target(ordinary_unit_tests)
   add_dependencies(ordinary_unit_tests ${Unit_Tests})
   add_dependencies(all_unit_tests ordinary_unit_tests)
-  add_dependencies(all_unit_tests experimental_unit_tests)
 
   # ----------------------------------
   # Target `tests` build and runs all test executables
