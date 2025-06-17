@@ -246,7 +246,7 @@ TEST_CASE_METHOD(
   rc = tiledb_profile_save(profile, &err);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   tiledb_profile_t* loaded_profile;
-  // use the same name and directory
+  // Use the same name and directory
   tiledb_profile_alloc(name_, tempdir_.path().c_str(), &loaded_profile, &err);
   REQUIRE(loaded_profile != nullptr);
   SECTION("success") {
