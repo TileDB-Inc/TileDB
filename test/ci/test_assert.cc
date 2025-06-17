@@ -85,7 +85,7 @@ TEST_CASE("CI: Test libc assertions configuration", "[ci][assertions]") {
   const bool expectAssertFailed = false;
 #endif
 #else
-#ifdef TILEDB_ASSERTIONS
+#ifdef _GLIBCXX_ASSERTIONS
   const bool expectAssertFailed = true;
 #else
   const bool expectAssertFailed = false;

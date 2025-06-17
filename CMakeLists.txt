@@ -389,16 +389,22 @@ if (TILEDB_ASSERTIONS)
   string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)
   add_compile_definitions(TILEDB_ASSERTIONS)
   add_compile_definitions("__SOURCE_DIR_PATH_SIZE__=${SOURCE_DIR_PATH_SIZE}")
-  if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    add_compile_definitions("_LIBCPP_ENABLE_ASSERTIONS")
-  elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+  if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
     add_compile_definitions("_GLIBCXX_ASSERTIONS")
-  elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-    # no equivalent as far as I can tell
-    # the windows debug runtime will include assertions but
+  else ()
+    # feel free to add equivalents here
+    # i.e. something which turns on asserts in a release build.
+    #
+    # MacOS:
+    # Unknown
+    #
+    # Windows:
+    # The windows debug runtime will include assertions but
     # a cursory internet search does not indicate how to turn them
     # on in a release build without un-defining NDEBUG, which we
-    # specifically should not do
+    # specifically should not do.
+    #
+    # See test/ci/test_assert.cc
   endif ()
 endif ()
 
