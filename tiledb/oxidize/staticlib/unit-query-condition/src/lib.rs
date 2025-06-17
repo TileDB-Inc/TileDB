@@ -51,6 +51,7 @@ use proptest::test_runner::{TestCaseError, TestRunner};
 use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
 use tiledb_pod::array::schema::SchemaData;
+use tiledb_pod::array::schema::strategy::Requirements as SchemaRequirements;
 use tiledb_test_cells::Cells;
 use tiledb_test_cells::strategy::{CellsParameters, CellsStrategySchema, SchemaWithDomain};
 
@@ -276,6 +277,10 @@ fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
 
 fn strat_query_condition_datafusion()
 -> impl Strategy<Value = (Rc<SchemaData>, Rc<Cells>, Vec<QueryConditionExpr>)> {
+    let schema_params = SchemaRequirements {
+        attribute_enumeration_likelihood: 0.0,
+        ..Default::default()
+    };
     any::<SchemaData>()
         .prop_flat_map(|schema| {
             let schema = Rc::new(schema);
