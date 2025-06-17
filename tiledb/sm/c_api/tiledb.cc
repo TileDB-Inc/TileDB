@@ -32,11 +32,14 @@
  */
 
 #include "tiledb.h"
-#include "tiledb/oxidize/expr.h"
-#include "tiledb/oxidize/rust.h"
 #include "tiledb_experimental.h"
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
+
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/expr.h"
+#include "tiledb/oxidize/rust.h"
+#endif
 
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
@@ -586,6 +589,7 @@ int32_t tiledb_query_set_condition(
   return TILEDB_OK;
 }
 
+#ifdef HAVE_RUST
 int32_t tiledb_query_get_condition_string(
     tiledb_ctx_t*, tiledb_query_t* query, tiledb_string_t** desc_condition) {
   const auto condition = query->query_->condition();
@@ -603,6 +607,7 @@ int32_t tiledb_query_get_condition_string(
     throw StatusException("oxidize", std::string(e.what()));
   }
 }
+#endif
 
 int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Trivial case
@@ -2768,6 +2773,7 @@ CAPI_INTERFACE(
   return api_entry<tiledb::api::tiledb_query_set_condition>(ctx, query, cond);
 }
 
+#ifdef HAVE_RUST
 CAPI_INTERFACE(
     query_get_condition_string,
     tiledb_ctx_t* ctx,
@@ -2776,6 +2782,7 @@ CAPI_INTERFACE(
   return api_entry<tiledb::api::tiledb_query_get_condition_string>(
       ctx, query, desc_condition);
 }
+#endif
 
 CAPI_INTERFACE(query_finalize, tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return api_entry<tiledb::api::tiledb_query_finalize>(ctx, query);

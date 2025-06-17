@@ -614,10 +614,12 @@ TILEDB_EXPORT int32_t tiledb_query_set_condition(
     tiledb_query_t* query,
     const tiledb_query_condition_t* cond) TILEDB_NOEXCEPT;
 
+#ifdef HAVE_RUST
 TILEDB_EXPORT int32_t tiledb_query_get_condition_string(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_string_t** desc_condition) TILEDB_NOEXCEPT;
+#endif
 
 /**
  * Flushes all internal state of a query object and finalizes the query.

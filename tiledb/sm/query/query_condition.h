@@ -37,10 +37,13 @@
 #include <unordered_set>
 
 #include "tiledb/common/status.h"
-#include "tiledb/oxidize/rust.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
+
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/rust.h"
+#endif
 
 using namespace tiledb::common;
 
@@ -397,6 +400,7 @@ class QueryCondition {
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
 
+#ifdef HAVE_RUST
   /** Datafusion expression evaluation */
   struct Datafusion {
     using BoxSchema = ::rust::Box<tiledb::oxidize::arrow::schema::ArrowSchema>;
@@ -416,6 +420,10 @@ class QueryCondition {
         const ResultTile& result_tile,
         std::span<BitmapType> result_bitmap) const;
   };
+#else
+  /** no-op */
+  struct Datafusion {};
+#endif
   std::optional<Datafusion> datafusion_;
 
   /** Caches all field names in the value nodes of the AST.  */

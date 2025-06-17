@@ -34,14 +34,17 @@
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
-#include "tiledb/oxidize/arrow.h"
-#include "tiledb/oxidize/expr.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
+
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/arrow.h"
+#include "tiledb/oxidize/expr.h"
+#endif
 
 #include <algorithm>
 #include <functional>
@@ -164,6 +167,7 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
   tree_->rewrite_for_schema(array_schema);
 }
 
+#ifdef HAVE_RUST
 bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
   if (!datafusion_.has_value()) {
     std::vector<std::string> select(field_names().begin(), field_names().end());
@@ -186,6 +190,11 @@ bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
   }
   return false;
 }
+#else
+bool QueryCondition::rewrite_to_datafusion(const ArraySchema&) {
+  return false;
+}
+#endif
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   if (!tree_) {
@@ -2916,12 +2925,14 @@ Status QueryCondition::apply_sparse(
     const ResultTile& result_tile,
     std::span<BitmapType> result_bitmap) {
   if (datafusion_.has_value()) {
+#ifdef HAVE_RUST
     try {
       datafusion_.value().apply(params, result_tile, result_bitmap);
     } catch (const ::rust::Error& e) {
       throw std::logic_error(
           "Unexpected error evaluating expression: " + std::string(e.what()));
     }
+#endif
   } else {
     apply_tree_sparse<BitmapType>(
         tree_,
@@ -2950,6 +2961,7 @@ uint64_t QueryCondition::condition_index() const {
   return condition_index_;
 }
 
+#ifdef HAVE_RUST
 template <typename BitmapType>
 void QueryCondition::Datafusion::apply(
     const QueryCondition::Params&,
@@ -3005,6 +3017,7 @@ void QueryCondition::Datafusion::apply(
     }
   }
 }
+#endif
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
