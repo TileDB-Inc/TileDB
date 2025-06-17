@@ -3333,8 +3333,8 @@ dependencies = [
  "itertools 0.14.0",
  "num-traits",
  "thiserror 2.0.12",
+ "tiledb-cxx-interface",
  "tiledb-datatype",
- "tiledb-oxidize",
 ]
 
 [[package]]
@@ -3362,10 +3362,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tiledb-cxx-interface"
+version = "0.1.0"
+dependencies = [
+ "cxx",
+ "cxx-build",
+ "num-traits",
+]
+
+[[package]]
 name = "tiledb-datatype"
 version = "0.1.0"
 dependencies = [
- "tiledb-oxidize",
+ "tiledb-cxx-interface",
 ]
 
 [[package]]
@@ -3380,17 +3389,8 @@ dependencies = [
  "num-traits",
  "thiserror 2.0.12",
  "tiledb-arrow",
+ "tiledb-cxx-interface",
  "tiledb-datatype",
- "tiledb-oxidize",
-]
-
-[[package]]
-name = "tiledb-oxidize"
-version = "0.1.0"
-dependencies = [
- "cxx",
- "cxx-build",
- "num-traits",
 ]
 
 [[package]]
@@ -3463,7 +3463,7 @@ dependencies = [
  "itertools 0.14.0",
  "tiledb-api",
  "tiledb-common",
- "tiledb-oxidize",
+ "tiledb-cxx-interface",
  "tiledb-pod",
  "tiledb-test-support",
 ]
@@ -3475,7 +3475,7 @@ dependencies = [
  "anyhow",
  "cxx",
  "tiledb-common",
- "tiledb-oxidize",
+ "tiledb-cxx-interface",
  "tiledb-test-support",
 ]
 
@@ -3488,7 +3488,7 @@ dependencies = [
  "cells",
  "cxx",
  "tiledb-arrow",
- "tiledb-oxidize",
+ "tiledb-cxx-interface",
  "tiledb-test-support",
 ]
 
@@ -3498,7 +3498,7 @@ version = "0.1.0"
 dependencies = [
  "cxx",
  "cxx-build",
- "tiledb-oxidize",
+ "tiledb-cxx-interface",
 ]
 
 [[package]]
@@ -3520,8 +3520,8 @@ dependencies = [
  "proptest",
  "tiledb-arrow",
  "tiledb-common",
+ "tiledb-cxx-interface",
  "tiledb-expr",
- "tiledb-oxidize",
  "tiledb-pod",
  "tiledb-test-array-schema",
  "tiledb-test-query-condition",

@@ -6,7 +6,7 @@ version.workspace = true
 
 [dependencies]
 cxx = { workspace = true }
-tiledb-oxidize = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
 
 [build-dependencies]
 cxx-build = { workspace = true }

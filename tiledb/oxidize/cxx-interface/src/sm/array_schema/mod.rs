@@ -8,7 +8,7 @@ mod ffi {
 
     #[namespace = "tiledb::sm"]
     unsafe extern "C++" {
-        include!("tiledb/oxidize/oxidize/cc/array_schema.h");
+        include!("tiledb/oxidize/cxx-interface/cc/array_schema.h");
         type ConstAttribute;
     }
 

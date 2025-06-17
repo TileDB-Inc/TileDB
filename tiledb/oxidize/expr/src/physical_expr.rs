@@ -9,7 +9,7 @@ use datafusion::logical_expr::ColumnarValue;
 use datafusion::physical_plan::PhysicalExpr as DatafusionPhysicalExpr;
 use tiledb_arrow::record_batch::ArrowRecordBatch;
 use tiledb_arrow::schema::ArrowSchema;
-use tiledb_oxidize::sm::enums::Datatype;
+use tiledb_cxx_interface::sm::enums::Datatype;
 
 use crate::LogicalExpr;
 

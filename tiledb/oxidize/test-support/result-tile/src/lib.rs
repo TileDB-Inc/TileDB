@@ -6,8 +6,8 @@ use arrow::array::{Array as ArrowArray, GenericListArray, PrimitiveArray};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use arrow::record_batch::RecordBatch;
-use tiledb_oxidize::sm::array_schema::{ArraySchema, CellValNum};
-use tiledb_oxidize::sm::query::readers::ResultTile;
+use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum};
+use tiledb_cxx_interface::sm::query::readers::ResultTile;
 use tiledb_test_cells::{Cells, FieldData, typed_field_data_go};
 
 /// Packages a `ResultTile` with the buffers which contain the tile data.

@@ -5,8 +5,8 @@ pub mod ffi {
         include!("tiledb/sm/array_schema/array_schema.h");
         include!("tiledb/sm/query/readers/result_tile.h");
 
-        type ArraySchema = tiledb_oxidize::sm::array_schema::ArraySchema;
-        type ResultTile = tiledb_oxidize::sm::query::readers::ResultTile;
+        type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
+        type ResultTile = tiledb_cxx_interface::sm::query::readers::ResultTile;
     }
 
     #[namespace = "tiledb::oxidize::arrow::schema"]

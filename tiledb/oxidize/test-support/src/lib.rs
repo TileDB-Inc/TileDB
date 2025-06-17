@@ -3,7 +3,7 @@ mod ffi {
     #[namespace = "tiledb::sm"]
     extern "C++" {
         include!("tiledb/common/memory_tracker.h");
-        include!("tiledb/oxidize/oxidize/cc/array_schema.h");
+        include!("tiledb/oxidize/cxx-interface/cc/array_schema.h");
         include!("tiledb/sm/array_schema/attribute.h");
         include!("tiledb/sm/array_schema/dimension.h");
         include!("tiledb/sm/array_schema/domain.h");
@@ -15,21 +15,22 @@ mod ffi {
         include!("tiledb/sm/query/ast/query_ast.h");
         include!("tiledb/sm/query/readers/result_tile.h");
 
-        type ArrayType = tiledb_oxidize::sm::enums::ArrayType;
-        type Datatype = tiledb_oxidize::sm::enums::Datatype;
-        type MemoryTracker = tiledb_oxidize::common::memory_tracker::MemoryTracker;
+        type ArrayType = tiledb_cxx_interface::sm::enums::ArrayType;
+        type Datatype = tiledb_cxx_interface::sm::enums::Datatype;
+        type MemoryTracker = tiledb_cxx_interface::common::memory_tracker::MemoryTracker;
 
-        type Attribute = tiledb_oxidize::sm::array_schema::Attribute;
-        type ConstAttribute = tiledb_oxidize::sm::array_schema::ConstAttribute;
-        type Dimension = tiledb_oxidize::sm::array_schema::Dimension;
-        type Domain = tiledb_oxidize::sm::array_schema::Domain;
-        type ArraySchema = tiledb_oxidize::sm::array_schema::ArraySchema;
+        type Attribute = tiledb_cxx_interface::sm::array_schema::Attribute;
+        type ConstAttribute = tiledb_cxx_interface::sm::array_schema::ConstAttribute;
+        type Dimension = tiledb_cxx_interface::sm::array_schema::Dimension;
+        type Domain = tiledb_cxx_interface::sm::array_schema::Domain;
+        type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
 
-        type ASTNode = tiledb_oxidize::sm::query::ast::ASTNode;
-        type QueryConditionOp = tiledb_oxidize::sm::enums::QueryConditionOp;
-        type QueryConditionCombinationOp = tiledb_oxidize::sm::enums::QueryConditionCombinationOp;
+        type ASTNode = tiledb_cxx_interface::sm::query::ast::ASTNode;
+        type QueryConditionOp = tiledb_cxx_interface::sm::enums::QueryConditionOp;
+        type QueryConditionCombinationOp =
+            tiledb_cxx_interface::sm::enums::QueryConditionCombinationOp;
 
-        type ResultTile = tiledb_oxidize::sm::query::readers::ResultTile;
+        type ResultTile = tiledb_cxx_interface::sm::query::readers::ResultTile;
     }
 
     #[namespace = "tiledb::test"]

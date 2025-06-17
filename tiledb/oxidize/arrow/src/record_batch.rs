@@ -6,8 +6,8 @@ use arrow::array::{
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
 use arrow::record_batch::RecordBatch;
-use tiledb_oxidize::sm::query::readers::{ResultTile, TileTuple};
-use tiledb_oxidize::sm::tile::Tile;
+use tiledb_cxx_interface::sm::query::readers::{ResultTile, TileTuple};
+use tiledb_cxx_interface::sm::tile::Tile;
 
 use super::*;
 use crate::offsets::Error as OffsetsError;

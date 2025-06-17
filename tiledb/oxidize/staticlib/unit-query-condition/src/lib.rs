@@ -9,9 +9,9 @@ mod ffi {
         include!("tiledb/sm/query/ast/query_ast.h");
         include!("tiledb/sm/query/readers/result_tile.h");
 
-        type ArraySchema = tiledb_oxidize::sm::array_schema::ArraySchema;
-        type ASTNode = tiledb_oxidize::sm::query::ast::ASTNode;
-        type ResultTile = tiledb_oxidize::sm::query::readers::ResultTile;
+        type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
+        type ASTNode = tiledb_cxx_interface::sm::query::ast::ASTNode;
+        type ResultTile = tiledb_cxx_interface::sm::query::readers::ResultTile;
     }
 
     #[namespace = "tiledb::test::query_condition_datafusion"]

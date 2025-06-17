@@ -2,7 +2,7 @@ pub mod enums;
 
 use itertools::Itertools;
 use tiledb_common::dimension_constraints_go;
-use tiledb_oxidize::sm::array_schema::{ArraySchema, Attribute, Dimension, Domain};
+use tiledb_cxx_interface::sm::array_schema::{ArraySchema, Attribute, Dimension, Domain};
 use tiledb_pod::array::schema::{AttributeData, DimensionData, DomainData, SchemaData};
 
 pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArraySchema>> {

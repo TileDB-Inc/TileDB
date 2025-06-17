@@ -9,6 +9,6 @@ anyhow = { workspace = true }
 arrow = { workspace = true }
 cxx = { workspace = true }
 tiledb-arrow = { workspace = true }
-tiledb-oxidize = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
 tiledb-test-cells = { workspace = true }
 tiledb-test-support = { workspace = true }

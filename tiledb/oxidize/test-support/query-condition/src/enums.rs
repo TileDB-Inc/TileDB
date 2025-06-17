@@ -2,7 +2,7 @@ use tiledb_common::query::condition::{
     CombinationOp as RsCombinationOp, EqualityOp as RsEqualityOp, NullnessOp as RsNullnessOp,
     SetMembershipOp as RsSetMembershipOp,
 };
-use tiledb_oxidize::sm::enums::{QueryConditionCombinationOp, QueryConditionOp};
+use tiledb_cxx_interface::sm::enums::{QueryConditionCombinationOp, QueryConditionOp};
 
 pub fn convert_equality_op(op: RsEqualityOp) -> QueryConditionOp {
     match op {

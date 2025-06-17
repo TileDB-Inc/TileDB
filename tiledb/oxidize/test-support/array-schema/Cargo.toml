@@ -9,7 +9,7 @@ anyhow = { workspace = true }
 cxx = { workspace = true }
 itertools = { workspace = true }
 tiledb-api = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
 tiledb-common = { workspace = true }
 tiledb-pod = { workspace = true }
-tiledb-oxidize = { workspace = true }
 tiledb-test-support = { workspace = true }

@@ -5,9 +5,9 @@ mod ffi {
         include!("tiledb/sm/array_schema/array_schema.h");
         include!("tiledb/sm/query/ast/query_ast.h");
 
-        type ArraySchema = tiledb_oxidize::sm::array_schema::ArraySchema;
-        type ASTNode = tiledb_oxidize::sm::query::ast::ASTNode;
-        type Datatype = tiledb_oxidize::sm::enums::Datatype;
+        type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
+        type ASTNode = tiledb_cxx_interface::sm::query::ast::ASTNode;
+        type Datatype = tiledb_cxx_interface::sm::enums::Datatype;
     }
 
     extern "C++" {

@@ -1,7 +1,7 @@
 mod enums;
 
 use tiledb_common::query::condition::*;
-use tiledb_oxidize::sm::query::ast::ASTNode;
+use tiledb_cxx_interface::sm::query::ast::ASTNode;
 use tiledb_test_support::query as tiledb_test_support;
 
 pub fn ast_from_query_condition(

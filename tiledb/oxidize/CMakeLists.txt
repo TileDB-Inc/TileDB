@@ -28,7 +28,7 @@ cxxbridge(
 
 cxxbridge(
   NAME
-    oxidize
+    cxx-interface
   SOURCES
     array_schema.cc
     common/memory_tracker.rs
@@ -55,8 +55,8 @@ oxidize(
     tiledb_core_objects
   EXPORT
     arrow
+    cxx-interface
     expr
-    oxidize
 )
 
 oxidize(
@@ -73,8 +73,8 @@ oxidize(
     lib.rs
   EXPORT
     arrow
+    cxx-interface
     expr
-    oxidize
     test-support
 )
 

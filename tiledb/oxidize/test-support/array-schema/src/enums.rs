@@ -2,8 +2,8 @@ use tiledb_common::array::{
     ArrayType as RsArrayType, CellOrder, CellValNum as RsCellValNum, TileOrder,
 };
 use tiledb_common::datatype::Datatype as RsDatatype;
-use tiledb_oxidize::sm::array_schema::CellValNum as OxCellValNum;
-use tiledb_oxidize::sm::enums::{ArrayType as OxArrayType, Datatype as OxDatatype, Layout};
+use tiledb_cxx_interface::sm::array_schema::CellValNum as OxCellValNum;
+use tiledb_cxx_interface::sm::enums::{ArrayType as OxArrayType, Datatype as OxDatatype, Layout};
 
 pub fn convert_array_type(array_type: RsArrayType) -> OxArrayType {
     match array_type {

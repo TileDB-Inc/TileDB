@@ -5,8 +5,8 @@ use std::sync::Arc;
 use arrow::datatypes::{
     DataType as ArrowDataType, Field as ArrowField, Fields as ArrowFields, Schema,
 };
-use tiledb_oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
-use tiledb_oxidize::sm::enums::Datatype;
+use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum, Field};
+use tiledb_cxx_interface::sm::enums::Datatype;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

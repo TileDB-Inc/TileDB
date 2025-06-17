@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! apply_physical_type {
     ($datatype:expr, $typename:ident, $action:expr, $invalid:expr) => {{
-        use tiledb_oxidize::sm::enums::Datatype;
+        use tiledb_cxx_interface::sm::enums::Datatype;
 
         match $datatype {
             Datatype::INT8 => {

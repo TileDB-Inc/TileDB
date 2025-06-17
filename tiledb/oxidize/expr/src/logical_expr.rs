@@ -13,11 +13,11 @@ use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
 use itertools::Itertools;
 use num_traits::FromBytes;
 use tiledb_arrow::offsets::Error as OffsetsError;
+use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum, Field};
+use tiledb_cxx_interface::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
+use tiledb_cxx_interface::sm::misc::ByteVecValue;
+use tiledb_cxx_interface::sm::query::ast::ASTNode;
 use tiledb_datatype::apply_physical_type;
-use tiledb_oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
-use tiledb_oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
-use tiledb_oxidize::sm::misc::ByteVecValue;
-use tiledb_oxidize::sm::query::ast::ASTNode;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

@@ -5,7 +5,7 @@ members = [
   "arrow",
   "datatype",
   "expr",
-  "oxidize",
+  "cxx-interface",
   "test-support",
   "test-support/array-schema",
   "test-support/result-tile",
@@ -32,9 +32,9 @@ tiledb-api = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "ma
 tiledb-arrow = { path = "arrow" }
 tiledb-arithmetic = { path = "arithmetic" }
 tiledb-common = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-cxx-interface = { path = "cxx-interface" }
 tiledb-datatype = { path = "datatype" }
 tiledb-expr = { path = "expr" }
-tiledb-oxidize = { path = "oxidize" }
 tiledb-pod = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
 tiledb-test-array-schema = { path = "test-support/array-schema" }
 tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }

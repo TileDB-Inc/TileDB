@@ -12,8 +12,8 @@ itertools = { workspace = true }
 num-traits = { workspace = true }
 thiserror = { workspace = true }
 tiledb-arrow = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
 tiledb-datatype = { workspace = true }
-tiledb-oxidize = { workspace = true }
 
 [build-dependencies]
 cxx-build = { workspace = true }
