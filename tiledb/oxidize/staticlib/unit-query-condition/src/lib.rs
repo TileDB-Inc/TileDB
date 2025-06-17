@@ -128,6 +128,36 @@ fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
             );
             Arc::new(f_array)
         };
+        let ea_array = create_array!(
+            Int32,
+            [
+                Some(0),
+                Some(2),
+                Some(4),
+                None,
+                None,
+                Some(1),
+                Some(2),
+                Some(1),
+                None,
+                None
+            ]
+        );
+        let ev_array = create_array!(
+            Int16,
+            [
+                Some(4),
+                None,
+                Some(3),
+                Some(4),
+                Some(6),
+                Some(2),
+                None,
+                None,
+                Some(0),
+                Some(4)
+            ]
+        );
 
         RecordBatch::try_new(
             ArrowSchema::new(vec![
@@ -135,9 +165,11 @@ fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
                 ArrowField::new("a", a_array.data_type().clone(), a_array.is_nullable()),
                 ArrowField::new("v", v_array.data_type().clone(), v_array.is_nullable()),
                 ArrowField::new("f", f_array.data_type().clone(), f_array.is_nullable()),
+                ArrowField::new("ea", ea_array.data_type().clone(), ea_array.is_nullable()),
+                ArrowField::new("ev", ev_array.data_type().clone(), ev_array.is_nullable()),
             ])
             .into(),
-            vec![d_array, a_array, v_array, f_array],
+            vec![d_array, a_array, v_array, f_array, ea_array, ev_array],
         )
         .unwrap()
     };
@@ -223,6 +255,20 @@ fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
         let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
         let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
         assert_eq!(result.as_slice(), vec![1, 1, 1, 0, 0, 0, 1, 1, 1, 1]);
+    }
+    // ea = -2
+    {
+        let ast = QueryConditionExpr::field("ea").eq(-2i64);
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![0, 0, 0, 0, 0, 1, 0, 1, 0, 0]);
+    }
+    // ev != 'grault'
+    {
+        let ast = QueryConditionExpr::field("ev").ne("grault");
+        let cxx_ast = tiledb_test_query_condition::ast_from_query_condition(&ast)?;
+        let result = ffi::instance_query_condition_datafusion(&cxx_schema, &cxx_tile, &cxx_ast)?;
+        assert_eq!(result.as_slice(), vec![0, 0, 1, 0, 1, 1, 0, 0, 1, 0]);
     }
 
     Ok(true)

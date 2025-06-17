@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
@@ -5115,6 +5116,50 @@ std::shared_ptr<ArraySchema> example_schema() {
   f->set_cell_val_num(4);
   schema->add_attribute(f);
 
+  int64_t interesting_i64s_values[] = {
+      std::numeric_limits<int64_t>::min(),
+      -2,
+      -1,
+      0,
+      1,
+      2,
+      std::numeric_limits<int64_t>::max()};
+  std::shared_ptr<const Enumeration> interesting_i64s = Enumeration::create(
+      "interesting_i64s",
+      Datatype::INT64,
+      1,
+      false,
+      &interesting_i64s_values[0],
+      sizeof(interesting_i64s_values),
+      nullptr,
+      0,
+      tiledb::test::get_test_memory_tracker());
+  schema->add_enumeration(interesting_i64s);
+
+  char interesting_strs_var[] = {"foobarbazquuxgraultgarplygub"};
+  uint64_t interesting_strs_offsets[] = {0, 3, 6, 9, 13, 19, 25};
+  std::shared_ptr<const Enumeration> interesting_strs = Enumeration::create(
+      "interesting_strs",
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      &interesting_strs_var[0],
+      sizeof(interesting_strs_var),
+      &interesting_strs_offsets[0],
+      sizeof(interesting_strs_offsets),
+      tiledb::test::get_test_memory_tracker());
+  schema->add_enumeration(interesting_strs);
+
+  std::shared_ptr<Attribute> ea =
+      std::make_shared<Attribute>("ea", Datatype::INT32, true);
+  ea->set_enumeration_name("interesting_i64s");
+  schema->add_attribute(ea);
+
+  std::shared_ptr<Attribute> ev =
+      std::make_shared<Attribute>("ev", Datatype::INT16, true);
+  ev->set_enumeration_name("interesting_strs");
+  schema->add_attribute(ev);
+
   return schema;
 }
 
@@ -5198,6 +5243,12 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
         6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10};
     std::vector<uint8_t> validity_f = {1, 1, 0, 1, 1, 0, 1, 1, 0, 1};
 
+    std::vector<int32_t> keys_ea = {0, 2, 4, 4, 3, 1, 2, 1, 4, 1};
+    std::vector<uint8_t> validity_ea = {1, 1, 1, 0, 0, 1, 1, 1, 0, 0};
+
+    std::vector<int16_t> keys_ev = {4, 4, 3, 4, 6, 2, 0, 1, 0, 4};
+    std::vector<uint8_t> validity_ev = {1, 0, 1, 1, 1, 1, 0, 0, 1, 1};
+
     ResultTileSizes d_sizes(
         values_d.size() * sizeof(uint64_t),
         0,
@@ -5234,6 +5285,24 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
         0);
     ResultTileData f_data(values_f.data(), nullptr, validity_f.data());
 
+    ResultTileSizes ea_sizes(
+        keys_ea.size() * sizeof(int32_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        validity_ea.size() * sizeof(uint8_t),
+        0);
+    ResultTileData ea_data(keys_ea.data(), nullptr, validity_ea.data());
+
+    ResultTileSizes ev_sizes(
+        keys_ev.size() * sizeof(int16_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        validity_ev.size() * sizeof(uint8_t),
+        0);
+    ResultTileData ev_data(keys_ev.data(), nullptr, validity_ev.data());
+
     ResultTile tile(
         *schema, values_d.size(), tiledb::test::get_test_memory_tracker());
     tile.init_coord_tile(
@@ -5244,6 +5313,10 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
         constants::format_version, *schema, "v", v_sizes, v_data);
     tile.init_attr_tile(
         constants::format_version, *schema, "f", f_sizes, f_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "ea", ea_sizes, ea_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "ev", ev_sizes, ev_data);
 
     tile.tile_tuple("d")->fixed_tile().write(
         values_d.data(), 0, values_d.size() * sizeof(uint64_t));
@@ -5260,6 +5333,16 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
         values_f.data(), 0, values_f.size() * sizeof(uint16_t));
     tile.tile_tuple("f")->validity_tile().write(
         validity_f.data(), 0, validity_f.size() * sizeof(uint8_t));
+
+    tile.tile_tuple("ea")->fixed_tile().write(
+        keys_ea.data(), 0, keys_ea.size() * sizeof(int32_t));
+    tile.tile_tuple("ea")->validity_tile().write(
+        validity_ea.data(), 0, validity_ea.size() * sizeof(uint8_t));
+
+    tile.tile_tuple("ev")->fixed_tile().write(
+        keys_ev.data(), 0, keys_ev.size() * sizeof(int16_t));
+    tile.tile_tuple("ev")->validity_tile().write(
+        validity_ev.data(), 0, validity_ev.size() * sizeof(uint8_t));
 
     SECTION("a < 100000") {
       uint64_t value = 100000;
@@ -5373,6 +5456,25 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
           QueryConditionOp::IN);
 
       instance(*schema, tile, ast);
+    }
+
+    SECTION("ea = -2") {
+      int64_t e_value = -2;
+      tdb_unique_ptr<ASTNode> ast(new ASTNodeVal(
+          "ea", &e_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::EQ));
+      const auto results = instance(*schema, tile, *ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 0, 0, 0, 1, 0, 1, 0, 0});
+    }
+
+    SECTION("ev != 'grault'") {
+      const std::string ev_value = "grault";
+      tdb_unique_ptr<ASTNode> ast(new ASTNodeVal(
+          "ev",
+          ev_value.data(),
+          ev_value.size(),
+          tiledb::sm::QueryConditionOp::NE));
+      const auto results = instance(*schema, tile, *ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 1, 0, 1, 1, 0, 0, 1, 0});
     }
   }
 
