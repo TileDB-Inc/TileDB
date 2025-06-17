@@ -121,7 +121,7 @@ const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE =
     "32768";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
-const std::string Config::SM_QUERY_CONDITION_EVALUATOR = "ast";
+const std::string Config::SM_QUERY_CONDITION_EVALUATOR = "datafusion";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
