@@ -214,7 +214,7 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   // Execute the read query.
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_data_buffer(ctx, query, "a", a_data, &a_size);
   tiledb_query_set_validity_buffer(
       ctx, query, "a", a_data_validity, &a_validity_size);
@@ -226,15 +226,6 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
 
   if (qc) {
     tiledb_query_set_condition(ctx, query, qc);
-
-    tiledb_string_t* desc;
-    tiledb_query_get_condition_string(ctx, query, &desc);
-
-    const char* data;
-    size_t size;
-    tiledb_string_view(desc, &data, &size);
-
-    printf("CONDITION STRING: %.*s\n", (int)(size), data);
   }
 
   tiledb_query_submit(ctx, query);

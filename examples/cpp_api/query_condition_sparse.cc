@@ -181,7 +181,7 @@ void read_array_with_qc(Context& ctx, std::optional<QueryCondition> qc) {
   // Execute the read query.
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
-  query.set_layout(TILEDB_GLOBAL_ORDER)
+  query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_data)
       .set_validity_buffer("a", a_data_validity)
       .set_data_buffer("b", b_data)
