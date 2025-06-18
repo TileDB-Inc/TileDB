@@ -39,42 +39,16 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-std::string cloudtoken_ = "abc123def456";  // Token used by in-test cloud.json.
-
-/* Tracks the expected name and parameter values for a RestProfile. */
-struct expected_values_t {
-  std::string name = RestProfile::DEFAULT_PROFILE_NAME;
-  std::string password = RestProfile::DEFAULT_PASSWORD;
-  std::string payer_namespace = RestProfile::DEFAULT_PAYER_NAMESPACE;
-  std::string token = RestProfile::DEFAULT_TOKEN;
-  std::string server_address = RestProfile::DEFAULT_SERVER_ADDRESS;
-  std::string username = RestProfile::DEFAULT_USERNAME;
-};
-
 struct RestProfileFx {
  public:
-  std::string dir_;        // The temporary in-test directory.
-  std::string cloudpath_;  // The in-test path to the cloud.json file.
+  std::string dir_;       // The temporary in-test directory.
+  std::string filepath_;  // The in-test path to the profiles.json file.
 
   RestProfileFx()
       : dir_(TemporaryLocalDirectory("unit_rest_profile").path())
-      , cloudpath_(dir_ + "cloud.json") {
+      , filepath_(dir_ + "profiles.json") {
     // Fstream cannot create directories, only files, so create the dir.
     std::filesystem::create_directories(dir_);
-
-    // Write to the cloud path.
-    json j = {
-        {"api_key",
-         {json::object_t::value_type("X-TILEDB-REST-API-KEY", cloudtoken_)}},
-        {"host", RestProfile::DEFAULT_SERVER_ADDRESS},
-        {"username", RestProfile::DEFAULT_USERNAME},
-        {"password", RestProfile::DEFAULT_PASSWORD},
-        {"verify_ssl", "true"}};
-
-    {
-      std::ofstream file(cloudpath_);
-      file << std::setw(2) << j << std::endl;
-    }
   }
 
   ~RestProfileFx() = default;
@@ -84,17 +58,6 @@ struct RestProfileFx {
   RestProfile create_profile(
       const std::string& name = RestProfile::DEFAULT_PROFILE_NAME) {
     return RestProfile(name, dir_);
-  }
-
-  /** Returns true iff the profile's parameter values match the expected. */
-  bool is_expected(RestProfile p, expected_values_t e) {
-    if (p.name() == e.name && *p.get_param("rest.password") == e.password &&
-        *p.get_param("rest.payer_namespace") == e.payer_namespace &&
-        *p.get_param("rest.token") == e.token &&
-        *p.get_param("rest.server_address") == e.server_address &&
-        *p.get_param("rest.username") == e.username)
-      return true;
-    return false;
   }
 
   /**
@@ -108,26 +71,23 @@ struct RestProfileFx {
       file >> data;
       file.close();
       return data[std::string(name)];
-    } else {
-      return data;
     }
+    return json{};
   }
 };
 
 TEST_CASE_METHOD(
     RestProfileFx, "REST Profile: Default profile", "[rest_profile][default]") {
   // Remove cloud.json to ensure the RestProfile constructor doesn't inherit it.
-  std::filesystem::remove(cloudpath_);
-  CHECK(!std::filesystem::exists(cloudpath_));
+  std::filesystem::remove(filepath_);
+  CHECK(!std::filesystem::exists(filepath_));
 
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
+  profile.save_to_file();
 
-  // Set the expected token value; expected_values_t uses cloudtoken_ by
-  // default.
-  expected_values_t expected;
-  expected.token = RestProfile::DEFAULT_TOKEN;
-  CHECK(is_expected(profile, expected));
+  // Check that the profile is created on disk.
+  CHECK(std::filesystem::exists(filepath_));
 }
 
 TEST_CASE_METHOD(
@@ -136,82 +96,64 @@ TEST_CASE_METHOD(
     "[rest_profile][default][empty_directory]") {
   // Remove the dir_ to ensure the cloud.json file isn't inherited.
   std::filesystem::remove_all(dir_);
+  CHECK(!std::filesystem::exists(dir_));
 
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
-  expected_values_t expected;
-  expected.token = RestProfile::DEFAULT_TOKEN;
-  CHECK(is_expected(profile, expected));
-}
+  profile.save_to_file();
 
-TEST_CASE_METHOD(
-    RestProfileFx,
-    "REST Profile: Default profile inherited from cloudpath",
-    "[rest_profile][default][inherited]") {
-  // Create and validate a default RestProfile.
-  RestProfile profile(create_profile());
-  expected_values_t expected;
-  CHECK(is_expected(profile, expected));
+  // Check that the directory is created and the profile is saved.
+  CHECK(std::filesystem::exists(dir_));
+  CHECK(std::filesystem::exists(filepath_));
 }
 
 TEST_CASE_METHOD(
     RestProfileFx,
     "REST Profile: Save/Remove",
-    "[rest_profile][save][remove]") {
+    "[rest_profile][save][load][remove]") {
+  // Ensure the profile file does not exist before the test.
+  CHECK(!std::filesystem::exists(filepath_));
+
   // Create a default RestProfile.
   RestProfile p(create_profile());
-  std::string filepath = dir_ + "profiles.json";
-  CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
-
-  // Validate.
-  expected_values_t e;
-  CHECK(is_expected(p, e));
-  // Save to file and validate that the local json object is created.
+  // Set parameters.
+  p.set_param("rest.token", "custom_token");
+  p.set_param("rest.server_address", "https://custom.server");
+  // Save profile to file.
   p.save_to_file();
-  CHECK(!profile_from_file_to_json(filepath, std::string(p.name())).empty());
+
+  // Load profile.
+  RestProfile loaded_profile(create_profile());
+  loaded_profile.load_from_file();
+
+  // Check that the values of the profile are as expected.
+  CHECK(*loaded_profile.get_param("rest.token") == "custom_token");
+  CHECK(
+      *loaded_profile.get_param("rest.server_address") ==
+      "https://custom.server");
+
+  // Validate that the local json object is created.
+  CHECK(!profile_from_file_to_json(filepath_, std::string(p.name())).empty());
 
   // Remove the profile and validate that the local json object is removed.
   RestProfile::remove_profile(std::nullopt, dir_);
-  CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
-}
-
-TEST_CASE_METHOD(
-    RestProfileFx,
-    "REST Profile: Non-default profile",
-    "[rest_profile][non-default]") {
-  expected_values_t e{
-      "non-default",
-      "password",
-      "payer_namespace",
-      "token",
-      "server_address",
-      "username"};
-
-  // Set and validate non-default parameters.
-  RestProfile p(create_profile(e.name));
-  p.set_param("rest.password", e.password);
-  p.set_param("rest.payer_namespace", e.payer_namespace);
-  p.set_param("rest.token", e.token);
-  p.set_param("rest.server_address", e.server_address);
-  p.set_param("rest.username", e.username);
-  p.save_to_file();
-  CHECK(is_expected(p, e));
+  CHECK(profile_from_file_to_json(filepath_, std::string(p.name())).empty());
 }
 
 TEST_CASE_METHOD(
     RestProfileFx, "REST Profile: to_json", "[rest_profile][to_json]") {
   // Create a default RestProfile.
   RestProfile p(create_profile());
+  p.set_param("rest.username", "test_user");
+  p.set_param("rest.password", "test_password");
+  p.set_param("rest.server_address", "https://test.server");
   p.save_to_file();
 
   // Validate.
-  expected_values_t e;
   json j = p.to_json();
-  CHECK(j["rest.password"] == e.password);
-  CHECK(j["rest.payer_namespace"] == e.payer_namespace);
-  CHECK(j["rest.token"] == e.token);
-  CHECK(j["rest.server_address"] == e.server_address);
-  CHECK(j["rest.username"] == e.username);
+  CHECK(j["rest.password"] == "test_password");
+  CHECK(j["rest.server_address"] == "https://test.server");
+  CHECK(j["rest.username"] == "test_user");
 }
 
 TEST_CASE_METHOD(
@@ -232,58 +174,20 @@ TEST_CASE_METHOD(
 
   // Try to set a parameter with an empty value.
   p.set_param("rest.username", "");
-
-  // Try to get a parameter with an invalid name (not starting with "rest.").
-  value = p.get_param("username");
-  REQUIRE(value == nullptr);
-
-  // Try to set a parameter with an invalid name (not starting with "rest.").
-  REQUIRE_THROWS_WITH(
-      p.set_param("username", "failed_username"),
-      Catch::Matchers::ContainsSubstring(
-          "Failed to set parameter of invalid name"));
-
-  // Set username and try to save without setting password.
-  p.set_param("rest.username", "username");
-  REQUIRE_THROWS_WITH(
-      p.save_to_file(),
-      Catch::Matchers::ContainsSubstring(
-          "Failed to save profile: 'rest.username' and 'rest.password' must "
-          "either both be set or both remain unset. Mixing a default username "
-          "with a custom password (or vice versa) is not allowed."));
-  // Set password and save valid profile
-  p.set_param("rest.password", "password");
-  p.save_to_file();
-
-  // Validate.
-  expected_values_t e;
-  e.username = "username";
-  e.password = "password";
-  CHECK(is_expected(p, e));
 }
 
 TEST_CASE_METHOD(
     RestProfileFx,
     "REST Profile: Multiple profiles, same name",
-    "[rest_profile][load][multiple][same_name]") {
-  std::string payer_namespace = "payer_namespace";
-  std::string token = "token";
+    "[rest_profile][load][same_profile_name]") {
+  // Create and save a RestProfile with default profile name.
+  RestProfile p1(create_profile());
+  p1.set_param("rest.token", "token1");
+  p1.save_to_file();
 
-  // Create and validate a RestProfile with default name.
-  RestProfile p(create_profile());
-  p.set_param("rest.payer_namespace", payer_namespace);
-  p.save_to_file();
-  expected_values_t e;
-  e.payer_namespace = payer_namespace;
-  CHECK(is_expected(p, e));
-
-  // Create a second profile, ensuring the payer_namespace is inherited.
+  // Create a second profile, again with the default name.
   RestProfile p2(create_profile());
-  p2.load_from_file();
-  CHECK(*p2.get_param("rest.payer_namespace") == payer_namespace);
-
-  // Set a non-default token on the second profile.
-  p2.set_param("rest.token", token);
+  p2.set_param("rest.token", "token2");
   REQUIRE_THROWS_WITH(
       p2.save_to_file(),
       Catch::Matchers::Equals("RestProfile: Failed to save 'default'; This "
@@ -291,38 +195,33 @@ TEST_CASE_METHOD(
                               "explicitly removed in order to be replaced."));
   RestProfile::remove_profile(std::nullopt, dir_);
   p2.save_to_file();
-  e.token = token;
-  CHECK(is_expected(p2, e));
 
-  // Ensure the first profile is now out of date.
-  CHECK(*p.get_param("rest.token") == RestProfile::DEFAULT_TOKEN);
+  // Ensure the first profile is now removed and the second is saved.
+  RestProfile p(create_profile());
+  p.load_from_file();
+  CHECK(*p.get_param("rest.token") == "token2");
 }
 
 TEST_CASE_METHOD(
     RestProfileFx,
     "REST Profile: Multiple profiles, different name",
     "[rest_profile][multiple][different_name]") {
-  std::string name = "non-default";
-  std::string payer_namespace = "payer_namespace";
+  // Create and save a RestProfile.
+  RestProfile p1(create_profile("named_profile1"));
+  p1.set_param("rest.token", "token1");
+  p1.save_to_file();
 
-  // Create and validate a RestProfile with default name.
-  RestProfile p(create_profile());
-  p.set_param("rest.payer_namespace", payer_namespace);
-  p.save_to_file();
-  expected_values_t e;
-  e.payer_namespace = payer_namespace;
-  CHECK(is_expected(p, e));
-
-  // Create a second profile with non-default name and ensure the
-  // payer_namespace and cloudtoken_ are NOT inherited.
-  RestProfile p2(create_profile(name));
-  CHECK(*p2.get_param("rest.payer_namespace") != payer_namespace);
+  // Create a second RestProfile with a different name.
+  RestProfile p2(create_profile("named_profile2"));
+  p2.set_param("rest.token", "token2");
   p2.save_to_file();
-  e.name = name;
-  e.payer_namespace = RestProfile::DEFAULT_PAYER_NAMESPACE;
-  e.token = RestProfile::DEFAULT_TOKEN;
-  CHECK(is_expected(p2, e));
 
-  // Ensure the default profile is unchanged.
-  CHECK(p.name() == RestProfile::DEFAULT_PROFILE_NAME);
+  // Ensure the first profile is unchanged.
+  RestProfile p1_check(create_profile("named_profile1"));
+  p1_check.load_from_file();
+  CHECK(*p1_check.get_param("rest.token") == "token1");
+  // Ensure the second profile is saved correctly.
+  RestProfile p2_check(create_profile("named_profile2"));
+  p2_check.load_from_file();
+  CHECK(*p2_check.get_param("rest.token") == "token2");
 }

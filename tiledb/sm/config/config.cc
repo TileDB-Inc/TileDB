@@ -930,50 +930,49 @@ const char* Config::get_from_profile(
     return "";
   }
 
-  if (RestProfile::can_have_parameter(param)) {
-    // If there is no profile loaded yet and we have not attempted to load it,
-    // we try to load the configure specified profile.
-    if (!rest_profile_.has_value() && !rest_profile_load_attempted_) {
-      bool found_name = false;
-      const char* profile_name_cstr =
-          get_from_config_or_fallback("profile_name", &found_name);
-      std::optional<std::string> profile_name =
-          found_name ? std::make_optional(profile_name_cstr) : std::nullopt;
+  // If there is no profile loaded yet and we have not attempted to load it,
+  // we try to load the configure specified profile.
+  if (!rest_profile_.has_value() && !rest_profile_load_attempted_) {
+    bool found_name = false;
+    const char* profile_name_cstr =
+        get_from_config_or_fallback("profile_name", &found_name);
+    std::optional<std::string> profile_name =
+        found_name ? std::make_optional(profile_name_cstr) : std::nullopt;
 
-      bool found_dir = false;
-      const char* profile_dir_cstr =
-          get_from_config_or_fallback("profile_dir", &found_dir);
-      std::optional<std::string> profile_dir =
-          found_dir ? std::make_optional(profile_dir_cstr) : std::nullopt;
+    bool found_dir = false;
+    const char* profile_dir_cstr =
+        get_from_config_or_fallback("profile_dir", &found_dir);
+    std::optional<std::string> profile_dir =
+        found_dir ? std::make_optional(profile_dir_cstr) : std::nullopt;
 
-      try {
-        // Create a Profile object and load the profile
-        rest_profile_ = RestProfile(profile_name, profile_dir);
-        rest_profile_.value().load_from_file();
-      } catch (const std::exception&) {
-        // Throw an exception if the user has specified profile-related
-        // parameters but the profile could not be loaded.
-        if ((profile_name.has_value() && !profile_name.value().empty()) ||
-            (profile_dir.has_value() && !profile_dir.value().empty())) {
-          throw ConfigException(
-              "Failed to load the REST profile. "
-              "Please check the profile name and directory parameters.");
-        }
-        // Do not throw an exception for the default profile since this might
-        // not be intended by the user.
-        rest_profile_load_attempted_ = true;
-        rest_profile_.reset();
+    try {
+      // Create a Profile object and load the profile
+      rest_profile_ = RestProfile(profile_name, profile_dir);
+      rest_profile_.value().load_from_file();
+    } catch (const std::exception&) {
+      // Throw an exception if the user has specified profile-related
+      // parameters but the profile could not be loaded.
+      if ((profile_name.has_value() && !profile_name.value().empty()) ||
+          (profile_dir.has_value() && !profile_dir.value().empty())) {
+        throw ConfigException(
+            "Failed to load the REST profile. "
+            "Please check the profile name and directory parameters.");
       }
-    }
-    // If the profile was loaded successfully, try to get the parameter from it.
-    if (rest_profile_.has_value()) {
-      const std::string* value = rest_profile_.value().get_param(param);
-      if (value) {
-        *found = true;
-        return value->c_str();
-      }
+      // Do not throw an exception for the default profile since this might
+      // not be intended by the user.
+      rest_profile_load_attempted_ = true;
+      rest_profile_.reset();
     }
   }
+  // If the profile was loaded successfully, try to get the parameter from it.
+  if (rest_profile_.has_value()) {
+    const std::string* value = rest_profile_.value().get_param(param);
+    if (value) {
+      *found = true;
+      return value->c_str();
+    }
+  }
+
   *found = false;
   return "";
 }
@@ -1003,7 +1002,7 @@ const char* Config::get_from_config_or_fallback(
   if (*found)
     return value_env;
 
-  // [3. profiles] -- only for rest.* params
+  // [3. profiles]
   const char* value_profile = get_from_profile(param, found);
   if (*found)
     return value_profile;
