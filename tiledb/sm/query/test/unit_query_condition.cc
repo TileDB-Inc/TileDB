@@ -5092,6 +5092,17 @@ TEST_CASE(
 #ifdef HAVE_RUST
 
 namespace tiledb::test::query_condition_datafusion {
+
+/**
+ * Returns a schema for running query condition example tests.
+ *
+ * Dimension "d" INT64
+ * Attribute "a" INT64 NOT NULL
+ * Attribute "v" STRING_ASCII[]
+ * Attribute "f" UINT16[4]
+ * Attribute "ea" INT32:INT64
+ * Attribute "ev" INT16:STRING_ASCII[]
+ */
 std::shared_ptr<ArraySchema> example_schema() {
   uint64_t d_domain[2] = {0, 10};
   std::shared_ptr<Dimension> dimension = std::make_shared<Dimension>(
@@ -5163,6 +5174,13 @@ std::shared_ptr<ArraySchema> example_schema() {
   return schema;
 }
 
+/**
+ * Evaluates a query condition `ast` on a `tile`
+ * using both the "ast" and "datafusion" evaluators
+ * and compares their results.
+ *
+ * @return the bitmap produce by the "ast" evaluator
+ */
 std::vector<uint8_t> instance(
     const tiledb::sm::ArraySchema& array_schema,
     const ResultTile& tile,
@@ -5202,6 +5220,9 @@ std::vector<uint8_t> instance(
   return bitmap_ast;
 }
 
+/**
+ * See `instance`. Callable from Rust FFI.
+ */
 std::unique_ptr<std::vector<uint8_t>> instance_ffi(
     const tiledb::sm::ArraySchema& array_schema,
     const ResultTile& tile,
