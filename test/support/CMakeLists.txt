@@ -79,14 +79,6 @@ target_include_directories(
     ${TILEDB_EXPORT_HEADER_DIR}
 )
 
-if (TILEDB_RUST)
-  add_dependencies(tiledb_test_support_lib rust_h)
-  target_include_directories(
-    tiledb_test_support_lib PUBLIC
-    ${TILEDB_OXIDIZE_INCLUDE_DIR}
-  )
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)

@@ -35,6 +35,10 @@ add_library(common INTERFACE)
 if (TILEDB_EXPERIMENTAL_FEATURES)
   target_compile_definitions(common INTERFACE TILEDB_EXPERIMENTAL_FEATURES)
 endif()
+if (TILEDB_RUST)
+  add_dependencies(common rust_h)
+  target_include_directories(common INTERFACE ${TILEDB_OXIDIZE_INCLUDE})
+endif ()
 
 #
 # Subdirectories

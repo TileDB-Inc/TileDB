@@ -461,15 +461,6 @@ target_include_directories(TILEDB_CORE_OBJECTS
     "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
 
-if (TILEDB_RUST)
-  target_include_directories(TILEDB_CORE_OBJECTS
-    PRIVATE
-    # for including tiledb/oxidize/rust.h
-      "${TILEDB_OXIDIZE_INCLUDE_DIR}"
-  )
-  add_dependencies(TILEDB_CORE_OBJECTS rust_h)
-endif ()
-
 if (TILEDB_CPP_API)
   target_include_directories(TILEDB_CORE_OBJECTS
     PRIVATE
