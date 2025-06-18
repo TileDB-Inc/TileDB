@@ -1028,10 +1028,7 @@ class S3 : FilesystemBase {
    * Returns the input `path` after adding a `/` character
    * at the front if it does not exist.
    */
-  template <class Allocator>
-  static auto add_front_slash(
-      const std::basic_string<char, std::char_traits<char>, Allocator>& path)
-      -> std::remove_cvref_t<decltype(path)>;
+  static std::string add_front_slash(const std::string& path);
 
   /**
    * Returns the input `path` after removing a potential `/` character
@@ -1040,7 +1037,11 @@ class S3 : FilesystemBase {
   template <class Allocator>
   static auto remove_front_slash(
       const std::basic_string<char, std::char_traits<char>, Allocator>& path)
-      -> std::remove_cvref_t<decltype(path)>;
+      -> std::remove_cvref_t<decltype(path)> {
+    if (path.front() == '/')
+      return path.substr(1, path.length());
+    return path;
+  }
 
   /**
    * Returns the input `path` after removing a potential `/` character
@@ -1675,8 +1676,9 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
-    std::string path = "s3://" + list_objects_request_.GetBucket() +
-                       S3::add_front_slash(object.GetKey());
+    std::string path = "s3://" +
+                       std::string(list_objects_request_.GetBucket()) +
+                       S3::add_front_slash(std::string(object.GetKey()));
 
     // TODO: Add support for directory pruning.
     if (this->file_filter_(path, size)) {
