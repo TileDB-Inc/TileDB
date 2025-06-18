@@ -937,9 +937,9 @@ Status S3::is_object(
           "the 'vfs.s3.region' option.";
     }
     return LOG_STATUS(Status_S3Error(
-        "Failed to check for existence of object s3://" + bucket_name + "/" +
-        object_key + outcome_error_message(head_object_outcome) +
-        additional_context));
+        "Failed to check for existence of object s3://" +
+        std::string(bucket_name) + "/" + std::string(object_key) +
+        outcome_error_message(head_object_outcome) + additional_context));
   }
 
   *exists = true;
@@ -1633,7 +1633,7 @@ Status S3::initiate_multipart_request(
   std::string path(aws_uri.GetPath());
   Aws::S3::Model::CreateMultipartUploadRequest multipart_upload_request;
   multipart_upload_request.SetBucket(aws_uri.GetAuthority());
-  multipart_upload_request.SetKey(path);
+  multipart_upload_request.SetKey(Aws::String(path));
   multipart_upload_request.SetContentType("application/octet-stream");
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     multipart_upload_request.SetRequestPayer(request_payer_);
