@@ -419,7 +419,8 @@ inline bool datatype_is_boolean(Datatype type) {
   return (type == Datatype::BOOL);
 }
 
-/** Returns true if the input Datatype discriminant represents a valid datatype
+/**
+ * Returns true if the input Datatype discriminant represents a valid datatype
  */
 inline bool datatype_is_valid(uint8_t datatype_enum) {
   // 43 is the value assigned to the current highest datatype
