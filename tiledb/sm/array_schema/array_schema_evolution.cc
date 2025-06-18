@@ -146,19 +146,19 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
 
   // Add attributes.
   for (auto& attr : attributes_to_add_) {
-    schema->add_attribute(attr, false);
+    throw_if_not_ok(schema->add_attribute(attr, false));
   }
 
   // Drop attributes.
   for (auto& attr_name : attributes_to_drop_) {
     bool has_attr = false;
-    schema->has_attribute(attr_name, &has_attr);
+    throw_if_not_ok(schema->has_attribute(attr_name, &has_attr));
     if (!has_attr) {
       throw ArraySchemaEvolutionException(
           "Cannot drop attribute; Input attribute name refers to a dimension "
           "or does not exist");
     }
-    schema->drop_attribute(attr_name);
+    throw_if_not_ok(schema->drop_attribute(attr_name));
   }
 
   // Drop enumerations

@@ -109,8 +109,9 @@ class Domain {
    * Adds a dimension to the domain.
    *
    * @param dim The dimension to be added.
+   * @return Status
    */
-  void add_dimension(shared_ptr<Dimension> dim);
+  Status add_dimension(shared_ptr<Dimension> dim);
 
   /** Returns true if all dimensions have fixed-sized domain datatypes. */
   bool all_dims_fixed() const;
@@ -385,8 +386,9 @@ class Domain {
    *
    * @param name Name of dimension to check for
    * @param has_dim Set to true if the domain has a dimension of the given name.
+   * @return Status
    */
-  void has_dimension(const std::string& name, bool* has_dim) const;
+  Status has_dimension(const std::string& name, bool* has_dim) const;
 
   /**
    * Gets the index in the domain of a given dimension name
@@ -404,6 +406,7 @@ class Domain {
    *
    * @param serializer The object the array schema is serialized into.
    * @param version The array schema version.
+   * @return Status
    */
   void serialize(Serializer& serializer, uint32_t version) const;
 
@@ -411,7 +414,7 @@ class Domain {
    * For every dimension that has a null tile extent, it sets
    * the tile extent to that dimension domain range.
    */
-  void set_null_tile_extents_to_range();
+  Status set_null_tile_extents_to_range();
 
   /**
    * Based on the input subarray layout and the domain's cell layout

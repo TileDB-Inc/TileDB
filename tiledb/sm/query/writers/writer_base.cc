@@ -415,16 +415,9 @@ Status WriterBase::check_coord_oob() const {
       dim_num,
       [&](uint64_t c, unsigned d) {
         auto dim{array_schema_.dimension_ptr(d)};
-        if (datatype_is_string(dim->type())) {
+        if (datatype_is_string(dim->type()))
           return Status::Ok();
-        } else {
-          try {
-            dim->oob(buffs[d] + c * coord_sizes[d]);
-            return Status::Ok();
-          } catch (const StatusException& e) {
-            return Status_DimensionError(e.what());
-          }
-        }
+        return dim->oob(buffs[d] + c * coord_sizes[d]);
       });
 
   RETURN_NOT_OK(status);
@@ -831,8 +824,7 @@ Status WriterBase::filter_tiles(
     }
   }
 
-  // For fixed size, process everything, for var size, everything minus
-  // offsets.
+  // For fixed size, process everything, for var size, everything minus offsets.
   auto status =
       parallel_for(&resources_.compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
@@ -878,8 +870,8 @@ Status WriterBase::filter_tile(
   }
 
   // If those offsets belong to a var-sized string dimension/attribute then
-  // don't filter the offsets as the information will be included in, and can
-  // be reconstructed from, the filtered data tile.
+  // don't filter the offsets as the information will be included in, and can be
+  // reconstructed from, the filtered data tile.
   if (offsets && array_schema_.filters(name).skip_offsets_filtering(
                      array_schema_.type(name))) {
     tile->filtered_buffer().expand(sizeof(uint64_t));

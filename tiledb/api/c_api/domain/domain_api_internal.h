@@ -78,8 +78,7 @@ struct tiledb_domain_handle_t
   }
 
   Status add_dimension(shared_ptr<tiledb::sm::Dimension> dim) {
-    domain_->add_dimension(dim);
-    return Status::Ok();
+    return domain_->add_dimension(dim);
   }
 
   [[nodiscard]] inline dimension_size_type dim_num() const {
@@ -114,7 +113,7 @@ struct tiledb_domain_handle_t
    */
   [[nodiscard]] bool has_dimension(const std::string& name) const {
     bool b;
-    domain_->has_dimension(name, &b);
+    throw_if_not_ok(domain_->has_dimension(name, &b));
     return b;
   }
 

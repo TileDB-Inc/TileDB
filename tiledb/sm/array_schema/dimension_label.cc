@@ -173,20 +173,20 @@ DimensionLabel::DimensionLabel(
   // Create and set dimension label domain.
   std::vector<shared_ptr<Dimension>> index_dims{
       make_shared<Dimension>(HERE(), "index", index_type, memory_tracker)};
-  index_dims.back()->set_domain(dim->domain().data());
-
-  index_dims.back()->set_tile_extent(dim->tile_extent().data());
-  schema_->set_domain(make_shared<Domain>(
+  throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
+  throw_if_not_ok(
+      index_dims.back()->set_tile_extent(dim->tile_extent().data()));
+  throw_if_not_ok(schema_->set_domain(make_shared<Domain>(
       HERE(),
       Layout::ROW_MAJOR,
       index_dims,
       Layout::ROW_MAJOR,
-      memory_tracker));
+      memory_tracker)));
 
   // Create and set dimension label attribute.
   auto label_attr = make_shared<Attribute>(
       HERE(), "label", label_type, label_cell_val_num_, label_order);
-  schema_->add_attribute(label_attr);
+  throw_if_not_ok(schema_->add_attribute(label_attr));
 
   // Check the array schema is valid.
   schema_->check_without_config();

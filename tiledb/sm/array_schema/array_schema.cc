@@ -215,17 +215,15 @@ ArraySchema::ArraySchema(
   }
 
   // Check array schema is valid.
-  try {
-    check_double_delta_compressor(coords_filters_);
-  } catch (const StatusException&) {
+  Status st = check_double_delta_compressor(coords_filters_);
+  if (!st.ok()) {
     throw ArraySchemaException(
         "Array schema check failed; Double delta compression used in zipped "
         "coords.");
   }
 
-  try {
-    check_string_compressor(coords_filters_);
-  } catch (const StatusException&) {
+  st = check_string_compressor(coords_filters_);
+  if (!st.ok()) {
     throw ArraySchemaException(
         "Array schema check failed; RLE compression used.");
   }
@@ -269,7 +267,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , coords_filters_{array_schema.coords_filters_}
     , current_domain_(array_schema.current_domain_)
     , mtx_{} {
-  set_domain(array_schema.domain_);
+  throw_if_not_ok(set_domain(array_schema.domain_));
 
   for (const auto& label : array_schema.dimension_labels_) {
     dimension_labels_.emplace_back(label);
@@ -476,8 +474,8 @@ void ArraySchema::check_without_config() const {
         "cannot have their capacity equal to zero."};
   }
 
-  check_double_delta_compressor(coords_filters());
-  check_string_compressor(coords_filters());
+  throw_if_not_ok(check_double_delta_compressor(coords_filters()));
+  throw_if_not_ok(check_string_compressor(coords_filters()));
   check_attribute_dimension_label_names();
   check_webp_filter();
 
@@ -695,7 +693,8 @@ ArraySchema::dimension_size_type ArraySchema::dim_num() const {
   return domain_->dim_num();
 }
 
-void ArraySchema::has_attribute(const std::string& name, bool* has_attr) const {
+Status ArraySchema::has_attribute(
+    const std::string& name, bool* has_attr) const {
   *has_attr = false;
 
   for (auto& attr : attributes_) {
@@ -704,6 +703,8 @@ void ArraySchema::has_attribute(const std::string& name, bool* has_attr) const {
       break;
     }
   }
+
+  return Status::Ok();
 }
 
 bool ArraySchema::has_ordered_attributes() const {
@@ -792,18 +793,19 @@ bool ArraySchema::var_size(const std::string& name) const {
   return dim_label_ref_it->second->is_var();
 }
 
-void ArraySchema::add_attribute(
+Status ArraySchema::add_attribute(
     shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
   if (attr == nullptr) {
-    throw ArraySchemaException("Cannot add attribute; Input attribute is null");
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Cannot add attribute; Input attribute is null"));
   }
 
   // Do not allow attributes with special names
   if (check_special && attr->name().find(constants::special_name_prefix) == 0) {
     std::string msg = "Cannot add attribute; Attribute names starting with '";
     msg += std::string(constants::special_name_prefix) + "' are reserved";
-    throw ArraySchemaException(msg);
+    return LOG_STATUS(Status_ArraySchemaError(msg));
   }
 
   auto enmr_name = attr->get_enumeration_name();
@@ -815,7 +817,7 @@ void ArraySchema::add_attribute(
           "Cannot add attribute; Attribute refers to an "
           "unknown enumeration named '" +
           enmr_name.value() + "'.";
-      throw ArraySchemaException(msg);
+      return LOG_STATUS(Status_ArraySchemaError(msg));
     }
 
     // This attribute must have an integral datatype to support Enumerations
@@ -824,14 +826,14 @@ void ArraySchema::add_attribute(
                         attr->name() +
                         "', attribute must have an integral data type, not " +
                         datatype_str(attr->type());
-      throw ArraySchemaException(msg);
+      return LOG_STATUS(Status_ArraySchemaError(msg));
     }
 
     // The attribute must have a cell_val_num of 1
     if (attr->cell_val_num() != 1) {
       std::string msg =
           "Attributes with enumerations must have a cell_val_num of 1.";
-      throw ArraySchemaException(msg);
+      return LOG_STATUS(Status_ArraySchemaError(msg));
     }
 
     auto enmr = get_enumeration(enmr_name.value());
@@ -855,6 +857,8 @@ void ArraySchema::add_attribute(
   auto k{static_cast<unsigned int>(attributes_.size())};
   attributes_.emplace_back(attr);
   attribute_map_[attr->name()] = {attr.get(), k};
+
+  return Status::Ok();
 }
 
 void ArraySchema::add_dimension_label(
@@ -890,7 +894,7 @@ void ArraySchema::add_dimension_label(
   if (check_name) {
     // Check no attribute with this name
     bool has_matching_name{false};
-    has_attribute(name, &has_matching_name);
+    throw_if_not_ok(has_attribute(name, &has_matching_name));
     if (has_matching_name) {
       throw ArraySchemaException(
           "Cannot add a dimension label with name '" + std::string(name) +
@@ -898,7 +902,7 @@ void ArraySchema::add_dimension_label(
     }
 
     // Check no dimension with this name
-    domain_->has_dimension(name, &has_matching_name);
+    throw_if_not_ok(domain_->has_dimension(name, &has_matching_name));
     if (has_matching_name) {
       throw ArraySchemaException(
           "Cannot add a dimension label with name '" + std::string(name) +
@@ -941,15 +945,17 @@ void ArraySchema::add_dimension_label(
   ++nlabel_internal_;  // WARNING: not atomic
 }
 
-void ArraySchema::drop_attribute(const std::string& attr_name) {
+Status ArraySchema::drop_attribute(const std::string& attr_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (attr_name.empty()) {
-    throw ArraySchemaException("Cannot remove an empty name attribute");
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot remove an empty name attribute"));
   }
 
   if (!attribute(attr_name)) {
     // Not exists.
-    throw ArraySchemaException("Cannot remove a non-exist attribute");
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot remove a non-exist attribute"));
   }
   attribute_map_.erase(attr_name);
 
@@ -962,6 +968,8 @@ void ArraySchema::drop_attribute(const std::string& attr_name) {
       it = attributes_.erase(it);
     }
   }
+
+  return Status::Ok();
 }
 
 void ArraySchema::add_enumeration(shared_ptr<const Enumeration> enmr) {
@@ -1341,13 +1349,13 @@ shared_ptr<ArraySchema> ArraySchema::clone() const {
   return make_shared<ArraySchema>(HERE(), *this);
 }
 
-void ArraySchema::set_allows_dups(bool allows_dups) {
-  if (allows_dups && array_type_ == ArrayType::DENSE) {
-    throw ArraySchemaException(
-        "Dense arrays cannot allow coordinate duplicates");
-  }
+Status ArraySchema::set_allows_dups(bool allows_dups) {
+  if (allows_dups && array_type_ == ArrayType::DENSE)
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Dense arrays cannot allow coordinate duplicates"));
 
   allows_dups_ = allows_dups;
+  return Status::Ok();
 }
 
 void ArraySchema::set_array_uri(const URI& array_uri) {
@@ -1367,36 +1375,39 @@ void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-void ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
-  check_string_compressor(pipeline);
-  check_double_delta_compressor(pipeline);
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+  RETURN_NOT_OK(check_string_compressor(pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(pipeline));
   coords_filters_ = pipeline;
+  return Status::Ok();
 }
 
-void ArraySchema::set_cell_var_offsets_filter_pipeline(
+Status ArraySchema::set_cell_var_offsets_filter_pipeline(
     const FilterPipeline& pipeline) {
   cell_var_offsets_filters_ = pipeline;
+  return Status::Ok();
 }
 
-void ArraySchema::set_cell_order(Layout cell_order) {
-  if (dense() && cell_order == Layout::HILBERT) {
-    throw ArraySchemaException(
-        "Cannot set cell order; Hilbert order is only "
-        "applicable to sparse arrays");
-  }
+Status ArraySchema::set_cell_order(Layout cell_order) {
+  if (dense() && cell_order == Layout::HILBERT)
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot set cell order; Hilbert order is only "
+                                "applicable to sparse arrays"));
 
-  if (cell_order == Layout::UNORDERED) {
-    throw ArraySchemaException(
+  if (cell_order == Layout::UNORDERED)
+    return LOG_STATUS(Status_ArraySchemaError(
         "Cannot set cell order; Cannot create ArraySchema "
-        "with UNORDERED cell order");
-  }
+        "with UNORDERED cell order"));
 
   cell_order_ = cell_order;
+
+  return Status::Ok();
 }
 
-void ArraySchema::set_cell_validity_filter_pipeline(
+Status ArraySchema::set_cell_validity_filter_pipeline(
     const FilterPipeline& pipeline) {
   cell_validity_filters_ = pipeline;
+  return Status::Ok();
 }
 
 void ArraySchema::set_dimension_label_filter_pipeline(
@@ -1431,38 +1442,36 @@ void ArraySchema::set_dimension_label_tile_extent(
         "'which does not match the provided datatype '" + datatype_str(type) +
         "'.");
   }
-  const_cast<Dimension*>(dim)->set_tile_extent(tile_extent);
+  throw_if_not_ok(const_cast<Dimension*>(dim)->set_tile_extent(tile_extent));
 }
 
-void ArraySchema::set_domain(shared_ptr<Domain> domain) {
-  if (domain == nullptr) {
-    throw ArraySchemaException("Cannot set domain; Input domain is nullptr");
-  }
+Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
+  if (domain == nullptr)
+    return LOG_STATUS(
+        Status_ArraySchemaError("Cannot set domain; Input domain is nullptr"));
 
-  if (domain->dim_num() == 0) {
-    throw ArraySchemaException(
-        "Cannot set domain; Domain must contain at least one dimension");
-  }
+  if (domain->dim_num() == 0)
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Cannot set domain; Domain must contain at least one dimension"));
 
   if (array_type_ == ArrayType::DENSE) {
-    if (!domain->all_dims_same_type()) {
-      throw ArraySchemaException(
-          "Cannot set domain; In dense arrays, all "
-          "dimensions must have the same datatype");
-    }
+    if (!domain->all_dims_same_type())
+      return LOG_STATUS(
+          Status_ArraySchemaError("Cannot set domain; In dense arrays, all "
+                                  "dimensions must have the same datatype"));
 
     auto type{domain->dimension_ptr(0)->type()};
     if (!datatype_is_integer(type) && !datatype_is_datetime(type) &&
         !datatype_is_time(type)) {
-      throw ArraySchemaException(
+      return LOG_STATUS(Status_ArraySchemaError(
           std::string("Cannot set domain; Dense arrays "
                       "do not support dimension datatype '") +
-          datatype_str(type) + "'");
+          datatype_str(type) + "'"));
     }
   }
 
   if (cell_order_ != Layout::HILBERT) {
-    domain->set_null_tile_extents_to_range();
+    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
 
   // Set domain
@@ -1475,21 +1484,22 @@ void ArraySchema::set_domain(shared_ptr<Domain> domain) {
     auto dim{dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
   }
+
+  return Status::Ok();
 }
 
-void ArraySchema::set_tile_order(Layout tile_order) {
-  if (tile_order == Layout::HILBERT) {
-    throw ArraySchemaException(
-        "Cannot set tile order; Hilbert order is not applicable to tiles");
-  }
+Status ArraySchema::set_tile_order(Layout tile_order) {
+  if (tile_order == Layout::HILBERT)
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Cannot set tile order; Hilbert order is not applicable to tiles"));
 
-  if (tile_order == Layout::UNORDERED) {
-    throw ArraySchemaException(
+  if (tile_order == Layout::UNORDERED)
+    return LOG_STATUS(Status_ArraySchemaError(
         "Cannot set tile order; Cannot create ArraySchema "
-        "with UNORDERED tile order");
-  }
+        "with UNORDERED tile order"));
 
   tile_order_ = tile_order;
+  return Status::Ok();
 }
 
 void ArraySchema::set_version(format_version_t version) {
@@ -1558,7 +1568,7 @@ void ArraySchema::check_attribute_dimension_label_names() const {
   }
 }
 
-void ArraySchema::check_double_delta_compressor(
+Status ArraySchema::check_double_delta_compressor(
     const FilterPipeline& coords_filters) const {
   // Check if coordinate filters have DOUBLE DELTA as a compressor
   bool has_double_delta = false;
@@ -1571,9 +1581,8 @@ void ArraySchema::check_double_delta_compressor(
   }
 
   // Not applicable when DOUBLE DELTA no present in coord filters
-  if (!has_double_delta) {
-    return;
-  }
+  if (!has_double_delta)
+    return Status::Ok();
 
   // Error if any real dimension inherits the coord filters with DOUBLE DELTA.
   // A dimension inherits the filters when it has no filters.
@@ -1583,18 +1592,21 @@ void ArraySchema::check_double_delta_compressor(
     const auto& dim_filters = dim->filters();
     auto dim_type = dim->type();
     if (datatype_is_real(dim_type) && dim_filters.empty())
-      throw ArraySchemaException(
-          "Real dimension cannot inherit coordinate "
-          "filters with DOUBLE DELTA compression");
+      return LOG_STATUS(
+          Status_ArraySchemaError("Real dimension cannot inherit coordinate "
+                                  "filters with DOUBLE DELTA compression"));
   }
+
+  return Status::Ok();
 }
 
-void ArraySchema::check_string_compressor(const FilterPipeline& filters) const {
+Status ArraySchema::check_string_compressor(
+    const FilterPipeline& filters) const {
   // There is no error if only 1 filter is used
   if (filters.size() <= 1 ||
       !(filters.has_filter(FilterType::FILTER_RLE) ||
         filters.has_filter(FilterType::FILTER_DICTIONARY))) {
-    return;
+    return Status::Ok();
   }
 
   // If RLE or Dictionary-encoding is set for strings, they need to be
@@ -1609,18 +1621,20 @@ void ArraySchema::check_string_compressor(const FilterPipeline& filters) const {
         dim_filters.empty()) {
       if (filters.has_filter(FilterType::FILTER_RLE) &&
           filters.get_filter(0)->type() != FilterType::FILTER_RLE) {
-        throw ArraySchemaException(
+        return LOG_STATUS(Status_ArraySchemaError(
             "RLE filter must be the first filter to apply when used on "
-            "variable length string dimensions");
+            "variable length string dimensions"));
       }
       if (filters.has_filter(FilterType::FILTER_DICTIONARY) &&
           filters.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-        throw ArraySchemaException(
+        return LOG_STATUS(Status_ArraySchemaError(
             "Dictionary filter must be the first filter to apply when used on "
-            "variable length string dimensions");
+            "variable length string dimensions"));
       }
     }
   }
+
+  return Status::Ok();
 }
 
 void ArraySchema::clear() {

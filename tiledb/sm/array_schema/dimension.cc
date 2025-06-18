@@ -50,6 +50,13 @@ using namespace tiledb::type;
 
 namespace tiledb::sm {
 
+class DimensionException : public StatusException {
+ public:
+  explicit DimensionException(const std::string& message)
+      : StatusException("Dimension", message) {
+  }
+};
+
 /* ************************ */
 /*     DYNAMIC DISPATCH     */
 /* ************************ */
@@ -230,20 +237,20 @@ unsigned int Dimension::cell_val_num() const {
   return cell_val_num_;
 }
 
-void Dimension::set_cell_val_num(unsigned int cell_val_num) {
+Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   // Error checkls
-  if (datatype_is_string(type_) && cell_val_num != constants::var_num) {
-    throw DimensionException(
-        "Cannot set non-variable number of values per "
-        "coordinate for a string dimension");
-  }
-  if (!datatype_is_string(type_) && cell_val_num != 1) {
-    throw DimensionException(
+  if (datatype_is_string(type_) && cell_val_num != constants::var_num)
+    return LOG_STATUS(
+        Status_DimensionError("Cannot set non-variable number of values per "
+                              "coordinate for a string dimension"));
+  if (!datatype_is_string(type_) && cell_val_num != 1)
+    return LOG_STATUS(Status_DimensionError(
         "Cannot set number of values per coordinate; Currently only one value "
-        "per coordinate is supported");
-  }
+        "per coordinate is supported"));
 
   cell_val_num_ = cell_val_num;
+
+  return Status::Ok();
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
@@ -551,17 +558,16 @@ bool Dimension::oob(
   return false;
 }
 
-void Dimension::oob(const void* coord) const {
+Status Dimension::oob(const void* coord) const {
   // Not applicable to string dimensions
-  if (datatype_is_string(type_)) {
-    return;
-  }
+  if (datatype_is_string(type_))
+    return Status::Ok();
 
   std::string err_msg;
   auto ret = dispatch_->oob(coord, &err_msg);
-  if (ret) {
-    throw DimensionException(err_msg);
-  }
+  if (ret)
+    return Status_DimensionError(err_msg);
+  return Status::Ok();
 }
 
 template <>
@@ -1350,37 +1356,34 @@ void Dimension::serialize(Serializer& serializer, uint32_t version) const {
   }
 }
 
-void Dimension::set_domain(const void* domain) {
+Status Dimension::set_domain(const void* domain) {
   if (type_ == Datatype::STRING_ASCII) {
-    if (domain == nullptr) {
-      return;
-    }
-    throw DimensionException(
+    if (domain == nullptr)
+      return Status::Ok();
+    return LOG_STATUS(Status_DimensionError(
         std::string("Setting the domain to a dimension with type '") +
-        datatype_str(type_) + "' is not supported");
+        datatype_str(type_) + "' is not supported"));
   }
 
-  if (domain != nullptr) {
-    set_domain(Range(domain, 2 * coord_size()));
-  }
+  if (domain == nullptr)
+    return Status::Ok();
+  return set_domain(Range(domain, 2 * coord_size()));
 }
 
-void Dimension::set_domain(const Range& domain) {
-  if (domain.empty()) {
-    return;
-  }
+Status Dimension::set_domain(const Range& domain) {
+  if (domain.empty())
+    return Status::Ok();
 
   domain_ = domain;
-  try {
-    check_domain();
-  } catch (const StatusException&) {
-    domain_.clear();
-    throw;
-  }
+  RETURN_NOT_OK_ELSE(check_domain(), domain_.clear());
+
+  return Status::Ok();
 }
 
-void Dimension::set_domain_unsafe(const void* domain) {
+Status Dimension::set_domain_unsafe(const void* domain) {
   domain_ = Range(domain, 2 * coord_size());
+
+  return Status::Ok();
 }
 
 void Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
@@ -1388,14 +1391,13 @@ void Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
   filters_ = pipeline;
 }
 
-void Dimension::set_tile_extent(const void* tile_extent) {
+Status Dimension::set_tile_extent(const void* tile_extent) {
   if (type_ == Datatype::STRING_ASCII) {
-    if (tile_extent == nullptr) {
-      return;
-    }
-    throw DimensionException(
+    if (tile_extent == nullptr)
+      return Status::Ok();
+    return LOG_STATUS(Status_DimensionError(
         std::string("Setting the tile extent to a dimension with type '") +
-        datatype_str(type_) + "' is not supported");
+        datatype_str(type_) + "' is not supported"));
   }
 
   ByteVecValue te;
@@ -1408,50 +1410,47 @@ void Dimension::set_tile_extent(const void* tile_extent) {
   return set_tile_extent(te);
 }
 
-void Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
+Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
   if (type_ == Datatype::STRING_ASCII) {
-    if (!tile_extent) {
-      return;
-    }
-    throw DimensionException(
+    if (!tile_extent)
+      return Status::Ok();
+    return LOG_STATUS(Status_DimensionError(
         std::string("Setting the tile extent to a dimension with type '") +
-        datatype_str(type_) + "' is not supported");
+        datatype_str(type_) + "' is not supported"));
   }
-  if (domain_.empty()) {
-    throw DimensionException(
-        "Cannot set tile extent; Domain must be set first");
-  }
+  if (domain_.empty())
+    return LOG_STATUS(Status_DimensionError(
+        "Cannot set tile extent; Domain must be set first"));
 
   tile_extent_ = tile_extent;
 
-  check_tile_extent();
+  return check_tile_extent();
 }
 
-void Dimension::set_null_tile_extent_to_range() {
+Status Dimension::set_null_tile_extent_to_range() {
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      set_null_tile_extent_to_range<decltype(T)>();
-    } else if constexpr (!std::is_same_v<decltype(T), char>) {
-      throw DimensionException(
-          "Cannot set null tile extent to domain range; "
-          "Invalid dimension domain type");
+      return set_null_tile_extent_to_range<decltype(T)>();
+    } else if constexpr (std::is_same_v<decltype(T), char>) {
+      return Status::Ok();
     }
+    return LOG_STATUS(
+        Status_DimensionError("Cannot set null tile extent to domain range; "
+                              "Invalid dimension domain type"));
   };
   return apply_with_type(g, type_);
 }
 
 template <class T>
-void Dimension::set_null_tile_extent_to_range() {
+Status Dimension::set_null_tile_extent_to_range() {
   // Applicable only to null extents
-  if (tile_extent_) {
-    return;
-  }
+  if (tile_extent_)
+    return Status::Ok();
 
   // Check empty domain
-  if (domain_.empty()) {
-    throw DimensionException(
-        "Cannot set tile extent to domain range; Domain not set");
-  }
+  if (domain_.empty())
+    return LOG_STATUS(Status_DimensionError(
+        "Cannot set tile extent to domain range; Domain not set"));
 
   // Calculate new tile extent equal to domain range
   auto domain = (const T*)domain_.data();
@@ -1461,9 +1460,9 @@ void Dimension::set_null_tile_extent_to_range() {
   if (std::is_integral<T>::value) {
     if (domain[0] == std::numeric_limits<T>::min() &&
         domain[1] == std::numeric_limits<T>::max()) {
-      throw DimensionException(
+      return LOG_STATUS(Status_DimensionError(
           "Cannot set null tile extent to domain range; "
-          "Domain range exceeds domain type max numeric limit");
+          "Domain range exceeds domain type max numeric limit"));
     }
   }
 
@@ -1477,47 +1476,45 @@ void Dimension::set_null_tile_extent_to_range() {
   }
 
   tile_extent_.assign_as<T>(tile_extent);
+  return Status::Ok();
 }
 
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-void Dimension::check_domain() const {
+Status Dimension::check_domain() const {
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      check_domain<decltype(T)>();
-    } else {
-      throw DimensionException(
-          "Domain check failed; Invalid dimension domain type");
+      return check_domain<decltype(T)>();
     }
+    return LOG_STATUS(Status_DimensionError(
+        "Domain check failed; Invalid dimension domain type"));
   };
-  apply_with_type(g, type_);
+  return apply_with_type(g, type_);
 }
 
-void Dimension::check_tile_extent() const {
+Status Dimension::check_tile_extent() const {
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      check_tile_extent<decltype(T)>();
-    } else {
-      throw DimensionException(
-          "Tile extent check failed on dimension '" + name() +
-          "'; Invalid dimension domain type");
+      return check_tile_extent<decltype(T)>();
     }
+    return LOG_STATUS(Status_DimensionError(
+        "Tile extent check failed on dimension '" + name() +
+        "'; Invalid dimension domain type"));
   };
-  apply_with_type(g, type_);
+  return apply_with_type(g, type_);
 }
 
 template <class T>
-void Dimension::check_tile_extent() const {
+Status Dimension::check_tile_extent() const {
   if (domain_.empty())
     throw DimensionException(
         "Tile extent check failed on dimension '" + name() +
         "'; Domain not set");
 
-  if (!tile_extent_) {
-    return;
-  }
+  if (!tile_extent_)
+    return Status::Ok();
 
   auto tile_extent = (const T*)tile_extent_.data();
   auto domain = (const T*)domain_.data();
@@ -1556,26 +1553,27 @@ void Dimension::check_tile_extent() const {
     // In the worst case one tile extent will be added to the upper domain
     // for the dense case, so check if the expanded domain will exceed type
     // T's max limit.
-    if (range % uint64_t(*tile_extent)) {
-      check_tile_extent_upper_floor(domain, *tile_extent);
-    }
+    if (range % uint64_t(*tile_extent))
+      RETURN_NOT_OK(check_tile_extent_upper_floor(domain, *tile_extent));
   }
+
+  return Status::Ok();
 }
 
 template <typename T>
-void Dimension::check_tile_extent_upper_floor(
+Status Dimension::check_tile_extent_upper_floor(
     const T* const domain, const T tile_extent) const {
   // The type of the upper floor must match the sign of the extent
   // type.
-  if constexpr (std::is_signed<T>::value) {
-    check_tile_extent_upper_floor_internal<T, int64_t>(domain, tile_extent);
-  } else {
-    check_tile_extent_upper_floor_internal<T, uint64_t>(domain, tile_extent);
-  }
+  return std::is_signed<T>::value ?
+             check_tile_extent_upper_floor_internal<T, int64_t>(
+                 domain, tile_extent) :
+             check_tile_extent_upper_floor_internal<T, uint64_t>(
+                 domain, tile_extent);
 }
 
 template <typename T_EXTENT, typename T_FLOOR>
-void Dimension::check_tile_extent_upper_floor_internal(
+Status Dimension::check_tile_extent_upper_floor_internal(
     const T_EXTENT* const domain, const T_EXTENT tile_extent) const {
   const uint64_t range = domain[1] - domain[0] + 1;
   const T_FLOOR upper_floor =
@@ -1587,11 +1585,13 @@ void Dimension::check_tile_extent_upper_floor_internal(
   const bool exceeds =
       upper_floor > upper_floor_max || upper_floor > extent_max;
   if (exceeds) {
-    throw DimensionException(
+    return LOG_STATUS(Status_DimensionError(
         "Tile extent check failed; domain max expanded to multiple of tile "
         "extent exceeds max value representable by domain type. Reduce "
-        "domain max by 1 tile extent to allow for expansion.");
+        "domain max by 1 tile extent to allow for expansion."));
   }
+
+  return Status::Ok();
 }
 
 void Dimension::ensure_datatype_is_supported(Datatype type) const {

@@ -112,10 +112,10 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
     auto dim = make_shared<Dimension>(
         HERE(), "dim1", Datatype::INT32, memory_tracker_);
     int range[2] = {0, 1000};
-    dim->set_domain(range);
+    throw_if_not_ok(dim->set_domain(range));
     auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-    dom->add_dimension(dim);
-    schema->set_domain(dom);
+    throw_if_not_ok(dom->add_dimension(dim));
+    throw_if_not_ok(schema->set_domain(dom));
     return schema;
   };
 };
@@ -502,11 +502,11 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   auto dim =
       make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1000};
-  dim->set_domain(range);
+  throw_if_not_ok(dim->set_domain(range));
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-  dom->add_dimension(dim);
-  schema_->set_domain(dom);
+  throw_if_not_ok(dom->add_dimension(dim));
+  throw_if_not_ok(schema_->set_domain(dom));
 
   std::vector<std::string> values = {"pig", "cow", "chicken", "dog", "cat"};
   auto enmr = create_string_enumeration("enmr", values);
@@ -514,7 +514,7 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
 
   auto attr = make_shared<Attribute>(HERE(), "attr", Datatype::INT32);
   attr->set_enumeration_name("enmr");
-  schema_->add_attribute(attr);
+  throw_if_not_ok(schema_->add_attribute(attr));
 
   return schema_;
 }
@@ -553,28 +553,28 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   auto schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
   schema->set_capacity(10000);
-  schema->set_cell_order(Layout::ROW_MAJOR);
-  schema->set_tile_order(Layout::ROW_MAJOR);
+  throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
+  throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));
   uint32_t dim_domain[] = {1, 10, 1, 10};
 
   auto dim1 = make_shared<Dimension>(
       HERE(), "dim1", Datatype::INT32, tiledb::test::get_test_memory_tracker());
-  dim1->set_domain(&dim_domain[0]);
+  throw_if_not_ok(dim1->set_domain(&dim_domain[0]));
   auto dim2 = make_shared<Dimension>(
       HERE(), "dim2", Datatype::INT32, tiledb::test::get_test_memory_tracker());
-  dim2->set_domain(&dim_domain[2]);
+  throw_if_not_ok(dim2->set_domain(&dim_domain[2]));
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-  dom->add_dimension(dim1);
-  dom->add_dimension(dim2);
-  schema->set_domain(dom);
+  throw_if_not_ok(dom->add_dimension(dim1));
+  throw_if_not_ok(dom->add_dimension(dim2));
+  throw_if_not_ok(schema->set_domain(dom));
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
-  schema->add_attribute(attr1);
+  throw_if_not_ok(schema->add_attribute(attr1));
   auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::INT32);
-  schema->add_attribute(attr2);
+  throw_if_not_ok(schema->add_attribute(attr2));
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::INT64);
-  schema->add_attribute(attr3);
+  throw_if_not_ok(schema->add_attribute(attr3));
 
   return schema;
 }

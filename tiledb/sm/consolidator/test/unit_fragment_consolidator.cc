@@ -65,42 +65,42 @@ shared_ptr<ArraySchema> make_schema(
     switch (dim_types[d]) {
       case Datatype::INT8: {
         int8_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT16: {
         int16_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT32: {
         int32_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT64: {
         int64_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT8: {
         uint8_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT16: {
         uint16_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT32: {
         uint32_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT64: {
         uint64_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::DATETIME_YEAR:
@@ -126,19 +126,19 @@ shared_ptr<ArraySchema> make_schema(
       case Datatype::TIME_FS:
       case Datatype::TIME_AS: {
         uint64_t bounds[2] = {1, 10};
-        dim->set_domain(&bounds);
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::STRING_ASCII: {
-        dim->set_cell_val_num(constants::var_num);
+        REQUIRE(dim->set_cell_val_num(constants::var_num).ok());
       }
       default: {
       }
     }
 
-    domain->add_dimension(dim);
+    REQUIRE(domain->add_dimension(dim).ok());
   }
-  array_schema->set_domain(domain);
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   // Create the attributes.
   for (uint64_t a = 0; a < attr_types.size(); a++) {
@@ -147,8 +147,8 @@ shared_ptr<ArraySchema> make_schema(
       attr.set_cell_val_num(constants::var_num);
     }
     attr.set_nullable(attr_nullable[a]);
-
-    array_schema->add_attribute(make_shared<Attribute>(HERE(), attr));
+    REQUIRE(
+        array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   }
 
   return array_schema;

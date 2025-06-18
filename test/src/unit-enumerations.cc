@@ -1384,7 +1384,7 @@ TEST_CASE_METHOD(
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
   auto attr = make_shared<Attribute>(HERE(), "an_attr", Datatype::INT32);
   attr->set_enumeration_name("not_an_enumeration");
-  REQUIRE_THROWS(schema->add_attribute(attr));
+  REQUIRE(!schema->add_attribute(attr).ok());
 }
 
 TEST_CASE_METHOD(
@@ -1430,7 +1430,7 @@ TEST_CASE_METHOD(
 
   auto attr = make_shared<Attribute>(HERE(), "ohai", Datatype::FLOAT32);
   attr->set_enumeration_name(default_enmr_name);
-  REQUIRE_THROWS(schema->add_attribute(attr));
+  REQUIRE(schema->add_attribute(attr).ok() == false);
 }
 
 TEST_CASE_METHOD(
@@ -1447,7 +1447,7 @@ TEST_CASE_METHOD(
   auto attr = make_shared<Attribute>(
       HERE(), "ohai", Datatype::INT32, 2, DataOrder::UNORDERED_DATA);
   attr->set_enumeration_name(default_enmr_name);
-  REQUIRE_THROWS(schema->add_attribute(attr));
+  REQUIRE(schema->add_attribute(attr).ok() == false);
 }
 
 TEST_CASE_METHOD(
@@ -1504,7 +1504,7 @@ TEST_CASE_METHOD(
 
   auto attr = make_shared<Attribute>(HERE(), "ohai", Datatype::INT64);
   attr->set_enumeration_name(default_enmr_name);
-  schema->add_attribute(attr);
+  throw_if_not_ok(schema->add_attribute(attr));
 
   REQUIRE(schema->attribute("ohai")->get_enumeration_name().has_value());
 }
@@ -2950,11 +2950,11 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   auto dim =
       make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1000};
-  dim->set_domain(range);
+  throw_if_not_ok(dim->set_domain(range));
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-  dom->add_dimension(dim);
-  schema->set_domain(dom);
+  throw_if_not_ok(dom->add_dimension(dim));
+  throw_if_not_ok(schema->set_domain(dom));
 
   std::vector<std::string> values = {"ant", "bat", "cat", "dog", "emu"};
   auto enmr1 =
@@ -2963,10 +2963,10 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
   attr1->set_enumeration_name("test_enmr");
-  schema->add_attribute(attr1);
+  throw_if_not_ok(schema->add_attribute(attr1));
 
   auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::STRING_ASCII);
-  schema->add_attribute(attr2);
+  throw_if_not_ok(schema->add_attribute(attr2));
 
   std::vector<std::string> names = {"fred", "wilma", "barney", "betty"};
   auto enmr2 =
@@ -2975,7 +2975,7 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
 
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT8);
   attr3->set_enumeration_name("flintstones");
-  schema->add_attribute(attr3);
+  throw_if_not_ok(schema->add_attribute(attr3));
 
   return schema;
 }

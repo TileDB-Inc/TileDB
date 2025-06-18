@@ -119,9 +119,9 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
       "",
       tiledb::sm::Datatype::INT32,
       tiledb::test::get_test_memory_tracker())};
-  d.add_dimension(dim);
-  d.add_dimension(dim);
-  d.add_dimension(dim);
+  CHECK(d.add_dimension(dim).ok());
+  CHECK(d.add_dimension(dim).ok());
+  CHECK(d.add_dimension(dim).ok());
   WhiteboxDomainTypedDataView x{d, Tag<TestNullInitializer>{}};
   CHECK(x.size() == 3);
 }
@@ -144,9 +144,9 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
       "",
       tiledb::sm::Datatype::INT32,
       tiledb::test::get_test_memory_tracker())};
-  d.add_dimension(dim);
-  d.add_dimension(dim);
-  d.add_dimension(dim);
+  CHECK(d.add_dimension(dim).ok());
+  CHECK(d.add_dimension(dim).ok());
+  CHECK(d.add_dimension(dim).ok());
   WhiteboxDomainTypedDataView x{d, Tag<Initializer>{}};
   CHECK(x.size() == 3);
   CHECK(x[0].size() == 0);
