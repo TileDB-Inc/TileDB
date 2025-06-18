@@ -1150,6 +1150,7 @@ TEST_CASE_METHOD(
   check_dense_unsplittable_overflow();
   check_dense_unsplittable_complete();
   check_dense_reset_buffers();
+  tiledb::Array::delete_array(ctx_, dense_array_uri_);
 }
 
 TEST_CASE_METHOD(

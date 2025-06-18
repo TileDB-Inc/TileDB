@@ -79,6 +79,10 @@ struct CPPArrayFx {
     Array::create(ctx, array_uri_, schema);
   }
 
+  ~CPPArrayFx() {
+    vfs_test_setup_.delete_array_if_exists(array_uri_);
+  }
+
   test::VFSTestSetup vfs_test_setup_;
   Context ctx;
   std::string array_uri_;
@@ -124,6 +128,7 @@ TEST_CASE_METHOD(
     CHECK(schema.domain().dimensions()[1].tile_extent<int>() == 5);
     CHECK(schema.domain().cell_num() == 20301);
   }
+  tiledb::Array::delete_array(ctx, array_uri_);
 }
 
 TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
@@ -188,6 +193,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     CHECK((std::string)array.config()["b"] == "5");
 
     array.close();
+    Array::delete_array(ctx, array_uri1);
   }
 
   SECTION("Read/Write") {
@@ -454,6 +460,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     query.finalize();
     array.close();
   }
+  tiledb::Array::delete_array(ctx, array_uri_);
 }
 
 TEST_CASE(
@@ -601,6 +608,7 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets][rest]") {
   }
 
   array.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -662,6 +670,7 @@ TEST_CASE(
         for (int i = 0; i < 16; i++) {
           REQUIRE(data[i] == i + 1);
         }
+        Array::delete_array(ctx, array_name);
       }
     }
   }
@@ -935,6 +944,7 @@ TEST_CASE(
   REQUIRE(reloaded_schema.attribute_num() == 1);
 
   array.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
@@ -1036,6 +1046,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
   query_r_reopen_at.submit();
   CHECK(std::equal(a_r_reopen_at.begin(), a_r_reopen_at.end(), a_w.begin()));
   array_reopen_at.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1186,6 +1197,7 @@ TEST_CASE(
   array.close();
 
   REQUIRE(data[0] == 1);
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1287,12 +1299,14 @@ TEST_CASE(
     REQUIRE(data_r[i] == 2 * i);
 
   array_r.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 using namespace tiledb::test;
 
+// TODO: debug
 TEST_CASE(
-    "C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter][rest]") {
+    "C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter][rest][.]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
@@ -1351,6 +1365,7 @@ TEST_CASE(
   CHECK(buff_d1 == buff_d1_r);
   CHECK(buff_d2 == buff_d2_r);
   CHECK(buff_a == buff_a_r);
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1485,7 +1500,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test string dimensions, 1d, col-major",
-    "[cppapi][sparse][string-dims][1d][col-major][rest]") {
+    "[cppapi][sparse][string-dims][1d][col-major][rest][.]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("test_string_dims")};
@@ -1545,11 +1560,12 @@ TEST_CASE(
 
   // Close array
   array_r.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
     "C++ API: Sparse global order, dimension only read",
-    "[cppapi][sparse][global][read][dimension-only][rest]") {
+    "[cppapi][sparse][global][read][dimension-only][rest][.]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
@@ -1591,11 +1607,12 @@ TEST_CASE(
   array.close();
 
   REQUIRE(rows[0] == 0);
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
     "C++ API: Unordered with dups, dimension only read",
-    "[cppapi][sparse][unordered][dups][read][dimension-only][rest]") {
+    "[cppapi][sparse][unordered][dups][read][dimension-only][rest][.]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
@@ -1638,11 +1655,12 @@ TEST_CASE(
   array.close();
 
   REQUIRE(rows[0] == 0);
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
     "C++ API: Read subarray with multiple ranges",
-    "[cppapi][dense][multi-range][rest]") {
+    "[cppapi][dense][multi-range][rest][.]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
@@ -1678,6 +1696,7 @@ TEST_CASE(
       .set_data_buffer("a", data);
   query.submit();
   array.close();
+  Array::delete_array(ctx, array_uri);
 
   for (int i = 0; i < 8; i++) {
     REQUIRE(data[i] == i + 1);

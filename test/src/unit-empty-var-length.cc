@@ -444,6 +444,7 @@ TEST_CASE_METHOD(
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
+  Array::delete_array(ctx, array_name);
 }
 
 struct StringEmptyFx2 {
@@ -523,6 +524,7 @@ TEST_CASE_METHOD(
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
+  Array::delete_array(ctx, array_name);
 }
 
 struct StringEmptyFx3 {
@@ -627,4 +629,5 @@ TEST_CASE_METHOD(
     REQUIRE(r_offsets == q2_result_offsets);
     REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
   }
+  Array::delete_array(ctx, array_name);
 }

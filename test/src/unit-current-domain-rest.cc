@@ -40,6 +40,7 @@ using namespace tiledb::test;
 
 struct RestCurrentDomainFx {
   RestCurrentDomainFx();
+  ~RestCurrentDomainFx();
 
   void create_sparse_array(const std::string& array_name);
   void create_sparse_array_at_timestamp(
@@ -54,6 +55,10 @@ struct RestCurrentDomainFx {
 
 RestCurrentDomainFx::RestCurrentDomainFx()
     : ctx_c_(vfs_test_setup_.ctx_c) {
+}
+
+RestCurrentDomainFx::~RestCurrentDomainFx() {
+  vfs_test_setup_.delete_array_if_exists(uri_);
 }
 
 void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {

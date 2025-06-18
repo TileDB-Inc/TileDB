@@ -491,6 +491,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group);
   remove_temp_dir(temp_dir);
+  // TODO: SMR
 }
 
 TEST_CASE_METHOD(

@@ -265,6 +265,7 @@ TEST_CASE_METHOD(
 
       remove_temp_dir(temp_dir);
       CHECK(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+      tiledb::Array::delete_array(ctx_, array_name);
     }
   }
 }
@@ -572,5 +573,6 @@ TEST_CASE_METHOD(
     CHECK(buffer_read_size == buffer_write_size);
 
     remove_temp_dir(temp_dir);
+    tiledb::Array::delete_array(ctx_, array_name);
   }
 }

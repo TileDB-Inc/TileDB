@@ -1583,6 +1583,7 @@ TEST_CASE(
           ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(

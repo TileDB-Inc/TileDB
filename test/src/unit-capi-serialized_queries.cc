@@ -583,6 +583,7 @@ TEST_CASE_METHOD(
 
     // TODO: check results
   }
+  tiledb::Array::delete_array(ctx_, array_uri);
 }
 
 TEST_CASE_METHOD(
@@ -626,6 +627,7 @@ TEST_CASE_METHOD(
 
     // TODO: check results
   }
+  tiledb::Array::delete_array(ctx_, array_uri);
 }
 
 TEST_CASE_METHOD(
@@ -679,6 +681,7 @@ TEST_CASE_METHOD(
 
     // TODO: check results
   }
+  tiledb::Array::delete_array(ctx_, array_uri);
 }
 
 TEST_CASE_METHOD(
@@ -880,6 +883,7 @@ TEST_CASE_METHOD(
 
     // TODO: check results
   }
+  tiledb::Array::delete_array(ctx_, array_uri);
 }
 
 TEST_CASE_METHOD(
@@ -924,6 +928,7 @@ TEST_CASE_METHOD(
 
     // TODO: check results
   }
+  tiledb::Array::delete_array(ctx_, array_uri);
 }
 
 TEST_CASE_METHOD(
@@ -1033,6 +1038,7 @@ TEST_CASE_METHOD(
       CHECK(a3_data[i] == a3_result_data[i]);
     }
   }
+  tiledb::Array::delete_array(ctx_, array_uri);
 }
 
 TEST_CASE_METHOD(
@@ -1065,4 +1071,5 @@ TEST_CASE_METHOD(
   } while (status == Query::Status::INCOMPLETE);
 
   REQUIRE(status == Query::Status::COMPLETE);
+  tiledb::Array::delete_array(ctx_, array_uri);
 }

@@ -404,6 +404,7 @@ TEST_CASE(
     check_counts(span(r_buff_d1.data(), num), {0, 3, 0, 0, 2, 1});
     check_counts(span(r_buff_d2.data(), num), {0, 1, 2, 2, 1});
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -516,6 +517,7 @@ TEST_CASE(
 
     array_r.close();
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -547,6 +549,7 @@ TEST_CASE(
 
   query_w.submit_and_finalize();
   array_w.close();
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -611,6 +614,7 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -664,6 +668,7 @@ TEST_CASE(
   CHECK(r_buff_a == c_buff_a);
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -822,6 +827,7 @@ TEST_CASE(
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
   array_r.close();
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -935,6 +941,7 @@ TEST_CASE(
 
     array_r.close();
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1001,6 +1008,7 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1048,6 +1056,7 @@ TEST_CASE(
   CHECK(r_buff_a == c_buff_a);
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1204,6 +1213,7 @@ TEST_CASE(
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
   array_r.close();
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1398,6 +1408,7 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1455,6 +1466,7 @@ TEST_CASE(
   CHECK(r_buff_a == c_buff_a);
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1641,6 +1653,7 @@ TEST_CASE(
   CHECK(r_buff_d2 == c_buff_d2);
   CHECK(r_off_d2 == c_off_d2);
   array_r.close();
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1729,6 +1742,7 @@ TEST_CASE(
   CHECK(r_off_d1 == c_off_d1);
   CHECK(r_buff_d2 == c_buff_d2);
   CHECK(r_off_d2 == c_off_d2);
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -1950,6 +1964,7 @@ TEST_CASE(
     CHECK(r_buff_d2 == c_buff_d2);
     CHECK(r_off_d2 == c_off_d2);
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -2185,6 +2200,7 @@ TEST_CASE(
 
     array_r.close();
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -2233,4 +2249,5 @@ TEST_CASE(
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
   CHECK(query_r.result_buffer_elements()["a"].second == 0);
   array_r.close();
+  Array::delete_array(ctx, array_name);
 }

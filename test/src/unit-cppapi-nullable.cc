@@ -516,6 +516,7 @@ void NullableArrayCppFx::do_2d_nullable_test(
         expected_a3_read_buffer_validity.data(),
         a3_read_buffer_validity.size()));
   }
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(

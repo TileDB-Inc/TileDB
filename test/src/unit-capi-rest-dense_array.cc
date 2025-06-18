@@ -1198,6 +1198,7 @@ TEST_CASE_METHOD(
     "C API: REST Test dense array, sorted reads",
     "[capi][rest][dense]") {
   check_sorted_reads();
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1205,6 +1206,7 @@ TEST_CASE_METHOD(
     "C API: REST Test dense array, sorted writes",
     "[capi][rest][dense][interference]") {
   check_sorted_writes();
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1289,6 +1291,7 @@ TEST_CASE_METHOD(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1298,6 +1301,7 @@ TEST_CASE_METHOD(
   array_uri_ = vfs_test_setup_.array_uri("dense_write_missing_attributes");
   create_dense_array(array_uri_);
   write_dense_array_missing_attributes(array_uri_);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1387,6 +1391,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1477,6 +1482,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1593,6 +1599,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   CHECK(!memcmp(c_a, read_a, sizeof(c_a)));
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1626,6 +1633,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1654,6 +1662,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_array_schema_free(&schema);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1697,6 +1706,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1710,6 +1720,7 @@ TEST_CASE_METHOD(
       tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error) ==
       TILEDB_OK);
   check_incomplete_reads();
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1798,6 +1809,7 @@ TEST_CASE_METHOD(
   // Clean up
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1837,6 +1849,7 @@ TEST_CASE_METHOD(
     tiledb_array_free(&array);
     tiledb_ctx_free(&ctx2);
   }
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1932,6 +1945,7 @@ TEST_CASE_METHOD(
 
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -2044,4 +2058,5 @@ TEST_CASE_METHOD(
   REQUIRE(static_cast<const float*>(value)[1] == 1.2f);
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_uri_);
 }

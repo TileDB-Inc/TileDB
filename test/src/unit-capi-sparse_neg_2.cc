@@ -479,6 +479,7 @@ TEST_CASE_METHOD(
   create_sparse_vector(vector_name);
   write_sparse_vector(vector_name);
   read_sparse_vector(vector_name);
+  tiledb::Array::delete_array(ctx_, vector_name);
 }
 
 TEST_CASE_METHOD(
@@ -491,4 +492,5 @@ TEST_CASE_METHOD(
   write_sparse_array(vector_name);
   read_sparse_array_row(vector_name);
   read_sparse_array_col(vector_name);
+  tiledb::Array::delete_array(ctx_, vector_name);
 }

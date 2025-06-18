@@ -51,6 +51,7 @@ struct CppPartialAttrWriteFx {
 
   // Constructors/destructors.
   CppPartialAttrWriteFx();
+  ~CppPartialAttrWriteFx();
 
   // Functions.
   void create_sparse_array(bool allows_dups = false);
@@ -84,6 +85,13 @@ CppPartialAttrWriteFx::CppPartialAttrWriteFx()
   config["sm.allow_separate_attribute_writes"] = "true";
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
+}
+
+CppPartialAttrWriteFx::~CppPartialAttrWriteFx() {
+  auto obj = tiledb::Object::object(ctx_, array_name_);
+  if (obj.type() == tiledb::Object::Type::Array) {
+    Array::delete_array(ctx_, array_name_);
+  }
 }
 
 void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {

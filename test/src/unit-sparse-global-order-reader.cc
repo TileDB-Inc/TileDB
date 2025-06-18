@@ -542,6 +542,7 @@ CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
   if (array_) {
     tiledb_array_free(&array_);
   }
+  vfs_test_setup_.delete_array_if_exists(array_name_);
 }
 
 void CSparseGlobalOrderFx::reset_config() {

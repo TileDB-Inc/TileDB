@@ -41,6 +41,7 @@ using namespace tiledb::test;
 
 struct QueryPlanFx {
   QueryPlanFx();
+  ~QueryPlanFx();
 
   void create_dense_array(const std::string& array_name);
   void create_sparse_array(const std::string& array_name);
@@ -54,6 +55,10 @@ struct QueryPlanFx {
 
 QueryPlanFx::QueryPlanFx()
     : ctx_c_(vfs_test_setup_.ctx_c) {
+}
+
+QueryPlanFx::~QueryPlanFx() {
+  vfs_test_setup_.delete_array_if_exists(uri_);
 }
 
 TEST_CASE_METHOD(

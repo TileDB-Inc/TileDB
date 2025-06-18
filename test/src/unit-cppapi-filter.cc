@@ -365,6 +365,7 @@ TEST_CASE(
           ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
     }
   }
+  tiledb::Array::delete_array(ctx, array_name);
 }
 
 void write_dense_array_string_attr(
@@ -468,6 +469,7 @@ TEST_CASE(
     read_and_check_dense_array_string_attr(
         ctx, array_name, a1_data, a1_offsets);
   }
+  tiledb::Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -547,6 +549,7 @@ TEST_CASE(
           ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
     }
   }
+  tiledb::Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(
@@ -640,4 +643,5 @@ TEST_CASE(
   }
 
   array_r.close();
+  tiledb::Array::delete_array(ctx, array_name);
 }

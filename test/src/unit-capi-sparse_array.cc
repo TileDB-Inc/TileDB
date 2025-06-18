@@ -2450,6 +2450,7 @@ TEST_CASE_METHOD(
   }
 
   remove_temp_dir(fs_vec_[0]->temp_dir());
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2490,6 +2491,7 @@ TEST_CASE_METHOD(
   SECTION("- global, all duplicates, dedup") {
     check_sparse_array_global_with_all_duplicates_dedup(array_name);
   }
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2498,6 +2500,7 @@ TEST_CASE_METHOD(
     "[capi][sparse][non-empty][rest]") {
   std::string array_name = prefix_ + "sparse_non_empty";
   check_non_empty_domain(array_name);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2507,6 +2510,7 @@ TEST_CASE_METHOD(
   std::string array_name = prefix_ + "invalid_offs";
   create_sparse_array(array_name);
   check_invalid_offsets(array_name);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2571,6 +2575,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2696,6 +2701,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2865,6 +2871,7 @@ TEST_CASE_METHOD(
   // Clean up
   CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2959,6 +2966,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3033,6 +3041,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3112,6 +3121,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3201,6 +3211,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3302,6 +3313,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
   tiledb_config_free(&config);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3415,6 +3427,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3492,6 +3505,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3664,6 +3678,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3836,6 +3851,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4028,6 +4044,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4220,6 +4237,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4452,6 +4470,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4684,6 +4703,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -5268,6 +5288,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -5580,6 +5601,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -5897,6 +5919,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -6291,6 +6314,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -6472,6 +6496,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -6671,6 +6696,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -6864,6 +6890,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -7004,6 +7031,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(

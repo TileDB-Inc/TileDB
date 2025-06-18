@@ -46,6 +46,7 @@ using namespace tiledb::test;
 struct ConsolidationPlanFx {
   // Constructors/destructors.
   ConsolidationPlanFx();
+  ~ConsolidationPlanFx();
 
   // Functions.
   void create_sparse_array(bool allows_dups = false);
@@ -74,6 +75,10 @@ ConsolidationPlanFx::ConsolidationPlanFx() {
   ctx_c_ = vfs_test_setup_.ctx_c;
   ctx_ = vfs_test_setup_.ctx();
   array_name_ = vfs_test_setup_.array_uri("test_consolidation_plan_array");
+}
+
+ConsolidationPlanFx::~ConsolidationPlanFx() {
+  vfs_test_setup_.delete_array_if_exists(array_name_);
 }
 
 void ConsolidationPlanFx::create_sparse_array(bool allows_dups) {

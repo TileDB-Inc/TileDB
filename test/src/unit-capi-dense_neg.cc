@@ -546,6 +546,7 @@ TEST_CASE_METHOD(
   read_dense_vector(vector_name);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, vector_name);
 }
 
 TEST_CASE_METHOD(
@@ -566,4 +567,5 @@ TEST_CASE_METHOD(
   read_dense_array_col(array_name);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }

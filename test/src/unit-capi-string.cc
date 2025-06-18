@@ -318,4 +318,5 @@ TEST_CASE_METHOD(
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
+  tiledb::Array::delete_array(ctx_, array_name);
 }

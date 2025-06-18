@@ -48,7 +48,7 @@ using namespace tiledb;
 
 struct CPPEnumerationFx {
   CPPEnumerationFx();
-  ~CPPEnumerationFx() = default;
+  ~CPPEnumerationFx();
 
   template <typename T>
   void check_dump(const T& val);
@@ -1624,6 +1624,13 @@ CPPEnumerationFx::CPPEnumerationFx()
     : uri_(vfs_test_setup_.array_uri("enumeration_test_array"))
     , ctx_(vfs_test_setup_.ctx())
     , vfs_(vfs_test_setup_.ctx()) {
+}
+
+CPPEnumerationFx::~CPPEnumerationFx() {
+  auto obj = tiledb::Object::object(ctx_, uri_);
+  if (obj.type() == tiledb::Object::Type::Array) {
+    Array::delete_array(ctx_, uri_.c_str());
+  }
 }
 
 template <typename T>

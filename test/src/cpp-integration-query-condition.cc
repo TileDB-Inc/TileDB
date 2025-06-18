@@ -379,6 +379,7 @@ TEST_CASE(
   CHECK_THROWS_AS(
       perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query),
       std::exception);
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -506,6 +507,7 @@ TEST_CASE(
 
   query.finalize();
   array.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -637,6 +639,7 @@ TEST_CASE(
 
   query.finalize();
   array.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(

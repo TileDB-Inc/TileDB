@@ -1412,7 +1412,6 @@ TEST_CASE_METHOD(
   tiledb_config_free(&cfg);
 
   // Check correctness
-  // Check correctness
   int buffer_read_open_start_c[] = {
       INT_MIN,
       INT_MIN,
@@ -1501,6 +1500,7 @@ TEST_CASE_METHOD(
   CHECK(buffer_read_size == sizeof(buffer_read_open_start_now_c));
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1871,6 +1871,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1923,6 +1924,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1996,6 +1998,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2059,6 +2062,7 @@ TEST_CASE_METHOD(
   tiledb_subarray_free(&subarray);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2139,6 +2143,7 @@ TEST_CASE_METHOD(
   tiledb_subarray_free(&subarray);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2177,6 +2182,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -2236,6 +2242,7 @@ TEST_CASE_METHOD(
   tiledb_subarray_free(&subarray);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(

@@ -550,6 +550,7 @@ TEST_CASE_METHOD(
       }
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -599,6 +600,7 @@ TEST_CASE_METHOD(
       read_and_check_dense_array(ctx, array_name, data, element_offsets);
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1140,6 +1142,7 @@ TEST_CASE_METHOD(
       }
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1468,6 +1471,7 @@ TEST_CASE_METHOD(
       }
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1610,6 +1614,7 @@ TEST_CASE_METHOD(
       }
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1686,6 +1691,7 @@ TEST_CASE_METHOD(
       read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1806,6 +1812,7 @@ TEST_CASE_METHOD(
       CHECK(offsets_back[idx] == guard_val);
     }
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -1910,4 +1917,5 @@ TEST_CASE_METHOD(
       CHECK(num_read_bytes == read_offsets.back());
     }
   }
+  Array::delete_array(ctx, array_name);
 }

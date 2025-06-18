@@ -60,6 +60,13 @@ struct RemoteGlobalOrderWriteFx {
       , ctx_(vfs_test_setup_.ctx())
       , array_type_(array_type){};
 
+  ~RemoteGlobalOrderWriteFx() {
+    auto obj = tiledb::Object::object(ctx_, array_name_);
+    if (obj.type() == tiledb::Object::Type::Array) {
+      Array::delete_array(ctx_, array_name_);
+    }
+  }
+
   // Create a simple dense array
   void create_array() {
     Domain domain(ctx_);

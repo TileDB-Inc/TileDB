@@ -116,6 +116,7 @@ TEST_CASE(
 
   for (int i = 0; i < (int)data_a1.size(); i++)
     REQUIRE(r_data_a1[i] == i);
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(

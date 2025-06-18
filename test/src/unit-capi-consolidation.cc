@@ -4660,12 +4660,10 @@ void ConsolidationFx::vacuum_sparse(
 }
 
 void ConsolidationFx::remove_array(const std::string& array_name) {
-  if (!vfs_test_setup_.is_rest()) {
-    if (!is_array(array_name))
-      return;
+  if (!is_array(array_name))
+    return;
 
-    CHECK(tiledb_object_remove(ctx_, array_name.c_str()) == TILEDB_OK);
-  }
+  CHECK_NOTHROW(tiledb::Array::delete_array(ctx_, array_name));
 }
 
 void ConsolidationFx::remove_dense_vector() {
@@ -6436,6 +6434,8 @@ TEST_CASE_METHOD(
 
   tiledb_config_free(&config);
   remove_dense_vector();
+  // TODO: If CI or tests don't like changes to remove_array function.
+  // Array::delete_array(ctx_, dense_vector_uri_);
 }
 
 TEST_CASE_METHOD(

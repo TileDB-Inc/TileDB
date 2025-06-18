@@ -116,11 +116,19 @@ struct IncompleteVarFx {
   void read_array(const Cells& expect);
 
   IncompleteVarFx();
+  ~IncompleteVarFx();
 };
 
 IncompleteVarFx::IncompleteVarFx()
     : ctx_(context_c(), false)
     , uri_(vfs_test_setup_.array_uri("incomplete_var_fx")) {
+}
+
+IncompleteVarFx::~IncompleteVarFx() {
+  auto obj = tiledb::Object::object(ctx_, uri_);
+  if (obj.type() == tiledb::Object::Type::Array) {
+    Array::delete_array(ctx_, uri_);
+  }
 }
 
 void IncompleteVarFx::create_array() {

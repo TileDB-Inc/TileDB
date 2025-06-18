@@ -117,6 +117,7 @@ TEST_CASE(
   CHECK(attrs.count("a1") == 0);
   CHECK(attrs.count("a2") == 1);
   CHECK(attrs.count("a3") == 1);
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -150,6 +151,7 @@ TEST_CASE(
 
   // check that an exception is thrown
   CHECK_THROWS(evolution.array_evolve(array_uri));
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -683,6 +685,7 @@ TEST_CASE(
               1, 1, 1, 1, 3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1}));
     }
   }
+  Array::delete_array(ctx, array_uri);
 }
 
 /**
@@ -915,6 +918,7 @@ TEST_CASE(
       }
     }
   }
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1056,6 +1060,7 @@ TEST_CASE(
     CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{4}));
     CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1}));
   }
+  Array::delete_array(ctx, array_uri);
 }
 
 /**
@@ -1170,7 +1175,7 @@ TEST_CASE(
 
 TEST_CASE(
     "SchemaEvolution Error Handling Tests",
-    "[cppapi][schema][evolution][errors][rest]") {
+    "[cppapi][schema][evolution][errors]") {
   auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(
       HERE(), tiledb::test::create_test_memory_tracker());
   REQUIRE_THROWS(ase->evolve_schema(nullptr));

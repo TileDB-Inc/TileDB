@@ -507,6 +507,7 @@ TEST_CASE(
   } else {
     CHECK_THROWS(query.submit());
   }
+  Array::delete_array(ctx, array_name);
 }
 
 TEST_CASE(

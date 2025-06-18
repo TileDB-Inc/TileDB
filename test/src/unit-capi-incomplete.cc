@@ -1156,6 +1156,7 @@ TEST_CASE_METHOD(
   check_dense_unsplittable_overflow();
   check_dense_unsplittable_complete();
   check_dense_reset_buffers();
+  tiledb::Array::delete_array(ctx_, dense_array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1168,6 +1169,7 @@ TEST_CASE_METHOD(
   check_sparse_until_complete();
   check_sparse_unsplittable_overflow();
   check_sparse_unsplittable_complete();
+  tiledb::Array::delete_array(ctx_, sparse_array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1177,6 +1179,7 @@ TEST_CASE_METHOD(
   create_dense_array();
   write_dense_full();
   check_dense_incomplete();
+  tiledb::Array::delete_array(ctx_, dense_array_uri_);
 }
 
 TEST_CASE_METHOD(
@@ -1216,4 +1219,5 @@ TEST_CASE_METHOD(
   check_sparse_until_complete();
   check_sparse_unsplittable_overflow();
   check_sparse_unsplittable_complete();
+  tiledb::Array::delete_array(ctx_, sparse_array_uri_);
 }

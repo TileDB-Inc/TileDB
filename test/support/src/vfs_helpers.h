@@ -869,6 +869,13 @@ struct VFSTestSetup {
     }
   }
 
+  void delete_array_if_exists(const std::string& uri) {
+    auto obj = tiledb::Object::object(ctx(), uri);
+    if (obj.type() == tiledb::Object::Type::Array) {
+      tiledb::Array::delete_array(ctx(), uri);
+    }
+  }
+
   Context ctx() {
     return Context(ctx_c, false);
   }

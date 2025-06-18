@@ -1010,6 +1010,7 @@ void DenseArrayFx::check_sorted_reads() {
   tiledb_array_free(&array);
   tiledb_config_free(&config);
   tiledb_query_free(&query);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 void DenseArrayFx::check_sorted_writes() {
@@ -1095,6 +1096,7 @@ void DenseArrayFx::check_sorted_writes() {
     delete[] buffer;
     delete[] read_buffer;
   }
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 void DenseArrayFx::check_invalid_cell_num_in_dense_writes() {
@@ -1168,6 +1170,7 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes() {
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 void DenseArrayFx::check_simultaneous_writes() {
@@ -1238,6 +1241,7 @@ void DenseArrayFx::check_simultaneous_writes() {
   for (int* buffer : buffers) {
     delete[] buffer;
   }
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 void DenseArrayFx::create_dense_array(const std::string& array_name) {
@@ -1510,6 +1514,7 @@ void DenseArrayFx::check_return_coords(bool split_coords) {
   read_dense_array_with_coords_subarray_global(array_name, split_coords);
   read_dense_array_with_coords_subarray_row(array_name, split_coords);
   read_dense_array_with_coords_subarray_col(array_name, split_coords);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 void DenseArrayFx::write_dense_array(const std::string& array_name) {
@@ -2911,6 +2916,7 @@ void DenseArrayFx::check_non_empty_domain() {
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
+  tiledb::Array::delete_array(ctx_, array_name);
 };
 
 TEST_CASE_METHOD(
@@ -3077,6 +3083,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3158,6 +3165,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3272,8 +3280,8 @@ TEST_CASE_METHOD(
 
   // Clean up
   tiledb_array_free(&array);
-
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3289,6 +3297,7 @@ TEST_CASE_METHOD(
   write_dense_array(array_name);
   read_dense_array_with_coords_full_global(array_name, true);
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3302,6 +3311,7 @@ TEST_CASE_METHOD(
   create_dense_array(array_name);
   write_dense_array_missing_attributes(array_name);
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3396,6 +3406,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3491,6 +3502,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3612,6 +3624,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_a, read_a, sizeof(c_a)));
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3650,6 +3663,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3683,6 +3697,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&schema);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3834,6 +3849,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3937,6 +3953,7 @@ TEST_CASE_METHOD(
   tiledb_config_free(&config);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -3997,6 +4014,7 @@ TEST_CASE_METHOD(
   tiledb_subarray_free(&subarray);
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4180,6 +4198,7 @@ TEST_CASE_METHOD(
   }
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4246,6 +4265,7 @@ TEST_CASE_METHOD(
   }
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4295,6 +4315,7 @@ TEST_CASE_METHOD(
   }
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4344,6 +4365,7 @@ TEST_CASE_METHOD(
   }
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
@@ -4378,6 +4400,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
+  tiledb::Array::delete_array(ctx_, array_name);
 }
 
 TEST_CASE_METHOD(
