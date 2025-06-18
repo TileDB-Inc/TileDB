@@ -456,8 +456,8 @@ TEST_CASE(
         const uint64_t end =
             (i + 1 == r_dimension.size() ? a_output.size() :
                                            a_output_offsets[i + 1]);
-        strings_out.push_back(
-            std::string(&a_output[a_output_offsets[i]], &a_output[end]));
+        strings_out.push_back(std::string(
+            a_output.begin() + a_output_offsets[i], a_output.begin() + end));
       }
 
       std::vector<std::string> expect_strings;

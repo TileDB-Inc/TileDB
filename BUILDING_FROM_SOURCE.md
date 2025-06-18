@@ -30,6 +30,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 | `--enable-debug`         | Enable debug build                                                   | `CMAKE_BUILD_TYPE=Debug`        |
 | `--enable-coverage`      | Enable build with code coverage support                              | `CMAKE_BUILD_TYPE=Coverage`     |
 | `--enable-verbose`       | Enable verbose status messages                                       | `TILEDB_VERBOSE=ON`             |
+| `--enable-assertions     | Enable build with assertions enabled. Always on for debug builds.    | `TILEDB_ASSERTIONS=ON`          |
 | `--enable-hdfs`          | Enables building with HDFS storage backend support                   | `TILEDB_HDFS=ON`                |
 | `--enable-s3`            | Enables building with S3 storage backend support                     | `TILEDB_S3=ON`                  |
 | `--enable-azure`         | Enables building with Azure Blob Storage backend support             | `TILEDB_AZURE=ON`               |
@@ -109,6 +110,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 | `-CMakeGenerator`      | Optionally specify the CMake generator string, e.g. “Visual Studio 15 2017”. Check ‘cmake –help’ for a list of supported generators. | `-G <generator>`                |
 | `-EnableDebug`         | Enable debug build                                                                                                                   | `CMAKE_BUILD_TYPE=Debug`        |
 | `-EnableVerbose`       | Enable verbose status messages.                                                                                                      | `TILEDB_VERBOSE=ON`             |
+| `-EnableAssert`        | Enables building with assertions enabled. Always on for debug builds.                                                                | `TILEDB_ASSERTIONS=ON`          |
 | `-EnableS3`            | Enables building with the S3 storage backend.                                                                                        | `TILEDB_S3=ON`                  |
 | `-EnableGcs`           | Enables building the Google Cloud Storage backend                                                                                    | `TILEDB_GCS=ON`                 |
 | `-EnableSerialization` | Enabled serialization and TileDB Cloud support                                                                                       | `TILEDB_SERIALZIATION=ON`       |
