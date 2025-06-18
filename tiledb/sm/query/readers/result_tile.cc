@@ -370,8 +370,7 @@ Status ResultTile::read(
     const uint64_t timestamp_val) {
   buffer = static_cast<char*>(buffer) + buffer_offset;
 
-  bool is_dim = false;
-  RETURN_NOT_OK(domain_->has_dimension(name, &is_dim));
+  const bool is_dim = domain_->has_dimension(name);
 
   // Boolean value indicating we will copy the fragment timestamp value into
   // the buffer for this tile.
