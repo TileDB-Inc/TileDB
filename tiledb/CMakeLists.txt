@@ -433,7 +433,6 @@ set(TILEDB_CORE_OBJECTS_LIBS
 )
 if (TILEDB_RUST)
   list(APPEND TILEDB_CORE_OBJECTS_LIBS tiledb_core_objects_oxidize)
-  add_dependencies(TILEDB_CORE_OBJECTS rust_h)
 endif ()
 
 list(TRANSFORM TILEDB_CORE_OBJECTS_LIBS PREPEND "$<TARGET_OBJECTS:" OUTPUT_VARIABLE TILEDB_CORE_OBJECTS_LIBS_SOURCES)
@@ -461,6 +460,15 @@ target_include_directories(TILEDB_CORE_OBJECTS
 	# to pickup <build_dir>/tiledb for capnp gen'd files
     "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
+
+if (TILEDB_RUST)
+  target_include_directories(TILEDB_CORE_OBJECTS
+    PRIVATE
+    # for including tiledb/oxidize/rust.h
+      "${TILEDB_OXIDIZE_INCLUDE_DIR}"
+  )
+  add_dependencies(TILEDB_CORE_OBJECTS rust_h)
+endif ()
 
 if (TILEDB_CPP_API)
   target_include_directories(TILEDB_CORE_OBJECTS
