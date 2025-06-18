@@ -1,3 +1,17 @@
+//! Provides functions for converting TileDB offsets into Arrow [OffsetBuffer]s.
+//!
+//! For `N` cells, an Arrow [OffsetBuffer] contains `N + 1` offsets, whose units
+//! are elements of the accompanying values.
+//!
+//! TileDB offsets do not abide the same semantics.
+//! In some situations `N` cells have `N + 1` offsets, like Arrow; but in other
+//! situations `N` cells have `N` offsets, with the length of the accompanying
+//! values buffer implicity used as the `N + 1`th offset.
+//! And in all situations, TileDB offset units are bytes, not elements.
+//!
+//! As a result the functions in this module always must allocate new memory
+//! for the [OffsetBuffer].
+
 use arrow::buffer::{Buffer, OffsetBuffer, ScalarBuffer};
 
 #[derive(Debug, thiserror::Error)]
@@ -12,9 +26,18 @@ pub enum Error {
     DescendingOffsets(usize, i64, i64),
 }
 
+/// Constructs an [OffsetBuffer] from a raw byte slice.
+///
+/// This function reinterprets the raw bytes as `i64` offsets.
+/// It returns an error if the reinterpreted bytes do not constitute
+/// valid offsets for elements of size `value_size` or are otherwise
+/// invalid for an [OffsetBuffer].
+///
+/// If the input `bytes` constitutes `N` offsets then the output [OffsetBuffer]
+/// also contains `N` offsets.
 pub fn try_from_bytes(value_size: usize, bytes: &[u8]) -> Result<OffsetBuffer<i64>, Error> {
     let (prefix, offsets, suffix) = unsafe {
-        // SAFETY: transmuting u8 to i64 is safe
+        // SAFETY: transmuting u8 to i64 is safe and we will check error below
         bytes.align_to::<i64>()
     };
     if !prefix.is_empty() || !suffix.is_empty() {
@@ -24,6 +47,21 @@ pub fn try_from_bytes(value_size: usize, bytes: &[u8]) -> Result<OffsetBuffer<i6
     try_new(value_size, offsets.iter().copied())
 }
 
+/// Constructs an [OffsetBuffer] from a raw byte slice and the total number of values.
+///
+/// This function reinterprets the raw bytes as `i64` offsets.
+/// It returns an error if the reinterpreted bytes do not constitute
+/// valid offsets for elements of size `value_size` or are otherwise invalid
+/// for an [OffsetBuffer].
+///
+/// This function can be used for offsets where the number of offsets is equal
+/// to the number of cells, and the length of the final cell is determined
+/// by the total number of values. An [OffsetBuffer] instead expresses that
+/// final offset in its buffer, such that the length of a cell `i` is
+/// always determined by `offsets[i + 1] - offsets[i]`.
+///
+/// As such, if the input buffer constitutes `N` offsets, the output
+/// [OffsetBuffer] will contain `N + 1` offsets.
 pub fn try_from_bytes_and_num_values(
     value_size: usize,
     bytes: &[u8],
@@ -46,29 +84,16 @@ pub fn try_from_bytes_and_num_values(
     )
 }
 
+/// Constructs an [OffsetBuffer] from a stream of offsets whose unit
+/// is bytes. The resulting [OffsetBuffer] unit is elements whose
+/// size is given by `value_size`.
+///
+/// If the input [Iterator] produces `N` elements then the returned
+/// [OffsetBuffer] contains `N` offsets.
 pub fn try_new(
     value_size: usize,
     raw_offsets: impl Iterator<Item = i64>,
 ) -> Result<OffsetBuffer<i64>, Error> {
-    // TileDB storage format (as of this writing) uses byte offsets.
-    // Arrow uses element offsets.
-    // Those must be converted.
-    //
-    // There's also a reasonable question about the number of offsets.
-    // In Arrow there are `n + 1` offsets for `n` cells, such that each
-    //   cell `i` is delineated by offsets `i, i + 1`.
-    // In TileDB write and read queries there are just `n` offsets,
-    //   and the last cell is delineated by the end of the var data.
-    //
-    // However, it appears that the actual tile contents follow the
-    // `n + 1` offsets format.  This is undoubtedly a good thing
-    // for our use here (and subjectively so otherwise).
-    // uses the fixed data length to implicitly indicate the length of the last
-    // element, so as to have `n` offsets for `n` cells.
-    //
-    // But because we have to change from bytes to elements
-    // we nonetheless have to dynamically allocate the offsets.
-
     let value_size = value_size as i64; // arrow offsets are signed for some reason
 
     let try_element_offset = |o: i64| {

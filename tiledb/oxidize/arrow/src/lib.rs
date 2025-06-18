@@ -25,7 +25,7 @@ pub mod ffi {
         type ArrowRecordBatch;
 
         #[cxx_name = "create"]
-        fn result_tile_to_record_batch(
+        unsafe fn result_tile_to_record_batch(
             schema: &ArrowSchema,
             tile: &ResultTile,
         ) -> Result<Box<ArrowRecordBatch>>;

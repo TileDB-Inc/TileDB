@@ -1,3 +1,5 @@
+//! Provides functions for mapping an [ArraySchema] or the contents of an
+//! [ArraySchema] onto representative Arrow [Schema]ta or [Field]s.
 use std::ops::Deref;
 use std::str::Utf8Error;
 use std::sync::Arc;
@@ -8,6 +10,7 @@ use arrow::datatypes::{
 use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum, Field};
 use tiledb_cxx_interface::sm::enums::Datatype;
 
+/// An error converting [ArraySchema] to [Schema].
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Field name is not UTF-8")]
@@ -16,6 +19,7 @@ pub enum Error {
     FieldError(String, FieldError),
 }
 
+/// An error converting an [ArraySchema] [Field] to [ArrowField].
 #[derive(Debug, thiserror::Error)]
 pub enum FieldError {
     #[error("Invalid cell val num: {0}")]
@@ -24,6 +28,7 @@ pub enum FieldError {
     InternalInvalidDatatype(u8),
 }
 
+/// Wraps a [Schema] for passing across the FFI boundary.
 pub struct ArrowSchema(pub Arc<Schema>);
 
 impl Deref for ArrowSchema {
@@ -36,6 +41,8 @@ impl Deref for ArrowSchema {
 pub mod cxx {
     use super::*;
 
+    /// Returns a [Schema] which represents the physical field types of
+    /// the fields from `array_schema` which are contained in `select`.
     pub fn to_arrow(
         array_schema: &ArraySchema,
         select: &::cxx::Vector<::cxx::String>,
@@ -47,7 +54,7 @@ pub mod cxx {
     }
 }
 
-/// Returns a [Schema] which represents the physical field types of `array_schema`.
+/// Returns a [Schema] which represents the physical field types of the selected fields from `array_schema`.
 pub fn to_arrow<F>(array_schema: &ArraySchema, select: F) -> Result<Schema, Error>
 where
     F: Fn(&Field) -> bool,

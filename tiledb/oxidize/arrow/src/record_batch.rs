@@ -1,3 +1,8 @@
+//! Provides functions for viewing a [ResultTile] as an Arrow [RecordBatch].
+//!
+//! The functions in this module are `unsafe` because the FFI boundary
+//! prevents us from expressing a lifetime relationship between the
+//! returned [RecordBatch] and the argument [ResultTile].
 use std::sync::Arc;
 
 use arrow::array::{
@@ -12,12 +17,14 @@ use tiledb_cxx_interface::sm::tile::Tile;
 use super::*;
 use crate::offsets::Error as OffsetsError;
 
+/// An error creating a [RecordBatch] to represent a [ResultTile].
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Cannot process field '{0}': {1}")]
     FieldError(String, #[source] FieldError),
 }
 
+/// An error creating an [ArrowArray] for a specific field of a tile.
 #[derive(Debug, thiserror::Error)]
 pub enum FieldError {
     #[error("Internal error: invalid data type: {0}")]
@@ -34,11 +41,21 @@ pub enum FieldError {
     InternalOffsets(#[from] OffsetsError),
 }
 
+/// Wraps a [RecordBatch] for passing across the FFI boundary.
 pub struct ArrowRecordBatch {
     pub arrow: RecordBatch,
 }
 
-pub fn to_record_batch(
+/// Returns a [RecordBatch] which contains the same contents as a [ResultTile].
+///
+/// # Safety
+///
+/// When possible this function avoids copying data. This means that the
+/// returned [RecordBatch] may reference data which lives inside one or more
+/// of the [ResultTile]'s attribute [Tile]s. This function is safe to call as
+/// long as the returned [RecordBatch] is not used after the [ResultTile]
+/// is destructed.
+pub unsafe fn to_record_batch(
     schema: &ArrowSchema,
     tile: &ResultTile,
 ) -> Result<Box<ArrowRecordBatch>, Error> {
@@ -60,7 +77,11 @@ pub fn to_record_batch(
                 // SAFETY: diverging `is_null` above
                 &*ptr_tile
             };
-            tile_to_arrow_array(f, tile).map_err(|e| Error::FieldError(f.name().to_owned(), e))
+            unsafe {
+                // SAFETY: same contract as this function
+                tile_to_arrow_array(f, tile)
+            }
+            .map_err(|e| Error::FieldError(f.name().to_owned(), e))
         })
         .collect::<Result<Vec<Arc<dyn ArrowArray>>, _>>()?;
 
@@ -79,11 +100,40 @@ pub fn to_record_batch(
     Ok(Box::new(ArrowRecordBatch { arrow }))
 }
 
-fn tile_to_arrow_array(f: &Field, tile: &TileTuple) -> Result<Arc<dyn ArrowArray>, FieldError> {
-    to_arrow_array(f, tile.fixed_tile(), tile.var_tile(), tile.validity_tile())
+/// Returns an [ArrowArray] which contains the same contents as the provided
+/// [TileTuple].
+///
+/// # Safety
+///
+/// When possible this function avoids copying data. This means that the
+/// returned [ArrowArray] may reference data which lives inside the [Tile]s.
+/// This function is safe to call as long as the returned [ArrowArray] is not
+/// used after those [Tile]s are destructed.
+unsafe fn tile_to_arrow_array(
+    f: &Field,
+    tile: &TileTuple,
+) -> Result<Arc<dyn ArrowArray>, FieldError> {
+    unsafe {
+        // SAFETY: same contract as this function
+        to_arrow_array(f, tile.fixed_tile(), tile.var_tile(), tile.validity_tile())
+    }
 }
 
-fn to_arrow_array(
+/// Returns an [ArrowArray] which contains the same contents as the provided
+/// triple of [Tile]s.
+///
+/// If `var.is_some()`, then `fixed` contains the offsets and `var` contains
+/// the values. Otherwise, `fixed` contains the values.
+///
+/// The `validity` [Tile] contains one value per cell.
+///
+/// # Safety
+///
+/// When possible this function avoids copying data. This means that the
+/// returned [ArrowArray] may reference data which lives inside the [Tile]s.
+/// This function is safe to call as long as the returned [ArrowArray] is not
+/// used after those [Tile]s are destructed.
+unsafe fn to_arrow_array(
     f: &Field,
     fixed: &Tile,
     var: Option<&Tile>,
@@ -114,7 +164,10 @@ fn to_arrow_array(
             if var.is_some() {
                 return Err(FieldError::UnexpectedVarTile);
             }
-            to_primitive_array::<$primitivetype>(fixed, null_buffer)
+            unsafe {
+                // SAFETY: same contract as this function
+                to_primitive_array::<$primitivetype>(fixed, null_buffer)
+            }
         }};
     }
 
@@ -131,7 +184,10 @@ fn to_arrow_array(
         DataType::Float32 => match_arm_primitive!(Float32Type),
         DataType::Float64 => match_arm_primitive!(Float64Type),
         DataType::FixedSizeList(value_field, fixed_size) => {
-            let values = to_arrow_array(value_field, fixed, None, None)?;
+            let values = unsafe {
+                // SAFETY: same contract as this function
+                to_arrow_array(value_field, fixed, None, None)?
+            };
             Ok(Arc::new(FixedSizeListArray::new(
                 Arc::clone(value_field),
                 *fixed_size,
@@ -144,7 +200,10 @@ fn to_arrow_array(
                 return Err(FieldError::ExpectedVarTile);
             };
             let offsets = to_offsets_buffer(value_field, fixed)?;
-            let values = to_arrow_array(value_field, var_tile, None, None)?;
+            let values = unsafe {
+                // SAFETY: same contract as this function
+                to_arrow_array(value_field, var_tile, None, None)?
+            };
             Ok(Arc::new(GenericListArray::new(
                 Arc::clone(value_field),
                 offsets,
@@ -159,7 +218,15 @@ fn to_arrow_array(
     }
 }
 
-fn to_primitive_array<T>(
+/// Returns a [PrimitiveArray] which contains the same contents as a [Tile]
+/// with the provided `validity`.
+///
+/// # Safety
+///
+/// The returned [PrimitiveArray] shares a buffer with the argument [Tile].
+/// This function is safe to call as long as the returned [PrimitiveArray]
+/// is not used after the argument [Tile] is destructed.
+unsafe fn to_primitive_array<T>(
     tile: &Tile,
     validity: Option<NullBuffer>,
 ) -> Result<Arc<dyn ArrowArray>, FieldError>
@@ -186,6 +253,7 @@ where
     )) as Arc<dyn ArrowArray>)
 }
 
+/// Returns an [OffsetBuffer] which represents the contents of the [Tile].
 fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i64>, OffsetsError> {
     let Some(value_size) = value_field.data_type().primitive_width() else {
         // SAFETY: all list types have primitive element
