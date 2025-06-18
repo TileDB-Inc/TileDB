@@ -197,6 +197,7 @@ class QueryCondition {
    */
   void rewrite_for_schema(const ArraySchema& array_schema);
 
+#ifdef HAVE_RUST
   /**
    * If desired and possible, rewrite the query condition to use Datafusion to
    * evaluate.
@@ -209,6 +210,7 @@ class QueryCondition {
    * @return true if a rewrite occurred, false otherwise
    */
   bool rewrite_to_datafusion(const ArraySchema& array_schema);
+#endif
 
   /**
    * Verifies that the current state contains supported comparison

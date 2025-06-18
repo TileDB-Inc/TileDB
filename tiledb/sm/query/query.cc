@@ -846,17 +846,24 @@ Status Query::process() {
     }
 
     // experimental feature - maybe evaluate using datafusion
-    const auto evaluator =
-        config_.get<std::string>("sm.query.condition_evaluator");
+    const std::string evaluator_param_name = "sm.query.condition_evaluator";
+    const auto evaluator = config_.get<std::string>(evaluator_param_name);
     if (evaluator == "datafusion") {
+#ifdef HAVE_RUST
       auto timer_se =
           stats_->start_timer("query_condition_rewrite_to_datafusion");
       condition_->rewrite_to_datafusion(array_schema());
+#else
+      std::stringstream ss;
+      ss << "Invalid value for parameter '" << evaluator_param_name
+         << "': 'datafusion' requires build configuration '-DTILEDB_RUST=ON'";
+      throw QueryException(ss.str());
+#endif
     } else if (evaluator.has_value() && evaluator != "ast") {
       std::stringstream ss;
-      ss << "Invalid value for parameter 'sm.query.condition_evaluator': found "
-            "'"
-         << evaluator.value() << "', expected 'datafusion' or 'ast'";
+      ss << "Invalid value for parameter '" << evaluator_param_name
+         << "': found '" << evaluator.value()
+         << "', expected 'datafusion' or 'ast'";
       throw QueryException(ss.str());
     }
   }

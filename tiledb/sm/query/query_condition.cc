@@ -190,10 +190,6 @@ bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
   }
   return false;
 }
-#else
-bool QueryCondition::rewrite_to_datafusion(const ArraySchema&) {
-  return false;
-}
 #endif
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
