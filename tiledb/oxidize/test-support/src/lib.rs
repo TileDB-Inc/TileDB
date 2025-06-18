@@ -124,7 +124,6 @@ mod ffi {
         ///
         /// If `validity` is non-`NULL`, then it must point to a valid memory
         /// region which contains at least `tile.cell_num()` bytes.
-        #[cxx_name = "var_tile"]
         #[allow(clippy::missing_safety_doc)] // false positive
         unsafe fn init_attr_tile(
             tile: SharedPtr<ResultTile>,
