@@ -221,7 +221,6 @@ target_include_directories(
   tiledb_unit BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
-    ${TILEDB_OXIDIZE_INCLUDE_DIR}
 )
 
 target_link_libraries(tiledb_unit
