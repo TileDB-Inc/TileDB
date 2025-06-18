@@ -1,3 +1,12 @@
+/// Binds `$typename` to the physical type behind `$datatype`,
+/// and evaluates `$action` using the bound `$typname`
+/// (or evaluates `$invalid` if the `$datatype` is not a valid variant).
+///
+/// `$action` may be any expression which uses `$typename` as a generic
+/// type parameter.
+///
+/// `$invalid` is a callable object which accepts the invalid
+/// discriminant as an argument.
 #[macro_export]
 macro_rules! apply_physical_type {
     ($datatype:expr, $typename:ident, $action:expr, $invalid:expr) => {{

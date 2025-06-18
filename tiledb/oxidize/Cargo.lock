@@ -2837,7 +2837,6 @@ dependencies = [
  "num-traits",
  "thiserror 2.0.12",
  "tiledb-cxx-interface",
- "tiledb-datatype",
 ]
 
 [[package]]
