@@ -166,6 +166,16 @@ TEST_CASE_METHOD(
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filename, name_));
   }
+  SECTION("rest.username set and rest.password not set") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "test_user");
+    REQUIRE_THROWS(p.save());
+  }
+  SECTION("rest.username not set and rest.password set") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.password", "test_password");
+    REQUIRE_THROWS(p.save());
+  }
 }
 
 TEST_CASE_METHOD(

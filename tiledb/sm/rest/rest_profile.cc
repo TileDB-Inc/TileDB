@@ -167,6 +167,16 @@ const std::string* RestProfile::get_param(const std::string& param) const {
  * See issue [#727](https://github.com/nlohmann/json/issues/727) for details.
  */
 void RestProfile::save_to_file(const bool overwrite) {
+  // Validate that the profile is complete (if username is set, so is password)
+  if ((param_values_.contains("rest.username") &&
+       !param_values_.contains("rest.password")) ||
+      (!param_values_.contains("rest.username") &&
+       param_values_.contains("rest.password"))) {
+    throw RestProfileException(
+        "Failed to save profile: 'rest.username' and 'rest.password' must "
+        "either both be set or both remain unset. Mixing a default username "
+        "with a custom password (or vice versa) is not allowed.");
+  }
   // Fstream cannot create directories. If the directory does not exist,
   // create it.
   std::filesystem::create_directories(dir_);
