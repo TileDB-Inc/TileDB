@@ -51,8 +51,7 @@ TEST_CASE(
       Datatype::UINT32,
       tiledb::test::get_test_memory_tracker());
   uint32_t domain1[2]{1, 64};
-  auto st = dim->set_domain(&domain1[0]);
-  REQUIRE(st.ok());
+  dim->set_domain(&domain1[0]);
 
   NDRange nd_list = {dim->domain()};
 
@@ -60,7 +59,7 @@ TEST_CASE(
   ::capnp::MallocMessageBuilder message;
   tiledb::sm::serialization::capnp::NonEmptyDomainList::Builder builder =
       message.initRoot<tiledb::sm::serialization::capnp::NonEmptyDomainList>();
-  st = tiledb::sm::serialization::utils::serialize_non_empty_domain_rv(
+  auto st = tiledb::sm::serialization::utils::serialize_non_empty_domain_rv(
       builder, nd_list, 1);
   REQUIRE(st.ok());
 

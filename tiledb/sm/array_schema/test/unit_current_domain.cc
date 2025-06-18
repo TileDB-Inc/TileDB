@@ -224,19 +224,19 @@ shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema(bool dense) {
   auto dim =
       make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1000};
-  throw_if_not_ok(dim->set_domain(range));
+  dim->set_domain(range);
 
   auto dim2 =
       make_shared<Dimension>(HERE(), "dim2", Datatype::INT32, memory_tracker_);
-  throw_if_not_ok(dim2->set_domain(range));
+  dim2->set_domain(range);
 
-  throw_if_not_ok(dom->add_dimension(dim));
-  throw_if_not_ok(dom->add_dimension(dim2));
+  dom->add_dimension(dim);
+  dom->add_dimension(dim2);
 
-  throw_if_not_ok(schema->set_domain(dom));
+  schema->set_domain(dom);
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
-  throw_if_not_ok(schema->add_attribute(attr1));
+  schema->add_attribute(attr1);
 
   return schema;
 }
@@ -250,14 +250,13 @@ shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema_var() {
       HERE(), "dim1", Datatype::STRING_ASCII, memory_tracker_);
   auto dim2 = make_shared<Dimension>(
       HERE(), "dim2", Datatype::STRING_ASCII, memory_tracker_);
-  throw_if_not_ok(dom->add_dimension(dim));
-  throw_if_not_ok(dom->add_dimension(dim2));
-
-  throw_if_not_ok(schema->set_domain(dom));
+  dom->add_dimension(dim);
+  dom->add_dimension(dim2);
+  schema->set_domain(dom);
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
 
-  throw_if_not_ok(schema->add_attribute(attr1));
+  schema->add_attribute(attr1);
 
   return schema;
 }
@@ -348,12 +347,12 @@ TEST_CASE_METHOD(
   auto dim =
       make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1001};
-  throw_if_not_ok(dim->set_domain(range));
+  dim->set_domain(range);
   auto dim2 =
       make_shared<Dimension>(HERE(), "dim2", Datatype::INT32, memory_tracker_);
-  throw_if_not_ok(dim2->set_domain(range));
-  throw_if_not_ok(dom->add_dimension(dim));
-  throw_if_not_ok(dom->add_dimension(dim2));
+  dim2->set_domain(range);
+  dom->add_dimension(dim);
+  dom->add_dimension(dim2);
 
   auto current_domain = create_current_domain(dom->domain(), schema);
 
