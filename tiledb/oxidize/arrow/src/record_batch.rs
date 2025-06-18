@@ -1,4 +1,4 @@
-//! Provides functions for viewing a [ResultTile] as an Arrow [RecordBatch].
+//! Provides definitions for viewing a [ResultTile] as an Arrow [RecordBatch].
 //!
 //! The functions in this module are `unsafe` because the FFI boundary
 //! prevents us from expressing a lifetime relationship between the

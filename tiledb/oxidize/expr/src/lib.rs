@@ -62,6 +62,8 @@ mod ffi {
 
 mod logical_expr;
 mod physical_expr;
+mod query_condition;
 
-pub use logical_expr::{LogicalExpr, to_datafusion as query_condition_to_logical_expr};
+pub use logical_expr::LogicalExpr;
 pub use physical_expr::{PhysicalExpr, PhysicalExprOutput, create_physical_expr};
+pub use query_condition::to_datafusion as query_condition_to_logical_expr;

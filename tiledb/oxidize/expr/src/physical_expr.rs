@@ -1,3 +1,7 @@
+//! Provides definitions for compiling DataFusion logical expressions
+//! into DataFusion physical expressions which can be evaluated;
+//! and definitions for evaluating those physical expressions.
+
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -13,6 +17,7 @@ use tiledb_cxx_interface::sm::enums::Datatype;
 
 use crate::LogicalExpr;
 
+/// An error using a [PhysicalExpr].
 #[derive(Debug, thiserror::Error)]
 pub enum PhysicalExprError {
     #[error("Compiling expression: {0}")]
@@ -21,6 +26,7 @@ pub enum PhysicalExprError {
     Evaluate(#[source] DataFusionError),
 }
 
+/// An error using the output of physical expression evaluation.
 #[derive(Debug, thiserror::Error)]
 pub enum PhysicalExprOutputError {
     #[error("Target type is unavailable: {0}")]
@@ -31,6 +37,7 @@ pub enum PhysicalExprOutputError {
     InvalidStaticType(&'static str, ArrowDataType),
 }
 
+/// Wraps a DataFusion [PhysicalExpr] for passing across the FFI boundary.
 pub struct PhysicalExpr(Arc<dyn DatafusionPhysicalExpr>);
 
 impl PhysicalExpr {
@@ -46,6 +53,7 @@ impl PhysicalExpr {
     }
 }
 
+/// Returns a [PhysicalExpr] which evaluates a [LogicalExpr] for the given `schema`.
 pub fn create_physical_expr(
     schema: &ArrowSchema,
     expr: Box<LogicalExpr>,
@@ -61,6 +69,7 @@ pub fn create_physical_expr(
     Ok(Box::new(PhysicalExpr(dfexpr)))
 }
 
+/// Wraps the output of physical expression evaluation for passing across the FFI boundary.
 pub struct PhysicalExprOutput(ColumnarValue);
 
 impl PhysicalExprOutput {
@@ -93,6 +102,8 @@ impl PhysicalExprOutput {
         Ok(Box::new(PhysicalExprOutput(columnar_value)))
     }
 
+    /// Returns the result as a `&[u8]` if it is of that type,
+    /// and returns `Err` otherwise.
     pub fn values_u8(&self) -> Result<&[u8], PhysicalExprOutputError> {
         match &self.0 {
             ColumnarValue::Scalar(s) => match s {
@@ -117,6 +128,8 @@ impl PhysicalExprOutput {
         }
     }
 
+    /// Returns the result as a `&[u64]` if it is of that type,
+    /// and returns `Err` otherwise.
     pub fn values_u64(&self) -> Result<&[u64], PhysicalExprOutputError> {
         match &self.0 {
             ColumnarValue::Scalar(s) => match s {

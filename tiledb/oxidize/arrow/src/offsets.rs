@@ -1,4 +1,4 @@
-//! Provides functions for converting TileDB offsets into Arrow [OffsetBuffer]s.
+//! Provides definitions for converting TileDB offsets into Arrow [OffsetBuffer]s.
 //!
 //! For `N` cells, an Arrow [OffsetBuffer] contains `N + 1` offsets, whose units
 //! are elements of the accompanying values.

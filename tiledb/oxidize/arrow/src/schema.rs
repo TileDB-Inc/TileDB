@@ -1,4 +1,4 @@
-//! Provides functions for mapping an [ArraySchema] or the contents of an
+//! Provides definitions for mapping an [ArraySchema] or the contents of an
 //! [ArraySchema] onto representative Arrow [Schema]ta or [Field]s.
 use std::ops::Deref;
 use std::str::Utf8Error;
