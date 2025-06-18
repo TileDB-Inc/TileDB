@@ -1,3 +1,9 @@
+//! Provides methods for constructing internal [ResultTile] objects
+//! from `tiledb_test_cells::Cells`.
+//!
+//! This enables property-based testing against arbitrary tiles
+//! using the strategies we have already written in `tiledb_test_cells`.
+
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -42,6 +48,7 @@ impl Deref for PackagedResultTile {
     }
 }
 
+/// Constructs a [ResultTile] which contains the same logical contents of the requested `cells`.
 pub fn result_tile_from_cells(
     schema: &ArraySchema,
     cells: &Cells,
@@ -50,6 +57,7 @@ pub fn result_tile_from_cells(
     PackagedResultTile::new(schema, buffers)
 }
 
+/// Constructs a [ResultTile] from an Arrow [RecordBatch].
 fn result_tile_from_record_batch(
     schema: &ArraySchema,
     batch: RecordBatch,

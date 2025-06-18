@@ -275,9 +275,14 @@ fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
     Ok(true)
 }
 
+/// Returns a [Strategy] which produces inputs to `instance_query_condition_datafusion`.
 fn strat_query_condition_datafusion()
 -> impl Strategy<Value = (Rc<SchemaData>, Rc<Cells>, Vec<QueryConditionExpr>)> {
     let schema_params = SchemaRequirements {
+        // NB: enumerations are not working properly with `Cells`.
+        // The best thing to do would be to remove `Cells` and just use `RecordBatch`,
+        // so we're not going to worry about it since we do have some test examples
+        // with enumerations.
         attribute_enumeration_likelihood: 0.0,
         ..Default::default()
     };
@@ -304,6 +309,11 @@ fn strat_query_condition_datafusion()
         })
 }
 
+/// Evaluates `instance_query_condition_datafusion` against values drawn randomly
+/// from `strat_query_condition_datafusion`.
+///
+/// Returns `Ok` if all test cases were successful and `Err` otherwise,
+/// logging the "minimum" failing example to standard output.
 fn proptest_query_condition_datafusion() -> anyhow::Result<bool> {
     let mut runner = TestRunner::new(Default::default());
     match runner.run(

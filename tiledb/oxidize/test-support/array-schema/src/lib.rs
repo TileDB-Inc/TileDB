@@ -1,3 +1,9 @@
+//! Provides methods for constructing internal [ArraySchema] objects
+//! from the objects which represent them in `tiledb_pod`.
+//!
+//! This enables property-based testing against arbitrary schemata
+//! using the strategies we have already written in `tiledb_pod`.
+
 pub mod enums;
 
 use itertools::Itertools;
@@ -5,6 +11,7 @@ use tiledb_common::dimension_constraints_go;
 use tiledb_cxx_interface::sm::array_schema::{ArraySchema, Attribute, Dimension, Domain};
 use tiledb_pod::array::schema::{AttributeData, DimensionData, DomainData, SchemaData};
 
+/// Constructs an [ArraySchema] from [SchemaData].
 pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArraySchema>> {
     let domain = domain_from_pod(&pod.domain)?;
 
@@ -63,6 +70,7 @@ pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArrayS
     ))
 }
 
+/// Constructs a [Domain] from [DomainData].
 pub fn domain_from_pod(pod: &DomainData) -> anyhow::Result<cxx::SharedPtr<Domain>> {
     let mut d = tiledb_test_support::array_schema::new_domain(
         tiledb_test_support::get_test_memory_tracker(),
@@ -81,6 +89,7 @@ pub fn domain_from_pod(pod: &DomainData) -> anyhow::Result<cxx::SharedPtr<Domain
     Ok(tiledb_test_support::array_schema::domain_to_shared(d))
 }
 
+/// Constructs a [Dimension] from [DimensionData].
 pub fn dimension_from_pod(pod: &DimensionData) -> anyhow::Result<cxx::SharedPtr<Dimension>> {
     cxx::let_cxx_string!(name = &pod.name);
 
@@ -117,6 +126,7 @@ pub fn dimension_from_pod(pod: &DimensionData) -> anyhow::Result<cxx::SharedPtr<
     ))
 }
 
+/// Constructs an [Attribute] from [AttributeData].
 pub fn attribute_from_pod(pod: &AttributeData) -> anyhow::Result<cxx::SharedPtr<Attribute>> {
     cxx::let_cxx_string!(name = &pod.name);
 

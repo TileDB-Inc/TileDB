@@ -1,3 +1,6 @@
+//! Provides methods for converting enum variants from `tiledb-rs`
+//! to their corresponding internal enum variants.
+
 use tiledb_common::array::{
     ArrayType as RsArrayType, CellOrder, CellValNum as RsCellValNum, TileOrder,
 };
@@ -5,6 +8,7 @@ use tiledb_common::datatype::Datatype as RsDatatype;
 use tiledb_cxx_interface::sm::array_schema::CellValNum as OxCellValNum;
 use tiledb_cxx_interface::sm::enums::{ArrayType as OxArrayType, Datatype as OxDatatype, Layout};
 
+/// Returns the internal [ArrayType] variant corresponding to a `tiledb-rs` [ArrayType].
 pub fn convert_array_type(array_type: RsArrayType) -> OxArrayType {
     match array_type {
         RsArrayType::Dense => OxArrayType::DENSE,
@@ -12,6 +16,7 @@ pub fn convert_array_type(array_type: RsArrayType) -> OxArrayType {
     }
 }
 
+/// Returns the internal [Layout] variant corresponding to a `tiledb-rs` [TileOrder].
 pub fn convert_tile_order(tile_order: TileOrder) -> Layout {
     match tile_order {
         TileOrder::RowMajor => Layout::ROW_MAJOR,
@@ -19,6 +24,7 @@ pub fn convert_tile_order(tile_order: TileOrder) -> Layout {
     }
 }
 
+/// Returns the internal [Layout] variant corresponding to a `tiledb-rs` [CellOrder].
 pub fn convert_cell_order(cell_order: CellOrder) -> Layout {
     match cell_order {
         CellOrder::RowMajor => Layout::ROW_MAJOR,
@@ -29,6 +35,7 @@ pub fn convert_cell_order(cell_order: CellOrder) -> Layout {
     }
 }
 
+/// Returns the internal [Datatype] variant corresponding to a `tiledb-rs` [Datatype].
 pub fn convert_datatype(datatype: RsDatatype) -> OxDatatype {
     type Rs = RsDatatype;
     type Ox = OxDatatype;
@@ -80,6 +87,7 @@ pub fn convert_datatype(datatype: RsDatatype) -> OxDatatype {
     }
 }
 
+/// Returns the internal [CellValNum] variant corresponding to a `tiledb-rs` [CellValNum].
 pub fn convert_cell_val_num(cvn: RsCellValNum) -> OxCellValNum {
     match cvn {
         RsCellValNum::Fixed(nz) if nz.get() == 1 => OxCellValNum::Single,
