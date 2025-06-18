@@ -645,10 +645,8 @@ void SparseIndexReaderBase::apply_query_condition(
           if (condition_.has_value()) {
             QueryCondition::Params params(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
-            {
-              throw_if_not_ok(condition_->apply_sparse<BitmapType>(
-                  params, *rt, rt->post_dedup_bitmap()));
-            }
+            throw_if_not_ok(condition_->apply_sparse<BitmapType>(
+                params, *rt, rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
