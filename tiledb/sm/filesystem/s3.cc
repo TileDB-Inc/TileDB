@@ -36,7 +36,15 @@
  * if they are of the same name. As such, the ArrayDirectory may filter out
  * non-empty directories. Users should be aware of this limitation and attempt
  * to manually maintain their working directory to avoid test failures.
+ *
  * ============================================================================
+ * Notes on string types:
+ *
+ * We use two string types in this file; std::string for most use cases, and
+ * Aws::String to interoperate with the AWS SDK. Please make sure to explicitly
+ * convert between them by calling that type's constructor. Most of the time,
+ * the two string types are identical, but in certain build configurations the
+ * types can be distinct, which will cause build errors and break third parties.
  */
 
 #ifdef HAVE_S3
