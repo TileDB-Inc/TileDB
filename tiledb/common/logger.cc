@@ -332,8 +332,15 @@ Logger& global_logger(Logger::Format format) {
   // Note: We are *not* deallocating this root `Logger` instance so that
   // during process exit, threads other than main will not trigger segfault's
   // if they attempt to log after the main thread has exited.
+
+#ifdef TILEDB_VERBOSE
+  constexpr Logger::Level default_level = Logger::Level::ERR;
+#else
+  constexpr Logger::Level default_level = Logger::Level::FATAL;
+#endif
+
   static Logger* l = tiledb_new<Logger>(
-      HERE(), global_logger_name(format), Logger::Level::ERR, format, true);
+      HERE(), global_logger_name(format), default_level, format, true);
   return *l;
 }
 
