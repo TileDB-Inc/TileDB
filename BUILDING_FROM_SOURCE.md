@@ -30,7 +30,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 | `--enable-debug`         | Enable debug build                                                   | `CMAKE_BUILD_TYPE=Debug`        |
 | `--enable-coverage`      | Enable build with code coverage support                              | `CMAKE_BUILD_TYPE=Coverage`     |
 | `--enable-verbose`       | Enable verbose status messages                                       | `TILEDB_VERBOSE=ON`             |
-| `--enable-assertions     | Enable build with assertions enabled. Always on for debug builds.    | `TILEDB_ASSERTIONS=ON`          |
+| `--enable-assertions`    | Enable build with assertions enabled. Always on for debug builds.    | `TILEDB_ASSERTIONS=ON`          |
 | `--enable-hdfs`          | Enables building with HDFS storage backend support                   | `TILEDB_HDFS=ON`                |
 | `--enable-s3`            | Enables building with S3 storage backend support                     | `TILEDB_S3=ON`                  |
 | `--enable-azure`         | Enables building with Azure Blob Storage backend support             | `TILEDB_AZURE=ON`               |
