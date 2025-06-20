@@ -60,6 +60,7 @@
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 #ifdef HAVE_RUST
+#include "tiledb/oxidize/expr.h"
 #include "tiledb/oxidize/session.h"
 #endif
 
@@ -1511,8 +1512,20 @@ Status Query::add_predicate(const char* predicate) {
   }
 
   try {
-    auto expr = resources_.session().parse_expr(predicate, array_schema());
-    if (!expr.is_predicate(array_schema)) {
+    auto box_extern_expr =
+        resources_.session().parse_expr(predicate, array_schema());
+    auto extern_expr = box_extern_expr.into_raw();
+
+    // NB: Rust cxx does not have a way to have crate A construct and return an
+    // opaque Rust type which is defined in crate B. So above we create an
+    // "ExternLogicalExpr" whose representation is exactly that of LogicalExpr,
+    // and we can transmute the raw pointer after un-boxing it. This is all
+    // quite unsafe but that's life at the FFI boundary. For now, hopefully.
+    using LogicalExpr = tiledb::oxidize::datafusion::logical_expr::LogicalExpr;
+    auto expr = rust::Box<LogicalExpr>::from_raw(
+        reinterpret_cast<LogicalExpr*>(extern_expr));
+
+    if (!expr->is_predicate(array_schema())) {
       return Status_QueryError("Expression does not return a boolean value");
     }
     predicates_.push_back(std::move(expr));

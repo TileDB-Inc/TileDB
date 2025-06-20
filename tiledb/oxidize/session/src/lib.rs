@@ -7,15 +7,6 @@ mod ffi {
         type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
     }
 
-    /*
-    #[namespace = "tiledb::oxidize::datafusion::logical_expr"]
-    extern "C++" {
-        include!("tiledb/oxidize/expr.h");
-
-        type LogicalExpr = tiledb_expr::LogicalExpr;
-    }
-    */
-
     #[namespace = "tiledb::oxidize::datafusion::logical_expr"]
     extern "Rust" {
         type ExternLogicalExpr;
