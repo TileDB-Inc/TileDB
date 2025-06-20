@@ -123,6 +123,12 @@ class ContextResources {
     return *memory_tracker_manager_;
   }
 
+#ifdef HAVE_RUST
+  const tiledb::oxidize::datafusion::session::Session& session() const {
+    return *session_;
+  }
+#endif
+
   /**
    * Create a new MemoryTracker
    *

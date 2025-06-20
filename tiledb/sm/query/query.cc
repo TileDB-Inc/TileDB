@@ -59,6 +59,10 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/session.h"
+#endif
+
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -1494,7 +1498,7 @@ Status Query::set_condition(const QueryCondition& condition) {
   return Status::Ok();
 }
 
-Status Query::add_predicate(const char*) {
+Status Query::add_predicate(const char* predicate) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     return logger_->status(Status_QueryError(
         "Cannot add query predicate; Operation not applicable "
@@ -1506,8 +1510,18 @@ Status Query::add_predicate(const char*) {
         "initialized query is not supported."));
   }
 
-  return logger_->status(
-      Status_QueryError("Cannot add a query predicate: not implemented"));
+  try {
+    auto expr = resources_.session().parse_expr(predicate, array_schema());
+    if (!expr.is_predicate(array_schema)) {
+      return Status_QueryError("Expression does not return a boolean value");
+    }
+    predicates_.push_back(std::move(expr));
+  } catch (const rust::Error& e) {
+    return Status_QueryError(
+        "Error adding predicate: " + std::string(e.what()));
+  }
+
+  return Status_QueryError("Not implemented");
 }
 
 Status Query::add_update_value(
