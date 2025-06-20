@@ -2,7 +2,9 @@
 include(oxidize)
 
 
-corrosion_import_crate(MANIFEST_PATH Cargo.toml IMPORTED_CRATES corrosion_debug)
+if (TILEDB_RUST)
+  corrosion_import_crate(MANIFEST_PATH Cargo.toml IMPORTED_CRATES corrosion_debug)
+endif ()
 
 
 cxxbridge(

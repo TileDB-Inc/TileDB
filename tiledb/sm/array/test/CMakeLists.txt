@@ -34,5 +34,5 @@ conclude(unit_test)
 
 commence(unit_test consistency)
     this_target_sources(main.cc unit_consistency.cc)
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
 conclude(unit_test)

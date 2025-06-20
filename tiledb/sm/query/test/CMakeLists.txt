@@ -31,10 +31,7 @@ commence(unit_test query)
     # Not actually testing a unit yet, but some things that ought to be units
     this_target_link_libraries(tiledb_test_support_lib)
     this_target_link_libraries(ast_test_support_lib)
-
-    if (TILEDB_RUST)
-      this_target_link_libraries(unit_query_condition_oxidize rapidcheck)
-    endif ()
+    this_target_link_libraries(unit_query_condition_oxidize)
 
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.

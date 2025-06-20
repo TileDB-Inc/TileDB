@@ -50,15 +50,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(api)
 add_subdirectory(as_built)
 add_subdirectory(common)
+add_subdirectory(oxidize)
 add_subdirectory(platform)
 add_subdirectory(type)
 add_subdirectory(sm)
 add_subdirectory(stdx)
 add_subdirectory(storage_format)
-
-if (TILEDB_RUST)
-    add_subdirectory(oxidize)
-endif()
 
 ############################################################
 # Header files
