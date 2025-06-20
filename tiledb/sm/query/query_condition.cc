@@ -177,9 +177,8 @@ bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
           array_schema, *tree_.get());
       auto dfschema =
           tiledb::oxidize::arrow::schema::create(array_schema, select);
-      auto physical_expr =
-          std::move(tiledb::oxidize::datafusion::physical_expr::create(
-              *dfschema, std::move(logical_expr)));
+      auto physical_expr = tiledb::oxidize::datafusion::physical_expr::create(
+          *dfschema, std::move(logical_expr));
 
       datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
     } catch (const ::rust::Error& e) {
