@@ -34,6 +34,10 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/rest/rest_client.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/session.h"
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -64,7 +68,11 @@ ContextResources::ContextResources(
           config_,
           compute_tp(),
           *logger_.get(),
-          create_memory_tracker())} {
+          create_memory_tracker())}
+#ifdef HAVE_RUST
+    , session_(tiledb::oxidize::datafusion::session::new_session())
+#endif
+{
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);
   serialization_memory_tracker_->set_type(MemoryTrackerType::SERIALIZATION);
 

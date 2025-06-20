@@ -67,3 +67,8 @@ mod query_condition;
 pub use logical_expr::LogicalExpr;
 pub use physical_expr::{PhysicalExpr, PhysicalExprOutput, create_physical_expr};
 pub use query_condition::to_datafusion as query_condition_to_logical_expr;
+
+unsafe impl cxx::ExternType for LogicalExpr {
+    type Id = cxx::type_id!("tiledb::oxidize::datafusion::logical_expr::LogicalExpr");
+    type Kind = cxx::kind::Opaque;
+}

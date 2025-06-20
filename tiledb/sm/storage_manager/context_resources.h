@@ -39,7 +39,15 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/stats/global_stats.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/rust.h"
+#endif
+
 using namespace tiledb::common;
+
+namespace tiledb::oxidize::datafusion::session {
+class Session;
+}
 
 namespace tiledb::sm {
 
@@ -184,6 +192,10 @@ class ContextResources {
 
   /** The rest client (may be null if none was configured). */
   shared_ptr<RestClient> rest_client_;
+
+#ifdef HAVE_RUST
+  rust::Box<tiledb::oxidize::datafusion::session::Session> session_;
+#endif
 };
 
 }  // namespace tiledb::sm
