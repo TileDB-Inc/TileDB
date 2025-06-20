@@ -193,6 +193,18 @@ class Curl {
   std::string url_escape(const std::string& url) const;
 
   /**
+   * Escapes the given namespace REST component.
+   * For REST 3.0 we escape the workspace and teamspace components, preserving
+   * the path seperator between them.
+   * Legacy REST namespace will be returned as-is, since naming requirements
+   * disallows using characters that require URL encoding.
+   *
+   * @param ns The namespace or workspace/teamspace to escape.
+   * @return Escaped namespace component.
+   */
+  std::string url_escape_namespace(const std::string& ns) const;
+
+  /**
    * Wrapper for sending patch request to server and returning
    * the unbuffered response body.
    *
