@@ -830,7 +830,7 @@ TILEDB_EXPORT capi_return_t tiledb_config_set(
  * @endcode
  *
  * @param config The config object.
- * @param param The parameter to be set.
+ * @param param The parameter to be retrieved.
  * @param value A pointer to the value of the parameter to be retrieved
  *    (`NULL` if it does not exist).
  * @param error Error object returned upon error (`NULL` if there is
