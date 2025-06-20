@@ -95,13 +95,10 @@ capi_return_t tiledb_profile_get_param(
 
   const std::string* param_value = profile->profile()->get_param(param);
 
-  if (!param_value) {
-    throw CAPIException(
-        "[tiledb_profile_get_param] Parameter '" + std::string(param) +
-        "' does not exist in the profile.");
-  }
+  *value = param_value != nullptr ?
+               tiledb_string_handle_t::make_handle(*param_value) :
+               nullptr;
 
-  *value = tiledb_string_handle_t::make_handle(*param_value);
   return TILEDB_OK;
 }
 

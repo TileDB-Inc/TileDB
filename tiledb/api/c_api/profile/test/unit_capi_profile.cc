@@ -201,6 +201,11 @@ TEST_CASE_METHOD(
     rc = tiledb_profile_get_param(profile, "rest.username", &value, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
+  SECTION("param not found") {
+    rc = tiledb_profile_get_param(profile, "does.not.exist", &value, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(value == nullptr);
+  }
   SECTION("null param") {
     rc = tiledb_profile_get_param(profile, nullptr, &value, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);

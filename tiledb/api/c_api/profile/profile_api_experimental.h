@@ -167,7 +167,8 @@ TILEDB_EXPORT capi_return_t tiledb_profile_set_param(
  *
  * @param[in] profile The profile.
  * @param[in] param The parameter name.
- * @param[out] value The parameter value.
+ * @param[out] value A pointer to the value of the parameter to be retrieved
+ *    (`NULL` if it does not exist).
  * @param[out] error Error object returned upon error (`NULL` if there is no
  * error).
  * @return TILEDB_EXPORT
