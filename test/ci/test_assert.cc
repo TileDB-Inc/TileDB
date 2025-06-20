@@ -79,12 +79,14 @@ TEST_CASE("CI: Test libc assertions configuration", "[ci][assertions]") {
   // 2) on windows/max the standard library assertions are toggled
   //    by a macro, indepdently of the build configuration
 #if defined(_WIN32)
+  const std::vector<int> expectExitCodes = {static_cast<int>(0xc0000409)};
 #ifndef NDEBUG
   const bool expectAssertFailed = true;
 #else
   const bool expectAssertFailed = false;
 #endif
 #else
+  const std::vector<int> expectExitCodes = assert_exit_codes;
 #ifdef _GLIBCXX_ASSERTIONS
   const bool expectAssertFailed = true;
 #else
@@ -94,8 +96,8 @@ TEST_CASE("CI: Test libc assertions configuration", "[ci][assertions]") {
 
   if (expectAssertFailed) {
     REQUIRE(
-        std::find(assert_exit_codes.begin(), assert_exit_codes.end(), retval) !=
-        assert_exit_codes.end());
+        std::find(expectExitCodes.begin(), expectExitCodes.end(), retval) !=
+        expectExitCodes.end());
   } else {
     REQUIRE(retval == 0);
   }
