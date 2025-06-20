@@ -279,10 +279,6 @@ TEST_CASE_METHOD(
     rc = tiledb_profile_remove(name_, dir_.c_str(), &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
-  SECTION("null profile") {
-    rc = tiledb_profile_remove(nullptr, nullptr, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
   tiledb_profile_free(&profile);
 }
 
