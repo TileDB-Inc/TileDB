@@ -57,6 +57,18 @@ class URI {
   class MustBeValidMarker {};
   static constexpr MustBeValidMarker must_be_valid{};
 
+  /** Class to store the different components of a tiledb:// URI */
+  struct RESTURIComponents {
+    /* The namespace of the input URI */
+    std::string server_namespace;
+    /* The name of the asset */
+    std::string asset_name;
+    /* The hierarchical path in TileDB Server of the asset */
+    std::string server_path;
+    /* The storage path backing this asset */
+    std::string asset_storage;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -231,17 +243,20 @@ class URI {
    */
   bool is_tiledb() const;
 
+  // TODO add docstring
+  std::optional<size_t> get_storage_component_index(size_t start_index) const;
+
   /**
    * Checks the TileDB REST URI for validity and returns its components.
    *
-   * @param array_namespace Set to the namespace of the input URI
-   * @param array_uri Set to the array URI of the input URI.
-   * @param legacy True if we are communicating with a legacy REST server.
+   * @param[in] legacy True if we are communicating with a legacy REST server.
    *    If False, the namespace component will contain `workspace/teamspace`.
+   * @param[out] rest_components The  structure to fill with the components of
+   * the URI.
    * @return Status
    */
   Status get_rest_components(
-      std::string* array_namespace, std::string* array_uri, bool legacy) const;
+      bool legacy, RESTURIComponents* rest_components) const;
 
   /**
    * Return the fragment name from the URI if one can be found.
