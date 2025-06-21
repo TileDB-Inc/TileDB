@@ -2919,15 +2919,14 @@ Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
     const ResultTile& result_tile,
     std::span<BitmapType> result_bitmap) {
-  if (datafusion_.has_value()) {
 #ifdef HAVE_RUST
+  if (datafusion_.has_value()) {
     try {
       datafusion_.value().apply(params, result_tile, result_bitmap);
     } catch (const ::rust::Error& e) {
       throw std::logic_error(
           "Unexpected error evaluating expression: " + std::string(e.what()));
     }
-#endif
   } else {
     apply_tree_sparse<BitmapType>(
         tree_,
@@ -2936,6 +2935,10 @@ Status QueryCondition::apply_sparse(
         std::multiplies<BitmapType>(),
         result_bitmap);
   }
+#else
+  apply_tree_sparse<BitmapType>(
+      tree_, params, result_tile, std::multiplies<BitmapType>(), result_bitmap);
+#endif
 
   return Status::Ok();
 }

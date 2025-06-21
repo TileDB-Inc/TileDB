@@ -422,11 +422,8 @@ class QueryCondition {
         const ResultTile& result_tile,
         std::span<BitmapType> result_bitmap) const;
   };
-#else
-  /** no-op */
-  struct Datafusion {};
-#endif
   std::optional<Datafusion> datafusion_;
+#endif
 
   /** Caches all field names in the value nodes of the AST.  */
   mutable std::unordered_set<std::string> field_names_;
