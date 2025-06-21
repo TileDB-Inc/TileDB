@@ -14,10 +14,10 @@ pub use ffi::ByteVecValue;
 
 impl ByteVecValue {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        unsafe {
-            // SAFETY: `self.data()` is NULL if and only if `self.size() == 0`
-            crate::raw_as_slice::<'a, u8>(self.data(), self.size())
+        if self.data().is_null() {
+            assert_eq!(0, self.size())
         }
+        unsafe { crate::raw_as_slice::<'a, u8>(self.data(), self.size()) }
     }
 
     pub fn is_empty(&self) -> bool {
