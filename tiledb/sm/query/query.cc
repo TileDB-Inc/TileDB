@@ -840,10 +840,7 @@ Status Query::process() {
           return Status::Ok();
         }));
 
-    {
-      auto timer_se = stats_->start_timer("query_condition_rewrite_for_schema");
-      condition_->rewrite_for_schema(array_schema());
-    }
+    condition_->rewrite_for_schema(array_schema());
 
     // experimental feature - maybe evaluate using datafusion
     const std::string evaluator_param_name = "sm.query.condition_evaluator";
