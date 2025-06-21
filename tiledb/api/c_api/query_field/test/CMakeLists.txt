@@ -35,7 +35,7 @@ commence(unit_test capi_query_field)
 # dependency, `capi_query_field` would have to link (essentially) the whole 
 # library to get a complete executable.
   this_target_object_libraries(capi_query_field)
-  this_target_link_libraries(tiledb_test_support_lib)
+  this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
 
   if (NOT MSVC)
     target_compile_options(unit_capi_query_field PRIVATE -Wno-deprecated-declarations)

@@ -44,6 +44,8 @@ include(TileDBToolchain)
 include(Doxygen)
 include(Format)
 
+set(TILEDB_OXIDIZE_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tiledb/oxidize/include)
+
 ############################################################
 # Parse version file
 # credit: https://stackoverflow.com/a/47084079

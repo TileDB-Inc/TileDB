@@ -28,6 +28,6 @@ include(unit_test)
 
 commence(unit_test rtree)
     this_target_sources(main.cc unit_rtree.cc)
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
     this_target_object_libraries(rtree)
 conclude(unit_test)

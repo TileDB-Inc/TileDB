@@ -29,5 +29,5 @@ commence(unit_test delete_update_condition)
     this_target_sources(main.cc unit_delete_condition.cc unit_update_condition.cc)
     # The dependencies can't yet be factored into separate object libraries
     this_target_link_libraries(ast_test_support_lib)
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
 conclude(unit_test)

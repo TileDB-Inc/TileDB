@@ -34,7 +34,7 @@ conclude(unit_test)
 commence(unit_test add_ranges_list)
     this_target_sources(main.cc unit_add_ranges_list.cc)
     this_target_link_libraries(TILEDB_CORE_OBJECTS)
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
     target_include_directories(unit_add_ranges_list PRIVATE
         "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
     # We want tests to continue as normal even as the API is changing,

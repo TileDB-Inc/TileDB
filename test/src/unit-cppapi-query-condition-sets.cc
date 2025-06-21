@@ -591,7 +591,7 @@ TEST_CASE("AST Expression Errors", "[query-condition][set][error]") {
       tdb_new(sm::ASTNodeVal, "foo", "bar", 3, sm::QueryConditionOp::LT));
   auto v2 = tdb_unique_ptr<sm::ASTNode>(
       tdb_new(sm::ASTNodeVal, "foo", "baz", 3, sm::QueryConditionOp::GT));
-  auto expr = v1->combine(v2, sm::QueryConditionCombinationOp::OR);
+  auto expr = v1->combine(*v2, sm::QueryConditionCombinationOp::OR);
   REQUIRE_THROWS(expr->get_value_ptr());
   REQUIRE_THROWS(expr->get_value_size());
   REQUIRE_THROWS(expr->get_data());

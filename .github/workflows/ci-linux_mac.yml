@@ -47,7 +47,7 @@ on:
         required: false
         type: boolean
       rust:
-        default: false
+        default: true
         description: 'Enable Rust'
         required: false
         type: boolean

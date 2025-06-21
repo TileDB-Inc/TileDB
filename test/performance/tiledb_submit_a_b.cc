@@ -75,9 +75,25 @@
  *       }
  *     },
  *   ],
+ *   "metrics": [
+ *      "loop_num",
+ *      "internal_loop_num",
+ *      ...
+ *   ],
+ *   "timers": [
+ *      "preprocess_result_tile_order_compute",
+ *      "preprocess_result_tile_order_await",
+ *      ...
+ *   ]
  *   "queries": [
  *     {
+ *       "label": "my_query",
  *       "layout": "global_order",
+ *       "select": [
+ *          "a",
+ *          "b",
+ *          ...
+ *       ]
  *       "subarray": [
  *         {
  *           "start": {
@@ -87,7 +103,22 @@
  *             "%": 50
  *           }
  *         }
- *       ]
+ *       ],
+ *       "condition": {
+ *         "operator": "&&",
+ *         "args": [
+ *           {
+ *             "operator": "<"
+ *             "field": "a",
+ *             "value": 5
+ *           },
+ *           {
+ *             "operator": "<>"
+ *             "field": "b",
+ *             "value": 10
+ *           }
+ *         ]
+ *       }
  *     }
  *   ]
  * }
@@ -102,9 +133,19 @@
  * - The "config" field is a list of key-value pairs which are
  *   passed to the query configuration options.
  *
+ * The "metrics" and "timers" fields indicate the list of statistics
+ * to collect for each query. For "timers" the timer sum is
+ * reported.
+ *
  * Each item in "queries" specifies a query to run the comparison for.
  *
+ * The "label" query identifies the query in the output.
+ *
  * The "layout" field is required and sets the results order.
+ *
+ * The "select" field is a list of attributes to select
+ * (in addition to the dimensions). If this key is not provided
+ * then all attributes are selected.
  *
  * The "subarray" path is an optional list of range specifications on
  * each dimension. Currently the only supported specification is
@@ -118,12 +159,14 @@
 #include <test/support/stdx/tuple.h>
 
 #include "tiledb/api/c_api/array/array_api_internal.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 #include "tiledb/type/apply_with_type.h"
@@ -293,14 +336,151 @@ struct SubarrayDimension {
   }
 };
 
+/**
+ * A node of a query condition syntax tree.
+ */
+class QueryCondition {
+  struct Intermediate {
+    tiledb::sm::QueryConditionCombinationOp operator_;
+    std::vector<QueryCondition> children_;
+
+    tiledb::QueryCondition build(const tiledb::Query& query) const {
+      std::optional<tiledb::QueryCondition> combinator;
+      for (const auto& arg : children_) {
+        if (!combinator.has_value()) {
+          combinator.emplace(arg.build(query));
+        } else {
+          combinator->combine(
+              arg.build(query),
+              static_cast<tiledb_query_condition_combination_op_t>(operator_));
+        }
+      }
+      return combinator.value();
+    }
+  };
+
+  struct Atom {
+    tiledb::sm::QueryConditionOp operator_;
+    std::string field_;
+    json value_;
+
+    tiledb::QueryCondition build(const tiledb::Query& query) const {
+      const auto& schema = query.array().schema();
+      tiledb_datatype_t dt =
+          (schema.has_attribute(field_) ?
+               schema.attribute(field_).type() :
+               schema.domain().dimension(field_).type());
+
+      tiledb::QueryCondition condition(query.ctx());
+
+      if (schema.ptr()->array_schema()->cell_val_num(field_) ==
+              tiledb::sm::constants::var_num &&
+          (dt == TILEDB_STRING_ASCII || dt == TILEDB_STRING_UTF8)) {
+        condition.init(
+            field_,
+            value_.get<std::string>(),
+            static_cast<tiledb_query_condition_op_t>(operator_));
+      } else {
+        auto do_init = [&](auto arg) {
+          using value_type = std::decay_t<std::remove_pointer_t<decltype(arg)>>;
+          const value_type value = value_.get<value_type>();
+          condition.init(
+              field_,
+              static_cast<const void*>(&value),
+              sizeof(value),
+              static_cast<tiledb_query_condition_op_t>(operator_));
+        };
+        tiledb::type::apply_with_type(
+            do_init, static_cast<tiledb::sm::Datatype>(dt));
+      }
+      return condition;
+    }
+  };
+
+  std::optional<Intermediate> intermediate_;
+  std::optional<Atom> atom_;
+
+ public:
+  static QueryCondition from_json(const json& json) {
+    const std::string op = json["operator"].get<std::string>();
+    if (op == "&&") {
+      return intermediate_from_json(
+          json, tiledb::sm::QueryConditionCombinationOp::AND);
+    } else if (op == "||") {
+      return intermediate_from_json(
+          json, tiledb::sm::QueryConditionCombinationOp::OR);
+    } else if (op == "!") {
+      return intermediate_from_json(
+          json, tiledb::sm::QueryConditionCombinationOp::NOT);
+    } else if (op == "<") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::LT);
+    } else if (op == "<=") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::LE);
+    } else if (op == "=" || op == "==") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::EQ);
+    } else if (op == ">=") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::GE);
+    } else if (op == ">") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::GT);
+    } else if (op == "!=" || op == "<>") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::NE);
+    } else {
+      throw std::runtime_error("Invalid 'operator' for query condition: " + op);
+    }
+  }
+
+  tiledb::QueryCondition build(const tiledb::Query& query) const {
+    if (intermediate_.has_value()) {
+      return intermediate_->build(query);
+    } else {
+      return atom_->build(query);
+    }
+  }
+
+ private:
+  static QueryCondition intermediate_from_json(
+      const json& json, tiledb::sm::QueryConditionCombinationOp op) {
+    Intermediate node;
+    node.operator_ = op;
+    for (const auto& arg : json["args"]) {
+      node.children_.push_back(from_json(arg));
+    }
+
+    QueryCondition wrapper;
+    wrapper.intermediate_ = node;
+    return wrapper;
+  }
+
+  static QueryCondition atom_from_json(
+      const json& json, tiledb::sm::QueryConditionOp op) {
+    Atom atom;
+    atom.operator_ = op;
+    atom.field_ = json["field"].get<std::string>();
+    atom.value_ = json["value"];
+
+    QueryCondition wrapper;
+    wrapper.atom_ = atom;
+    return wrapper;
+  }
+};
+
 struct Query {
   std::string label_;
   tiledb_layout_t layout_;
+  std::optional<std::vector<std::string>> select_;
   std::vector<std::optional<SubarrayDimension>> subarray_;
+  std::optional<QueryCondition> condition_;
 
   static Query from_json(const json& jq) {
     Query q;
     q.label_ = jq["label"].get<std::string>();
+
+    if (jq.find("select") != jq.end()) {
+      q.select_.emplace(std::vector<std::string>());
+      for (const auto& field : jq["select"]) {
+        q.select_->push_back(field.get<std::string>());
+      }
+    }
 
     const auto layout = jq["layout"].get<std::string>();
     if (layout == "global_order") {
@@ -332,6 +512,12 @@ struct Query {
         }
       }
     }
+
+    if (jq.find("condition") != jq.end()) {
+      const auto& jcondition = jq["condition"];
+      q.condition_.emplace(QueryCondition::from_json(jcondition));
+    }
+
     return q;
   }
 
@@ -352,8 +538,11 @@ struct Query {
           subarray_[d].value().apply(array, d, subarray);
         }
       }
-
       query.set_subarray(subarray);
+    }
+
+    if (condition_.has_value()) {
+      query.set_condition(condition_->build(query));
     }
   }
 };
@@ -416,7 +605,8 @@ struct require_type {
 };
 
 template <FragmentType Fragment>
-static void check_compatibility(const tiledb::Array& array) {
+static void check_compatibility(
+    const tiledb::Array& array, const Query& query_config) {
   using DimensionTuple = decltype(std::declval<Fragment>().dimensions());
   using AttributeTuple = decltype(std::declval<Fragment>().attributes());
 
@@ -444,12 +634,37 @@ static void check_compatibility(const tiledb::Array& array) {
       },
       stdx::decay_tuple<DimensionTuple>());
 
-  unsigned a = 0;
-  std::apply(
-      [&]<typename... Ts>(query_buffers<Ts>...) {
-        (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
-      },
-      stdx::decay_tuple<AttributeTuple>());
+  if (query_config.select_.has_value()) {
+    unsigned a = 0;
+    auto get_attribute = [&](unsigned a) {
+      if (a >= query_config.select_.value().size()) {
+        throw std::runtime_error(
+            "FragmentType and select list do not match: too few "
+            "attributes "
+            "selected");
+      } else {
+        return *schema.attribute(query_config.select_.value()[a++]);
+      }
+    };
+    std::apply(
+        [&]<typename... Ts>(query_buffers<Ts>...) {
+          (require_type<Ts>::attribute(get_attribute(a++)), ...);
+        },
+        stdx::decay_tuple<AttributeTuple>());
+    if (a != query_config.select_.value().size()) {
+      throw std::runtime_error(
+          "FragmentType and select list do not match: too many attributes "
+          "selected");
+    }
+  } else {
+    // select all attributes, or at least the first N based on fragment
+    unsigned a = 0;
+    std::apply(
+        [&]<typename... Ts>(query_buffers<Ts>...) {
+          (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
+        },
+        stdx::decay_tuple<AttributeTuple>());
+  }
 }
 
 template <FragmentType Fragment>
@@ -457,7 +672,9 @@ static void run(
     StatKeeper& stat_keeper,
     const char* array_uri,
     const Query& query_config,
-    const std::span<Configuration> configs) {
+    const std::span<Configuration> configs,
+    const std::span<std::string> metrics,
+    const std::span<std::string> timers) {
   std::vector<uint64_t> num_user_cells;
   for (const auto& config : configs) {
     num_user_cells.push_back(
@@ -479,14 +696,19 @@ static void run(
 
   // Open array for reading.
   tiledb::Array array(ctx, array_uri, TILEDB_READ);
-  check_compatibility<Fragment>(array);
+  check_compatibility<Fragment>(array, query_config);
 
   auto dimension_name = [&](unsigned d) -> std::string {
     return std::string(
         array.ptr()->array_schema_latest().domain().dimension_ptr(d)->name());
   };
   auto attribute_name = [&](unsigned a) -> std::string {
-    return std::string(array.ptr()->array_schema_latest().attribute(a)->name());
+    if (query_config.select_.has_value()) {
+      return query_config.select_.value()[a];
+    } else {
+      return std::string(
+          array.ptr()->array_schema_latest().attribute(a)->name());
+    }
   };
 
   std::vector<tiledb::Query> queries;
@@ -603,24 +825,14 @@ static void run(
     const tiledb::sm::Query& query_internal = *queries[q].ptr().get()->query_;
     const auto& stats = *query_internal.stats();
 
-    stat_keeper.report_metric(
-        keys[q], "loop_num", optional_json(stats.find_counter("loop_num")));
-    stat_keeper.report_metric(
-        keys[q],
-        "internal_loop_num",
-        optional_json(stats.find_counter("internal_loop_num")));
-
-    // record parallel merge timers
-    stat_keeper.report_timer(
-        keys[q],
-        "preprocess_result_tile_order_compute",
-        optional_json(
-            stats.find_timer("preprocess_result_tile_order_compute.sum")));
-    stat_keeper.report_timer(
-        keys[q],
-        "preprocess_result_tile_order_await",
-        optional_json(
-            stats.find_timer("preprocess_result_tile_order_await.sum")));
+    for (const auto& metric : metrics) {
+      stat_keeper.report_metric(
+          keys[q], metric, optional_json(stats.find_counter(metric)));
+    }
+    for (const auto& timer : timers) {
+      stat_keeper.report_timer(
+          keys[q], timer, optional_json(stats.find_timer(timer + ".sum")));
+    }
   }
 }
 
@@ -636,8 +848,10 @@ tiledb::Config json2config(const json& j) {
   const json jconf = j["config"];
   for (auto it = jconf.begin(); it != jconf.end(); ++it) {
     const auto key = it.key();
-    const auto value = nlohmann::to_string(it.value());
-    params[key] = nlohmann::to_string(it.value());
+    const auto value =
+        (it.value().is_string() ? it.value().get<std::string>() :
+                                  nlohmann::to_string(it.value()));
+    params[key] = value;
   }
 
   return tiledb::Config(params);
@@ -670,6 +884,19 @@ int main(int argc, char** argv) {
     qconfs.push_back(cfg);
   }
 
+  std::vector<std::string> metrics;
+  if (config.find("metrics") != config.end()) {
+    for (const auto& jmetric : config["metrics"]) {
+      metrics.push_back(jmetric.get<std::string>());
+    }
+  }
+  std::vector<std::string> timers;
+  if (config.find("timers") != config.end()) {
+    for (const auto& jtimer : config["timers"]) {
+      timers.push_back(jtimer.get<std::string>());
+    }
+  }
+
   StatKeeper stat_keeper;
 
   std::span<const char* const> array_uris(
@@ -680,7 +907,7 @@ int main(int argc, char** argv) {
 
     for (const auto& array_uri : array_uris) {
       try {
-        run<Fragment>(stat_keeper, array_uri, qq, qconfs);
+        run<Fragment>(stat_keeper, array_uri, qq, qconfs, metrics, timers);
       } catch (const std::exception& e) {
         std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
                   << std::endl;

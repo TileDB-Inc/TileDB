@@ -635,7 +635,7 @@ void SparseIndexReaderBase::apply_query_condition(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
             throw_if_not_ok(
                 delete_timestamps_condition_.apply_sparse<BitmapType>(
-                    params, *rt, rt->post_dedup_bitmap()));
+                    params, *rt, std::span(rt->post_dedup_bitmap())));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }

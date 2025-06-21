@@ -27,7 +27,7 @@ include(unit_test)
 
 commence(unit_test misc)
     this_target_object_libraries(math)
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
     # change to `this_target_include_directories` when available
     target_include_directories(unit_misc PRIVATE "${CMAKE_SOURCE_DIR}")
     this_target_sources(

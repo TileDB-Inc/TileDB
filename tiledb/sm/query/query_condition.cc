@@ -41,6 +41,11 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/arrow.h"
+#include "tiledb/oxidize/expr.h"
+#endif
+
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -162,6 +167,30 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
   tree_->rewrite_for_schema(array_schema);
 }
 
+#ifdef HAVE_RUST
+bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
+  if (!datafusion_.has_value()) {
+    std::vector<std::string> select(field_names().begin(), field_names().end());
+
+    try {
+      auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
+          array_schema, *tree_.get());
+      auto dfschema =
+          tiledb::oxidize::arrow::schema::create(array_schema, select);
+      auto physical_expr = tiledb::oxidize::datafusion::physical_expr::create(
+          *dfschema, std::move(logical_expr));
+
+      datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
+    } catch (const ::rust::Error& e) {
+      throw std::logic_error(
+          "Unexpected error compiling expression: " + std::string(e.what()));
+    }
+    return true;
+  }
+  return false;
+}
+#endif
+
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   if (!tree_) {
     return Status::Ok();
@@ -184,7 +213,7 @@ Status QueryCondition::combine(
 
   combined_cond->field_names_.clear();
   combined_cond->enumeration_field_names_.clear();
-  combined_cond->tree_ = this->tree_->combine(rhs.tree_, combination_op);
+  combined_cond->tree_ = this->tree_->combine(*rhs.tree_, combination_op);
   return Status::Ok();
 }
 
@@ -608,7 +637,7 @@ void QueryCondition::apply_ast_node(
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content = node->get_value_ptr();
   const size_t condition_value_size = node->get_value_size();
@@ -775,7 +804,7 @@ void QueryCondition::apply_ast_node(
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::ALWAYS_TRUE:
       apply_ast_node<T, QueryConditionOp::ALWAYS_TRUE, CombinationOp>(
@@ -914,7 +943,7 @@ void QueryCondition::apply_ast_node(
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   std::string node_field_name = node->get_field_name();
 
   const auto nullable = array_schema.is_nullable(node_field_name);
@@ -1176,7 +1205,7 @@ void QueryCondition::apply_tree(
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   const auto& array_schema = params.GetSchema();
   if (!node->is_expr()) {
     apply_ast_node(
@@ -1405,7 +1434,7 @@ template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -1506,7 +1535,7 @@ template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -1667,7 +1696,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -1980,7 +2009,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const QueryCondition::Params& params,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -2104,7 +2133,7 @@ void QueryCondition::apply_tree_dense(
 
 Status QueryCondition::apply_dense(
     const QueryCondition::Params& params,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
     const uint64_t src_cell,
@@ -2411,10 +2440,10 @@ template <
     typename nullable>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
   const void* condition_value_content = node->get_value_ptr();
   const size_t condition_value_size = node->get_value_size();
@@ -2499,10 +2528,10 @@ template <
     typename nullable>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::ALWAYS_TRUE:
       apply_ast_node_sparse<
@@ -2594,11 +2623,11 @@ void QueryCondition::apply_ast_node_sparse(
 template <typename T, typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     const bool var_size,
     const bool nullable,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   if (nullable) {
     apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
         node, result_tile, var_size, combination_op, result_bitmap);
@@ -2612,9 +2641,9 @@ template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   std::string node_field_name = node->get_field_name();
   // If the tile_tuple is null it may have been skipped by this fragment in
   // ReaderBase::skip_field. This is the case for evolved attributes / dims.
@@ -2788,9 +2817,9 @@ template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_tree_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const QueryCondition::Params& params,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   const auto& array_schema = params.GetSchema();
   if (!node->is_expr()) {
     apply_ast_node_sparse<BitmapType>(
@@ -2888,10 +2917,28 @@ void QueryCondition::apply_tree_sparse(
 template <typename BitmapType>
 Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
-    ResultTile& result_tile,
-    tdb::pmr::vector<BitmapType>& result_bitmap) {
+    const ResultTile& result_tile,
+    std::span<BitmapType> result_bitmap) {
+#ifdef HAVE_RUST
+  if (datafusion_.has_value()) {
+    try {
+      datafusion_.value().apply(params, result_tile, result_bitmap);
+    } catch (const ::rust::Error& e) {
+      throw std::logic_error(
+          "Unexpected error evaluating expression: " + std::string(e.what()));
+    }
+  } else {
+    apply_tree_sparse<BitmapType>(
+        tree_,
+        params,
+        result_tile,
+        std::multiplies<BitmapType>(),
+        result_bitmap);
+  }
+#else
   apply_tree_sparse<BitmapType>(
       tree_, params, result_tile, std::multiplies<BitmapType>(), result_bitmap);
+#endif
 
   return Status::Ok();
 }
@@ -2912,9 +2959,67 @@ uint64_t QueryCondition::condition_index() const {
   return condition_index_;
 }
 
+#ifdef HAVE_RUST
+template <typename BitmapType>
+void QueryCondition::Datafusion::apply(
+    const QueryCondition::Params&,
+    const ResultTile& result_tile,
+    std::span<BitmapType> result_bitmap) const {
+  const auto arrow =
+      tiledb::oxidize::arrow::record_batch::create(*schema_, result_tile);
+  const auto predicate_eval = expr_->evaluate(*arrow);
+  static_assert(
+      std::is_same_v<BitmapType, uint8_t> ||
+      std::is_same_v<BitmapType, uint64_t>);
+  if constexpr (std::is_same_v<BitmapType, uint8_t>) {
+    const auto predicate_out_u8 = predicate_eval->cast_to(Datatype::UINT8);
+    const auto bitmap = predicate_out_u8->values_u8();
+    if (predicate_out_u8->is_scalar() && bitmap.empty()) {
+      // all NULLs
+      for (auto& result : result_bitmap) {
+        result = 0;
+      }
+    } else if (predicate_out_u8->is_scalar()) {
+      // all the same value
+      for (auto& result : result_bitmap) {
+        result = result * bitmap[0];
+      }
+    } else if (bitmap.size() == result_bitmap.size()) {
+      for (uint64_t i = 0; i < bitmap.size(); i++) {
+        result_bitmap[i] *= bitmap[i];
+      }
+    } else {
+      throw std::logic_error(
+          "Expression evaluation bitmap has unexpected size");
+    }
+  } else {
+    const auto predicate_out_u64 = predicate_eval->cast_to(Datatype::UINT64);
+    const auto bitmap = predicate_out_u64->values_u64();
+    if (predicate_out_u64->is_scalar() && bitmap.empty()) {
+      // all NULLs
+      for (auto& result : result_bitmap) {
+        result = 0;
+      }
+    } else if (predicate_out_u64->is_scalar()) {
+      // all the same value
+      for (auto& result : result_bitmap) {
+        result = result * bitmap[0];
+      }
+    } else if (bitmap.size() == result_bitmap.size()) {
+      for (uint64_t i = 0; i < result_bitmap.size(); i++) {
+        result_bitmap[i] *= bitmap[i];
+      }
+    } else {
+      throw std::logic_error(
+          "Expression evaluation bitmap has unexpected size");
+    }
+  }
+}
+#endif
+
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint8_t>&);
+    const QueryCondition::Params&, const ResultTile&, std::span<uint8_t>);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint64_t>&);
+    const QueryCondition::Params&, const ResultTile&, std::span<uint64_t>);
 }  // namespace tiledb::sm
