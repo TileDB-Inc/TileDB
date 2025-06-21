@@ -44,7 +44,7 @@ pub fn try_from_bytes(value_size: usize, bytes: &[u8]) -> Result<OffsetBuffer<i6
         return Err(Error::UnalignedOffsets);
     }
 
-    try_new(value_size, offsets.iter().copied())
+    try_new_from_byte_offsets(value_size, offsets.iter().copied())
 }
 
 /// Constructs an [OffsetBuffer] from a raw byte slice and the total number of values.
@@ -75,7 +75,7 @@ pub fn try_from_bytes_and_num_values(
         return Err(Error::UnalignedOffsets);
     }
 
-    try_new(
+    try_new_from_byte_offsets(
         value_size,
         offsets
             .iter()
@@ -90,9 +90,9 @@ pub fn try_from_bytes_and_num_values(
 ///
 /// If the input [Iterator] produces `N` elements then the returned
 /// [OffsetBuffer] contains `N` offsets.
-pub fn try_new(
+pub fn try_new_from_byte_offsets(
     value_size: usize,
-    raw_offsets: impl Iterator<Item = i64>,
+    byte_offsets: impl Iterator<Item = i64>,
 ) -> Result<OffsetBuffer<i64>, Error> {
     let value_size = value_size as i64; // arrow offsets are signed for some reason
 
@@ -106,7 +106,7 @@ pub fn try_new(
 
     let sbuf = ScalarBuffer::<i64>::from(unsafe {
         // SAFETY: slice has a trusted upper length
-        Buffer::try_from_trusted_len_iter(raw_offsets.map(try_element_offset))?
+        Buffer::try_from_trusted_len_iter(byte_offsets.map(try_element_offset))?
     });
     if sbuf[0] < 0 {
         return Err(Error::NegativeOffset(sbuf[0]));
