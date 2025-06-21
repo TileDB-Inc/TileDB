@@ -18,7 +18,8 @@ mod ffi {
 
         fn new_session() -> Box<Session>;
 
-        fn parse_expr(
+        #[cxx_name = "parse_expr"]
+        fn parse_expr_ffi(
             &self,
             expr: &str,
             array_schema: &ArraySchema,
@@ -41,6 +42,7 @@ fn new_session() -> Box<Session> {
 use datafusion::common::DFSchema;
 use datafusion::execution::context::SessionContext;
 use datafusion::execution::session_state::SessionStateBuilder;
+use datafusion::logical_expr::Expr;
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
 use tiledb_expr::LogicalExpr;
 
@@ -62,19 +64,22 @@ impl Session {
         ))
     }
 
-    pub fn parse_expr(
+    fn parse_expr_ffi(
         &self,
         expr: &str,
         array_schema: &ArraySchema,
     ) -> Result<Box<ExternLogicalExpr>, ParseExprError> {
+        let e = self.parse_expr(expr, array_schema)?;
+        Ok(Box::new(ExternLogicalExpr(LogicalExpr(e))))
+    }
+
+    fn parse_expr(&self, expr: &str, array_schema: &ArraySchema) -> Result<Expr, ParseExprError> {
         let arrow_schema = tiledb_arrow::schema::to_arrow(array_schema, |_| true)?;
         let df_schema = {
             // SAFETY: this only errors if the names are not unique,
             // which they will be because `ArraySchema` requires it
             DFSchema::try_from(arrow_schema).unwrap()
         };
-        Ok(Box::new(ExternLogicalExpr(LogicalExpr(
-            self.0.parse_sql_expr(expr, &df_schema)?,
-        ))))
+        Ok(self.0.parse_sql_expr(expr, &df_schema)?)
     }
 }

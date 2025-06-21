@@ -6,6 +6,7 @@ version = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
+arrow = { workspace = true }
 cxx = { workspace = true }
 datafusion = { workspace = true }
 itertools = { workspace = true }

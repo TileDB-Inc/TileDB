@@ -2,15 +2,44 @@
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use datafusion::logical_expr::Expr;
+use arrow::datatypes::DataType as ArrowDataType;
+use datafusion::common::{Column, DFSchema, DataFusionError};
+use datafusion::logical_expr::{Expr, ExprSchemable};
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
+
+#[derive(Debug, thiserror::Error)]
+pub enum TypeError {
+    #[error("Schema error: {0}")]
+    ArraySchema(#[from] tiledb_arrow::schema::Error),
+    #[error("Expression error: {0}")]
+    Expr(#[from] DataFusionError),
+}
 
 /// Wraps a DataFusion [Expr] for passing across the FFI boundary.
 pub struct LogicalExpr(pub Expr);
 
 impl LogicalExpr {
-    pub fn is_predicate(&self, schema: &ArraySchema) -> bool {
-        todo!()
+    pub fn output_type(&self, schema: &ArraySchema) -> Result<ArrowDataType, TypeError> {
+        let cols = self.0.column_refs();
+        let arrow_schema = tiledb_arrow::schema::to_arrow(schema, |f| {
+            let Ok(field_name) = f.name() else {
+                // NB: if the field name is not UTF-8 then it cannot possibly match the column name
+                return false;
+            };
+            cols.contains(&Column::new_unqualified(field_name))
+        })?;
+        let dfschema = {
+            // SAFETY: the only error we can get from the above is if the arrow schema
+            // has duplicate names, which will not happen since it was constructed from
+            // an ArraySchema which does not allow duplicate names
+            DFSchema::try_from(arrow_schema).unwrap()
+        };
+
+        Ok(self.0.get_type(&dfschema)?)
+    }
+
+    pub fn is_predicate(&self, schema: &ArraySchema) -> Result<bool, TypeError> {
+        Ok(matches!(self.output_type(schema)?, ArrowDataType::Boolean))
     }
 }
 

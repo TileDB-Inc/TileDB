@@ -23,7 +23,7 @@ mod ffi {
     #[namespace = "tiledb::oxidize::datafusion::logical_expr"]
     extern "Rust" {
         type LogicalExpr;
-        fn is_predicate(&self, schema: &ArraySchema) -> bool;
+        fn is_predicate(&self, schema: &ArraySchema) -> Result<bool>;
         fn to_string(&self) -> String;
 
         #[cxx_name = "create"]

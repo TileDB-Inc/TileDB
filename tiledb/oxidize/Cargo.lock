@@ -2866,6 +2866,7 @@ name = "tiledb-expr"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arrow",
  "cxx",
  "cxx-build",
  "datafusion",
