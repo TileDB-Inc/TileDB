@@ -6,12 +6,12 @@ members = [
   "datatype",
   "expr",
   "cxx-interface",
+  "staticlibs/core-objects",
+  "staticlibs/unit-arithmetic",
+  "staticlibs/unit-query-condition",
   "test-support",
   "test-support/array-schema",
   "test-support/result-tile",
-  "staticlib/core-objects",
-  "staticlib/unit-arithmetic",
-  "staticlib/unit-query-condition",
 ]
 
 [workspace.package]

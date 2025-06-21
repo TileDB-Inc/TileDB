@@ -16,7 +16,7 @@ mod ffi {
 
     #[namespace = "tiledb::test::query_condition_datafusion"]
     unsafe extern "C++" {
-        include!("tiledb/oxidize/staticlib/unit-query-condition/cc/oxidize.h");
+        include!("tiledb/oxidize/staticlibs/unit-query-condition/cc/oxidize.h");
 
         #[cxx_name = "example_schema"]
         fn example_schema_query_condition_datafusion() -> SharedPtr<ArraySchema>;
