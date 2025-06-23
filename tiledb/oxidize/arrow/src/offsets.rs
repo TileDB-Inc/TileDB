@@ -38,7 +38,8 @@ pub enum Error {
 /// also contains `N` offsets.
 pub fn try_from_bytes(value_size: usize, bytes: &[u8]) -> Result<OffsetBuffer<i64>, Error> {
     let (prefix, offsets, suffix) = unsafe {
-        // SAFETY: transmuting u8 to i64 is safe and we will check error below
+        // SAFETY: transmuting u8 to i64 is safe and we will check error below.
+        // This effectively is a plain-old transmute with checks for alignment
         bytes.align_to::<i64>()
     };
     if !prefix.is_empty() || !suffix.is_empty() {
