@@ -1966,3 +1966,41 @@ TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
     vfs.remove_dir(array_name_1d);
   }
 }
+
+TEST_CASE("C++ API: Create array at path", "[cppapi][array][create][rest]") {
+  VFSTestSetup vfs_test_setup;
+  Context ctx = vfs_test_setup.ctx();
+
+  //  const std::string uri = "tiledb://unit workspace/unit teamspace/dir1/dir2/" + vfs_test_setup.temp_dir + "cpp_unit_array_1d";
+  const std::string uri = "tiledb://unit workspace/unit teamspace/dir1/dir2/cpp_unit_array_1d";
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
+  Array::create(ctx, uri, schema);
+  Array array(ctx, uri, TILEDB_READ);
+
+  std::vector<int32_t> d(1);
+  std::vector<int32_t> a(1);
+  Query q(ctx, array, TILEDB_READ);
+  q.set_layout(TILEDB_UNORDERED);
+  q.set_data_buffer("d", d);
+  q.set_data_buffer("a", a);
+  q.submit();
+  array.close();
+}
+
+TEST_CASE("C++ API: Create group at path", "[cppapi][group][create][rest]") {
+  VFSTestSetup vfs_test_setup;
+  Context ctx = vfs_test_setup.ctx();
+
+  //  const std::string uri = "tiledb://unit workspace/unit teamspace/dir1/dir2/" + vfs_test_setup.temp_dir + "cpp_unit_array_1d";
+  const std::string uri = "tiledb://unit workspace/unit teamspace/dir1/dir2/cpp_unit_array_1d";
+
+  tiledb::Group::create(ctx, uri);
+
+  tiledb::Group group(ctx, uri, TILEDB_READ);
+  group.dump(true);
+}

@@ -240,29 +240,31 @@ Status URI::get_rest_components(
     *array_namespace = uri_.substr(prefix.size(), namespace_len);
     *array_uri = uri_.substr(slash + 1, array_len);
   } else {
-    // Extract '<workspace>/<teamspace>' if we are talking to TileDB-Server.
+    // We support the following URIs in 3.0
+    // tiledb://workspace/teamspace/s3://bucket/array_name
+    // tiledb://workspace/teamspace/dir1/dir2/s3://bucket/array_name
+    // tiledb://workspace/teamspace/array_name (uses default storage)
+    // tiledb://workspace/teamspace/dir1/dir2/array_name (uses default storage)
 
-    // Find '/' between workspace and teamspace.
-    auto ws_slash = uri_.find('/', prefix.size());
-    if (ws_slash == std::string::npos) {
-      return LOG_STATUS(error_st);
-    }
-    // Find '/' between teamspace and array uri.
-    auto ts_slash = uri_.find('/', ws_slash + 1);
-    if (ts_slash == std::string::npos) {
-      return LOG_STATUS(error_st);
-    }
-    auto ws_len = ws_slash - prefix.size();
-    auto ts_len = ts_slash - (ws_len + 1) - prefix.size();
-    auto array_len = uri_.size() - (ts_len + 1);
-    if (ws_len == 0 || ts_len == 0 || array_len == 0) {
-      return LOG_STATUS(error_st);
+    // Extract '<workspace>/<teamspace>/<asset_path>' as the namespace component
+    // if we are talking to TileDB-Server.
+    size_t asset_path_end;
+    auto backend_prefix = uri_.find("://", prefix.size());
+    if (backend_prefix != std::string::npos) {
+      // If the URI contains an explicit storage backend location, use it to
+      // split the full asset path from the storage location.
+      asset_path_end = uri_.rfind('/', backend_prefix);
+    } else {
+      // If there is no explicit storage location then we know the array name is
+      // the only information in the final section of the URI.
+      asset_path_end = uri_.rfind('/', uri_.size() - 1);
     }
 
-    std::string ws = uri_.substr(prefix.size(), ws_len);
-    std::string ts = uri_.substr(ws_slash + 1, ts_len);
-    *array_namespace = ws + "/" + ts;
-    *array_uri = uri_.substr(ts_slash + 1, array_len);
+    if (asset_path_end == std::string::npos) {
+      return LOG_STATUS(error_st);
+    }
+    *array_namespace = uri_.substr(prefix.size(), asset_path_end - prefix.size());
+    *array_uri = uri_.substr(asset_path_end + 1);
   }
 
   return Status::Ok();
