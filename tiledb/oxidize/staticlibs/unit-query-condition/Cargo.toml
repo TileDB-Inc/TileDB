@@ -1,5 +1,5 @@
 [package]
-name = "tiledb-unit_query_condition"
+name = "tiledb-unit-query-condition"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }

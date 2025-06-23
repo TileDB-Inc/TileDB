@@ -2985,7 +2985,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiledb-unit_query_condition"
+name = "tiledb-unit-query-condition"
 version = "0.1.0"
 dependencies = [
  "anyhow",
