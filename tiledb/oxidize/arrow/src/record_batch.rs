@@ -78,24 +78,47 @@ pub unsafe fn to_record_batch(
                 &*ptr_tile
             };
             unsafe {
-                // SAFETY: same contract as this function
+                // SAFETY: the caller is responsible that each attribute tile in `tile`
+                // out-lives the `Arc<dyn ArrowArray>` created here. See function docs.
                 tile_to_arrow_array(f, tile)
             }
             .map_err(|e| Error::FieldError(f.name().to_owned(), e))
         })
         .collect::<Result<Vec<Arc<dyn ArrowArray>>, _>>()?;
 
-    let arrow = RecordBatch::try_new(Arc::clone(&schema.0), columns);
+    // SAFETY: should be clear from iteration
+    assert_eq!(schema.0.fields().len(), columns.len());
 
-    // SAFETY: construction should ensure all the preconditions are met
-    // "the vec of columns to not be empty" admittedly this is an assumption but we should have at
-    // least one tile tuple
-    // "the schema and column data types to have equal lengths and match" comes from the `collect`
-    // "each array in columns to have the same length" this is definitely the sketchiest
-    // since it assumes that the written tile data satisifes this condition, AND that our
-    // to-arrow implementation preserves it. If either of these is not true then it is not a
-    // recoverable error from the user perspective
-    let arrow = arrow.unwrap();
+    // SAFETY: `tile_to_arrow_array` must do this, major internal error if not
+    // which is not recoverable
+    assert!(
+        schema
+            .0
+            .fields()
+            .iter()
+            .zip(columns.iter())
+            .all(|(f, c)| f.data_type() == c.data_type())
+    );
+
+    // SAFETY: `schema` has at least one field.
+    // This is not required in general, but `schema` is a projection of an `ArraySchema`
+    // which always has at least one dimension.
+    assert!(!columns.is_empty());
+
+    // SAFETY: dependent on the correctness of `tile_to_arrow_array` AND the integrity of
+    // the underlying `ResultTile`.
+    // Neither of these conditions is a recoverable error from the user perspective -
+    // hence assert.
+    assert!(
+        columns.iter().all(|c| c.len() as u64 == tile.cell_num()),
+        "Columns do not all have same number of cells: {:?} {:?}",
+        schema.0.fields(),
+        columns.iter().map(|c| c.len()).collect::<Vec<_>>()
+    );
+
+    // SAFETY: the four asserts above rule out each of the possible error conditions
+    let arrow = RecordBatch::try_new(Arc::clone(&schema.0), columns)
+        .expect("Logic error: preconditions for constructing RecordBatch not met");
 
     Ok(Box::new(ArrowRecordBatch { arrow }))
 }
@@ -114,7 +137,8 @@ unsafe fn tile_to_arrow_array(
     tile: &TileTuple,
 ) -> Result<Arc<dyn ArrowArray>, FieldError> {
     unsafe {
-        // SAFETY: same contract as this function
+        // SAFETY: the caller is responsible that each of the tiles tile out-live
+        // the `Arc<dyn ArrowArray>` created here. See function docs.
         to_arrow_array(f, tile.fixed_tile(), tile.var_tile(), tile.validity_tile())
     }
 }
@@ -165,7 +189,8 @@ unsafe fn to_arrow_array(
                 return Err(FieldError::UnexpectedVarTile);
             }
             unsafe {
-                // SAFETY: same contract as this function
+                // SAFETY: the caller is responsible that the `fixed` tile out-lives
+                // the `PrimitiveArray` created here. See function docs.
                 to_primitive_array::<$primitivetype>(fixed, null_buffer)
             }
         }};
@@ -185,7 +210,8 @@ unsafe fn to_arrow_array(
         DataType::Float64 => match_arm_primitive!(Float64Type),
         DataType::FixedSizeList(value_field, fixed_size) => {
             let values = unsafe {
-                // SAFETY: same contract as this function
+                // SAFETY: the caller is responsible that the `fixed` tile out-lives
+                // the `PrimitiveArray` created here. See function docs.
                 to_arrow_array(value_field, fixed, None, None)?
             };
             Ok(Arc::new(FixedSizeListArray::new(
@@ -201,7 +227,8 @@ unsafe fn to_arrow_array(
             };
             let offsets = to_offsets_buffer(value_field, fixed)?;
             let values = unsafe {
-                // SAFETY: same contract as this function
+                // SAFETY: the caller is responsible that `var_tile` out-lives
+                // the `PrimitiveArray` created here. See function docs.
                 to_arrow_array(value_field, var_tile, None, None)?
             };
             Ok(Arc::new(GenericListArray::new(
@@ -244,7 +271,21 @@ where
         return Err(FieldError::InternalUnalignedValues);
     }
     let tile_buffer = if let Some(ptr) = std::ptr::NonNull::new(values.as_ptr() as *mut u8) {
-        // SAFETY: dependent upon this Array out-living the tile
+        // SAFETY:
+        //
+        // `Buffer::from_custom_allocation` creates a buffer which refers to an existing
+        // memory region whose ownership is tracked by some `Arc<dyn Allocation>`.
+        // `Allocation` is basically any type, whose `drop` implementation is responsible
+        // for freeing the memory.
+        //
+        // The tile memory which we reference lives on the `extern "C++"` side of the
+        // FFI boundary, as such we cannot use `Arc` to track its lifetime.
+        //
+        // As such:
+        // 1) we will use an object with trivial `drop` to set up the memory aliasing
+        // 2) there is an implicit lifetime requirement that the Tile must out-live
+        //    this Buffer, else we shall suffer use after free
+        // 3) the caller is responsible for upholding that guarantee
         unsafe { Buffer::from_custom_allocation(ptr, tile.size() as usize, Arc::new(())) }
     } else {
         Buffer::from_vec(Vec::<T::Native>::new())
