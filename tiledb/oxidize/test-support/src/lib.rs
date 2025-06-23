@@ -20,7 +20,6 @@ mod ffi {
         type MemoryTracker = tiledb_cxx_interface::common::memory_tracker::MemoryTracker;
 
         type Attribute = tiledb_cxx_interface::sm::array_schema::Attribute;
-        type ConstAttribute = tiledb_cxx_interface::sm::array_schema::ConstAttribute;
         type Dimension = tiledb_cxx_interface::sm::array_schema::Dimension;
         type Domain = tiledb_cxx_interface::sm::array_schema::Domain;
         type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
@@ -31,6 +30,11 @@ mod ffi {
             tiledb_cxx_interface::sm::enums::QueryConditionCombinationOp;
 
         type ResultTile = tiledb_cxx_interface::sm::query::readers::ResultTile;
+    }
+
+    #[namespace = "tiledb::oxidize"]
+    extern "C++" {
+        type ConstAttribute = tiledb_cxx_interface::sm::array_schema::ConstAttribute;
     }
 
     #[namespace = "tiledb::test"]

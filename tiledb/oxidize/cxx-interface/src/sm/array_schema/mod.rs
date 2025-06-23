@@ -6,7 +6,7 @@ mod ffi {
         type Layout = crate::sm::enums::Layout;
     }
 
-    #[namespace = "tiledb::sm"]
+    #[namespace = "tiledb::oxidize"]
     unsafe extern "C++" {
         include!("tiledb/oxidize/cxx-interface/cc/array_schema.h");
         type ConstAttribute;
@@ -42,7 +42,10 @@ mod ffi {
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
 
+        #[namespace = "tiledb::oxidize"]
         fn set_domain(dimension: Pin<&mut Dimension>, domain: &[u8]) -> Result<()>;
+
+        #[namespace = "tiledb::oxidize"]
         fn set_tile_extent(dimension: Pin<&mut Dimension>, extent: &[u8]) -> Result<()>;
     }
 
