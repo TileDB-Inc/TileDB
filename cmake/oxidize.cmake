@@ -276,6 +276,7 @@ if (TILEDB_RUST)
       set(bridge_h_dst "${OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_sanitize_relpath}.h")
       set(bridge_cc_dst "${OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_sanitize_relpath}.cc")
       string(REGEX REPLACE "-" "_" bridge_h_dst ${bridge_h_dst})
+      string(REGEX REPLACE "-" "_" bridge_cc_dst ${bridge_cc_dst})
 
       get_filename_component(bridge_sanitize_dirname ${bridge_h_dst} DIRECTORY)
 
