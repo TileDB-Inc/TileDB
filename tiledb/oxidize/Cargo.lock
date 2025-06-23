@@ -2945,6 +2945,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tiledb-test-ffi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "tiledb-test-query-condition"
 version = "0.1.0"
 dependencies = [
@@ -3000,6 +3007,7 @@ dependencies = [
  "tiledb-expr",
  "tiledb-pod",
  "tiledb-test-array-schema",
+ "tiledb-test-ffi",
  "tiledb-test-query-condition",
  "tiledb-test-result-tile",
 ]

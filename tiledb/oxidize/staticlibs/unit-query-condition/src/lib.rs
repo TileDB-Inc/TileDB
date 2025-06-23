@@ -72,6 +72,10 @@ fn instance_query_condition_datafusion(
 }
 
 fn examples_query_condition_datafusion() -> anyhow::Result<bool> {
+    tiledb_test_ffi::panic_to_exception(examples_query_condition_datafusion_impl)
+}
+
+fn examples_query_condition_datafusion_impl() -> anyhow::Result<bool> {
     let cxx_schema = ffi::example_schema_query_condition_datafusion();
 
     let cells = {

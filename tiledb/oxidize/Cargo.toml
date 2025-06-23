@@ -12,6 +12,7 @@ members = [
   "staticlibs/unit-query-condition",
   "test-support",
   "test-support/array-schema",
+  "test-support/ffi",
   "test-support/result-tile",
 ]
 
@@ -39,6 +40,7 @@ tiledb-expr = { path = "expr" }
 tiledb-pod = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
 tiledb-test-array-schema = { path = "test-support/array-schema" }
 tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-test-ffi = { path = "test-support/ffi" }
 tiledb-test-query-condition = { path = "test-support/query-condition" }
 tiledb-test-result-tile = { path = "test-support/result-tile" }
 tiledb-test-support = { path = "test-support" }

@@ -14,8 +14,9 @@ tiledb-cxx-interface = { workspace = true }
 tiledb-expr = { workspace = true }
 tiledb-pod = { workspace = true }
 tiledb-common = { workspace = true }
-tiledb-test-cells = { workspace = true }
 tiledb-test-array-schema = { workspace = true }
+tiledb-test-cells = { workspace = true }
+tiledb-test-ffi = { workspace = true }
 tiledb-test-result-tile = { workspace = true }
 tiledb-test-query-condition = { workspace = true }
 
