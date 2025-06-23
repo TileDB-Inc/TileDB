@@ -13,6 +13,7 @@
 //! for the [OffsetBuffer].
 
 use arrow::buffer::{Buffer, OffsetBuffer, ScalarBuffer};
+use iterator_ext::IteratorExt;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -77,10 +78,7 @@ pub fn try_from_bytes_and_num_values(
 
     try_new_from_byte_offsets(
         value_size,
-        offsets
-            .iter()
-            .copied()
-            .chain(std::iter::once(num_values as i64)),
+        offsets.iter().copied().append(num_values as i64),
     )
 }
 
@@ -90,10 +88,13 @@ pub fn try_from_bytes_and_num_values(
 ///
 /// If the input [Iterator] produces `N` elements then the returned
 /// [OffsetBuffer] contains `N` offsets.
-pub fn try_new_from_byte_offsets(
+pub fn try_new_from_byte_offsets<I>(
     value_size: usize,
-    byte_offsets: impl Iterator<Item = i64>,
-) -> Result<OffsetBuffer<i64>, Error> {
+    byte_offsets: I,
+) -> Result<OffsetBuffer<i64>, Error>
+where
+    I: ExactSizeIterator + Iterator<Item = i64>,
+{
     let value_size = value_size as i64; // arrow offsets are signed for some reason
 
     let try_element_offset = |o: i64| {
@@ -105,7 +106,8 @@ pub fn try_new_from_byte_offsets(
     };
 
     let sbuf = ScalarBuffer::<i64>::from(unsafe {
-        // SAFETY: slice has a trusted upper length
+        // SAFETY: ExactSizeIterator has a trusted upper length
+        // (there is no similar constructor which uses ExactSizeIterator)
         Buffer::try_from_trusted_len_iter(byte_offsets.map(try_element_offset))?
     });
     if sbuf[0] < 0 {

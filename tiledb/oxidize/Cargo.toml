@@ -3,9 +3,10 @@ resolver = "2"
 members = [
   "arithmetic",
   "arrow",
+  "cxx-interface",
   "datatype",
   "expr",
-  "cxx-interface",
+  "iterator-ext",
   "staticlibs/core-objects",
   "staticlibs/unit-arithmetic",
   "staticlibs/unit-query-condition",
@@ -25,6 +26,7 @@ arrow = { version = "55" }
 cxx = "1.0.138"
 cxx-build = "1.0.138"
 datafusion = { version = "47", features = [] }
+iterator-ext = { path = "iterator-ext" }
 itertools = { version = "0.14" }
 num-traits = "0.2"
 proptest = { version = "1.6" }
