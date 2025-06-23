@@ -11,7 +11,7 @@ LINT_HEAP_MEMORY = 'Heap Memory'
 LINT_ASSERT = 'Assert'
 
 # Do not check for lint in these directories.
-ignored_dirs = frozenset(["api/c_api", "sm/c_api", "sm/cpp_api", "oxidize/target", "oxidize/staticlib"])
+ignored_dirs = frozenset(["api/c_api", "sm/c_api", "sm/cpp_api", "oxidize/target", "oxidize/staticlibs"])
 
 # Do not check for lint in these files.
 heap_memory_ignored_files = frozenset(
