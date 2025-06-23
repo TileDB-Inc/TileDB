@@ -88,8 +88,6 @@ include_guard()
 
 
 if (TILEDB_RUST)
-
-
   #
   # Fetch Corrosion cmake functions.
   # Corrosion provides functions which declare targets to build
@@ -101,7 +99,7 @@ if (TILEDB_RUST)
     Corrosion
     GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
     GIT_TAG v0.5 # Optionally specify a commit hash, version tag or branch here
-    )
+  )
   # Set any global configuration variables such as `Rust_TOOLCHAIN` before this line!
   FetchContent_MakeAvailable(Corrosion)
 
@@ -138,33 +136,33 @@ if (TILEDB_RUST)
 
   execute_process(
     COMMAND
-    ${CARGO} install cxxbridge-cmd --root ${CARGO_INSTALL_ROOT}
-    )
+      ${CARGO} install cxxbridge-cmd --root ${CARGO_INSTALL_ROOT}
+  )
   execute_process(
     COMMAND
-    ${CMAKE_COMMAND} -E make_directory ${TILEDB_OXIDIZE_INCLUDE_DIR}/tiledb/oxidize
-    )
+      ${CMAKE_COMMAND} -E make_directory ${TILEDB_OXIDIZE_INCLUDE_DIR}/tiledb/oxidize
+  )
   execute_process(
     COMMAND
-    ${CARGO_INSTALL_BIN}/cxxbridge --header
+      ${CARGO_INSTALL_BIN}/cxxbridge --header
     OUTPUT_FILE
-    ${OXIDIZE_RUST_H_SRC}
-    )
+      ${OXIDIZE_RUST_H_SRC}
+  )
 
   add_custom_command(
     OUTPUT
-    ${OXIDIZE_RUST_H}
+      ${OXIDIZE_RUST_H}
     COMMAND
-    ${CMAKE_COMMAND} -E copy ${OXIDIZE_RUST_H_SRC} ${OXIDIZE_RUST_H}
+      ${CMAKE_COMMAND} -E copy ${OXIDIZE_RUST_H_SRC} ${OXIDIZE_RUST_H}
     WORKING_DIRECTORY
-    ${CMAKE_CURRENT_BINARY_DIR}
-    )
+      ${CMAKE_CURRENT_BINARY_DIR}
+  )
 
   add_custom_target(
     rust_h
     DEPENDS
-    ${OXIDIZE_RUST_H}
-    )
+      ${OXIDIZE_RUST_H}
+  )
 
 
 
@@ -216,7 +214,7 @@ if (TILEDB_RUST)
   #
   function(oxidize)
     set(options)
-    set(oneValueArgs NAME)
+    set(oneValueArgs NAME CRATE)
     set(multiValueArgs EXPORT SOURCES)
     cmake_parse_arguments(OXIDIZE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -226,6 +224,10 @@ if (TILEDB_RUST)
 
     if (NOT OXIDIZE_EXPORT)
       message(SEND_ERROR "Function 'oxidize' requies EXPORT argument")
+    endif ()
+
+    if (NOT OXIDIZE_CRATE)
+      string(REGEX REPLACE "_" "-" OXIDIZE_CRATE ${OXIDIZE_NAME})
     endif ()
 
     set(OXIDIZE_STATICLIB "${OXIDIZE_NAME}_rs")
@@ -251,7 +253,7 @@ if (TILEDB_RUST)
     endforeach ()
 
     foreach (bridge ${OXIDIZE_SOURCES})
-      list(APPEND OXIDIZE_BRIDGE_CRATE "${OXIDIZE_NAME}")
+      list(APPEND OXIDIZE_BRIDGE_CRATE "${OXIDIZE_CRATE}")
       list(APPEND OXIDIZE_BRIDGE_RS ${bridge})
     endforeach ()
 
@@ -273,36 +275,37 @@ if (TILEDB_RUST)
 
       set(bridge_h_dst "${OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_sanitize_relpath}.h")
       set(bridge_cc_dst "${OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_sanitize_relpath}.cc")
+      string(REGEX REPLACE "-" "_" bridge_h_dst ${bridge_h_dst})
 
       get_filename_component(bridge_sanitize_dirname ${bridge_h_dst} DIRECTORY)
 
       add_custom_command(
         OUTPUT
-        "${bridge_h_dst}"
+          "${bridge_h_dst}"
         COMMAND
-        ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
+          ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
         COMMAND
-        ${CMAKE_COMMAND} -E create_symlink ${bridge_h_src} ${bridge_h_dst}
+          ${CMAKE_COMMAND} -E create_symlink ${bridge_h_src} ${bridge_h_dst}
         DEPENDS
-        rust_h
-        ${OXIDIZE_STATICLIB}
+          rust_h
+          ${OXIDIZE_STATICLIB}
         WORKING_DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}
-        )
+          ${CMAKE_CURRENT_BINARY_DIR}
+      )
 
       add_custom_command(
         OUTPUT
-        "${bridge_cc_dst}"
+          "${bridge_cc_dst}"
         COMMAND
-        ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
+          ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
         COMMAND
-        ${CMAKE_COMMAND} -E create_symlink ${bridge_cc_src} ${bridge_cc_dst}
+          ${CMAKE_COMMAND} -E create_symlink ${bridge_cc_src} ${bridge_cc_dst}
         DEPENDS
-        rust_h
-        ${OXIDIZE_STATICLIB}
+          rust_h
+          ${OXIDIZE_STATICLIB}
         WORKING_DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}
-        )
+          ${CMAKE_CURRENT_BINARY_DIR}
+      )
 
       list(APPEND OXIDIZE_H "${bridge_h_dst}")
       list(APPEND OXIDIZE_CC "${bridge_cc_dst}")
@@ -326,8 +329,10 @@ if (TILEDB_RUST)
 
 
 else ()
-
-
+  #
+  # Declare top-level targets which are empty INTERFACE libraries.
+  # This allows targets to declare linkage without needing an `if (TILEDB_RUST)`.
+  #
   function(cxxbridge)
   endfunction ()
 
