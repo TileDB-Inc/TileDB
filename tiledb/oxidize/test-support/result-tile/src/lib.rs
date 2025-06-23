@@ -71,16 +71,19 @@ fn result_tile_from_record_batch(
     let mut offsets = HashMap::new();
     let mut validity = HashMap::new();
 
-    for field in batch.schema().fields.iter() {
-        let column = {
-            // SAFETY: guaranteed by `RecordBatch` contract
-            batch.column_by_name(field.name()).unwrap()
-        };
-        cxx::let_cxx_string! { field_name = field.name() };
+    for i in 0..batch.num_columns() {
+        let field = batch
+            .schema_ref()
+            .fields()
+            .get(i)
+            .expect("RecordBatch requires `schema.fields.len() == columns.len()`");
+        let column = batch.column(i);
 
         let column_data = column.to_data();
         assert_eq!(0, column_data.offset());
         assert_eq!(column.len(), column_data.len());
+
+        cxx::let_cxx_string! { field_name = field.name() };
 
         let (data, value_offsets) = if schema.var_size(&field_name) {
             assert_eq!(1, column_data.buffers().len());
