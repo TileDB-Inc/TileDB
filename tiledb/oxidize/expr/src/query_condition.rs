@@ -94,7 +94,7 @@ where
                 //
                 // NB: we do this instead of `unwrap()` to avoid a `Debug` trait bound
                 // which we expect not to use.
-                unreachable!()
+                unreachable!("Logic error: datatype.value_size() does not match num_traits::FromBytes slice length")
             }
         };
 
@@ -376,7 +376,7 @@ fn combination_ast_to_binary_expr(
             .into_iter()
             .map(|mut pair| {
                 let Some(left) = pair.next() else {
-                    unreachable!()
+                    unreachable!("Logic error: Itertools::chunks(2) subiterators are non-empty")
                 };
                 if let Some(right) = pair.next() {
                     assert!(pair.next().is_none());

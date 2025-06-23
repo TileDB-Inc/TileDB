@@ -213,7 +213,10 @@ unsafe fn to_arrow_array(
         }
         _ => {
             // SAFETY: ensured by limited range of return values of `crate::schema::arrow_datatype`
-            unreachable!()
+            unreachable!(
+                "Tile has unexpected data type for arrow array: {:?}",
+                f.data_type()
+            )
         }
     }
 }

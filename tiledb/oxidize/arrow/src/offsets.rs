@@ -120,7 +120,10 @@ where
             }
         }
         // SAFETY: `all` was false, therefore `any` is true
-        unreachable!()
+        unreachable!(
+            "Logic error: did not find descending offset pair: offsets = {:?}",
+            sbuf
+        )
     }
 
     Ok(OffsetBuffer::<i64>::new(sbuf))
