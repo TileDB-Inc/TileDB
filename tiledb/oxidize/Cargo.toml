@@ -24,7 +24,7 @@ version = "0.1.0"
 [workspace.dependencies]
 anyhow = "1"
 arrow = { version = "55" }
-cxx = "1.0.138"
+cxx = "=1.0.138"
 cxx-build = "1.0.138"
 datafusion = { version = "47", features = [] }
 iterator-ext = { path = "iterator-ext" }
