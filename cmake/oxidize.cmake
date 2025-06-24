@@ -104,14 +104,31 @@ if (TILEDB_RUST)
   FetchContent_MakeAvailable(Corrosion)
 
 
-  set(Rust_CARGO_TARGET "x86_64-unknown-linux-gnu") # FIXME
-
-  if ("${Rust_CARGO_TARGET}" STREQUAL "")
-    message(SEND_ERROR "Variable Rust_CARGO_TARGET is not set")
+  #
+  # Identify the Corrosion build directory.
+  # This is needed to add it to include paths.
+  # See https://corrosion-rs.github.io/corrosion/usage.html#global-corrosion-options
+  #
+  if (CMAKE_VS_PLATFORM_NAME)
+    set(CORROSION_BUILD_DIR "${CMAKE_BINARY_DIR}/cargo/build/${CMAKE_VS_PLATFORM_NAME}")
+  else ()
+    execute_process(
+      COMMAND
+        rustc --version --verbose
+      OUTPUT_VARIABLE
+        RUSTC_VERSION
+      RESULT_VARIABLE
+        RUSTC_VERSION_STATUS
+    )
+    if (NOT RUSTC_VERSION_STATUS EQUAL "0")
+      message(SEND_ERROR "Error identifying Corrosion build directory: error executing 'rustc --version --verbose'")
+    endif()
+    if (RUSTC_VERSION MATCHES "host: ([a-zA-Z0-9_\\-]*)\n")
+      set(CORROSION_BUILD_DIR "${CMAKE_BINARY_DIR}/cargo/build/${CMAKE_MATCH_1}")
+    else ()
+      message(SEND_ERROR "Error identifying Corrosion build directory: did not find 'host' in 'rustc --version --verbose'")
+    endif ()
   endif ()
-
-
-  set(CORROSION_BUILD_DIR ${CMAKE_BINARY_DIR}/cargo/build/${Rust_CARGO_TARGET})
 
   #
   # `tiledb/oxidize/rust.h`
