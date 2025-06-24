@@ -509,7 +509,8 @@ struct CSparseGlobalOrderFx {
   template <typename Asserter, InstanceType Instance>
   DeleteArrayGuard run_create(Instance& instance);
   template <typename Asserter, InstanceType Instance>
-  void run_execute(Instance& instance);
+  std::optional<typename Instance::FragmentType> run_execute(
+      Instance& instance);
 
   /**
    * Runs an input against a fresh array.
@@ -517,7 +518,7 @@ struct CSparseGlobalOrderFx {
    * and checks that what we read out matches what we put in.
    */
   template <typename Asserter, InstanceType Instance>
-  void run(Instance& instance);
+  std::optional<typename Instance::FragmentType> run(Instance& instance);
 
   template <typename CAPIReturn>
   std::optional<std::string> error_if_any(CAPIReturn apirc) const;
@@ -3401,11 +3402,12 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
  * expected result order computed from the input data.
  */
 template <typename Asserter, InstanceType Instance>
-void CSparseGlobalOrderFx::run(Instance& instance) {
+std::optional<typename Instance::FragmentType> CSparseGlobalOrderFx::run(
+    Instance& instance) {
   reset_config();
 
   auto tmparray = run_create<Asserter, Instance>(instance);
-  run_execute<Asserter, Instance>(instance);
+  return run_execute<Asserter, Instance>(instance);
 }
 
 template <typename Asserter, InstanceType Instance>
@@ -3432,10 +3434,11 @@ DeleteArrayGuard CSparseGlobalOrderFx::run_create(Instance& instance) {
 }
 
 template <typename Asserter, InstanceType Instance>
-void CSparseGlobalOrderFx::run_execute(Instance& instance) {
+std::optional<typename Instance::FragmentType>
+CSparseGlobalOrderFx::run_execute(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
-  std::decay_t<decltype(instance.fragments[0])> expect;
+  typename Instance::FragmentType expect;
 
   // for de-duplicating, track the fragment that each coordinate came from
   // we will use this to select the coordinate from the most recent fragment
@@ -3613,7 +3616,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             }
           }
           tiledb_query_free(&query);
-          return;
+          return std::nullopt;
         }
         if (err->find("Cannot set array memory budget") != std::string::npos) {
           if (!vfs_test_setup_.is_rest()) {
@@ -3626,7 +3629,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             ASSERTER(array_usage > array_budget);
           }
           tiledb_query_free(&query);
-          return;
+          return std::nullopt;
         }
         if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
           if (err->find(
@@ -3636,13 +3639,13 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             // we can probably make some assertions about what this should have
             // looked like but for now we'll let it go
             tiledb_query_free(&query);
-            return;
+            return std::nullopt;
           }
           if (err->find("Cannot load tile offsets") != std::string::npos) {
             // not enough memory budget for tile offsets, don't bother asserting
             // about it (for now?)
             tiledb_query_free(&query);
-            return;
+            return std::nullopt;
           }
         }
       }
@@ -3788,6 +3791,8 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       ASSERTER(can_complete.has_value());
     }
   }
+
+  return expect;
 }
 
 // rapidcheck generators and Arbitrary specializations
