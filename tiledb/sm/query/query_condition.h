@@ -48,10 +48,10 @@
 using namespace tiledb::common;
 
 namespace tiledb::oxidize::arrow::schema {
-class ArrowSchema;
+struct ArrowSchema;
 }
 namespace tiledb::oxidize::datafusion::physical_expr {
-class PhysicalExpr;
+struct PhysicalExpr;
 }
 
 namespace tiledb {
