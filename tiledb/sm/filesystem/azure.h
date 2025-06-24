@@ -156,7 +156,7 @@ template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
 class AzureScanner : public LsScanner<F, D> {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
-  template <class scanner_type, class T>
+  template <class scanner_type, class T, class Allocator>
   friend class LsScanIterator;
   using Iterator = LsScanIterator<AzureScanner<F, D>, LsObjects::value_type>;
 

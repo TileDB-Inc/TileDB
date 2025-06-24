@@ -396,7 +396,8 @@ TEST_CASE(
     for (size_t i = 0; i < expected.size(); i++) {
       auto s3_object = results_vector[i];
       CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
-      auto full_uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
+      auto full_uri =
+          s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
       CHECK(full_uri == expected[i].first);
       CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
     }
@@ -448,7 +449,8 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
   CHECK(results_vector.size() == expected.size());
   for (size_t i = 0; i < expected.size(); i++) {
     auto s3_object = results_vector[i];
-    auto full_uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
+    auto full_uri =
+        s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
     CHECK(full_uri == expected[i].first);
     CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
   }
