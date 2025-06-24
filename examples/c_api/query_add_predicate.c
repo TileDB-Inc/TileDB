@@ -49,7 +49,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "query_condition_sparse_array";
+const char* array_name = "query_add_predicate";
 
 #define TRY(ctx, action)                 \
   do {                                   \
@@ -387,8 +387,9 @@ int main() {
 
   // BEGIN EXAMPLES WITH NO EQUIVALENT
 
-  printf("WHERE a + d < index\n");
-  RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "a + d < index"));
+  printf("WHERE coalesce(a, 2) + c < index\n");
+  RETURN_IF_NOT_OK(
+      read_array_with_predicate(ctx, "coalesce(a, 2) + c < index"));
   printf("\n");
 
   printf("WHERE a > 6 OR a IS NULL\n");
