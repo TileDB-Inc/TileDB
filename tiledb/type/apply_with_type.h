@@ -95,7 +95,6 @@ inline auto apply_with_type(Fn&& f, Datatype type, Args&&... args) {
     CASE(Datatype::TIME_FS);
     CASE(Datatype::TIME_AS);
     CASE(Datatype::STRING_ASCII);
-    CASE(Datatype::STRING_UTF8);
     default: {
       throw std::logic_error(
           "Datatype::" + datatype_str(type) + " is not a supported Datatype");
