@@ -678,7 +678,8 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
+std::vector<directory_entry> VFS::ls_with_sizes(
+    const URI& parent, bool rm_dir_placeholders) const {
   auto instrument = make_log_duration_instrument(parent, "ls");
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
@@ -721,6 +722,12 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
     entries = memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
   } else {
     throw UnsupportedURI(parent.to_string());
+  }
+  if (!(parent.is_file() || parent.is_memfs()) && rm_dir_placeholders) {
+    std::erase_if(entries, [](const directory_entry& x) {
+      return !x.is_directory() && x.file_size() == 0 &&
+             x.path().native().ends_with('/');
+    });
   }
   parallel_sort(
       compute_tp_,
