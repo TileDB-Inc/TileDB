@@ -104,10 +104,17 @@ pub fn field_arrow_datatype(field: &Field) -> Result<ArrowDataType, FieldError> 
             }
         }
         CellValNum::Var => {
-            let value_type = arrow_datatype(field.datatype())?;
-            Ok(ArrowDataType::LargeList(Arc::new(
-                ArrowField::new_list_field(value_type, false),
-            )))
+            if matches!(
+                field.datatype(),
+                Datatype::STRING_ASCII | Datatype::STRING_UTF8
+            ) {
+                Ok(ArrowDataType::LargeUtf8)
+            } else {
+                let value_type = arrow_datatype(field.datatype())?;
+                Ok(ArrowDataType::LargeList(Arc::new(
+                    ArrowField::new_list_field(value_type, false),
+                )))
+            }
         }
     }
 }

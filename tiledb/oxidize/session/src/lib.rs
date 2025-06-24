@@ -40,6 +40,7 @@ fn new_session() -> Box<Session> {
 }
 
 use datafusion::common::DFSchema;
+use datafusion::common::tree_node::TreeNode;
 use datafusion::execution::context::SessionContext;
 use datafusion::execution::session_state::SessionStateBuilder;
 use datafusion::logical_expr::Expr;
@@ -51,7 +52,9 @@ pub enum ParseExprError {
     #[error("Schema error: {0}")]
     Schema(#[from] tiledb_arrow::schema::Error),
     #[error("Parse error: {0}")]
-    Parse(#[from] datafusion::common::DataFusionError),
+    Parse(#[source] datafusion::common::DataFusionError),
+    #[error("Type coercion error: {0}")]
+    TypeCoercion(#[source] datafusion::common::DataFusionError),
 }
 
 /// Wraps a DataFusion [SessionContext] for passing across the FFI boundary.
@@ -80,6 +83,19 @@ impl Session {
             // which they will be because `ArraySchema` requires it
             DFSchema::try_from(arrow_schema).unwrap()
         };
-        Ok(self.0.parse_sql_expr(expr, &df_schema)?)
+
+        let parsed = self
+            .0
+            .parse_sql_expr(expr, &df_schema)
+            .map_err(ParseExprError::Parse)?;
+
+        let mut coercion_rewriter =
+            datafusion::optimizer::analyzer::type_coercion::TypeCoercionRewriter::new(&df_schema);
+        //.map_err(ParseExprError::TypeCoercion)?;
+
+        parsed
+            .rewrite(&mut coercion_rewriter)
+            .map(|t| t.data)
+            .map_err(ParseExprError::TypeCoercion)
     }
 }

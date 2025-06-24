@@ -58,8 +58,8 @@ impl Display for LogicalExpr {
 }
 
 pub fn make_conjunction(exprs: &[Box<LogicalExpr>]) -> Box<LogicalExpr> {
-    Box::new(LogicalExpr(dbg!(
+    Box::new(LogicalExpr(
         datafusion::logical_expr::utils::conjunction(exprs.iter().map(|e| e.0.clone()))
-            .unwrap_or(Expr::Literal(ScalarValue::Boolean(Some(true))))
-    )))
+            .unwrap_or(Expr::Literal(ScalarValue::Boolean(Some(true)))),
+    ))
 }
