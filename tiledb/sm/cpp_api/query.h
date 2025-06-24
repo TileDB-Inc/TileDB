@@ -249,6 +249,16 @@ class Query {
     return *this;
   }
 
+  /**
+   * Adds a predicate. The predicate will be analyzed and evaluated
+   * in the subarray step, query condition step, or both.
+   *
+   * The predicate is parsed as a SQL expression and must evaluate
+   * to a boolean.
+   *
+   * @param predicate a SQL representation of the predicate
+   * @return Reference to this Query
+   */
   Query& add_predicate(const std::string& predicate) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_add_predicate(
