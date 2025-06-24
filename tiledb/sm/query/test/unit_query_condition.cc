@@ -5228,7 +5228,7 @@ std::unique_ptr<std::vector<uint8_t>> instance_ffi(
     const ResultTile& tile,
     const tiledb::sm::ASTNode& ast) {
   return std::make_unique<std::vector<uint8_t>>(
-      std::move(instance(array_schema, tile, ast)));
+      instance(array_schema, tile, ast));
 }
 
 }  // namespace tiledb::test::query_condition_datafusion
