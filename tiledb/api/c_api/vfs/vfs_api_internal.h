@@ -139,9 +139,9 @@ struct tiledb_vfs_handle_t
     return vfs_.copy_dir(old_uri, new_uri);
   }
 
-  Status ls(
-      const tiledb::sm::URI& parent, std::vector<tiledb::sm::URI>* uris) const {
-    return vfs_.ls(parent, uris);
+  std::vector<tiledb::common::filesystem::directory_entry> ls(
+      const tiledb::sm::URI& parent) const {
+    return vfs_.ls_with_sizes(parent, false);
   }
 
   Status touch(const tiledb::sm::URI& uri) const {
