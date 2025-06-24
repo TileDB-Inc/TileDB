@@ -55,6 +55,7 @@ jobs:
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
+      TILEDB_RUST: 'ON'
     steps:
       - name: 'tiledb env prep'
         run: |
