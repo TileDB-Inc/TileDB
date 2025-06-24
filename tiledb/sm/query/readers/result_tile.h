@@ -854,16 +854,6 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
   ResultTileWithBitmap() = delete;
 
-  /**
-   * Constructor
-   *
-   * @param memory_tracker The memory tracker to use.
-   */
-  ResultTileWithBitmap(shared_ptr<MemoryTracker> memory_tracker)
-      : ResultTile(memory_tracker)
-      , bitmap_(memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP)) {
-  }
-
   ResultTileWithBitmap(
       unsigned frag_idx,
       uint64_t tile_idx,
