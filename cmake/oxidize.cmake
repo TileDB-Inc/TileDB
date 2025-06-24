@@ -95,10 +95,11 @@ if (TILEDB_RUST)
   #
   include(FetchContent)
   set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
+  set(CORROSION_COMMIT_HASH a1a1aaa057a5da656c06c3d8505b767a4e941709) # tag for v0.5.2
   FetchContent_Declare(
     Corrosion
     GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
-    GIT_TAG a1a1aaa057a5da656c06c3d8505b767a4e941709 # hash for v0.5.2
+    GIT_TAG ${CORROSION_COMMIT_HASH}
   )
   # Set any global configuration variables such as `Rust_TOOLCHAIN` before this line!
   FetchContent_MakeAvailable(Corrosion)
