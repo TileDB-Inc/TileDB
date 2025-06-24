@@ -192,7 +192,7 @@ bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
     try {
       datafusion_.emplace(array_schema, std::move(as_datafusion(array_schema)));
     } catch (const ::rust::Error& e) {
-      throw std::logic_error(
+      throw QueryConditionException(
           "Unexpected error compiling expression: " + std::string(e.what()));
     }
     return true;
@@ -2940,7 +2940,7 @@ Status QueryCondition::apply_sparse(
     try {
       datafusion_.value().apply(params, result_tile, result_bitmap);
     } catch (const ::rust::Error& e) {
-      throw std::logic_error(
+      throw QueryConditionException(
           "Unexpected error evaluating expression: " + std::string(e.what()));
     }
   } else {
@@ -3014,7 +3014,7 @@ void QueryCondition::Datafusion::apply(
         result_bitmap[i] *= bitmap[i];
       }
     } else {
-      throw std::logic_error(
+      throw QueryConditionException(
           "Expression evaluation bitmap has unexpected size");
     }
   } else {
@@ -3035,7 +3035,7 @@ void QueryCondition::Datafusion::apply(
         result_bitmap[i] *= bitmap[i];
       }
     } else {
-      throw std::logic_error(
+      throw QueryConditionException(
           "Expression evaluation bitmap has unexpected size");
     }
   }
