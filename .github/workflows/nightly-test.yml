@@ -16,11 +16,12 @@ jobs:
         assertions: [ON]
         sanitizer: [OFF]
         rust: [ON]
+        tiledb_sm_query_condition_evaluator: ["ast"]
         include:
           - os: ubuntu-latest
             assertions: ON
             build_type: "Release"
-            rust: OFF
+            tiledb_sm_query_condition_evaluator: "datafusion"
           - os: macos-latest # ASAN build
             sanitizer: "address"
             assertions: ON
@@ -28,6 +29,7 @@ jobs:
             base_triplet: "arm64-osx"
           - os: windows-latest
             build_type: "Debug"
+            rust: OFF
             # Insufficient space on default D:/ for debug build
             working_directory: "C:/"
       fail-fast: false
@@ -37,6 +39,7 @@ jobs:
 
     env:
       TILEDB_NIGHTLY_BUILD: 1
+      TILEDB_SM_QUERY_CONDITION_EVALUATOR: ${{ matrix.tiledb_sm_query_condition_evaluator }}
 
     steps:
       - name: Print env
