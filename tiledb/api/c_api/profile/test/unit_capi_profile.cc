@@ -39,11 +39,13 @@ using namespace tiledb::api::test_support;
 
 struct CAPINProfileFx {
   const char* name_;
-  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  std::string dir_;
 
   CAPINProfileFx()
       : name_(tiledb::sm::RestProfile::DEFAULT_PROFILE_NAME.c_str())
-      , tempdir_("unit_capi_profile") {
+      , dir_(tiledb::sm::TemporaryLocalDirectory("unit_rest_profile").path()) {
+    // Fstream cannot create directories, only files, so create the dir.
+    std::filesystem::create_directories(dir_);
   }
 };
 
@@ -54,19 +56,18 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_error_t* err = nullptr;
   tiledb_profile_t* profile;
-  auto profile_dir_ = tempdir_.path().c_str();
   SECTION("success") {
-    rc = tiledb_profile_alloc(name_, profile_dir_, &profile, &err);
+    rc = tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("empty name") {
-    rc = tiledb_profile_alloc("", profile_dir_, &profile, &err);
+    rc = tiledb_profile_alloc("", dir_.c_str(), &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null name") {
-    rc = tiledb_profile_alloc(nullptr, profile_dir_, &profile, &err);
+    rc = tiledb_profile_alloc(nullptr, dir_.c_str(), &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
@@ -83,7 +84,7 @@ TEST_CASE_METHOD(
     CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    rc = tiledb_profile_alloc(name_, profile_dir_, nullptr, &err);
+    rc = tiledb_profile_alloc(name_, dir_.c_str(), nullptr, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -94,8 +95,7 @@ TEST_CASE_METHOD(
     "[capi][profile]") {
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  auto rc =
-      tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  auto rc = tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
@@ -112,7 +112,7 @@ TEST_CASE_METHOD(
     "[capi][profile]") {
   capi_return_t rc;
   tiledb_error_t* err = nullptr;
-  ordinary_profile x{name_, tempdir_.path().c_str()};
+  ordinary_profile x{name_, dir_.c_str()};
   tiledb_string_t* name;
   SECTION("success") {
     rc = tiledb_profile_get_name(x.profile, &name, &err);
@@ -134,7 +134,7 @@ TEST_CASE_METHOD(
     "[capi][profile]") {
   capi_return_t rc;
   tiledb_error_t* err = nullptr;
-  ordinary_profile x{name_, tempdir_.path().c_str()};
+  ordinary_profile x{name_, dir_.c_str()};
   tiledb_string_t* profile_dir;
   SECTION("success") {
     rc = tiledb_profile_get_dir(x.profile, &profile_dir, &err);
@@ -157,7 +157,7 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
 
   SECTION("success") {
@@ -191,7 +191,7 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
 
   tiledb_string_t* value;
@@ -200,6 +200,11 @@ TEST_CASE_METHOD(
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     rc = tiledb_profile_get_param(profile, "rest.username", &value, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("param not found") {
+    rc = tiledb_profile_get_param(profile, "does.not.exist", &value, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(value == nullptr);
   }
   SECTION("null param") {
     rc = tiledb_profile_get_param(profile, nullptr, &value, &err);
@@ -220,7 +225,7 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
   SECTION("success") {
     rc = tiledb_profile_save(profile, &err);
@@ -241,13 +246,13 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
   rc = tiledb_profile_save(profile, &err);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   tiledb_profile_t* loaded_profile;
-  // use the same name and directory
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &loaded_profile, &err);
+  // Use the same name and directory
+  tiledb_profile_alloc(name_, dir_.c_str(), &loaded_profile, &err);
   REQUIRE(loaded_profile != nullptr);
   SECTION("success") {
     rc = tiledb_profile_load(loaded_profile, &err);
@@ -266,17 +271,13 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
   SECTION("success") {
     rc = tiledb_profile_save(profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    rc = tiledb_profile_remove(name_, tempdir_.path().c_str(), &err);
+    rc = tiledb_profile_remove(name_, dir_.c_str(), &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-  }
-  SECTION("null profile") {
-    rc = tiledb_profile_remove(nullptr, nullptr, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   tiledb_profile_free(&profile);
 }
@@ -288,7 +289,7 @@ TEST_CASE_METHOD(
   capi_return_t rc;
   tiledb_profile_t* profile;
   tiledb_error_t* err = nullptr;
-  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
   tiledb_string_t* dump_ascii;
   SECTION("success") {

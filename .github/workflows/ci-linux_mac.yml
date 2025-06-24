@@ -119,9 +119,24 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
-      - name: 'Ubuntu Prelim'
-        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
+      - name: 'Ubuntu and Macos Prelim'
+        if: ${{ (startsWith(matrix.os, 'ubuntu-') == true) || (startsWith(matrix.os, 'macos-') == true) }}
         run: ./scripts/ci/posix/prelim.sh
+        shell: bash
+
+      - name: Free disk space
+        if: ${{ !inputs.manylinux && startsWith(matrix.os, 'ubuntu-') == true }}
+        run: |
+          set -e pipefail
+          df -h
+          sudo apt clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          sudo docker builder prune -a
+          df -h
         shell: bash
 
       - name: Install manylinux prerequisites
