@@ -47,7 +47,7 @@ cxxbridge(
     test-support
   SOURCES
     array_schema.cc
-    query.cc
+    query_ast.cc
     result_tile.cc
     lib.rs
 )

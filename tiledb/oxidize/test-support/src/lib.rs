@@ -77,7 +77,7 @@ mod ffi {
 
     #[namespace = "tiledb::test::oxidize"]
     unsafe extern "C++" {
-        include!("tiledb/oxidize/test-support/cc/query.h");
+        include!("tiledb/oxidize/test-support/cc/query_ast.h");
 
         fn new_ast_value_node(
             field: &CxxString,
