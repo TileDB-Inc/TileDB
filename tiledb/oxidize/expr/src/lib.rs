@@ -26,11 +26,16 @@ mod ffi {
         fn is_predicate(&self, schema: &ArraySchema) -> Result<bool>;
         fn to_string(&self) -> String;
 
+        fn columns(&self) -> Vec<String>;
+
         #[cxx_name = "create"]
         fn query_condition_to_logical_expr(
             schema: &ArraySchema,
             query_condition: &ASTNode,
         ) -> Result<Box<LogicalExpr>>;
+
+        /// Returns a conjunction of the logical exprs `e1 AND e2 AND ... AND eN`.
+        fn make_conjunction(exprs: &[Box<LogicalExpr>]) -> Box<LogicalExpr>;
     }
 
     #[namespace = "tiledb::oxidize::datafusion::physical_expr"]
@@ -65,7 +70,7 @@ mod logical_expr;
 mod physical_expr;
 mod query_condition;
 
-pub use logical_expr::LogicalExpr;
+pub use logical_expr::{LogicalExpr, make_conjunction};
 pub use physical_expr::{PhysicalExpr, PhysicalExprOutput, create_physical_expr};
 pub use query_condition::to_datafusion as query_condition_to_logical_expr;
 

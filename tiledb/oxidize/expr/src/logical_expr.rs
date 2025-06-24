@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use arrow::datatypes::DataType as ArrowDataType;
-use datafusion::common::{Column, DFSchema, DataFusionError};
+use datafusion::common::{Column, DFSchema, DataFusionError, ScalarValue};
 use datafusion::logical_expr::{Expr, ExprSchemable};
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
 
@@ -19,9 +19,17 @@ pub enum TypeError {
 pub struct LogicalExpr(pub Expr);
 
 impl LogicalExpr {
+    pub fn columns(&self) -> Vec<String> {
+        self.0
+            .column_refs()
+            .into_iter()
+            .map(|c| c.name.clone())
+            .collect()
+    }
+
     pub fn output_type(&self, schema: &ArraySchema) -> Result<ArrowDataType, TypeError> {
         let cols = self.0.column_refs();
-        let arrow_schema = tiledb_arrow::schema::to_arrow(schema, |f| {
+        let arrow_schema = tiledb_arrow::schema::project_arrow(schema, |f| {
             let Ok(field_name) = f.name() else {
                 // NB: if the field name is not UTF-8 then it cannot possibly match the column name
                 return false;
@@ -47,4 +55,11 @@ impl Display for LogicalExpr {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         self.0.human_display().fmt(f)
     }
+}
+
+pub fn make_conjunction(exprs: &[Box<LogicalExpr>]) -> Box<LogicalExpr> {
+    Box::new(LogicalExpr(dbg!(
+        datafusion::logical_expr::utils::conjunction(exprs.iter().map(|e| e.0.clone()))
+            .unwrap_or(Expr::Literal(ScalarValue::Boolean(Some(true))))
+    )))
 }

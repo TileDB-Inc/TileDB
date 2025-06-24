@@ -50,6 +50,9 @@ using namespace tiledb::common;
 namespace tiledb::oxidize::arrow::schema {
 struct ArrowSchema;
 }
+namespace tiledb::oxidize::datafusion::logical_expr {
+class LogicalExpr;
+}
 namespace tiledb::oxidize::datafusion::physical_expr {
 struct PhysicalExpr;
 }
@@ -150,6 +153,13 @@ class QueryCondition {
       const std::string& condition_marker,
       tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
+#ifdef HAVE_RUST
+  /** Constructor from a datafusion expression tree */
+  QueryCondition(
+      const ArraySchema& array_schema,
+      rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr);
+#endif
+
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
 
@@ -210,6 +220,13 @@ class QueryCondition {
    * @return true if a rewrite occurred, false otherwise
    */
   bool rewrite_to_datafusion(const ArraySchema& array_schema);
+
+  /**
+   * @return an equivalent representation of this condition's expression tree as
+   * a Datafusion logical expression
+   */
+  rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
+  as_datafusion(const ArraySchema& array_schema);
 #endif
 
   /**
@@ -415,6 +432,11 @@ class QueryCondition {
         : schema_(std::move(schema))
         , expr_(std::move(expr)) {
     }
+
+    Datafusion(
+        const ArraySchema& array_schema,
+        rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&&
+            expr);
 
     template <typename BitmapType>
     void apply(

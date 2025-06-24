@@ -74,7 +74,7 @@ impl Session {
     }
 
     fn parse_expr(&self, expr: &str, array_schema: &ArraySchema) -> Result<Expr, ParseExprError> {
-        let arrow_schema = tiledb_arrow::schema::to_arrow(array_schema, |_| true)?;
+        let arrow_schema = tiledb_arrow::schema::to_arrow(array_schema)?;
         let df_schema = {
             // SAFETY: this only errors if the names are not unique,
             // which they will be because `ArraySchema` requires it

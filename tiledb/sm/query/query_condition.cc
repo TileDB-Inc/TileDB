@@ -105,6 +105,19 @@ QueryCondition::QueryCondition(
     , tree_(std::move(tree)) {
 }
 
+#ifdef HAVE_RUST
+QueryCondition::QueryCondition(
+    const ArraySchema& array_schema,
+    rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr) {
+  const auto columns = expr->columns();
+  for (const auto& c : columns) {
+    field_names_.insert(std::string(c.data(), c.size()));
+  }
+
+  datafusion_.emplace(array_schema, std::move(expr));
+}
+#endif
+
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : condition_marker_(rhs.condition_marker_)
     , condition_index_(rhs.condition_index_)
@@ -168,19 +181,16 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
 }
 
 #ifdef HAVE_RUST
+rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
+QueryCondition::as_datafusion(const ArraySchema& array_schema) {
+  return tiledb::oxidize::datafusion::logical_expr::create(
+      array_schema, *tree_.get());
+}
+
 bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
   if (!datafusion_.has_value()) {
-    std::vector<std::string> select(field_names().begin(), field_names().end());
-
     try {
-      auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
-          array_schema, *tree_.get());
-      auto dfschema =
-          tiledb::oxidize::arrow::schema::create(array_schema, select);
-      auto physical_expr = tiledb::oxidize::datafusion::physical_expr::create(
-          *dfschema, std::move(logical_expr));
-
-      datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
+      datafusion_.emplace(array_schema, std::move(as_datafusion(array_schema)));
     } catch (const ::rust::Error& e) {
       throw std::logic_error(
           "Unexpected error compiling expression: " + std::string(e.what()));
@@ -1317,6 +1327,12 @@ Status QueryCondition::apply(
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
+#ifdef HAVE_RUST
+  if (!tree_ && datafusion_.has_value()) {
+    throw QueryConditionException("TODO not supported");
+  }
+#endif
+
   if (!tree_) {
     return Status::Ok();
   }
@@ -2960,6 +2976,15 @@ uint64_t QueryCondition::condition_index() const {
 }
 
 #ifdef HAVE_RUST
+QueryCondition::Datafusion::Datafusion(
+    const ArraySchema& array_schema,
+    rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr)
+    : schema_(tiledb::oxidize::arrow::schema::project(
+          array_schema, expr->columns()))
+    , expr_(tiledb::oxidize::datafusion::physical_expr::create(
+          *schema_, std::move(expr))) {
+}
+
 template <typename BitmapType>
 void QueryCondition::Datafusion::apply(
     const QueryCondition::Params&,
@@ -3023,3 +3048,4 @@ template Status QueryCondition::apply_sparse<uint8_t>(
 template Status QueryCondition::apply_sparse<uint64_t>(
     const QueryCondition::Params&, const ResultTile&, std::span<uint64_t>);
 }  // namespace tiledb::sm
+                          

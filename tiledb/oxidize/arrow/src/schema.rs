@@ -41,21 +41,32 @@ impl Deref for ArrowSchema {
 pub mod cxx {
     use super::*;
 
+    pub fn to_arrow(array_schema: &ArraySchema) -> Result<Box<ArrowSchema>, Error> {
+        Ok(Box::new(ArrowSchema(Arc::new(super::project_arrow(
+            array_schema,
+            |_: &Field| true,
+        )?))))
+    }
+
     /// Returns a [Schema] which represents the physical field types of
     /// the fields from `array_schema` which are contained in `select`.
-    pub fn to_arrow(
+    pub fn project_arrow(
         array_schema: &ArraySchema,
-        select: &::cxx::Vector<::cxx::String>,
+        select: &Vec<String>,
     ) -> Result<Box<ArrowSchema>, Error> {
-        Ok(Box::new(ArrowSchema(Arc::new(super::to_arrow(
+        Ok(Box::new(ArrowSchema(Arc::new(super::project_arrow(
             array_schema,
-            |field: &Field| select.iter().any(|s| s == field.name_cxx()),
+            |field: &Field| select.iter().any(|s| s.as_str() == field.name_cxx()),
         )?))))
     }
 }
 
+pub fn to_arrow(array_schema: &ArraySchema) -> Result<Schema, Error> {
+    project_arrow(array_schema, |_: &Field| true)
+}
+
 /// Returns a [Schema] which represents the physical field types of the selected fields from `array_schema`.
-pub fn to_arrow<F>(array_schema: &ArraySchema, select: F) -> Result<Schema, Error>
+pub fn project_arrow<F>(array_schema: &ArraySchema, select: F) -> Result<Schema, Error>
 where
     F: Fn(&Field) -> bool,
 {

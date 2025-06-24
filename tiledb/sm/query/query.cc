@@ -729,6 +729,27 @@ void Query::init() {
           fragment_name_));
     }
 
+    if (!predicates_.empty()) {
+      try {
+        // treat existing query condition (if any) as datafusion
+        if (condition_.has_value()) {
+          predicates_.push_back(condition_->as_datafusion(array_schema()));
+          condition_.reset();
+        }
+
+        // join them together
+        rust::Slice<const rust::Box<
+            tiledb::oxidize::datafusion::logical_expr::LogicalExpr>>
+            preds(predicates_.data(), predicates_.size());
+        auto conjunction =
+            tiledb::oxidize::datafusion::logical_expr::make_conjunction(preds);
+        condition_.emplace(array_schema(), std::move(conjunction));
+      } catch (const rust::Error& e) {
+        throw QueryException(
+            "Error initializing predicates: " + std::string(e.what()));
+      }
+    }
+
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
     if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
@@ -1534,7 +1555,7 @@ Status Query::add_predicate(const char* predicate) {
         "Error adding predicate: " + std::string(e.what()));
   }
 
-  return Status_QueryError("Not implemented");
+  return Status::Ok();
 }
 
 Status Query::add_update_value(
