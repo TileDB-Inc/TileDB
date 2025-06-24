@@ -126,9 +126,13 @@ TEST_CASE_METHOD(
     p.set_param("rest.username", "test_user");
     REQUIRE(p.get_param("rest.username") == "test_user");
   }
+  SECTION("invalid key") {
+    Profile p(name_, tempdir_.path());
+    REQUIRE(p.get_param("does.not.exist") == std::nullopt);
+  }
   SECTION("invalid empty key") {
     Profile p(name_, tempdir_.path());
-    REQUIRE_THROWS(p.get_param(""));
+    REQUIRE(p.get_param("") == std::nullopt);
   }
 }
 

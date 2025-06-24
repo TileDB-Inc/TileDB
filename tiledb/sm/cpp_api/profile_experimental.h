@@ -199,9 +199,9 @@ class Profile {
   }
 
   /** Retrieves a parameter value from the profile. */
-  std::string get_param(const std::string& param) const {
+  std::optional<std::string> get_param(const std::string& param) const {
     tiledb_error_t* capi_error = nullptr;
-    tiledb_string_t* value;
+    tiledb_string_t* value = nullptr;
     int rc = tiledb_profile_get_param(
         profile_.get(), param.c_str(), &value, &capi_error);
     if (rc != TILEDB_OK) {
@@ -210,6 +210,11 @@ class Profile {
       std::string msg = msg_cstr;
       tiledb_error_free(&capi_error);
       throw ProfileException(msg);
+    }
+
+    if (value == nullptr) {
+      // If the value is not set, return std::nullopt
+      return std::nullopt;
     }
 
     // Convert string handle to a std::string
