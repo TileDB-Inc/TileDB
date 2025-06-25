@@ -1,4 +1,4 @@
-#include "tiledb/oxidize/test-support/cc/query_ast.h"
+#include "tiledb/oxidize/test-support/cxx-interface/cc/query_ast.h"
 
 using namespace tiledb::sm;
 

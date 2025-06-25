@@ -1,4 +1,4 @@
-#include "tiledb/oxidize/test-support/cc/result_tile.h"
+#include "tiledb/oxidize/test-support/cxx-interface/cc/result_tile.h"
 #include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb::sm;

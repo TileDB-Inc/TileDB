@@ -191,11 +191,16 @@ if (TILEDB_RUST)
   #
   # Inputs:
   #   NAME crate_name
+  #   [PATH path-to-crate]
   #   SOURCES source1 source2 ...
   #
   # Outputs:
   #   A fake interface library target `__${CXXBRIDGE_NAME}_generated` with properties
   #   `INTERFACE_SOURCES` set to the list of supplied source files.
+  #
+  #   The optional PATH argument qualifies where the source files reside relative to the current
+  #   source directory. If no PATH argument is provided then the NAME is also used as the path.
+  #
   #   These source files are either:
   #   - `.cc` files which reside in `${CXXBRIDGE_NAME}/cc`
   #   - `.rs` files which contain `#[cxx::bridge]` modules and thus will have `.cc` files generated
@@ -204,11 +209,16 @@ if (TILEDB_RUST)
   #
   function(cxxbridge)
     set(options)
-    set(oneValueArgs NAME)
+    set(oneValueArgs NAME PATH)
     set(multiValueArgs SOURCES)
     cmake_parse_arguments(CXXBRIDGE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+    if (NOT CXXBRIDGE_PATH)
+      set(CXXBRIDGE_PATH "${CXXBRIDGE_NAME}")
+    endif ()
+
     add_library(__${CXXBRIDGE_NAME}_generated INTERFACE)
+    set_target_properties(__${CXXBRIDGE_NAME}_generated PROPERTIES PATH "${CXXBRIDGE_PATH}")
     set_target_properties(__${CXXBRIDGE_NAME}_generated PROPERTIES INTERFACE_SOURCES "${CXXBRIDGE_SOURCES}")
   endfunction()
 
@@ -260,13 +270,15 @@ if (TILEDB_RUST)
     set(OXIDIZE_BRIDGE_CRATE "")
     set(OXIDIZE_BRIDGE_RS "")
     foreach (export ${OXIDIZE_EXPORT})
-      get_target_property(export_RS __${export}_generated INTERFACE_SOURCES)
-      foreach (source ${export_RS})
+      get_target_property(export_SOURCES __${export}_generated INTERFACE_SOURCES)
+      get_target_property(export_PATH __${export}_generated PATH)
+
+      foreach (source ${export_SOURCES})
         if (${source} MATCHES "(.*).rs")
           list(APPEND OXIDIZE_BRIDGE_CRATE "${export}")
           list(APPEND OXIDIZE_BRIDGE_RS ${source})
         elseif (${source} MATCHES "(.*).cc")
-          list(APPEND OXIDIZE_CC ${CMAKE_CURRENT_SOURCE_DIR}/${export}/cc/${source})
+          list(APPEND OXIDIZE_CC ${CMAKE_CURRENT_SOURCE_DIR}/${export_PATH}/cc/${source})
         else ()
           message(SEND_ERROR "Invalid source in cxxbridge '${export}': ${source}")
         endif ()

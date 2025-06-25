@@ -8,7 +8,7 @@ mod enums;
 
 use tiledb_common::query::condition::*;
 use tiledb_cxx_interface::sm::query::ast::ASTNode;
-use tiledb_test_support::query as tiledb_test_support;
+use tiledb_test_support_cxx_interface::query as tiledb_test_support;
 
 /// Constructs an internal query condition syntax tree from a [QueryConditionExpr].
 pub fn ast_from_query_condition(

@@ -1,4 +1,4 @@
-#include "tiledb/oxidize/test-support/cc/array_schema.h"
+#include "tiledb/oxidize/test-support/cxx-interface/cc/array_schema.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;

@@ -2951,7 +2951,7 @@ dependencies = [
  "tiledb-common",
  "tiledb-cxx-interface",
  "tiledb-pod",
- "tiledb-test-support",
+ "tiledb-test-support-cxx-interface",
 ]
 
 [[package]]
@@ -2969,7 +2969,7 @@ dependencies = [
  "cxx",
  "tiledb-common",
  "tiledb-cxx-interface",
- "tiledb-test-support",
+ "tiledb-test-support-cxx-interface",
 ]
 
 [[package]]
@@ -2982,11 +2982,11 @@ dependencies = [
  "cxx",
  "tiledb-arrow",
  "tiledb-cxx-interface",
- "tiledb-test-support",
+ "tiledb-test-support-cxx-interface",
 ]
 
 [[package]]
-name = "tiledb-test-support"
+name = "tiledb-test-support-cxx-interface"
 version = "0.1.0"
 dependencies = [
  "cxx",

@@ -10,8 +10,8 @@ members = [
   "staticlibs/core-objects",
   "staticlibs/unit-arithmetic",
   "staticlibs/unit-query-condition",
-  "test-support",
   "test-support/array-schema",
+  "test-support/cxx-interface",
   "test-support/ffi",
   "test-support/result-tile",
 ]
@@ -43,5 +43,5 @@ tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/ti
 tiledb-test-ffi = { path = "test-support/ffi" }
 tiledb-test-query-condition = { path = "test-support/query-condition" }
 tiledb-test-result-tile = { path = "test-support/result-tile" }
-tiledb-test-support = { path = "test-support" }
+tiledb-test-support-cxx-interface = { path = "test-support/cxx-interface" }
 thiserror = { version = "2" }

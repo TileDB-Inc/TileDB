@@ -3,6 +3,7 @@
 //!
 //! This enables property-based testing against arbitrary schemata
 //! using the strategies we have already written in `tiledb_pod`.
+extern crate tiledb_test_support_cxx_interface as tiledb_test_support;
 
 pub mod enums;
 

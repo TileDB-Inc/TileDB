@@ -44,7 +44,9 @@ cxxbridge(
 
 cxxbridge(
   NAME
-    test-support
+    test-support-cxx-interface
+  PATH
+    test-support/cxx-interface
   SOURCES
     array_schema.cc
     query_ast.cc
@@ -77,7 +79,7 @@ oxidize(
     arrow
     cxx-interface
     expr
-    test-support
+    test-support-cxx-interface
 )
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${TILEDB_OXIDIZE_INCLUDE_DIR})

@@ -3,6 +3,7 @@
 //!
 //! This enables property-based testing against arbitrary tiles
 //! using the strategies we have already written in `tiledb_test_cells`.
+extern crate tiledb_test_support_cxx_interface as tiledb_test_support;
 
 use std::collections::HashMap;
 use std::ops::Deref;

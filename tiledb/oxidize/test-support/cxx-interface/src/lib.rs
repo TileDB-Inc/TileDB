@@ -46,7 +46,7 @@ mod ffi {
 
     #[namespace = "tiledb::test::oxidize"]
     unsafe extern "C++" {
-        include!("tiledb/oxidize/test-support/cc/array_schema.h");
+        include!("tiledb/oxidize/test-support/cxx-interface/cc/array_schema.h");
 
         fn new_attribute(
             name: &CxxString,
@@ -77,7 +77,7 @@ mod ffi {
 
     #[namespace = "tiledb::test::oxidize"]
     unsafe extern "C++" {
-        include!("tiledb/oxidize/test-support/cc/query_ast.h");
+        include!("tiledb/oxidize/test-support/cxx-interface/cc/query_ast.h");
 
         fn new_ast_value_node(
             field: &CxxString,
@@ -105,7 +105,7 @@ mod ffi {
 
     #[namespace = "tiledb::test::oxidize"]
     unsafe extern "C++" {
-        include!("tiledb/oxidize/test-support/cc/result_tile.h");
+        include!("tiledb/oxidize/test-support/cxx-interface/cc/result_tile.h");
 
         fn new_result_tile(
             cell_num: u64,

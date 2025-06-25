@@ -9,4 +9,4 @@ anyhow = { workspace = true }
 cxx = { workspace = true }
 tiledb-common = { workspace = true }
 tiledb-cxx-interface = { workspace = true }
-tiledb-test-support = { workspace = true }
+tiledb-test-support-cxx-interface = { workspace = true }

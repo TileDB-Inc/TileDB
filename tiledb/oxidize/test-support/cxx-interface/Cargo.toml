@@ -1,5 +1,5 @@
 [package]
-name = "tiledb-test-support"
+name = "tiledb-test-support-cxx-interface"
 edition.workspace = true
 rust-version.workspace = true
 version.workspace = true
