@@ -285,7 +285,9 @@ RestClientRemote::post_array_schema_from_rest(
 }
 
 Status RestClientRemote::post_array_schema_to_rest(
-    const URI& uri, const ArraySchema& array_schema) {
+    // This method called on Array create
+    const URI& uri,
+    const ArraySchema& array_schema) {
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::array_schema_serialize(
@@ -1435,10 +1437,14 @@ Status RestClientRemote::post_group_from_rest(const URI& uri, Group* group) {
       rest_uri.server_namespace + ":" + rest_uri.server_path;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v2/groups/" +
-      curlc.url_escape_namespace(rest_uri.server_namespace) + "/" +
-      curlc.url_escape(rest_uri.server_path);
+  std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                    curlc.url_escape_namespace(rest_uri.server_namespace) +
+                    "/" + curlc.url_escape(rest_uri.server_path);
+
+  // This route has been moved to /contents in TileDB-Server
+  if (!rest_legacy()) {
+    url += "/contents";
+  }
 
   // Get the data
   Buffer returned_data;
@@ -1477,10 +1483,14 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
       rest_uri.server_namespace + ":" + rest_uri.server_path;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v2/groups/" +
-      curlc.url_escape_namespace(rest_uri.server_namespace) + "/" +
-      curlc.url_escape(rest_uri.server_path);
+  std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                    curlc.url_escape_namespace(rest_uri.server_namespace) +
+                    "/" + curlc.url_escape(rest_uri.server_path);
+
+  // This route has been moved to /contents in TileDB-Server
+  if (!rest_legacy()) {
+    url += "/contents";
+  }
 
   // Patch the data
   Buffer returned_data;
