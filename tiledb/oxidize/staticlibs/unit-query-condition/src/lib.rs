@@ -319,7 +319,10 @@ fn strat_query_condition_datafusion()
 /// Returns `Ok` if all test cases were successful and `Err` otherwise,
 /// logging the "minimum" failing example to standard output.
 fn proptest_query_condition_datafusion() -> anyhow::Result<bool> {
-    let mut runner = TestRunner::new(Default::default());
+    let mut runner = TestRunner::new(proptest::test_runner::Config {
+        cases: 2048,
+        ..Default::default()
+    });
     match runner.run(
         &strat_query_condition_datafusion(),
         |(schema, cells, condition): (Rc<SchemaData>, Rc<Cells>, Vec<QueryConditionExpr>)| {
