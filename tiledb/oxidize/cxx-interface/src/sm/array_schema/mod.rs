@@ -6,7 +6,7 @@ mod ffi {
         type Layout = crate::sm::enums::Layout;
     }
 
-    #[namespace = "tiledb::oxidize"]
+    #[namespace = "tiledb::oxidize::sm::attribute"]
     unsafe extern "C++" {
         include!("tiledb/oxidize/cxx-interface/cc/array_schema.h");
         type ConstAttribute;
@@ -26,6 +26,9 @@ mod ffi {
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
 
+        #[namespace = "tiledb::oxidize::sm::attribute"]
+        fn enumeration_name_cxx(attr: &Attribute) -> *const CxxString;
+
         fn set_cell_val_num(self: Pin<&mut Attribute>, cell_val_num: u32);
     }
 
@@ -42,10 +45,10 @@ mod ffi {
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
 
-        #[namespace = "tiledb::oxidize"]
+        #[namespace = "tiledb::oxidize::sm::dimension"]
         fn set_domain(dimension: Pin<&mut Dimension>, domain: &[u8]) -> Result<()>;
 
-        #[namespace = "tiledb::oxidize"]
+        #[namespace = "tiledb::oxidize::sm::dimension"]
         fn set_tile_extent(dimension: Pin<&mut Dimension>, extent: &[u8]) -> Result<()>;
     }
 
@@ -61,6 +64,19 @@ mod ffi {
         fn get_dimension_index(&self, name: &CxxString) -> u32;
 
         fn add_dimension(self: Pin<&mut Domain>, dim: SharedPtr<Dimension>);
+    }
+
+    #[namespace = "tiledb::sm"]
+    unsafe extern "C++" {
+        include!("tiledb/sm/array_schema/enumeration.h");
+
+        type Enumeration;
+
+        #[cxx_name = "cell_val_num"]
+        fn cell_val_num_cxx(&self) -> u32;
+
+        #[cxx_name = "type"]
+        fn datatype(&self) -> Datatype;
     }
 
     #[namespace = "tiledb::sm"]
@@ -117,7 +133,7 @@ use std::str::Utf8Error;
 
 use num_traits::ToBytes;
 
-pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain};
+pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain, Enumeration};
 
 #[derive(Debug)]
 pub enum CellValNum {
@@ -222,6 +238,19 @@ impl Attribute {
         // SAFETY: non-zero would have been validated by the ArraySchema
         CellValNum::from_cxx(cxx).unwrap()
     }
+
+    pub fn enumeration_name_cxx(&self) -> *const cxx::CxxString {
+        ffi::enumeration_name_cxx(self)
+    }
+
+    pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
+        let ptr = self.enumeration_name_cxx();
+        if ptr.is_null() {
+            return None;
+        }
+        let cxx = unsafe { &*ptr };
+        Some(cxx.to_str())
+    }
 }
 
 impl Debug for Attribute {
@@ -273,6 +302,22 @@ impl Field<'_> {
             Self::Attribute(a) => a.nullable(),
             Self::Dimension(_) => false,
         }
+    }
+
+    pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
+        match self {
+            Self::Attribute(a) => a.enumeration_name(),
+            Self::Dimension(_) => None,
+        }
+    }
+}
+
+impl Enumeration {
+    pub fn cell_val_num(&self) -> CellValNum {
+        let cxx = self.cell_val_num_cxx();
+
+        // SAFETY: non-zero would have been validated by the ArraySchema
+        CellValNum::from_cxx(cxx).unwrap()
     }
 }
 
