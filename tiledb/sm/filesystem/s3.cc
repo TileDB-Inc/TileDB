@@ -36,7 +36,15 @@
  * if they are of the same name. As such, the ArrayDirectory may filter out
  * non-empty directories. Users should be aware of this limitation and attempt
  * to manually maintain their working directory to avoid test failures.
+ *
  * ============================================================================
+ * Notes on string types:
+ *
+ * We use two string types in this file; std::string for most use cases, and
+ * Aws::String to interoperate with the AWS SDK. Please make sure to explicitly
+ * convert between them by calling that type's constructor. Most of the time,
+ * the two string types are identical, but in certain build configurations the
+ * types can be distinct, which will cause build errors and break third parties.
  */
 
 #ifdef HAVE_S3
@@ -224,11 +232,11 @@ S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
   Headers ret;
   auto iter = ConfigIter(cfg, constants::s3_header_prefix);
   for (; !iter.end(); iter.next()) {
-    auto key = iter.param();
+    Aws::String key(iter.param());
     if (key.size() == 0) {
       continue;
     }
-    ret[key] = iter.value();
+    ret[key] = Aws::String(iter.value());
   }
   return ret;
 }
@@ -353,7 +361,7 @@ void S3::create_bucket(const URI& bucket) const {
   // Note: empty string and 'us-east-1' are parsing errors in the SDK.
   if (!s3_params_.region_.empty() && s3_params_.region_ != "us-east-1") {
     Aws::S3::Model::CreateBucketConfiguration cfg;
-    Aws::String region_str(s3_params_.region_.c_str());
+    Aws::String region_str(s3_params_.region_);
     auto location_constraint = Aws::S3::Model::BucketLocationConstraintMapper::
         GetBucketLocationConstraintForName(region_str);
     cfg.SetLocationConstraint(location_constraint);
@@ -566,8 +574,7 @@ void S3::touch(const URI& uri) const {
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     put_object_request.SetServerSideEncryption(sse_);
   if (!s3_params_.sse_kms_key_id_.empty())
-    put_object_request.SetSSEKMSKeyId(
-        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+    put_object_request.SetSSEKMSKeyId(Aws::String(s3_params_.sse_kms_key_id_));
   // TODO: These checks are not needed since AWS SDK 1.11.275
   // https://github.com/aws/aws-sdk-cpp/pull/2875
   if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
@@ -740,19 +747,19 @@ Status S3::flush_object(const URI& uri) {
   const Status flush_st = flush_file_buffer(uri, buff, true);
 
   Aws::Http::URI aws_uri = uri.c_str();
-  std::string path_c_str = aws_uri.GetPath().c_str();
+  std::string path(aws_uri.GetPath());
 
   // Take a lock protecting 'multipart_upload_states_'.
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   // Do nothing - empty object
-  auto state_iter = multipart_upload_states_.find(path_c_str);
+  auto state_iter = multipart_upload_states_.find(path);
   if (state_iter == multipart_upload_states_.end()) {
     RETURN_NOT_OK(flush_st);
     return Status::Ok();
   }
 
-  const MultiPartUploadState* state = &multipart_upload_states_.at(path_c_str);
+  const MultiPartUploadState* state = &multipart_upload_states_.at(path);
   // Lock multipart state
   std::unique_lock<std::mutex> state_lck(state->mtx);
   unique_rl.unlock();
@@ -796,7 +803,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
   }
 
   Aws::Http::URI aws_uri{uri.c_str()};
-  std::string uri_path{aws_uri.GetPath().c_str()};
+  std::string uri_path{aws_uri.GetPath()};
 
   // Take a lock protecting 'multipart_upload_states_'.
   UniqueReadLock unique_rl{&multipart_upload_rwlock_};
@@ -937,9 +944,9 @@ Status S3::is_object(
           "the 'vfs.s3.region' option.";
     }
     return LOG_STATUS(Status_S3Error(
-        "Failed to check for existence of object s3://" + bucket_name + "/" +
-        object_key + outcome_error_message(head_object_outcome) +
-        additional_context));
+        "Failed to check for existence of object s3://" +
+        std::string(bucket_name) + "/" + std::string(object_key) +
+        outcome_error_message(head_object_outcome) + additional_context));
   }
 
   *exists = true;
@@ -970,12 +977,11 @@ std::vector<directory_entry> S3::ls_with_sizes(
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
-  auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
-  std::string aws_auth = aws_uri.GetAuthority().c_str();
+  std::string aws_auth(aws_uri.GetAuthority());
   Aws::S3::Model::ListObjectsV2Request list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
-  list_objects_request.SetPrefix(aws_prefix.c_str());
-  list_objects_request.SetDelimiter(delimiter.c_str());
+  list_objects_request.SetPrefix(remove_front_slash(aws_uri.GetPath()));
+  list_objects_request.SetDelimiter(Aws::String(delimiter));
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
     list_objects_request.SetRequestPayer(request_payer_);
   }
@@ -999,7 +1005,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
     }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
-      std::string file(object.GetKey().c_str());
+      std::string file(object.GetKey());
       uint64_t size = object.GetSize();
       entries.emplace_back(
           "s3://" + aws_auth + add_front_slash(file), size, false);
@@ -1007,7 +1013,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
 
     for (const auto& object :
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
-      std::string file(object.GetPrefix().c_str());
+      std::string file(object.GetPrefix());
       // For "directories" it doesn't seem possible to get a shallow size in
       // S3, so the size of such an entry will be 0 in S3.
       entries.emplace_back(
@@ -1051,11 +1057,10 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
-  auto aws_path = remove_front_slash(aws_uri.GetPath().c_str());
 
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(aws_uri.GetAuthority());
-  head_object_request.SetKey(aws_path.c_str());
+  head_object_request.SetKey(remove_front_slash(aws_uri.GetPath()));
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
@@ -1101,10 +1106,9 @@ Status S3::read_impl(
   Aws::S3::Model::GetObjectRequest get_object_request;
   get_object_request.WithBucket(aws_uri.GetAuthority())
       .WithKey(aws_uri.GetPath());
-  get_object_request.SetRange(
-      ("bytes=" + std::to_string(offset) + "-" +
-       std::to_string(offset + length + read_ahead_length - 1))
-          .c_str());
+  get_object_request.SetRange(Aws::String(
+      "bytes=" + std::to_string(offset) + "-" +
+      std::to_string(offset + length + read_ahead_length - 1)));
   get_object_request.SetResponseStreamFactory(
       [buffer, length, read_ahead_length]() {
         return Aws::New<PreallocatedIOStream>(
@@ -1207,7 +1211,7 @@ void S3::global_order_write(
   throw_if_not_ok(init_client());
 
   const Aws::Http::URI aws_uri(uri.c_str());
-  const std::string uri_path(aws_uri.GetPath().c_str());
+  const std::string uri_path(aws_uri.GetPath());
 
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
   auto state_iter = multipart_upload_states_.find(uri_path);
@@ -1340,12 +1344,6 @@ std::string S3::add_front_slash(const std::string& path) {
   return (path.front() != '/') ? (std::string("/") + path) : path;
 }
 
-std::string S3::remove_front_slash(const std::string& path) {
-  if (path.front() == '/')
-    return path.substr(1, path.length());
-  return path;
-}
-
 std::string S3::remove_trailing_slash(const std::string& path) {
   if (path.back() == '/') {
     return path.substr(0, path.length() - 1);
@@ -1390,7 +1388,7 @@ Status S3::init_client() const {
   auto& client_config = *client_config_.get();
 
   if (!s3_params_.region_.empty())
-    client_config.region = s3_params_.region_.c_str();
+    client_config.region = Aws::String(s3_params_.region_);
 
   if (!s3_params_.endpoint_override_.empty()) {
     client_config.endpointOverride = s3_params_.endpoint_override_;
@@ -1468,13 +1466,9 @@ Status S3::init_client() const {
             "Insufficient authentication credentials; "
             "Both access key id and secret key are needed");
       case 3: {
-        Aws::String access_key_id(s3_params_.aws_access_key_id_.c_str());
-        Aws::String secret_access_key(
-            s3_params_.aws_secret_access_key_.c_str());
-        Aws::String session_token(
-            !s3_params_.aws_session_token_.empty() ?
-                s3_params_.aws_session_token_.c_str() :
-                "");
+        Aws::String access_key_id(s3_params_.aws_access_key_id_);
+        Aws::String secret_access_key(s3_params_.aws_secret_access_key_);
+        Aws::String session_token(s3_params_.aws_session_token_);
         credentials_provider =
             make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
                 HERE(), access_key_id, secret_access_key, session_token);
@@ -1483,19 +1477,13 @@ Status S3::init_client() const {
       case 4: {
         // If AWS Role ARN provided instead of access_key and secret_key,
         // temporary credentials will be fetched by assuming this role.
-        Aws::String role_arn(s3_params_.aws_role_arn_.c_str());
-        Aws::String external_id(
-            !s3_params_.aws_external_id_.empty() ?
-                s3_params_.aws_external_id_.c_str() :
-                "");
+        Aws::String role_arn(s3_params_.aws_role_arn_);
+        Aws::String external_id(s3_params_.aws_external_id_);
         int load_frequency(
             !s3_params_.aws_load_frequency_.empty() ?
                 std::stoi(s3_params_.aws_load_frequency_) :
                 Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
-        Aws::String session_name(
-            !s3_params_.aws_session_name_.empty() ?
-                s3_params_.aws_session_name_.c_str() :
-                "");
+        Aws::String session_name(s3_params_.aws_session_name_);
         credentials_provider =
             make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
                 HERE(),
@@ -1563,6 +1551,14 @@ Status S3::init_client() const {
   return Status::Ok();
 }
 
+static Aws::String join_authority_and_path(
+    const Aws::String& authority, const Aws::String& path) {
+  bool path_has_slash = !path.empty() && path.front() == '/';
+  bool authority_has_slash = !authority.empty() && authority.back() == '/';
+  bool need_slash = !(path_has_slash || authority_has_slash);
+  return authority + (need_slash ? "/" : "") + path;
+}
+
 Status S3::copy_object(const URI& old_uri, const URI& new_uri) const {
   RETURN_NOT_OK(init_client());
 
@@ -1570,9 +1566,7 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) const {
   Aws::Http::URI dst_uri = new_uri.c_str();
   Aws::S3::Model::CopyObjectRequest copy_object_request;
   copy_object_request.SetCopySource(
-      join_authority_and_path(
-          src_uri.GetAuthority().c_str(), src_uri.GetPath().c_str())
-          .c_str());
+      join_authority_and_path(src_uri.GetAuthority(), src_uri.GetPath()));
   copy_object_request.SetBucket(dst_uri.GetAuthority());
   copy_object_request.SetKey(dst_uri.GetPath());
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
@@ -1580,8 +1574,7 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) const {
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     copy_object_request.SetServerSideEncryption(sse_);
   if (!s3_params_.sse_kms_key_id_.empty())
-    copy_object_request.SetSSEKMSKeyId(
-        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+    copy_object_request.SetSSEKMSKeyId(Aws::String(s3_params_.sse_kms_key_id_));
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     copy_object_request.SetACL(object_canned_acl_);
   }
@@ -1644,11 +1637,10 @@ Status S3::initiate_multipart_request(
     Aws::Http::URI aws_uri, MultiPartUploadState* state) {
   RETURN_NOT_OK(init_client());
 
-  auto path = aws_uri.GetPath();
-  std::string path_c_str = path.c_str();
+  std::string path(aws_uri.GetPath());
   Aws::S3::Model::CreateMultipartUploadRequest multipart_upload_request;
   multipart_upload_request.SetBucket(aws_uri.GetAuthority());
-  multipart_upload_request.SetKey(path);
+  multipart_upload_request.SetKey(Aws::String(path));
   multipart_upload_request.SetContentType("application/octet-stream");
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     multipart_upload_request.SetRequestPayer(request_payer_);
@@ -1656,7 +1648,7 @@ Status S3::initiate_multipart_request(
     multipart_upload_request.SetServerSideEncryption(sse_);
   if (!s3_params_.sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
-        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+        Aws::String(s3_params_.sse_kms_key_id_));
   if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
     multipart_upload_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
@@ -1667,8 +1659,8 @@ Status S3::initiate_multipart_request(
       client_->CreateMultipartUpload(multipart_upload_request);
   if (!multipart_upload_outcome.IsSuccess()) {
     return LOG_STATUS(Status_S3Error(
-        std::string("Failed to create multipart request for object '") +
-        path_c_str + outcome_error_message(multipart_upload_outcome)));
+        std::string("Failed to create multipart request for object '") + path +
+        outcome_error_message(multipart_upload_outcome)));
   }
 
   state->part_number = 1;
@@ -1685,14 +1677,6 @@ Status S3::initiate_multipart_request(
       std::map<int, Aws::S3::Model::CompletedPart>());
 
   return Status::Ok();
-}
-
-std::string S3::join_authority_and_path(
-    const std::string& authority, const std::string& path) const {
-  bool path_has_slash = !path.empty() && path.front() == '/';
-  bool authority_has_slash = !authority.empty() && authority.back() == '/';
-  bool need_slash = !(path_has_slash || authority_has_slash);
-  return authority + (need_slash ? "/" : "") + path;
 }
 
 Status S3::wait_for_object_to_propagate(
@@ -1794,7 +1778,7 @@ Status S3::finish_flush_object(
   Aws::Http::URI aws_uri = uri.c_str();
 
   UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
-  multipart_upload_states_.erase(aws_uri.GetPath().c_str());
+  multipart_upload_states_.erase(std::string(aws_uri.GetPath()));
   unique_wl.unlock();
 
   std::unique_lock<std::mutex> file_buffers_lck(file_buffers_mtx_);
@@ -1827,7 +1811,7 @@ Status S3::flush_direct(const URI& uri) {
 
 void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   const Aws::Http::URI aws_uri(uri.c_str());
-  const std::string uri_path(aws_uri.GetPath().c_str());
+  const std::string uri_path(aws_uri.GetPath());
 
   Aws::S3::Model::PutObjectRequest put_object_request;
 
@@ -1845,8 +1829,7 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     put_object_request.SetServerSideEncryption(sse_);
   if (!s3_params_.sse_kms_key_id_.empty())
-    put_object_request.SetSSEKMSKeyId(
-        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+    put_object_request.SetSSEKMSKeyId(Aws::String(s3_params_.sse_kms_key_id_));
   if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
     put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
@@ -1885,7 +1868,7 @@ Status S3::write_multipart(
   }
 
   const Aws::Http::URI aws_uri(uri.c_str());
-  const std::string uri_path(aws_uri.GetPath().c_str());
+  const std::string uri_path(aws_uri.GetPath());
 
   MultiPartUploadState* state;
   std::unique_lock<std::mutex> state_lck;
@@ -1905,13 +1888,11 @@ Status S3::write_multipart(
     // thread didn't create the state
     state_iter = multipart_upload_states_.find(uri_path);
     if (state_iter == multipart_upload_states_.end()) {
-      auto path = aws_uri.GetPath();
-      std::string path_str = path.c_str();
+      std::string path(aws_uri.GetPath());
       MultiPartUploadState new_state;
 
-      assert(multipart_upload_states_.count(path_str) == 0);
-      multipart_upload_states_.emplace(
-          std::move(path_str), std::move(new_state));
+      assert(multipart_upload_states_.count(path) == 0);
+      multipart_upload_states_.emplace(std::move(path), std::move(new_state));
       state = &multipart_upload_states_.at(uri_path);
 
       // Expected in initiate_multipart_request
@@ -2071,7 +2052,7 @@ Status S3::get_make_upload_part_req(
 Status S3::set_multipart_upload_state(
     const std::string& uri, MultiPartUploadState& state) {
   Aws::Http::URI aws_uri(uri.c_str());
-  std::string uri_path(aws_uri.GetPath().c_str());
+  std::string uri_path(aws_uri.GetPath());
 
   state.bucket = aws_uri.GetAuthority();
   state.key = aws_uri.GetPath();
@@ -2085,7 +2066,7 @@ Status S3::set_multipart_upload_state(
 std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
     const URI& uri) {
   const Aws::Http::URI aws_uri(uri.c_str());
-  const std::string uri_path(aws_uri.GetPath().c_str());
+  const std::string uri_path(aws_uri.GetPath());
 
   // Lock the multipart states map for reads
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
