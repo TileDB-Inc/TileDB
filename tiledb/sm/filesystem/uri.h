@@ -243,7 +243,15 @@ class URI {
    */
   bool is_tiledb() const;
 
-  // TODO add docstring
+  /**
+   * Get the position in the input URI where the embedded storage URI starts, if
+   * one can be found.
+   *
+   * We consider a storage URI valid if it complies with RFC 3986, section 3.1
+   *
+   * @return The position in the input URI where the embedded storage URI starts
+   * if found, else std::nullopt.
+   */
   std::optional<size_t> get_storage_component_index(size_t start_index) const;
 
   /**
