@@ -374,6 +374,24 @@ class VFS {
     create_vfs(config.ptr().get());
   }
 
+  /**
+   * Constructor. Creates a TileDB VFS from the given pointer.
+   * @param own=true If false, disables underlying cleanup upon destruction.
+   * @throws TileDBError if construction fails
+   */
+  VFS(const Context& ctx, tiledb_vfs_t* vfs, bool own = true)
+      : ctx_(ctx) {
+    if (vfs == nullptr)
+      throw TileDBError(
+          "[TileDB::C++API] Error: Failed to create VFS from pointer");
+
+    vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, [own](tiledb_vfs_t* p) {
+      if (own) {
+        tiledb_vfs_free(&p);
+      }
+    });
+  }
+
   VFS(const VFS&) = default;
   VFS(VFS&&) = default;
   VFS& operator=(const VFS&) = default;

@@ -298,6 +298,41 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupCPPFx,
+    "C++ API: Test group metadata with directory placeholder",
+    "[cppapi][group][metadata][dir-placeholder]") {
+  if (vfs_test_setup_.is_local()) {
+    // Only makes sense in object storage.
+    return;
+  }
+
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+
+  tiledb::Group::create(ctx_, group1_uri);
+  tiledb::Group group(ctx_, group1_uri, TILEDB_WRITE);
+  int v = 5;
+  group.put_metadata("key", TILEDB_INT32, 1, &v);
+  group.close();
+
+  // Create an object with the same name as the __meta directory.
+  // It should be filtered out when listing.
+  vfs_test_setup_.vfs().touch(group1_uri + "/__meta/");
+
+  // Open group in read mode and check that metadata value can be read.
+  group.open(TILEDB_READ);
+  const void* vRead;
+  tiledb_datatype_t vType;
+  uint32_t vNum;
+  group.get_metadata("key", &vType, &vNum, &vRead);
+  CHECK(vType == TILEDB_INT32);
+  CHECK(vNum == 1);
+  CHECK(*((const int32_t*)vRead) == 5);
+
+  // Close group
+  group.close();
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
     "C++ API: Group, set name",
     "[cppapi][group][read][rest-fails][sc-57867]") {
   std::string array1_uri = vfs_test_setup_.array_uri("array1");
