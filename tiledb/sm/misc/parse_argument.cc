@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <sstream>
 
 using namespace tiledb::common;
@@ -238,6 +239,39 @@ std::string to_str(const T& value) {
   return ss.str();
 }
 
+/**
+ * Helper function to print a code unit as a character if printable,
+ * otherwise as a hex escape sequence.
+ */
+template <typename T>
+void print_code_unit(std::stringstream& ss, T c) {
+  if constexpr (sizeof(T) == 1) {
+    // 8-bit
+    if (std::isprint(static_cast<unsigned char>(c))) {
+      ss << static_cast<char>(c);
+    } else {
+      ss << "\\x" << std::hex << std::setw(2) << std::setfill('0')
+         << static_cast<int>(static_cast<unsigned char>(c));
+    }
+  } else if constexpr (sizeof(T) == 2) {
+    // 16-bit
+    if (c < 0x80 && std::isprint(static_cast<unsigned char>(c))) {
+      ss << static_cast<char>(c);
+    } else {
+      ss << "\\x" << std::hex << std::setw(4) << std::setfill('0')
+         << static_cast<unsigned int>(c);
+    }
+  } else if constexpr (sizeof(T) == 4) {
+    // 32-bit
+    if (c < 0x80 && std::isprint(static_cast<unsigned char>(c))) {
+      ss << static_cast<char>(c);
+    } else {
+      ss << "\\x" << std::hex << std::setw(8) << std::setfill('0')
+         << static_cast<unsigned int>(c);
+    }
+  }
+}
+
 std::string to_str(const void* value, Datatype type) {
   std::stringstream ss;
   switch (type) {
@@ -273,30 +307,46 @@ std::string to_str(const void* value, Datatype type) {
     case Datatype::FLOAT64:
       ss << *(const double*)value;
       break;
-    case Datatype::CHAR:
-      ss << *(const char*)value;
+    case Datatype::CHAR: {
+      char c_char = *(const char*)value;
+      print_code_unit(ss, c_char);
       break;
-    case Datatype::ANY:
-      ss << *(const uint8_t*)value;
+    }
+    case Datatype::ANY: {
+      uint8_t c_any = *(const uint8_t*)value;
+      print_code_unit(ss, c_any);
       break;
-    case Datatype::STRING_ASCII:
-      ss << *(const uint8_t*)value;
+    }
+    case Datatype::STRING_ASCII: {
+      uint8_t c_ascii = *(const uint8_t*)value;
+      print_code_unit(ss, c_ascii);
       break;
-    case Datatype::STRING_UTF8:
-      ss << *(const uint8_t*)value;
+    }
+    case Datatype::STRING_UTF8: {
+      uint8_t c_utf8 = *(const uint8_t*)value;
+      print_code_unit(ss, c_utf8);
       break;
-    case Datatype::STRING_UTF16:
-      ss << *(const uint16_t*)value;
+    }
+    case Datatype::STRING_UTF16: {
+      uint16_t c_utf16 = *(const uint16_t*)value;
+      print_code_unit(ss, c_utf16);
       break;
-    case Datatype::STRING_UTF32:
-      ss << *(const uint32_t*)value;
+    }
+    case Datatype::STRING_UTF32: {
+      uint32_t c_utf32 = *(const uint32_t*)value;
+      print_code_unit(ss, c_utf32);
       break;
-    case Datatype::STRING_UCS2:
-      ss << *(const uint16_t*)value;
+    }
+    case Datatype::STRING_UCS2: {
+      uint16_t c_ucs2 = *(const uint16_t*)value;
+      print_code_unit(ss, c_ucs2);
       break;
-    case Datatype::STRING_UCS4:
-      ss << *(const uint32_t*)value;
+    }
+    case Datatype::STRING_UCS4: {
+      uint32_t c_ucs4 = *(const uint32_t*)value;
+      print_code_unit(ss, c_ucs4);
       break;
+    }
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
