@@ -337,7 +337,12 @@ Status group_create_details_to_capnp(
   if (group_uri.is_tiledb()) {
     URI::RESTURIComponents rest_uri;
     RETURN_NOT_OK(group->group_uri().get_rest_components(legacy, &rest_uri));
-    group_create_details_builder->setUri(rest_uri.asset_storage);
+    if (legacy) {
+      group_create_details_builder->setUri(rest_uri.asset_name);
+    } else {
+      group_create_details_builder->setUri(rest_uri.asset_storage);
+    }
+
   } else {
     group_create_details_builder->setUri(group_uri.to_string());
   }
