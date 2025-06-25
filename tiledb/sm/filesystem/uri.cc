@@ -275,6 +275,7 @@ Status URI::get_rest_components(
     rest_components->server_namespace =
         uri_.substr(prefix.size(), namespace_len);
     rest_components->asset_name = uri_.substr(slash + 1, array_len);
+    rest_components->server_path = rest_components->asset_name;
   } else {
     // Extract '<workspace>/<teamspace>' if we are talking to TileDB-Server.
 
