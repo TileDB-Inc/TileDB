@@ -39,7 +39,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 GroupDetailsV2::GroupDetailsV2(const URI& group_uri)
-    : GroupDetails(group_uri, GroupDetailsV2::format_version_){};
+    : GroupDetails(group_uri, GroupDetailsV2::format_version_) {};
 
 // ===== FORMAT =====
 // format_version (format_version_t)

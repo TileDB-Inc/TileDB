@@ -1029,7 +1029,7 @@ class Interval : public detail::IntervalBase {
       , is_lower_infinite_(false)
       , is_upper_open_(false)
       , is_upper_closed_(false)
-      , is_upper_infinite_(false){};
+      , is_upper_infinite_(false) {};
 
   /**
    * Single-point set constructor.
@@ -1039,7 +1039,8 @@ class Interval : public detail::IntervalBase {
    */
   Interval(const single_point_t&, T x)
       : Interval(adjust_bounds(
-            normalize_bound(x, true, false), normalize_bound(x, true, true))){};
+            normalize_bound(x, true, false), normalize_bound(x, true, true))) {
+      };
 
   /**
    * Finite set constructor: open
@@ -1047,7 +1048,7 @@ class Interval : public detail::IntervalBase {
   Interval(const open_t&, T lower, T upper, const open_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false),
-            normalize_bound(upper, false, true))){};
+            normalize_bound(upper, false, true))) {};
 
   /**
    * Finite set constructor: half-open, half-closed
@@ -1055,7 +1056,7 @@ class Interval : public detail::IntervalBase {
   Interval(const open_t&, T lower, T upper, const closed_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, false, false),
-            normalize_bound(upper, true, true))){};
+            normalize_bound(upper, true, true))) {};
 
   /**
    * Finite set constructor: half-closed, half-open
@@ -1063,7 +1064,7 @@ class Interval : public detail::IntervalBase {
   Interval(const closed_t&, T lower, T upper, const open_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false),
-            normalize_bound(upper, false, true))){};
+            normalize_bound(upper, false, true))) {};
 
   /**
    * Finite set constructor: closed
@@ -1071,35 +1072,35 @@ class Interval : public detail::IntervalBase {
   Interval(const closed_t&, T lower, T upper, const closed_t&)
       : Interval(adjust_bounds(
             normalize_bound(lower, true, false),
-            normalize_bound(upper, true, true))){};
+            normalize_bound(upper, true, true))) {};
 
   /**
    * Lower-infinite set constructor: upper half-open
    */
   Interval(const minus_infinity_t&, T upper, const open_t&)
       : Interval(adjust_bounds(
-            BoundInfinity(), normalize_bound(upper, false, true))){};
+            BoundInfinity(), normalize_bound(upper, false, true))) {};
 
   /**
    * Lower-infinite set constructor: upper half-closed
    */
   Interval(const minus_infinity_t&, T upper, const closed_t&)
       : Interval(adjust_bounds(
-            BoundInfinity(), normalize_bound(upper, true, true))){};
+            BoundInfinity(), normalize_bound(upper, true, true))) {};
 
   /**
    * Upper-infinite set constructor: lower half-open
    */
   Interval(const open_t&, T lower, const plus_infinity_t&)
       : Interval(adjust_bounds(
-            normalize_bound(lower, false, false), BoundInfinity())){};
+            normalize_bound(lower, false, false), BoundInfinity())) {};
 
   /**
    * Upper-infinite set constructor: lower half-closed
    */
   Interval(const closed_t&, T lower, const plus_infinity_t&)
       : Interval(adjust_bounds(
-            normalize_bound(lower, true, false), BoundInfinity())){};
+            normalize_bound(lower, true, false), BoundInfinity())) {};
 
   /**
    * Bi-infinite set constructor
@@ -1114,7 +1115,7 @@ class Interval : public detail::IntervalBase {
       , is_lower_infinite_(true)
       , is_upper_open_(false)
       , is_upper_closed_(false)
-      , is_upper_infinite_(true){};
+      , is_upper_infinite_(true) {};
 
   [[nodiscard]] bool lower_bound_has_value() const noexcept {
     return lower_bound_.has_value();

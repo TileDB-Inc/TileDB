@@ -53,7 +53,7 @@ class FieldInfo {
       , is_dense_dim_(false)
       , is_slab_dim_(false)
       , cell_val_num_(1)
-      , type_(Datatype::UINT8){};
+      , type_(Datatype::UINT8) {};
 
   /**
    * Constructor.
@@ -76,7 +76,7 @@ class FieldInfo {
       , is_dense_dim_(false)
       , is_slab_dim_(false)
       , cell_val_num_(cell_val_num)
-      , type_(type){};
+      , type_(type) {};
 
   /**
    * Constructor.
@@ -103,7 +103,7 @@ class FieldInfo {
       , is_dense_dim_(is_dense_dim)
       , is_slab_dim_(is_slab_dim)
       , cell_val_num_(cell_val_num)
-      , type_(type){};
+      , type_(type) {};
 
   /* ********************************* */
   /*         PUBLIC ATTRIBUTES         */

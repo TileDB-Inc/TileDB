@@ -43,7 +43,7 @@ GroupMemberV1::GroupMemberV1(
     const bool& relative,
     const std::optional<std::string>& name)
     : GroupMember(
-          uri, type, relative, GroupMemberV1::format_version_, name, false){};
+          uri, type, relative, GroupMemberV1::format_version_, name, false) {};
 
 // ===== FORMAT =====
 // format_version (uint32_t)

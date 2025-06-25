@@ -62,6 +62,8 @@ class TestStats {
 
 TEST_CASE("DurationInstrument: basic test", "[stats][duration_instrument]") {
   TestStats stats;
-  { stats::DurationInstrument<TestStats> temp(stats, "test_stat"); }
+  {
+    stats::DurationInstrument<TestStats> temp(stats, "test_stat");
+  }
   stats.check_reported_stat_and_duration("test_stat");
 }

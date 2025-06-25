@@ -54,9 +54,9 @@ class ThreadPool {
    public:
     ThreadPoolTask() = default;
     ThreadPoolTask(ThreadPool* tp)
-        : tp_(tp){};
+        : tp_(tp) {};
 
-    virtual ~ThreadPoolTask(){};
+    virtual ~ThreadPoolTask() {};
 
    protected:
     friend class ThreadPool;
@@ -98,7 +98,7 @@ class ThreadPool {
      */
     Task(std::future<Status>&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
-        , f_(std::move(f)){};
+        , f_(std::move(f)) {};
 
     /**
      * Wait in the threadpool for this task to be ready.
@@ -163,14 +163,14 @@ class ThreadPool {
      */
     SharedTask(auto&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
-        , f_(std::forward<decltype(f)>(f)){};
+        , f_(std::forward<decltype(f)>(f)) {};
 
     /**
      * Move constructor from a Task
      */
     SharedTask(Task&& t) noexcept
         : ThreadPoolTask(t.tp_)
-        , f_(std::move(t.f_)){};
+        , f_(std::move(t.f_)) {};
 
     /**
      * Wait in the threadpool for this task to be ready.

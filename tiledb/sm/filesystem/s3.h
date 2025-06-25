@@ -231,7 +231,7 @@ struct S3Parameters {
       , object_acl_str_(config.get<std::string>(
             "vfs.s3.object_canned_acl", Config::must_find))
       , config_source_(config.get<std::string>(
-            "vfs.s3.config_source", Config::must_find)){};
+            "vfs.s3.config_source", Config::must_find)) {};
 
   ~S3Parameters() = default;
 
@@ -1142,7 +1142,7 @@ class S3 : FilesystemBase {
   struct MakeUploadPartCtx {
     /** Constructor. */
     MakeUploadPartCtx()
-        : upload_part_num(0){};
+        : upload_part_num(0) {};
     MakeUploadPartCtx(
         Aws::S3::Model::UploadPartOutcome&& in_upload_part_outcome,
         const int in_upload_part_num)
@@ -1221,7 +1221,7 @@ class S3 : FilesystemBase {
   struct MultiPartUploadState {
     MultiPartUploadState()
         : part_number(0)
-        , st(Status::Ok()){};
+        , st(Status::Ok()) {};
     /** Constructor. */
     MultiPartUploadState(
         const int in_part_number,
@@ -1234,7 +1234,7 @@ class S3 : FilesystemBase {
         , key(std::move(in_key))
         , upload_id(std::move(in_upload_id))
         , completed_parts(std::move(in_completed_parts))
-        , st(Status::Ok()){};
+        , st(Status::Ok()) {};
 
     MultiPartUploadState(MultiPartUploadState&& other) noexcept {
       this->part_number = other.part_number;

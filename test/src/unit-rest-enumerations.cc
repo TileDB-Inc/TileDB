@@ -397,7 +397,7 @@ TEST_CASE_METHOD(
 
 RESTEnumerationFx::RESTEnumerationFx()
     : memory_tracker_(tiledb::test::create_test_memory_tracker())
-    , ctx_(vfs_test_setup_.ctx()){};
+    , ctx_(vfs_test_setup_.ctx()) {};
 
 void RESTEnumerationFx::create_array(const std::string& array_name) {
   // Create a simple array for testing. This ends up with just five elements in
