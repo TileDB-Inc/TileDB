@@ -250,9 +250,9 @@ capi_return_t tiledb_array_schema_get_enumeration_from_attribute_name(
     return TILEDB_OK;
   }
 
-  array_schema->load_enumeration(ctx, enumeration_name->c_str());
+  array_schema->load_enumeration(ctx, enumeration_name->get().c_str());
 
-  auto ptr = array_schema->get_enumeration(enumeration_name->c_str());
+  auto ptr = array_schema->get_enumeration(enumeration_name->get().c_str());
   *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
 
   return TILEDB_OK;
