@@ -210,9 +210,6 @@ bool URI::is_tiledb() const {
   return utils::parse::starts_with(uri_, "tiledb://");
 }
 
-// Try to find any embedded storage URI in the current URI.
-// Performing validation based on RFC 3986, section 3.1
-// move this to docstring
 std::optional<size_t> URI::get_storage_component_index(
     size_t start_index) const {
   // Find '://' between path and array name. iff it exists
