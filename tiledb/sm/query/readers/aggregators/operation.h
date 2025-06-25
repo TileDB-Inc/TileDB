@@ -48,7 +48,7 @@ class Operation : public InputFieldValidator {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
-  virtual ~Operation(){};
+  virtual ~Operation() {};
 
   /* ********************************* */
   /*                API                */

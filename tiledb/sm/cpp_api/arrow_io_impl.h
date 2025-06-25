@@ -117,7 +117,7 @@ namespace tiledb::arrow {
 struct ArrowInfo {
   ArrowInfo(std::string fmt, const std::string& rep = std::string())
       : fmt_(fmt)
-      , rep_(rep){};
+      , rep_(rep) {};
 
   std::string fmt_;
   std::string rep_;
