@@ -245,30 +245,14 @@ std::string to_str(const T& value) {
  */
 template <typename T>
 void print_code_unit(std::stringstream& ss, T c) {
-  if constexpr (sizeof(T) == 1) {
-    // 8-bit
-    if (std::isprint(static_cast<unsigned char>(c))) {
-      ss << static_cast<char>(c);
-    } else {
-      ss << "\\x" << std::hex << std::setw(2) << std::setfill('0')
-         << static_cast<int>(static_cast<unsigned char>(c));
-    }
-  } else if constexpr (sizeof(T) == 2) {
-    // 16-bit
-    if (c < 0x80 && std::isprint(static_cast<unsigned char>(c))) {
-      ss << static_cast<char>(c);
-    } else {
-      ss << "\\x" << std::hex << std::setw(4) << std::setfill('0')
-         << static_cast<unsigned int>(c);
-    }
-  } else if constexpr (sizeof(T) == 4) {
-    // 32-bit
-    if (c < 0x80 && std::isprint(static_cast<unsigned char>(c))) {
-      ss << static_cast<char>(c);
-    } else {
-      ss << "\\x" << std::hex << std::setw(8) << std::setfill('0')
-         << static_cast<unsigned int>(c);
-    }
+  constexpr int width = sizeof(T) * 2;
+  if ((sizeof(T) == 1 || c < 0x80) &&
+      std::isprint(static_cast<unsigned char>(c))) {
+    ss << static_cast<char>(c);
+  } else {
+    ss << "\\x" << std::hex << std::setw(width) << std::setfill('0')
+       << static_cast<unsigned int>(
+              static_cast<typename std::make_unsigned<T>::type>(c));
   }
 }
 
