@@ -36,6 +36,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
 using namespace tiledb::common;
@@ -48,6 +49,47 @@ class GroupDirectoryException : public StatusException {
       : StatusException("GroupDirectory", message) {
   }
 };
+
+namespace {
+
+const std::set<std::string> dir_names = {
+    constants::group_detail_dir_name, constants::group_metadata_dir_name};
+
+std::vector<URI> ls(const VFS& vfs, const URI& uri) {
+  auto dir_entries = vfs.ls_with_sizes(uri);
+  std::vector<URI> uris;
+
+  for (auto entry : dir_entries) {
+    auto entry_uri = URI(entry.path().native());
+
+    // Always list directories
+    if (entry.is_directory()) {
+      uris.emplace_back(entry_uri);
+      continue;
+    }
+
+    // Filter out empty files of the same name as the directory
+    if (entry_uri.remove_trailing_slash() == uri.remove_trailing_slash() &&
+        entry.file_size() == 0) {
+      continue;
+    }
+
+    // List non-known (user-added) directory names and non-empty files
+    auto iter = dir_names.find(entry_uri.last_path_part());
+    if (iter == dir_names.end() || entry.file_size() > 0) {
+      uris.emplace_back(entry_uri);
+    } else {
+      // Handle MinIO-based s3 implementation limitation
+      throw GroupDirectoryException(
+          "Cannot list given uri; File '" + entry_uri.to_string() +
+          "' may be masking a non-empty directory by the same name.");
+    }
+  }
+
+  return uris;
+}
+
+}  // namespace
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -189,9 +231,8 @@ tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
 
 Status GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
-  std::vector<URI> group_meta_dir_uris;
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
-  throw_if_not_ok(vfs_.ls(group_meta_uri, &group_meta_dir_uris));
+  std::vector<URI> group_meta_dir_uris = ls(vfs_, group_meta_uri);
 
   // Compute and group metadata URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
@@ -213,9 +254,8 @@ Status GroupDirectory::load_group_meta_uris() {
 
 Status GroupDirectory::load_group_detail_uris() {
   // Load the URIs in the group details directory
-  std::vector<URI> group_detail_dir_uris;
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
-  throw_if_not_ok(vfs_.ls(group_detail_uri, &group_detail_dir_uris));
+  std::vector<URI> group_detail_dir_uris = ls(vfs_, group_detail_uri);
 
   // Compute and group details URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =
