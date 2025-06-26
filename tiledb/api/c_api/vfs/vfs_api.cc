@@ -280,12 +280,13 @@ capi_return_t tiledb_vfs_ls(
   }
 
   // Get children
-  auto children = vfs->ls(tiledb::sm::URI(path));
+  std::vector<tiledb::sm::URI> children;
+  throw_if_not_ok(vfs->ls(tiledb::sm::URI(path), &children));
 
   // Apply the callback to every child
   int rc = 1;
-  for (const auto& entry : children) {
-    rc = callback(entry.path().native().c_str(), data);
+  for (const auto& uri : children) {
+    rc = callback(uri.to_string().c_str(), data);
     if (rc != 1)
       break;
   }

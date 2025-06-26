@@ -581,13 +581,9 @@ class VFS : private VFSBase,
    * Retrieves all the entries contained in the parent.
    *
    * @param parent The target directory to list.
-   * @param rm_dir_placeholders Whether to exclude placeholder objects used by
-   * object storage providers to represent empty folders. Defaults to true, but
-   * must be set to false when called from the C API.
    * @return All entries that are contained in the parent
    */
-  std::vector<directory_entry> ls_with_sizes(
-      const URI& parent, bool filter_dir_placeholders = true) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
