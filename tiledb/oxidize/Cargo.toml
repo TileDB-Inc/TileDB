@@ -30,7 +30,7 @@ datafusion = { version = "47", features = [] }
 iterator-ext = { path = "iterator-ext" }
 itertools = { version = "0.14" }
 num-traits = "0.2"
-proptest = { version = "1.6" }
+proptest = { version = "=1.6" }
 tiledb-arrow = { path = "arrow" }
 tiledb-arithmetic = { path = "arithmetic" }
 tiledb-common = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
