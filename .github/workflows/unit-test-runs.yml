@@ -94,7 +94,7 @@ jobs:
             -DTILEDB_SERIALIZATION=ON `
             -DTILEDB_ASSERTIONS=ON `
             -DTILEDB_ARROW_TESTS=ON `
-            -DTILEDB_RUST=ON
+            -DTILEDB_RUST=OFF
         if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: 'Build standalone unit tests (Windows)'
