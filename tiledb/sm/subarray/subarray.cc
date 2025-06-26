@@ -475,9 +475,6 @@ void Subarray::add_point_ranges_var(
         "add_point_ranges() instead");
   }
 
-  // Prepare a temp range
-  std::vector<uint8_t> range;
-
   for (size_t i = 0; i < start_offsets_size; i++) {
     uint64_t start_offset = ((uint64_t*)start_offsets)[i];
     uint64_t end_offset;
@@ -491,20 +488,14 @@ void Subarray::add_point_ranges_var(
       throw SubarrayException("Cannot add ranges; Invalid range");
     }
 
-    range.resize(2 * (end_offset - start_offset));
-    // point ranges
-    std::memcpy(
-        &range[0],
-        static_cast<const uint8_t*>(start) + start_offset,
-        end_offset - start_offset);
-    std::memcpy(
-        &range[end_offset - start_offset],
-        static_cast<const uint8_t*>(start) + start_offset,
-        end_offset - start_offset);
+    // Construct the Range with correct start/end pointers and sizes
+    const uint8_t* start_ptr =
+        static_cast<const uint8_t*>(start) + start_offset;
+    uint64_t elem_size = end_offset - start_offset;
     // Add range
     this->add_range(
         dim_idx,
-        Range(&range[0], 2 * (end_offset - start_offset)),
+        Range(start_ptr, elem_size, start_ptr, elem_size),
         err_on_range_oob_);
   }
 }
