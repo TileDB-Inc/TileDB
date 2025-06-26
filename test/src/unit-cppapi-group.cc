@@ -60,6 +60,7 @@ struct GroupCPPFx {
   tiledb::test::VFSTestSetup vfs_test_setup_;
   tiledb_ctx_t* ctx_c_;
   tiledb::Context ctx_;
+  tiledb::VFS vfs_;
 
   // Functions
   GroupCPPFx();
@@ -75,7 +76,8 @@ struct GroupCPPFx {
 
 GroupCPPFx::GroupCPPFx()
     : ctx_c_(vfs_test_setup_.ctx_c)
-    , ctx_(vfs_test_setup_.ctx()) {
+    , ctx_(vfs_test_setup_.ctx())
+    , vfs_(ctx_, vfs_test_setup_.vfs_c, false) {
 }
 
 void GroupCPPFx::set_group_timestamp(
@@ -298,7 +300,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupCPPFx,
-    "C++ API: Test group metadata with directory placeholder",
+    "C++ API: Test group metadata with directory placeholder file",
     "[cppapi][group][metadata][dir-placeholder]") {
   if (vfs_test_setup_.is_local()) {
     // Only makes sense in object storage.
@@ -315,7 +317,7 @@ TEST_CASE_METHOD(
 
   // Create an object with the same name as the __meta directory.
   // It should be filtered out when listing.
-  vfs_test_setup_.vfs().touch(group1_uri + "/__meta/");
+  vfs_.touch(group1_uri + "/__meta");
 
   // Open group in read mode and check that metadata value can be read.
   group.open(TILEDB_READ);
