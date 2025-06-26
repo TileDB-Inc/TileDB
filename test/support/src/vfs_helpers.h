@@ -873,10 +873,6 @@ struct VFSTestSetup {
     return Context(ctx_c, false);
   }
 
-  VFS vfs() {
-    return VFS(ctx(), vfs_c, false);
-  }
-
   ~VFSTestSetup() {
     vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
     vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
