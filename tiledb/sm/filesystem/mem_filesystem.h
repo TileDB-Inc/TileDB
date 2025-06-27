@@ -38,6 +38,7 @@
 #include <vector>
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 
@@ -150,7 +151,8 @@ class MemFilesystem {
    * @param path  The parent path to list sub-paths
    * @return A list of directory_entry objects
    */
-  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& path) const;
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
+      const URI& path) const;
 
   /**
    * Move a given filesystem path.

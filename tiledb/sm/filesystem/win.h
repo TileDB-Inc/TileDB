@@ -170,7 +170,8 @@ class Win : LocalFilesystem {
    * @param path The parent path to list sub-paths.
    * @return A list of directory_entry objects
    */
-  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& path) const;
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
+      const URI& path) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
