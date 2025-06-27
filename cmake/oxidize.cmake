@@ -263,6 +263,7 @@ if (TILEDB_RUST)
 
     set(OXIDIZE_STATICLIB "${OXIDIZE_NAME}_rs")
     set(OXIDIZE_INCLUDE_DIR "${TILEDB_OXIDIZE_INCLUDE_DIR}/${OXIDIZE_NAME}")
+    message(NOTICE "OXIDIZE_NAME = ${OXIDIZE_NAME}, OXIDIZE_INCLUDE_DIR = ${OXIDIZE_INCLUDE_DIR}")
 
     set(OXIDIZE_H "")
     set(OXIDIZE_CC "")
@@ -319,6 +320,7 @@ if (TILEDB_RUST)
         COMMAND
           ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
         COMMAND
+          echo "create_symlink ${bridge_h_src} ${bridge_h_dst}"
           ${CMAKE_COMMAND} -E create_symlink ${bridge_h_src} ${bridge_h_dst}
         DEPENDS
           rust_h
@@ -333,6 +335,7 @@ if (TILEDB_RUST)
         COMMAND
           ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
         COMMAND
+          echo "create_symlink ${bridge_cc_src} ${bridge_cc_dst}"
           ${CMAKE_COMMAND} -E create_symlink ${bridge_cc_src} ${bridge_cc_dst}
         DEPENDS
           rust_h
