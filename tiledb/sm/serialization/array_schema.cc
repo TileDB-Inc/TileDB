@@ -836,10 +836,16 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
-    const bool client_side) {
+    const bool client_side,
+    std::optional<std::string> storage_uri) {
   // Only set the URI if client side
-  if (client_side)
-    array_schema_builder->setUri(array_schema.array_uri().to_string());
+  if (client_side) {
+    if (storage_uri.has_value()) {
+      array_schema_builder->setUri(storage_uri.value());
+    } else {
+      array_schema_builder->setUri(array_schema.array_uri().to_string());
+    }
+  }
 
   array_schema_builder->setName(array_schema.name());
   auto v = kj::heapArray<int32_t>(1);
@@ -1190,7 +1196,8 @@ Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    const bool client_side) {
+    const bool client_side,
+    std::optional<std::string> storage_uri) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArraySchema::Builder arraySchemaBuilder =
@@ -1865,7 +1872,11 @@ deserialize_load_array_schema_response(
 #else
 
 Status array_schema_serialize(
-    const ArraySchema&, SerializationType, SerializationBuffer&, const bool) {
+    const ArraySchema&,
+    SerializationType,
+    SerializationBuffer&,
+    const bool,
+    std::optional<std::string>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

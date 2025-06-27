@@ -107,12 +107,14 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
  * @param array_schema_builder Cap'n proto class
  * @param client_side indicate if client or server side. If server side we won't
  * serialize the array URI
+ * @param storage_uri optional storage URI to use when creating an array
  * @return Status
  */
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
-    const bool client_side);
+    const bool client_side,
+    std::optional<std::string> storage_uri = std::nullopt);
 
 /**
  * Deserialize an array schema from a cap'n proto object
@@ -159,13 +161,15 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
  * @param serialized_buffer buffer to store serialized bytes in
  * @param client_side indicate if client or server side. If server side we won't
  * serialize the array URI
+ * @param storage_uri optional storage URI to use when creating an array
  * @return
  */
 Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    const bool client_side);
+    const bool client_side,
+    std::optional<std::string> storage_uri = std::nullopt);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
