@@ -111,3 +111,19 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   CHECK(c.set(key, expected_value).ok());
   TestConfig<std::string>::check_expected(expected_value, c, key);
 }
+
+TEST_CASE("Config::set_params - set and unset", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"the_value"};
+
+  // Set the parameter
+  CHECK(c.set(key, value).ok());
+  auto set_params = c.set_params();
+  CHECK(set_params.find(key) != set_params.end());
+
+  // Unset the parameter
+  CHECK(c.unset(key).ok());
+  set_params = c.set_params();
+  CHECK(set_params.find(key) == set_params.end());
+}
