@@ -1,0 +1,9 @@
+# The following profile settings are used in CI to reduce size
+# of Rust build artifacts
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.release]
+debug-assertions = true
+overflow-checks = true

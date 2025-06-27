@@ -54,6 +54,13 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
 
+      - name: .cargo/config.toml
+        if: ${{ matrix.rust == 'ON' }}
+        run: |
+          mkdir -p $HOME/.cargo
+          cp $GITHUB_WORKSPACE/scripts/ci/cargo_config.toml $HOME/.cargo/config.toml
+        shell: bash
+
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:

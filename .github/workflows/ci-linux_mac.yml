@@ -113,6 +113,12 @@ jobs:
         if: ${{ inputs.rust }}
         uses: dtolnay/rust-toolchain@stable
 
+      - name: .cargo/config.toml
+        if: ${{ inputs.rust }}
+        run: |
+          mkdir -p $HOME/.cargo
+          cp $GITHUB_WORKSPACE/scripts/ci/cargo_config.toml $HOME/.cargo/config.toml
+
       - name: Prevent vpckg from building debug variants
         run: python3 ./scripts/ci/patch_vcpkg_triplets.py
 
