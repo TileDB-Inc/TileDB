@@ -49,7 +49,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "query_add_predicate";
+const char* array_name = "array_query_add_predicate";
 
 #define TRY(ctx, action)                 \
   do {                                   \
