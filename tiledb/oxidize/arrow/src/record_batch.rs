@@ -11,7 +11,7 @@ use arrow::array::{
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
-use arrow::record_batch::RecordBatch;
+use arrow::record_batch::{RecordBatch, RecordBatchOptions};
 use tiledb_cxx_interface::sm::query::readers::{ResultTile, TileTuple};
 use tiledb_cxx_interface::sm::tile::Tile;
 
@@ -122,8 +122,17 @@ pub unsafe fn to_record_batch(
     );
 
     // SAFETY: the four asserts above rule out each of the possible error conditions
-    let arrow = RecordBatch::try_new(Arc::clone(&schema.0), columns)
-        .expect("Logic error: preconditions for constructing RecordBatch not met");
+    let arrow = if columns.is_empty() {
+        RecordBatch::try_new_with_options(
+            Arc::clone(&schema.0),
+            columns,
+            &RecordBatchOptions::new().with_row_count(Some(tile.cell_num() as usize)),
+        )
+    } else {
+        RecordBatch::try_new(Arc::clone(&schema.0), columns)
+    };
+
+    let arrow = arrow.expect("Logic error: preconditions for constructing RecordBatch not met");
 
     Ok(Box::new(ArrowRecordBatch { arrow }))
 }
