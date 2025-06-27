@@ -324,9 +324,9 @@ TEST_CASE_METHOD(
   const void* vRead;
   tiledb_datatype_t vType;
   uint32_t vNum;
-  group.get_metadata("key", &vType, &vNum, &vRead);
+  REQUIRE_NOTHROW(group.get_metadata("key", &vType, &vNum, &vRead));
   CHECK(vType == TILEDB_INT32);
-  CHECK(vNum == 1);
+  REQUIRE(vNum == 1);
   CHECK(*((const int32_t*)vRead) == 5);
 
   // Close group
