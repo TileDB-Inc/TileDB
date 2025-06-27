@@ -15,13 +15,7 @@ jobs:
         build_type: [Debug, Release]
         assertions: [ON]
         sanitizer: [OFF]
-        rust: [ON]
-        tiledb_sm_query_condition_evaluator: ["ast"]
         include:
-          - os: ubuntu-latest
-            assertions: ON
-            build_type: "Release"
-            tiledb_sm_query_condition_evaluator: "datafusion"
           - os: macos-latest # ASAN build
             sanitizer: "address"
             assertions: ON
@@ -29,7 +23,6 @@ jobs:
             base_triplet: "arm64-osx"
           - os: windows-latest
             build_type: "Debug"
-            rust: OFF
             # Insufficient space on default D:/ for debug build
             working_directory: "C:/"
       fail-fast: false
@@ -39,15 +32,10 @@ jobs:
 
     env:
       TILEDB_NIGHTLY_BUILD: 1
-      TILEDB_SM_QUERY_CONDITION_EVALUATOR: ${{ matrix.tiledb_sm_query_condition_evaluator }}
 
     steps:
       - name: Print env
         run: printenv
-
-      - name: Install Rust Stable
-        if: ${{ matrix.rust == 'ON' }}
-        uses: dtolnay/rust-toolchain@stable
 
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
@@ -58,13 +46,13 @@ jobs:
           SANITIZER_ARG: ${{ matrix.sanitizer }}
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_SANITIZER=$SANITIZER_ARG -DTILEDB_ASSERTIONS=${{ matrix.assertions }} -DTILEDB_VCPKG_BASE_TRIPLET=${{ matrix.base_triplet }} -DTILEDB_RUST=${{ matrix.rust }}
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_SANITIZER=$SANITIZER_ARG -DTILEDB_ASSERTIONS=${{ matrix.assertions }} -DTILEDB_VCPKG_BASE_TRIPLET=${{ matrix.base_triplet }}
 
       - name: Configure TileDB CMake (Windows)
         if: contains(matrix.os, 'windows')
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build -S $env:GITHUB_WORKSPACE -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_RUST=${{ matrix.rust }}
+          cmake -B build -S $env:GITHUB_WORKSPACE -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build TileDB
         working-directory: ${{ matrix.working_directory || github.workspace }}
