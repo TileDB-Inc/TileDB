@@ -393,7 +393,7 @@ class MemoryTracker {
       , upstream_(tdb::pmr::get_default_resource())
       , total_counter_(0)
       , memory_budget_(memory_budget)
-      , on_budget_exceeded_(on_budget_exceeded){};
+      , on_budget_exceeded_(on_budget_exceeded) {};
 
  private:
   /** Protects all non-atomic member variables. */

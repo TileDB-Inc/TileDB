@@ -58,7 +58,7 @@ struct RemoteGlobalOrderWriteFx {
       , array_name_{"global-array-" + std::to_string(total_cell_count_)}
       , array_uri_(vfs_test_setup_.array_uri(array_name_))
       , ctx_(vfs_test_setup_.ctx())
-      , array_type_(array_type){};
+      , array_type_(array_type) {};
 
   // Create a simple dense array
   void create_array() {

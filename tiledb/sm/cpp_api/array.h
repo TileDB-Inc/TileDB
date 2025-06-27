@@ -88,18 +88,18 @@ class TemporalPolicy {
  public:
   TemporalPolicy()
       : timestamp_start_(0)
-      , timestamp_end_(UINT64_MAX){};
+      , timestamp_end_(UINT64_MAX) {};
 
   TemporalPolicy(const TimeTravelMarker&, uint64_t timestamp)
       : timestamp_start_(0)
-      , timestamp_end_(timestamp){};
+      , timestamp_end_(timestamp) {};
 
   TemporalPolicy(
       const TimestampStartEndMarker&,
       uint64_t timestamp_start,
       uint64_t timestamp_end)
       : timestamp_start_(timestamp_start)
-      , timestamp_end_(timestamp_end){};
+      , timestamp_end_(timestamp_end) {};
 
  private:
   inline uint64_t timestamp_start() const {
@@ -145,15 +145,15 @@ class EncryptionAlgorithm {
  public:
   EncryptionAlgorithm()
       : type_(TILEDB_NO_ENCRYPTION)
-      , key_(nullptr){};
+      , key_(nullptr) {};
 
   EncryptionAlgorithm(tiledb_encryption_type_t type, const char* key)
       : type_(type)
-      , key_(key){};
+      , key_(key) {};
 
   EncryptionAlgorithm(const AESGCMEncryptionTypeMarker&, const char* key)
       : type_(TILEDB_AES_256_GCM)
-      , key_(key){};
+      , key_(key) {};
 
  private:
   inline tiledb_encryption_type_t type() const {

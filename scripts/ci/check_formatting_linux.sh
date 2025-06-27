@@ -35,4 +35,4 @@ sudo ./scripts/install-clangformat.sh
 src=$(dirname $0)/../..
 cd $src
 
-$src/scripts/run-clang-format.sh $src clang-format-17 0
+$src/scripts/run-clang-format.sh $src clang-format-19 0

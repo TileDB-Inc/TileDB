@@ -108,8 +108,8 @@ class DynamicArray {
   class NullInitializer {
    public:
     inline static void initialize(
-        [[maybe_unused]] T* item, [[maybe_unused]] size_t index){
-        // Arguments ignored; named only to document policy concept
+        [[maybe_unused]] T* item, [[maybe_unused]] size_t index) {
+      // Arguments ignored; named only to document policy concept
     };
   };
 

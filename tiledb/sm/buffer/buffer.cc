@@ -50,18 +50,18 @@ namespace sm {
 BufferBase::BufferBase()
     : data_(nullptr)
     , size_(0)
-    , offset_(0){};
+    , offset_(0) {};
 
 BufferBase::BufferBase(void* data, const uint64_t size)
     : data_(data)
     , size_(size)
-    , offset_(0){};
+    , offset_(0) {};
 
 BufferBase::BufferBase(const void* data, const uint64_t size)
     // const_cast is safe here because BufferBase methods do not modify storage
     : data_(const_cast<void*>(data))
     , size_(size)
-    , offset_(0){};
+    , offset_(0) {};
 
 uint64_t BufferBase::size() const {
   return size_;
