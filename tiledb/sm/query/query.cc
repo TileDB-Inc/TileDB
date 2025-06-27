@@ -1521,10 +1521,10 @@ Status Query::set_condition(const QueryCondition& condition) {
 }
 
 Status Query::add_predicate(const char* predicate) {
-  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
-    return logger_->status(Status_QueryError(
-        "Cannot add query predicate; Operation not applicable "
-        "to write queries"));
+  if (type_ != QueryType::READ) {
+    return logger_->status(
+        Status_QueryError("Cannot add query predicate; Operation only "
+                          "applicable to read queries"));
   }
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
@@ -1548,6 +1548,10 @@ Status Query::add_predicate(const char* predicate) {
 
     if (!expr->is_predicate(array_schema())) {
       return Status_QueryError("Expression does not return a boolean value");
+    }
+    if (expr->has_aggregate_functions()) {
+      return Status_QueryError(
+          "Aggregate functions in predicate is not supported");
     }
     predicates_.push_back(std::move(expr));
   } catch (const rust::Error& e) {

@@ -24,6 +24,7 @@ mod ffi {
     extern "Rust" {
         type LogicalExpr;
         fn is_predicate(&self, schema: &ArraySchema) -> Result<bool>;
+        fn has_aggregate_functions(&self) -> bool;
         fn to_string(&self) -> String;
 
         fn columns(&self) -> Vec<String>;

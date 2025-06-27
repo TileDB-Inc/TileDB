@@ -591,6 +591,8 @@ capi_return_t tiledb_query_add_predicate(
   // Sanity check
   if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
+  } else if (predicate == nullptr) {
+    throw CAPIStatusException("Argument \"predicate\" may not be NULL");
   }
 
   throw_if_not_ok(query->query_->add_predicate(predicate));

@@ -3,6 +3,7 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use arrow::datatypes::DataType as ArrowDataType;
+use datafusion::common::tree_node::{TreeNode, TreeNodeRecursion, TreeNodeVisitor};
 use datafusion::common::{Column, DFSchema, DataFusionError, ScalarValue};
 use datafusion::logical_expr::{Expr, ExprSchemable};
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
@@ -46,6 +47,15 @@ impl LogicalExpr {
         Ok(self.0.get_type(&dfschema)?)
     }
 
+    pub fn has_aggregate_functions(&self) -> bool {
+        let rec = self.0.visit(&mut AggregateFunctionChecker::default());
+        let rec = {
+            // SAFETY: AggregateFunctionChecker does not return any errors
+            rec.unwrap()
+        };
+        matches!(rec, TreeNodeRecursion::Stop)
+    }
+
     pub fn is_predicate(&self, schema: &ArraySchema) -> Result<bool, TypeError> {
         Ok(matches!(self.output_type(schema)?, ArrowDataType::Boolean))
     }
@@ -62,4 +72,19 @@ pub fn make_conjunction(exprs: &[Box<LogicalExpr>]) -> Box<LogicalExpr> {
         datafusion::logical_expr::utils::conjunction(exprs.iter().map(|e| e.0.clone()))
             .unwrap_or(Expr::Literal(ScalarValue::Boolean(Some(true)))),
     ))
+}
+
+#[derive(Default)]
+struct AggregateFunctionChecker {}
+
+impl TreeNodeVisitor<'_> for AggregateFunctionChecker {
+    type Node = Expr;
+
+    fn f_down(&mut self, node: &Self::Node) -> Result<TreeNodeRecursion, DataFusionError> {
+        if matches!(node, Expr::AggregateFunction(_)) {
+            Ok(TreeNodeRecursion::Stop)
+        } else {
+            Ok(TreeNodeRecursion::Continue)
+        }
+    }
 }
