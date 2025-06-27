@@ -321,6 +321,7 @@ if (TILEDB_RUST)
           ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
         COMMAND
           echo "create_symlink ${bridge_h_src} ${bridge_h_dst}"
+        COMMAND
           ${CMAKE_COMMAND} -E create_symlink ${bridge_h_src} ${bridge_h_dst}
         DEPENDS
           rust_h
@@ -336,6 +337,7 @@ if (TILEDB_RUST)
           ${CMAKE_COMMAND} -E make_directory ${bridge_sanitize_dirname}
         COMMAND
           echo "create_symlink ${bridge_cc_src} ${bridge_cc_dst}"
+        COMMAND
           ${CMAKE_COMMAND} -E create_symlink ${bridge_cc_src} ${bridge_cc_dst}
         DEPENDS
           rust_h
