@@ -1537,11 +1537,12 @@ Status Query::add_predicate(const char* predicate) {
         resources_.session().parse_expr(predicate, array_schema());
     auto extern_expr = box_extern_expr.into_raw();
 
-    // NB: Rust cxx does not have a way to have crate A construct and return an
-    // opaque Rust type which is defined in crate B. So above we create an
-    // "ExternLogicalExpr" whose representation is exactly that of LogicalExpr,
-    // and we can transmute the raw pointer after un-boxing it. This is all
-    // quite unsafe but that's life at the FFI boundary. For now, hopefully.
+    // NB: Rust cxx does not have a way to have crate A construct and return
+    // an opaque Rust type which is defined in crate B. So above we create an
+    // "ExternLogicalExpr" whose representation is exactly that of
+    // LogicalExpr, and we can transmute the raw pointer after un-boxing it.
+    // This is all quite unsafe but that's life at the FFI boundary. For now,
+    // hopefully.
     using LogicalExpr = tiledb::oxidize::datafusion::logical_expr::LogicalExpr;
     auto expr = rust::Box<LogicalExpr>::from_raw(
         reinterpret_cast<LogicalExpr*>(extern_expr));
@@ -1725,7 +1726,8 @@ Status Query::submit() {
       throw_if_not_ok(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
-      // If we cache an entire write a query may be uninitialized for N submits.
+      // If we cache an entire write a query may be uninitialized for N
+      // submits.
       if (!query_remote_buffer_storage_.has_value() &&
           type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
         query_remote_buffer_storage_.emplace(*this, buffers_);
@@ -1859,8 +1861,8 @@ bool Query::is_aggregate(std::string output_field_name) const {
 /* ****************************** */
 
 Layout Query::effective_layout() const {
-  // If the user has not set a layout, it will default to row-major, which will
-  // use the legacy reader on sparse arrays, and fail if aggregates were
+  // If the user has not set a layout, it will default to row-major, which
+  // will use the legacy reader on sparse arrays, and fail if aggregates were
   // specified. However, if only aggregates are specified and no regular data
   // buffers, the layout doesn't matter and we can transparently switch to the
   // much more efficient unordered layout.
@@ -1944,14 +1946,16 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       all_dense &= frag_md->dense();
     }
 
-    // We are going to deprecate dense arrays with sparse fragments in 2.27 but
-    // log a warning for now.
+    // We are going to deprecate dense arrays with sparse fragments in 2.27
+    // but log a warning for now.
     if (array_schema_->dense() && !all_dense) {
       LOG_WARN(
           "This dense array contains sparse fragments. Support for reading "
-          "sparse fragments in dense arrays will be removed in TileDB version "
+          "sparse fragments in dense arrays will be removed in TileDB "
+          "version "
           "2.27 to be released in September 2024. To make sure this array "
-          "continues to work after an upgrade to version 2.27 or later, please "
+          "continues to work after an upgrade to version 2.27 or later, "
+          "please "
           "consolidate the sparse fragments using a TileDB version 2.26 or "
           "earlier.");
     }
@@ -2076,8 +2080,8 @@ Status Query::check_buffer_names() {
                             "cells to be written"));
     }
 
-    // All attributes/dimensions must be provided unless this query is only for
-    // dimension labels.
+    // All attributes/dimensions must be provided unless this query is only
+    // for dimension labels.
     if (!only_dim_label_query() && !allow_separate_attribute_writes()) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(
