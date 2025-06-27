@@ -246,37 +246,42 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(range_num == 5);
 
-    // validate range
-    const void* start;
-    const void* end;
-    rc = tiledb_subarray_get_range(
-        x.ctx(), x.subarray, 0, 0, &start, &end, nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 2) == "aa");
-    CHECK(std::string(static_cast<const char*>(end), 2) == "aa");
-    rc = tiledb_subarray_get_range(
-        x.ctx(), x.subarray, 0, 1, &start, &end, nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 1) == "b");
-    CHECK(std::string(static_cast<const char*>(end), 1) == "b");
-    rc = tiledb_subarray_get_range(
-        x.ctx(), x.subarray, 0, 2, &start, &end, nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 3) == "ccc");
-    CHECK(std::string(static_cast<const char*>(end), 3) == "ccc");
-    rc = tiledb_subarray_get_range(
-        x.ctx(), x.subarray, 0, 3, &start, &end, nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 2) == "dd");
-    CHECK(std::string(static_cast<const char*>(end), 2) == "dd");
-    rc = tiledb_subarray_get_range(
-        x.ctx(), x.subarray, 0, 4, &start, &end, nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 2) == "ee");
-    CHECK(std::string(static_cast<const char*>(end), 2) == "ee");
+    // validate range sizes and values
+    struct {
+      size_t start;
+      size_t len;
+      std::string expected;
+    } expected_ranges[] = {
+        {0, 2, "aa"},
+        {2, 1, "b"},
+        {3, 3, "ccc"},
+        {6, 2, "dd"},
+        {8, 2, "ee"},
+    };
+
+    for (uint64_t i = 0; i < 5; ++i) {
+      uint64_t start_size = 0, end_size = 0;
+      rc = tiledb_subarray_get_range_var_size(
+          x.ctx(), x.subarray, 0, i, &start_size, &end_size);
+      REQUIRE(tiledb_status(rc) == TILEDB_OK);
+      CHECK(start_size == expected_ranges[i].len);
+      CHECK(end_size == expected_ranges[i].len);
+
+      std::vector<char> start_buf(start_size), end_buf(end_size);
+      rc = tiledb_subarray_get_range_var(
+          x.ctx(), x.subarray, 0, i, start_buf.data(), end_buf.data());
+      REQUIRE(tiledb_status(rc) == TILEDB_OK);
+      CHECK(
+          std::string(start_buf.data(), start_size) ==
+          expected_ranges[i].expected);
+      CHECK(
+          std::string(end_buf.data(), end_size) == expected_ranges[i].expected);
+    }
+
     // there are only five ranges
-    rc = tiledb_subarray_get_range(
-        x.ctx(), x.subarray, 0, 5, &start, &end, nullptr);
+    uint64_t dummy_size;
+    rc = tiledb_subarray_get_range_var_size(
+        x.ctx(), x.subarray, 0, 5, &dummy_size, &dummy_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null context") {
