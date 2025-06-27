@@ -29,3 +29,9 @@ void set_tile_extent(Dimension& dimension, rust::Slice<const uint8_t> domain);
 
 }  // namespace tiledb::oxidize::sm
 
+namespace sm::enumeration {
+using ConstEnumeration = const tiledb::sm::Enumeration;
+}
+
+}  // namespace tiledb::oxidize
+                               
