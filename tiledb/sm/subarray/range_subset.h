@@ -280,7 +280,7 @@ template <typename T, bool CoalesceAdds>
 class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
  public:
   TypedRangeSetAndSupersetImpl(const Range& superset)
-      : superset_(superset){};
+      : superset_(superset) {};
 
   Status add_range(
       std::vector<Range>& ranges, const Range& new_range) const override {

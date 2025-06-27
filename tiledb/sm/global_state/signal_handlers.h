@@ -78,7 +78,7 @@ class SignalHandlers {
 
  private:
   /** Constructor. */
-  SignalHandlers(){};
+  SignalHandlers() {};
 };
 
 }  // namespace global_state

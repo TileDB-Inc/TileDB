@@ -124,7 +124,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
       16,   // Chunk7: 6 cells.
       16,   // Chunk7: 8 cells.
       16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
+  };  // Chunk8: 12 cells.
 
   std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
 

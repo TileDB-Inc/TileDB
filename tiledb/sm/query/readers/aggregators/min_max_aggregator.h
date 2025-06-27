@@ -249,7 +249,7 @@ class MinAggregator : public ComparatorAggregator<
    */
   MinAggregator(const FieldInfo field_info)
       : ComparatorAggregator<T, std::less<typename type_data<T>::value_type>>(
-            field_info){};
+            field_info) {};
 
   DISABLE_COPY_AND_COPY_ASSIGN(MinAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MinAggregator);
@@ -295,7 +295,7 @@ class MaxAggregator : public ComparatorAggregator<
   MaxAggregator(const FieldInfo field_info)
       : ComparatorAggregator<
             T,
-            std::greater<typename type_data<T>::value_type>>(field_info){};
+            std::greater<typename type_data<T>::value_type>>(field_info) {};
 
   DISABLE_COPY_AND_COPY_ASSIGN(MaxAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);

@@ -70,8 +70,7 @@ TEST_CASE(
     "[arithmetic][rapidcheck]") {
   SECTION("Rapidcheck") {
     auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                    uint32_t a, uint32_t b)
-                    ->std::optional<uint32_t> {
+                    uint32_t a, uint32_t b) -> std::optional<uint32_t> {
       const auto cpp = checked_arithmetic<uint32_t>::add(a, b);
       std::optional<uint32_t> rs;
       {
@@ -131,9 +130,8 @@ TEST_CASE("Arithmetic checked_arithmetic int32_t add", "[arithmetic]") {
 TEST_CASE(
     "Arithmetic checked_arithmetic int32_t add rapidcheck",
     "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int32_t a, int32_t b)
-          ->std::optional<int32_t> {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  int32_t a, int32_t b) -> std::optional<int32_t> {
     const auto cpp = checked_arithmetic<int32_t>::add(a, b);
     std::optional<int32_t> rs;
     {
@@ -180,8 +178,7 @@ TEST_CASE(
     "Arithmetic checked_arithmetic uint64_t add rapidcheck",
     "[arithmetic][rapidcheck]") {
   auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint64_t a, uint64_t b)
-                  ->std::optional<uint64_t> {
+                  uint64_t a, uint64_t b) -> std::optional<uint64_t> {
     const auto cpp = checked_arithmetic<uint64_t>::add(a, b);
     std::optional<uint64_t> rs;
     {
@@ -239,9 +236,8 @@ TEST_CASE("Arithmetic checked_arithmetic int64_t add", "[arithmetic]") {
 TEST_CASE(
     "Arithmetic checked_arithmetic int64_t add rapidcheck",
     "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
-          ->std::optional<int64_t> {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  int64_t a, int64_t b) -> std::optional<int64_t> {
     const auto cpp = checked_arithmetic<int64_t>::add(a, b);
     std::optional<int64_t> rs;
     {
@@ -282,8 +278,7 @@ TEST_CASE(
     "Arithmetic checked_arithmetic uint32_t sub rapidcheck",
     "[arithmetic][rapidcheck]") {
   auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint32_t a, uint32_t b)
-                  ->std::optional<uint32_t> {
+                  uint32_t a, uint32_t b) -> std::optional<uint32_t> {
     const std::optional<uint32_t> cpp = checked_arithmetic<uint32_t>::sub(a, b);
 
     std::optional<uint32_t> rs;
@@ -326,9 +321,8 @@ TEST_CASE("Arithmetic checked_arithmetic int32_t sub", "[arithmetic]") {
 TEST_CASE(
     "Arithmetic checked_arithmetic int32_t sub rapidcheck",
     "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int32_t a, int32_t b)
-          ->std::optional<int32_t> {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  int32_t a, int32_t b) -> std::optional<int32_t> {
     const std::optional<int32_t> cpp = checked_arithmetic<int32_t>::sub(a, b);
 
     std::optional<int32_t> rs;
@@ -370,8 +364,7 @@ TEST_CASE(
     "Arithmetic checked_arithmetic uint64_t sub rapidcheck",
     "[arithmetic][rapidcheck]") {
   auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint64_t a, uint64_t b)
-                  ->std::optional<int64_t> {
+                  uint64_t a, uint64_t b) -> std::optional<int64_t> {
     const std::optional<int64_t> cpp = checked_arithmetic<uint64_t>::sub(a, b);
 
     std::optional<uint64_t> rs;
@@ -431,8 +424,7 @@ TEST_CASE(
     "Arithmetic checked_arithmetic uint64_t sub_signed rapidcheck",
     "[arithmetic][rapidcheck]") {
   auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint64_t a, uint64_t b)
-                  ->std::optional<int64_t> {
+                  uint64_t a, uint64_t b) -> std::optional<int64_t> {
     const std::optional<int64_t> cpp =
         checked_arithmetic<uint64_t>::sub_signed(a, b);
 
@@ -498,9 +490,8 @@ TEST_CASE("Arithmetic checked_arithmetic int64_t sub", "[arithmetic]") {
 TEST_CASE(
     "Arithmetic checked_arithmetic int64_t sub rapidcheck",
     "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
-          ->std::optional<int64_t> {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  int64_t a, int64_t b) -> std::optional<int64_t> {
     const std::optional<int64_t> cpp = checked_arithmetic<int64_t>::sub(a, b);
 
     std::optional<int64_t> rs;

@@ -44,7 +44,8 @@ GroupMemberV2::GroupMemberV2(
     const std::optional<std::string>& name,
     const bool& deleted)
     : GroupMember(
-          uri, type, relative, GroupMemberV2::format_version_, name, deleted){};
+          uri, type, relative, GroupMemberV2::format_version_, name, deleted) {
+    };
 
 // ===== FORMAT =====
 // format_version (uint32_t)

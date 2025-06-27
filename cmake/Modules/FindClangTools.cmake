@@ -52,7 +52,7 @@ endif()
 
 find_program(CLANG_FORMAT_BIN
   NAMES
-  clang-format-17
+  clang-format-19
   clang-format
   PATHS ${ClangTools_PATH} $ENV{CLANG_TOOLS_PATH} /usr/local/bin /usr/bin
         NO_DEFAULT_PATH

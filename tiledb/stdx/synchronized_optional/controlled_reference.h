@@ -98,8 +98,7 @@ class [[maybe_unused]] controlled_reference_default_traits {
  */
 template <
     class T,
-    template <class>
-    class H,
+    template <class> class H,
     class Tr = detail::controlled_reference_default_traits<H<T>>>
 class controlled_reference_base {
  protected:
@@ -145,8 +144,7 @@ class controlled_reference_base {
  */
 template <
     class T,
-    template <class>
-    class H,
+    template <class> class H,
     class Tr = detail::controlled_reference_default_traits<H<T>>>
 class controlled_reference
     : public detail::controlled_reference_base<T, H, Tr> {
@@ -211,8 +209,7 @@ class controlled_reference
  */
 template <
     class T,
-    template <class>
-    class H,
+    template <class> class H,
     class Tr = detail::controlled_reference_default_traits<H<T>>>
 class controlled_const_reference
     : public detail::controlled_reference_base<T, H, Tr> {

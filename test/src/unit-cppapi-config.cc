@@ -45,7 +45,7 @@ using namespace tiledb::sm;
 class tiledb::sm::WhiteboxConfig {
  public:
   WhiteboxConfig(tiledb::sm::Config config)
-      : config_(config){};
+      : config_(config) {};
 
   const std::map<std::string, std::string>& get_all_params() const {
     return config_.param_values();

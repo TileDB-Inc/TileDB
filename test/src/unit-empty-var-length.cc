@@ -464,7 +464,7 @@ struct StringEmptyFx2 {
 };
 
 StringEmptyFx2::StringEmptyFx2()
-    : ctx(vfs_test_setup_.ctx()){};
+    : ctx(vfs_test_setup_.ctx()) {};
 
 void StringEmptyFx2::create_array(const std::string& array_name) {
   Domain domain(ctx);
@@ -535,7 +535,7 @@ struct StringEmptyFx3 {
 };
 
 StringEmptyFx3::StringEmptyFx3()
-    : ctx(vfs_test_setup_.ctx()){};
+    : ctx(vfs_test_setup_.ctx()) {};
 
 TEST_CASE_METHOD(
     StringEmptyFx3,
