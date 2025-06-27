@@ -30,6 +30,7 @@
  * This file defines the NDRectangle C API of TileDB.
  **/
 
+#include "../string/string_api_internal.h"
 #include "ndrectangle_api_external_experimental.h"
 #include "ndrectangle_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
@@ -202,6 +203,17 @@ capi_return_t tiledb_ndrectangle_get_dim_num(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_ndrectangle_dump_str(
+    tiledb_ndrectangle_t* ndr, tiledb_string_handle_t** out) {
+  ensure_handle_is_valid(ndr);
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *(ndr->ndrectangle());
+  *out = tiledb_string_handle_t::make_handle(ss.str());
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
@@ -289,4 +301,13 @@ CAPI_INTERFACE(
     uint32_t* ndim) {
   return api_entry_with_context<tiledb::api::tiledb_ndrectangle_get_dim_num>(
       ctx, ndr, ndim);
+}
+
+CAPI_INTERFACE(
+    ndrectangle_dump_str,
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_ndrectangle_dump_str>(
+      ctx, ndr, out);
 }

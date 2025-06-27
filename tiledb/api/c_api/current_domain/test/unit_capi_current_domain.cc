@@ -169,3 +169,27 @@ TEST_CASE_METHOD(
   tiledb_ndrectangle_free(&ndr);
   tiledb_current_domain_free(&crd);
 }
+
+TEST_CASE_METHOD(
+    CAPICurrentDomainFx,
+    "C API: current_domain: dump_str",
+    "[capi][current_domain][dump_str]") {
+  tiledb_current_domain_t* crd = nullptr;
+  REQUIRE(tiledb_current_domain_create(ctx, &crd) == TILEDB_OK);
+
+  tiledb_string_t* str = nullptr;
+  REQUIRE(tiledb_current_domain_dump_str(ctx, crd, &str) == TILEDB_OK);
+  REQUIRE(str != nullptr);
+
+  const char* c_str = nullptr;
+  size_t len = 0;
+  REQUIRE(tiledb_string_view(str, &c_str, &len) == TILEDB_OK);
+  REQUIRE(c_str != nullptr);
+  REQUIRE(len > 0);
+
+  std::string output(c_str, len);
+  CHECK(output.find("### Current domain ###") != std::string::npos);
+
+  tiledb_string_free(&str);
+  tiledb_current_domain_free(&crd);
+}
