@@ -615,30 +615,6 @@ TILEDB_EXPORT int32_t tiledb_query_set_condition(
     const tiledb_query_condition_t* cond) TILEDB_NOEXCEPT;
 
 /**
- * Adds a predicate to be applied to a read. The added predicate
- * will be analyzed and evaluated in the subarray step, query condition
- * step, or both.
- *
- * The predicate is parsed as a SQL expression and must evaluate
- * to a boolean.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* pred = "(row BETWEEN 1 AND 10) OR (column BETWEEN 1 AND 10)";
- * tiledb_query_add_predicate(ctx, query, pred);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param predicate A text representation of the desired predicate.
- */
-TILEDB_EXPORT capi_return_t tiledb_query_add_predicate(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* predicate) TILEDB_NOEXCEPT;
-
-/**
  * Flushes all internal state of a query object and finalizes the query.
  * This is applicable only to global layout writes. It has no effect for
  * any other query type.
