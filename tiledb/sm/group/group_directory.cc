@@ -52,11 +52,15 @@ class GroupDirectoryException : public StatusException {
 
 namespace {
 
-const std::set<std::string> dir_names = {
-    constants::group_detail_dir_name, constants::group_metadata_dir_name};
+const std::set<std::string>& dir_names() {
+  static const std::set<std::string> dir_names = {
+      constants::group_detail_dir_name, constants::group_metadata_dir_name};
+  return dir_names;
+}
 
 std::vector<URI> ls(const VFS& vfs, const URI& uri) {
   auto dir_entries = vfs.ls_with_sizes(uri);
+  auto& dirs = dir_names();
   std::vector<URI> uris;
 
   for (auto entry : dir_entries) {
@@ -75,8 +79,8 @@ std::vector<URI> ls(const VFS& vfs, const URI& uri) {
     }
 
     // List non-known (user-added) directory names and non-empty files
-    auto iter = dir_names.find(entry_uri.last_path_part());
-    if (iter == dir_names.end() || entry.file_size() > 0) {
+    auto iter = dirs.find(entry_uri.last_path_part());
+    if (iter == dirs.end() || entry.file_size() > 0) {
       uris.emplace_back(entry_uri);
     } else {
       // Handle MinIO-based s3 implementation limitation
@@ -173,10 +177,7 @@ Status GroupDirectory::load() {
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
   tasks.emplace_back(tp_.execute([&]() {
-    auto&& [st, uris] = list_root_dir_uris();
-    throw_if_not_ok(st);
-
-    root_dir_uris = std::move(uris.value());
+    root_dir_uris = ls(vfs_, uri_);
 
     return Status::Ok();
   }));
@@ -220,14 +221,6 @@ bool GroupDirectory::loaded() const {
 /* ********************************* */
 /*         PRIVATE METHODS           */
 /* ********************************* */
-
-tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
-  // List the group directory URIs
-  std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_.ls(uri_, &group_dir_uris), nullopt);
-
-  return {Status::Ok(), group_dir_uris};
-}
 
 Status GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
