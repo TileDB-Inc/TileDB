@@ -41,7 +41,18 @@
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/rust.h"
+#endif
+
 using namespace tiledb::common;
+
+namespace tiledb::oxidize::arrow::schema {
+struct ArrowSchema;
+}
+namespace tiledb::oxidize::datafusion::physical_expr {
+struct PhysicalExpr;
+}
 
 namespace tiledb {
 namespace sm {
@@ -186,6 +197,21 @@ class QueryCondition {
    */
   void rewrite_for_schema(const ArraySchema& array_schema);
 
+#ifdef HAVE_RUST
+  /**
+   * If desired and possible, rewrite the query condition to use Datafusion to
+   * evaluate.
+   *
+   * Note that this is basically for testing, this isn't expected to be a
+   * production feature - we will have other entry points for Datafusion which
+   * make more sense. Datafusion evaluation appears to be slightly slower, which
+   * makes some sense since we must create arrow and datafusion data structures.
+   *
+   * @return true if a rewrite occurred, false otherwise
+   */
+  bool rewrite_to_datafusion(const ArraySchema& array_schema);
+#endif
+
   /**
    * Verifies that the current state contains supported comparison
    * operations. Currently, we support the following:
@@ -276,7 +302,7 @@ class QueryCondition {
    */
   Status apply_dense(
       const QueryCondition::Params& params,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
       const uint64_t src_cell,
@@ -295,8 +321,8 @@ class QueryCondition {
   template <typename BitmapType>
   Status apply_sparse(
       const QueryCondition::Params& params,
-      ResultTile& result_tile,
-      tdb::pmr::vector<BitmapType>& result_bitmap);
+      const ResultTile& result_tile,
+      std::span<BitmapType> result_bitmap);
 
   /**
    * Reverse the query condition using De Morgan's law.
@@ -376,6 +402,29 @@ class QueryCondition {
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
 
+#ifdef HAVE_RUST
+  /** Datafusion expression evaluation */
+  struct Datafusion {
+    using BoxSchema = ::rust::Box<tiledb::oxidize::arrow::schema::ArrowSchema>;
+    using BoxExpr =
+        ::rust::Box<tiledb::oxidize::datafusion::physical_expr::PhysicalExpr>;
+    BoxSchema schema_;
+    BoxExpr expr_;
+
+    Datafusion(BoxSchema&& schema, BoxExpr&& expr)
+        : schema_(std::move(schema))
+        , expr_(std::move(expr)) {
+    }
+
+    template <typename BitmapType>
+    void apply(
+        const QueryCondition::Params& params,
+        const ResultTile& result_tile,
+        std::span<BitmapType> result_bitmap) const;
+  };
+  std::optional<Datafusion> datafusion_;
+#endif
+
   /** Caches all field names in the value nodes of the AST.  */
   mutable std::unordered_set<std::string> field_names_;
 
@@ -410,7 +459,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies a value node on primitive-typed result cell slabs.
@@ -435,7 +484,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -457,7 +506,7 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to
@@ -481,7 +530,7 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies a value node on a dense result tile,
@@ -503,7 +552,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -533,7 +582,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -562,7 +611,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -588,7 +637,7 @@ class QueryCondition {
   void apply_tree_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const QueryCondition::Params& params,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -614,10 +663,10 @@ class QueryCondition {
       typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile,
@@ -637,10 +686,10 @@ class QueryCondition {
       typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile.
@@ -655,11 +704,11 @@ class QueryCondition {
   template <typename T, typename BitmapType, typename CombinationOp>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -676,9 +725,9 @@ class QueryCondition {
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to a set of cells.
@@ -696,9 +745,9 @@ class QueryCondition {
   void apply_tree_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const QueryCondition::Params& params,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 };
 
 }  // namespace sm

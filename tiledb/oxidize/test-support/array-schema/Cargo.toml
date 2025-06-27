@@ -1,0 +1,14 @@
+[package]
+name = "tiledb-test-array-schema"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+cxx = { workspace = true }
+itertools = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
+tiledb-common = { workspace = true }
+tiledb-pod = { workspace = true }
+tiledb-test-support-cxx-interface = { workspace = true }

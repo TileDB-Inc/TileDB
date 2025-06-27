@@ -123,6 +123,7 @@ const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE =
     "32768";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
+const std::string Config::SM_QUERY_CONDITION_EVALUATOR = "ast";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
@@ -323,6 +324,8 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.query.sparse_unordered_with_dups.reader",
         Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER),
+    std::make_pair(
+        "sm.query.condition_evaluator", Config::SM_QUERY_CONDITION_EVALUATOR),
     std::make_pair("sm.mem.malloc_trim", Config::SM_MEM_MALLOC_TRIM),
     std::make_pair(
         "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),

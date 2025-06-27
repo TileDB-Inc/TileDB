@@ -104,6 +104,13 @@ class TileBase {
   }
 
   /**
+   * Returns the internal buffer, callable from Rust
+   */
+  const uint8_t* data_u8() const {
+    return data_as<uint8_t>();
+  }
+
+  /**
    * Reads from the tile at the given offset into the input
    * buffer of size nbytes. Does not mutate the internal offset.
    * Thread-safe among readers.

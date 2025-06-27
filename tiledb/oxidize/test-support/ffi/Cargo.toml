@@ -1,0 +1,8 @@
+[package]
+name = "tiledb-test-ffi"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }

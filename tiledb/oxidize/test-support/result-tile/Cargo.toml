@@ -1,0 +1,14 @@
+[package]
+name = "tiledb-test-result-tile"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+arrow = { workspace = true }
+cxx = { workspace = true }
+tiledb-arrow = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
+tiledb-test-cells = { workspace = true }
+tiledb-test-support-cxx-interface = { workspace = true }

@@ -2,6 +2,18 @@
 resolver = "2"
 members = [
   "arithmetic",
+  "arrow",
+  "cxx-interface",
+  "datatype",
+  "expr",
+  "iterator-ext",
+  "staticlibs/core-objects",
+  "staticlibs/unit-arithmetic",
+  "staticlibs/unit-query-condition",
+  "test-support/array-schema",
+  "test-support/cxx-interface",
+  "test-support/ffi",
+  "test-support/result-tile",
 ]
 
 [workspace.package]
@@ -10,6 +22,26 @@ rust-version = "1.85"
 version = "0.1.0"
 
 [workspace.dependencies]
-cxx = "1"
-cxx-build = "1"
+anyhow = "1"
+arrow = { version = "55" }
+cxx = "=1.0.138"
+cxx-build = "1.0.138"
+datafusion = { version = "47", features = [] }
+iterator-ext = { path = "iterator-ext" }
+itertools = { version = "0.14" }
 num-traits = "0.2"
+proptest = { version = "=1.6" }
+tiledb-arrow = { path = "arrow" }
+tiledb-arithmetic = { path = "arithmetic" }
+tiledb-common = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-cxx-interface = { path = "cxx-interface" }
+tiledb-datatype = { path = "datatype" }
+tiledb-expr = { path = "expr" }
+tiledb-pod = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-test-array-schema = { path = "test-support/array-schema" }
+tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-test-ffi = { path = "test-support/ffi" }
+tiledb-test-query-condition = { path = "test-support/query-condition" }
+tiledb-test-result-tile = { path = "test-support/result-tile" }
+tiledb-test-support-cxx-interface = { path = "test-support/cxx-interface" }
+thiserror = { version = "2" }

@@ -1,0 +1,12 @@
+[package]
+name = "tiledb-unit-arithmetic"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+tiledb-arithmetic = { workspace = true }
+
+[lib]
+name = "unit_arithmetic_rs"
+crate-type = ["staticlib"]

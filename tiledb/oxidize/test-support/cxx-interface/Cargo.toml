@@ -1,0 +1,12 @@
+[package]
+name = "tiledb-test-support-cxx-interface"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cxx = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }

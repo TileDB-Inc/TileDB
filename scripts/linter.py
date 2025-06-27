@@ -11,7 +11,7 @@ LINT_HEAP_MEMORY = 'Heap Memory'
 LINT_ASSERT = 'Assert'
 
 # Do not check for lint in these directories.
-ignored_dirs = frozenset(["c_api", "cpp_api"])
+ignored_dirs = frozenset(["api/c_api", "sm/c_api", "sm/cpp_api", "oxidize/target", "oxidize/staticlibs"])
 
 # Do not check for lint in these files.
 heap_memory_ignored_files = frozenset(
@@ -138,7 +138,10 @@ class HeapMemoryLinter(RegexLinter):
     lint_kind: int = LINT_HEAP_MEMORY
 
     def accept_path(self, file_name: str) -> bool:
-        return os.path.basename(file_name) not in heap_memory_ignored_files
+        path_components = file_name.split(os.sep)
+        if 'test' in path_components or 'test-support' in path_components:
+            return False
+        return path_components[-1] not in heap_memory_ignored_files
 
 
 @dataclass
@@ -182,7 +185,7 @@ def iter_file_lints(file_path: str) -> Iterable[Lint]:
 
 def iter_dir_lints(dir_path: str) -> Iterable[Lint]:
     for directory, subdirlist, file_names in os.walk(dir_path):
-        if os.path.basename(directory) in ignored_dirs:
+        if os.path.relpath(directory, dir_path) in ignored_dirs:
             subdirlist.clear()
         else:
             for file_name in file_names:
