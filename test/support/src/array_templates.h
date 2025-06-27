@@ -1379,6 +1379,19 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
   }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
+template <typename Asserter, FragmentType F>
+void resize_fields(F& fragment, const auto& field_sizes) {
+  std::apply(
+      [field_sizes](auto&... outfield) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              (outfield.finish_multipart_read(field_cursor), ...);
+            },
+            field_sizes);
+      },
+      std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+}
+
 }  // namespace query
 
 }  // namespace tiledb::test::templates

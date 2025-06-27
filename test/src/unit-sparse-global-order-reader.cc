@@ -3714,15 +3714,7 @@ CSparseGlobalOrderFx::run_execute(Instance& instance) {
   // Clean up.
   tiledb_query_free(&query);
 
-  std::apply(
-      [outcursor](auto&... outfield) {
-        std::apply(
-            [&](const auto&... field_cursor) {
-              (outfield.finish_multipart_read(field_cursor), ...);
-            },
-            outcursor);
-      },
-      std::tuple_cat(outdims, outatts));
+  templates::query::resize_fields<Asserter>(out, outcursor);
 
   ASSERTER(expect.dimensions() == outdims);
 
