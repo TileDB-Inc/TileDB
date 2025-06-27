@@ -21,12 +21,14 @@ jobs:
           - os: ubuntu-latest
             assertions: ON
             build_type: "Release"
+            rust: ON
             tiledb_sm_query_condition_evaluator: "datafusion"
           - os: macos-latest # ASAN build
             sanitizer: "address"
             assertions: ON
             build_type: "Release"
             base_triplet: "arm64-osx"
+            rust: OFF
           - os: windows-latest
             build_type: "Debug"
             rust: OFF
