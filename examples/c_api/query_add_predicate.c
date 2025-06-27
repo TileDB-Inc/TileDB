@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tiledb/tiledb.h>
+#include <tiledb/tiledb_experimental.h>
 
 // Name of array.
 const char* array_name = "array_query_add_predicate";
@@ -68,6 +69,19 @@ const char* array_name = "array_query_add_predicate";
   } while (0)
 
 /**
+ * Enumeration variants
+ */
+static const char* const states[] = {
+    "alabama",
+    "alaska",
+    "arizona",
+    "arkansas",
+    "california",
+    "colorado",
+    "connecticut",
+    "etc"};
+
+/**
  * @brief Function to print the values of all the attributes for one
  * index of this array.
  *
@@ -76,12 +90,23 @@ const char* array_name = "array_query_add_predicate";
  * @param c Attribute c's value.
  * @param d Attribute d's value.
  */
-void print_elem(int* a, char* b_start, int b_len, int32_t c, float d) {
+void print_elem(
+    int* a, char* b_start, int b_len, int32_t c, float d, uint8_t* e) {
+  char print_a[8], print_e[16];
   if (a == NULL) {
-    printf("{null, %.*s, %d, %.1f}\n", b_len, b_start, c, d);
+    strcpy(&print_a[0], "null");
   } else {
-    printf("{%d, %.*s, %d, %.1f}\n", *a, b_len, b_start, c, d);
+    sprintf(&print_a[0], "%d", *a);
   }
+  if (e == NULL) {
+    strcpy(&print_e[0], "null");
+  } else if (*e < sizeof(states) / sizeof(const char*)) {
+    strcpy(&print_e[0], states[*e]);
+  } else {
+    sprintf(&print_e[0], "(invalid key %hhu)", *e);
+  }
+
+  printf("{%s, %.*s, %d, %.1f, %s}\n", print_a, b_len, b_start, c, d, print_e);
 }
 
 /**
@@ -143,6 +168,43 @@ int32_t create_array(tiledb_ctx_t* ctx) {
   TRY(ctx, tiledb_array_schema_set_domain(ctx, schema, domain));
   TRY(ctx, tiledb_array_schema_set_cell_order(ctx, schema, TILEDB_ROW_MAJOR));
 
+  // Create enumeration
+  size_t states_size = 0;
+  for (uint64_t i = 0; i < sizeof(states) / sizeof(const char*); i++) {
+    states_size += strlen(states[i]);
+  }
+  const uint64_t states_offsets_size =
+      (sizeof(states) / sizeof(const char*)) * sizeof(uint64_t);
+
+  char* states_values = (char*)(malloc(states_size));
+  uint64_t* states_offsets = (uint64_t*)(malloc(states_offsets_size));
+
+  states_size = 0;
+  for (uint64_t i = 0; i < sizeof(states) / sizeof(const char*); i++) {
+    const uint64_t slen = strlen(states[i]);
+    memcpy(&states_values[states_size], &states[i][0], slen);
+    states_offsets[i] = states_size;
+    states_size += slen;
+  }
+  tiledb_enumeration_t* enumeration_states;
+  TRY(ctx,
+      tiledb_enumeration_alloc(
+          ctx,
+          "us_states",
+          TILEDB_STRING_ASCII,
+          UINT32_MAX,
+          false,
+          states_values,
+          states_size,
+          states_offsets,
+          states_offsets_size,
+          &enumeration_states));
+  free(states_offsets);
+  free(states_values);
+
+  TRY(ctx,
+      tiledb_array_schema_add_enumeration(ctx, schema, enumeration_states));
+
   // Adding the attributes of the array to the array schema.
   tiledb_attribute_t* a;
   TRY(ctx, tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a));
@@ -158,15 +220,22 @@ int32_t create_array(tiledb_ctx_t* ctx) {
   tiledb_attribute_t* d;
   TRY(ctx, tiledb_attribute_alloc(ctx, "d", TILEDB_FLOAT32, &d));
 
+  tiledb_attribute_t* e;
+  TRY(ctx, tiledb_attribute_alloc(ctx, "e", TILEDB_UINT8, &e));
+  TRY(ctx, tiledb_attribute_set_nullable(ctx, e, true));
+  TRY(ctx, tiledb_attribute_set_enumeration_name(ctx, e, "us_states"));
+
   TRY(ctx, tiledb_array_schema_add_attribute(ctx, schema, a));
   TRY(ctx, tiledb_array_schema_add_attribute(ctx, schema, b));
   TRY(ctx, tiledb_array_schema_add_attribute(ctx, schema, c));
   TRY(ctx, tiledb_array_schema_add_attribute(ctx, schema, d));
+  TRY(ctx, tiledb_array_schema_add_attribute(ctx, schema, e));
 
   // Create the (empty) array.
   TRY(ctx, tiledb_array_create(ctx, array_name, schema));
 
   // Cleanup.
+  tiledb_attribute_free(&e);
   tiledb_attribute_free(&d);
   tiledb_attribute_free(&c);
   tiledb_attribute_free(&b);
@@ -183,18 +252,18 @@ int32_t create_array(tiledb_ctx_t* ctx) {
  * which then stores the following data in the array. The table
  * is organized by dimension/attribute.
  *
- * index |  a   |   b   | c |  d
- * -------------------------------
- *   0   | null | alice | 0 | 4.1
- *   1   | 2    | bob   | 0 | 3.4
- *   2   | null | craig | 0 | 5.6
- *   3   | 4    | dave  | 0 | 3.7
- *   4   | null | erin  | 0 | 2.3
- *   5   | 6    | frank | 0 | 1.7
- *   6   | null | grace | 1 | 3.8
- *   7   | 8    | heidi | 2 | 4.9
- *   8   | null | ivan  | 3 | 3.2
- *   9   | 10   | judy  | 4 | 3.1
+ * index |  a   |   b   | c |  d  |     e
+ * ------+------+-------+---+-----+------------
+ *   0   | null | alice | 0 | 4.1 | arizona
+ *   1   | 2    | bob   | 0 | 3.4 | etc
+ *   2   | null | craig | 0 | 5.6 | connecticut
+ *   3   | 4    | dave  | 0 | 3.7 | colorado
+ *   4   | null | erin  | 0 | 2.3 | null
+ *   5   | 6    | frank | 0 | 1.7 | arkansas
+ *   6   | null | grace | 1 | 3.8 | etc
+ *   7   | 8    | heidi | 2 | 4.9 | etc
+ *   8   | null | ivan  | 3 | 3.2 | colorado
+ *   9   | 10   | judy  | 4 | 3.1 | california
  *
  * @param ctx The context.
  */
@@ -214,6 +283,10 @@ int32_t write_array(tiledb_ctx_t* ctx) {
   uint64_t c_size = sizeof(c_data);
   float d_data[] = {4.1, 3.4, 5.6, 3.7, 2.3, 1.7, 3.8, 4.9, 3.2, 3.1};
   uint64_t d_size = sizeof(d_data);
+  uint8_t e_data[] = {2, 7, 5, 6, 100, 3, 7, 7, 5, 4};
+  uint64_t e_size = sizeof(e_data);
+  uint8_t e_validity[] = {1, 1, 1, 1, 0, 1, 1, 1, 1, 1};
+  uint64_t e_validity_size = sizeof(e_validity);
 
   tiledb_array_t* array_w;
   TRY(ctx, tiledb_array_alloc(ctx, array_name, &array_w));
@@ -235,6 +308,10 @@ int32_t write_array(tiledb_ctx_t* ctx) {
           ctx, query_w, "b", b_data_offsets, &b_offsets_size));
   TRY(ctx, tiledb_query_set_data_buffer(ctx, query_w, "c", c_data, &c_size));
   TRY(ctx, tiledb_query_set_data_buffer(ctx, query_w, "d", d_data, &d_size));
+  TRY(ctx, tiledb_query_set_data_buffer(ctx, query_w, "e", e_data, &e_size));
+  TRY(ctx,
+      tiledb_query_set_validity_buffer(
+          ctx, query_w, "e", e_validity, &e_validity_size));
   TRY(ctx, tiledb_query_submit(ctx, query_w));
   TRY(ctx, tiledb_query_finalize(ctx, query_w));
   TRY(ctx, tiledb_array_close(ctx, array_w));
@@ -271,6 +348,11 @@ int32_t read_array_with_predicates(tiledb_ctx_t* ctx, int num_predicates, ...) {
   float d_data[10];
   uint64_t d_size = sizeof(d_data);
 
+  uint8_t e_data[10];
+  uint64_t e_size = sizeof(e_data);
+  uint8_t e_validity[10];
+  uint64_t e_validity_size = sizeof(e_validity);
+
   tiledb_array_t* array;
   TRY(ctx, tiledb_array_alloc(ctx, array_name, &array));
   TRY(ctx, tiledb_array_open(ctx, array, TILEDB_READ));
@@ -289,6 +371,10 @@ int32_t read_array_with_predicates(tiledb_ctx_t* ctx, int num_predicates, ...) {
           ctx, query, "b", b_data_offsets, &b_offsets_size));
   TRY(ctx, tiledb_query_set_data_buffer(ctx, query, "c", c_data, &c_size));
   TRY(ctx, tiledb_query_set_data_buffer(ctx, query, "d", d_data, &d_size));
+  TRY(ctx, tiledb_query_set_data_buffer(ctx, query, "e", e_data, &e_size));
+  TRY(ctx,
+      tiledb_query_set_validity_buffer(
+          ctx, query, "e", e_validity, &e_validity_size));
 
   va_list predicates;
   va_start(predicates, num_predicates);
@@ -319,7 +405,8 @@ int32_t read_array_with_predicates(tiledb_ctx_t* ctx, int num_predicates, ...) {
         b_data + element_start,
         element_length,
         c_data[i],
-        d_data[i]);
+        d_data[i],
+        e_validity[i] ? &e_data[i] : NULL);
   }
 
   TRY(ctx, tiledb_query_finalize(ctx, query));
@@ -385,13 +472,26 @@ int main() {
       ctx, 3, "d BETWEEN 3.0 AND 4.0", "a IS NOT NULL", "b < 'eve'"));
   printf("\n");
 
+  // BEGIN EXAMPLES WITH ENUMERATIONS
+  printf("WHERE e = 'california'\n");
+  {
+    // error is expected since the enumeration is not loaded
+    const int32_t ret = read_array_with_predicate(ctx, "e = 'california'");
+    if (ret != TILEDB_ERR) {
+      return TILEDB_ERR;
+    }
+  }
+  printf("\n");
+
   // BEGIN EXAMPLES WITH NO EQUIVALENT
 
+  // query condition does not have functions, here we use coalesce
   printf("WHERE coalesce(a, 2) + c < index\n");
   RETURN_IF_NOT_OK(
       read_array_with_predicate(ctx, "coalesce(a, 2) + c < index"));
   printf("\n");
 
+  // FIXME: this is query-condition-able, use arithmetic
   printf("WHERE a > 6 OR a IS NULL\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "a > 6 OR a IS NULL"));
   printf("\n");
