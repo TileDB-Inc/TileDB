@@ -459,7 +459,7 @@ TILEDB_EXPORT int32_t tiledb_query_condition_set_use_enumeration(
 /* ********************************* */
 
 /**
- * Adds a predicate to be applied to a read. The added predicate
+ * Adds a predicate to be applied to a read query. The added predicate
  * will be analyzed and evaluated in the subarray step, query condition
  * step, or both.
  *
