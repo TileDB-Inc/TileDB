@@ -42,6 +42,8 @@ pub enum FieldError {
     InternalOffsets(#[from] OffsetsError),
     #[error("Error reading tile: {0}")]
     InvalidTileData(#[source] arrow::error::ArrowError),
+    #[error("Attributes with enumerations are not supported in text predicates")]
+    EnumerationNotSupported,
 }
 
 /// Wraps a [RecordBatch] for passing across the FFI boundary.
@@ -255,6 +257,13 @@ unsafe fn to_arrow_array(
                 values,
                 null_buffer,
             )))
+        }
+        DataType::Dictionary(_, _) => {
+            // NB: we will do this later,
+            // it will require some refactoring so that we build the enumeration
+            // ArrowArrays just once for the whole query, in addition to the
+            // issues with regards to the enumeration being loaded
+            return Err(FieldError::EnumerationNotSupported);
         }
         _ => {
             // SAFETY: ensured by limited range of return values of `crate::schema::arrow_datatype`
