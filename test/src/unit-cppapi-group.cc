@@ -300,8 +300,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupCPPFx,
-    "C++ API: Test group metadata with directory placeholder file",
-    "[cppapi][group][metadata][dir-placeholder]") {
+    "C++ API: Group on object storage with empty subfolders",
+    "[cppapi][group][empty_subfolders]") {
   if (vfs_test_setup_.is_local()) {
     // Only makes sense in object storage.
     return;
@@ -311,26 +311,24 @@ TEST_CASE_METHOD(
 
   tiledb::Group::create(ctx_, group1_uri);
   tiledb::Group group(ctx_, group1_uri, TILEDB_WRITE);
-  int v = 5;
-  group.put_metadata("key", TILEDB_INT32, 1, &v);
+  // Add non-existent member. Because we supply its type, we don't check if it
+  // exists.
+  group.add_member("my-array", true, "my-array", TILEDB_ARRAY);
   group.close();
 
-  // Create an object with the same name as the __meta directory.
+  // Create an object with the same name as the __group directory.
   // It should be filtered out when listing.
-  vfs_.touch(group1_uri + "/__meta");
+  vfs_.touch(group1_uri + "/__group");
 
-  // Open group in read mode and check that metadata value can be read.
-  group.open(TILEDB_READ);
-  const void* vRead;
-  tiledb_datatype_t vType;
-  uint32_t vNum;
-  REQUIRE_NOTHROW(group.get_metadata("key", &vType, &vNum, &vRead));
-  CHECK(vType == TILEDB_INT32);
-  REQUIRE(vNum == 1);
-  CHECK(*((const int32_t*)vRead) == 5);
-
-  // Close group
-  group.close();
+  // Try to read from the group with empty files
+  // Note: MinIO will delete the actual commits if commits_uri is deleted,
+  // per the s3 implementation limitation, making the group invalid
+  try {
+    group.open(TILEDB_READ);
+  } catch (std::exception& e) {
+    REQUIRE_THAT(
+        e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
+  }
 }
 
 TEST_CASE_METHOD(
