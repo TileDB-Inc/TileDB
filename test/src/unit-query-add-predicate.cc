@@ -40,9 +40,11 @@
 #include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
 
+#include "test/support/src/array_templates.h"
 #include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
@@ -51,6 +53,14 @@ using namespace tiledb::test;
 
 // no rapidcheck
 using Asserter = AsserterCatch;
+
+// query result type for the array schema used in these tests
+using Cells = templates::Fragment2D<
+    uint64_t,
+    uint64_t,
+    std::optional<int32_t>,
+    std::vector<char>,
+    std::optional<int32_t>>;
 
 struct QueryAddPredicateFx {
   VFSTestSetup vfs_test_setup_;
@@ -72,7 +82,79 @@ struct QueryAddPredicateFx {
    * of the schema given above
    */
   void write_array(const std::string& path, tiledb_array_type_t atype);
+
+  Cells query_array(
+      const std::string& path,
+      tiledb_layout_t layout,
+      std::vector<const char*> predicates);
+
+  Cells query_array(
+      const std::string& path, tiledb_layout_t layout, const char* predicate) {
+    return query_array(path, layout, std::vector<const char*>{predicate});
+  }
+
+  static const Cells INPUT;
 };
+
+const Cells QueryAddPredicateFx::INPUT = Cells{
+    .d1_ = templates::query_buffers<uint64_t>(
+        {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4}),
+    .d2_ = templates::query_buffers<uint64_t>(
+        {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4}),
+    .atts_ = std::make_tuple(
+        templates::query_buffers<std::optional<int32_t>>(
+            std::vector<std::optional<int32_t>>{
+                15,
+                std::nullopt,
+                std::nullopt,
+                12,
+                std::nullopt,
+                10,
+                9,
+                std::nullopt,
+                7,
+                6,
+                5,
+                4,
+                std::nullopt,
+                2,
+                1,
+                0}),
+        templates::query_buffers<std::string>(std::vector<std::string>{
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "eleven",
+            "twelve",
+            "thirteen",
+            "fourteen",
+            "fifteen",
+            "sixteen"}),
+        templates::query_buffers<std::optional<int32_t>>(
+            std::vector<std::optional<int32_t>>{
+                4,
+                4,
+                7,
+                std::nullopt,
+                7,
+                7,
+                std::nullopt,
+                0,
+                1,
+                std::nullopt,
+                3,
+                4,
+                std::nullopt,
+                6,
+                7,
+                std::nullopt}))};
 
 void QueryAddPredicateFx::create_array(
     const std::string& path, tiledb_array_type_t atype) {
@@ -119,62 +201,81 @@ void QueryAddPredicateFx::write_array(
   Array array(ctx, path, TILEDB_WRITE);
   Query query(ctx, array);
 
-  std::vector<uint64_t> rows = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
-  std::vector<uint64_t> cols = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
-
-  if (atype == TILEDB_SPARSE) {
-    query.set_data_buffer("row", rows).set_data_buffer("col", cols);
-  } else {
+  if (atype == TILEDB_DENSE) {
     Subarray s(ctx, array);
-    s.add_range(0, 1, 4);
-    s.add_range(1, 1, 4);
+    s.add_range<uint64_t>(0, 1, 4);
+    s.add_range<uint64_t>(1, 1, 4);
     query.set_layout(TILEDB_ROW_MAJOR).set_subarray(s);
+
+    templates::Fragment<
+        std::optional<int32_t>,
+        std::vector<char>,
+        std::optional<int32_t>>
+        cells = {.atts_ = INPUT.atts_};
+
+    auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
+    templates::query::set_fields<Asserter>(
+        ctx.ptr().get(),
+        query.ptr().get(),
+        field_sizes,
+        cells,
+        array.ptr().get()->array_schema_latest());
+
+    query.submit();
+  } else {
+    auto field_sizes =
+        templates::query::make_field_sizes<Asserter>(const_cast<Cells&>(INPUT));
+    templates::query::set_fields<Asserter>(
+        ctx.ptr().get(),
+        query.ptr().get(),
+        field_sizes,
+        const_cast<Cells&>(INPUT),
+        array.ptr().get()->array_schema_latest());
+    query.submit();
+  }
+}
+
+Cells QueryAddPredicateFx::query_array(
+    const std::string& path,
+    tiledb_layout_t layout,
+    std::vector<const char*> predicates) {
+  auto ctx = context();
+
+  Array array(ctx, path, TILEDB_READ);
+  Query query(ctx, array);
+
+  query.set_layout(layout);
+
+  Cells out;
+  out.resize(32);
+
+  auto field_sizes =
+      templates::query::make_field_sizes<Asserter>(out, out.size());
+
+  templates::query::set_fields<Asserter>(
+      ctx.ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      out,
+      array.ptr().get()->array_schema_latest());
+
+  for (const char* pred : predicates) {
+    QueryExperimental::add_predicate(ctx, query, pred);
   }
 
-  std::vector<int32_t> a_values = {
-      15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
-  std::vector<uint8_t> a_validity(a_values.size(), 1);
-  a_validity[1] = a_validity[2] = a_validity[3] = a_validity[5] =
-      a_validity[8] = a_validity[13] = 0;
-
-  std::vector<std::string> v_strings = {
-      "one",
-      "two",
-      "three",
-      "four",
-      "five",
-      "six",
-      "seven",
-      "eight",
-      "nine",
-      "ten",
-      "eleven",
-      "twelve",
-      "thirteen",
-      "fourteen",
-      "fifteen",
-      "sixteen"};
-  std::vector<char> v_values;
-  std::vector<uint64_t> v_offsets;
-  for (const auto& s : v_strings) {
-    v_offsets.push_back(v_values.size());
-    v_values.insert(v_values.end(), s.begin(), s.end());
+  if (array.schema().array_type() == TILEDB_DENSE) {
+    Subarray s(ctx, array);
+    s.add_range<uint64_t>(0, 1, 4);
+    s.add_range<uint64_t>(1, 1, 4);
+    query.set_subarray(s);
   }
 
-  std::vector<int32_t> e_keys = {
-      4, 4, 7, 4, 7, 7, 7, 0, 1, 2, 3, 4, 5, 6, 7, 6};
-  std::vector<uint8_t> e_validity(e_keys.size(), 1);
-  e_validity[3] = e_validity[6] = e_validity[9] = e_validity[12] =
-      e_validity[15] = 0;
+  const auto st = query.submit();
+  REQUIRE(st == Query::Status::COMPLETE);
 
-  query.set_data_buffer("a", a_values)
-      .set_validity_buffer("a", a_validity)
-      .set_data_buffer("v", v_values)
-      .set_offsets_buffer("v", v_offsets)
-      .set_data_buffer("e", e_keys)
-      .set_validity_buffer("e", e_validity);
+  templates::query::resize_fields<Asserter>(out, field_sizes);
 
-  query.submit();
+  return out;
 }
 
 TEST_CASE_METHOD(
@@ -266,5 +367,76 @@ TEST_CASE_METHOD(
           Catch::Matchers::ContainsSubstring(
               "Aggregate functions in predicate is not supported"));
     }
+  }
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "C API: Test query add predicate dense",
+    "[capi][query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_qeury_add_predicate_dense");
+
+  create_array(array_name, TILEDB_DENSE);
+  write_array(array_name, TILEDB_DENSE);
+
+  // FIXME: error messages
+  REQUIRE_THROWS(query_array(array_name, TILEDB_UNORDERED, "row >= 3"));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_ROW_MAJOR, "row >= 3"));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_COL_MAJOR, "row >= 3"));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_GLOBAL_ORDER, "row >= 3"));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_HILBERT, "row >= 3"));
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "C API: Test query add predicate legacy",
+    "[capi][query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_qeury_add_predicate_legacy");
+  // TODO
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "C API: Test query add predicate sparse unsupported query order",
+    "[capi][query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_qeury_add_predicate_sparse_unsupported");
+
+  create_array(array_name, TILEDB_SPARSE);
+  write_array(array_name, TILEDB_SPARSE);
+  // TODO
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "C API: Test query add predicate sparse global order",
+    "[capi][query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_qeury_add_predicate_sparse_global_order");
+
+  create_array(array_name, TILEDB_SPARSE);
+  write_array(array_name, TILEDB_SPARSE);
+
+  SECTION("WHERE TRUE") {
+    const auto result = query_array(array_name, TILEDB_GLOBAL_ORDER, "TRUE");
+    CHECK(result == INPUT);
+  }
+
+  SECTION("WHERE a IS NULL") {
+    // TODO
+  }
+
+  SECTION("WHERE b < 'fourteen'") {
+    // TODO
+  }
+
+  SECTION("WHERE row + col <= 4") {
+    // TODO
+  }
+
+  SECTION("WHERE coalesce(a, row) > a") {
+    // TODO
   }
 }

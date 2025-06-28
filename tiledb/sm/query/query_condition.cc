@@ -2161,6 +2161,13 @@ Status QueryCondition::apply_dense(
     return Status_QueryConditionError("The result buffer is null.");
   }
 
+#ifdef HAVE_RUST
+  if (tree_ == nullptr && datafusion_.has_value()) {
+    return Status_QueryConditionError(
+        "tiledb_query_add_predicate is not supported for dense array queries");
+  }
+#endif
+
   span<uint8_t> result_span(result_buffer + start, length);
   apply_tree_dense(
       tree_,
