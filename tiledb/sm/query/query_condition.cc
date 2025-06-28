@@ -3055,4 +3055,3 @@ template Status QueryCondition::apply_sparse<uint8_t>(
 template Status QueryCondition::apply_sparse<uint64_t>(
     const QueryCondition::Params&, const ResultTile&, std::span<uint64_t>);
 }  // namespace tiledb::sm
-                          
