@@ -28,4 +28,3 @@ void set_tile_extent(Dimension& dimension, rust::Slice<const uint8_t> domain);
 }  // namespace dimension
 
 }  // namespace tiledb::oxidize::sm
-
