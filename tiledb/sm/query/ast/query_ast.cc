@@ -199,7 +199,7 @@ void ASTNodeVal::rewrite_for_schema(const ArraySchema& array_schema) {
     return;
   }
 
-  auto enumeration = array_schema.get_enumeration(enmr_name.value());
+  auto enumeration = array_schema.get_enumeration(enmr_name.value().get());
   if (!enumeration) {
     throw std::logic_error(
         "Missing required enumeration for field '" + field_name_ + "'");

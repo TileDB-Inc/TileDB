@@ -416,7 +416,8 @@ void Attribute::set_enumeration_name(std::optional<std::string> enmr_name) {
   enumeration_name_ = enmr_name;
 }
 
-std::optional<std::string> Attribute::get_enumeration_name() const {
+std::optional<std::reference_wrapper<const std::string>>
+Attribute::get_enumeration_name() const {
   return enumeration_name_;
 }
 
@@ -496,7 +497,7 @@ std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a) {
   }
   if (a.get_enumeration_name().has_value()) {
     os << std::endl;
-    os << "- Enumeration name: " << a.get_enumeration_name().value();
+    os << "- Enumeration name: " << a.get_enumeration_name().value().get();
   }
   os << std::endl;
 
