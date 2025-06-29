@@ -86,7 +86,7 @@ impl PhysicalExprOutput {
         &self,
         datatype: Datatype,
     ) -> Result<Box<PhysicalExprOutput>, PhysicalExprOutputError> {
-        let arrow_type = tiledb_arrow::schema::arrow_datatype(datatype)
+        let arrow_type = tiledb_arrow::schema::arrow_primitive_datatype(datatype)
             .map_err(PhysicalExprOutputError::TypeUnavailable)?;
         let columnar_value = match &self.0 {
             ColumnarValue::Scalar(s) => ColumnarValue::Scalar(

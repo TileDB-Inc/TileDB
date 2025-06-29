@@ -105,6 +105,19 @@ QueryCondition::QueryCondition(
     , tree_(std::move(tree)) {
 }
 
+#ifdef HAVE_RUST
+QueryCondition::QueryCondition(
+    const ArraySchema& array_schema,
+    rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr) {
+  const auto columns = expr->columns();
+  for (const auto& c : columns) {
+    field_names_.insert(std::string(c.data(), c.size()));
+  }
+
+  datafusion_.emplace(array_schema, std::move(expr));
+}
+#endif
+
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : condition_marker_(rhs.condition_marker_)
     , condition_index_(rhs.condition_index_)
@@ -168,22 +181,19 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
 }
 
 #ifdef HAVE_RUST
+rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
+QueryCondition::as_datafusion(const ArraySchema& array_schema) {
+  return tiledb::oxidize::datafusion::logical_expr::create(
+      array_schema, *tree_.get());
+}
+
 bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
   if (!datafusion_.has_value()) {
-    std::vector<std::string> select(field_names().begin(), field_names().end());
-
     try {
-      auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
-          array_schema, *tree_.get());
-      auto dfschema =
-          tiledb::oxidize::arrow::schema::create(array_schema, select);
-      auto physical_expr = tiledb::oxidize::datafusion::physical_expr::create(
-          *dfschema, std::move(logical_expr));
-
-      datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
+      datafusion_.emplace(array_schema, std::move(as_datafusion(array_schema)));
     } catch (const ::rust::Error& e) {
-      throw std::logic_error(
-          "Unexpected error compiling expression: " + std::string(e.what()));
+      throw QueryConditionException(
+          "Error compiling expression: " + std::string(e.what()));
     }
     return true;
   }
@@ -1317,6 +1327,12 @@ Status QueryCondition::apply(
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
+#ifdef HAVE_RUST
+  if (!tree_ && datafusion_.has_value()) {
+    throw QueryConditionException("TODO not supported");
+  }
+#endif
+
   if (!tree_) {
     return Status::Ok();
   }
@@ -2145,6 +2161,13 @@ Status QueryCondition::apply_dense(
     return Status_QueryConditionError("The result buffer is null.");
   }
 
+#ifdef HAVE_RUST
+  if (tree_ == nullptr && datafusion_.has_value()) {
+    return Status_QueryConditionError(
+        "tiledb_query_add_predicate is not supported for dense array queries");
+  }
+#endif
+
   span<uint8_t> result_span(result_buffer + start, length);
   apply_tree_dense(
       tree_,
@@ -2924,8 +2947,8 @@ Status QueryCondition::apply_sparse(
     try {
       datafusion_.value().apply(params, result_tile, result_bitmap);
     } catch (const ::rust::Error& e) {
-      throw std::logic_error(
-          "Unexpected error evaluating expression: " + std::string(e.what()));
+      throw QueryConditionException(
+          "Error evaluating expression: " + std::string(e.what()));
     }
   } else {
     apply_tree_sparse<BitmapType>(
@@ -2960,6 +2983,15 @@ uint64_t QueryCondition::condition_index() const {
 }
 
 #ifdef HAVE_RUST
+QueryCondition::Datafusion::Datafusion(
+    const ArraySchema& array_schema,
+    rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr)
+    : schema_(tiledb::oxidize::arrow::schema::project(
+          array_schema, expr->columns()))
+    , expr_(tiledb::oxidize::datafusion::physical_expr::create(
+          *schema_, std::move(expr))) {
+}
+
 template <typename BitmapType>
 void QueryCondition::Datafusion::apply(
     const QueryCondition::Params&,
@@ -2989,7 +3021,7 @@ void QueryCondition::Datafusion::apply(
         result_bitmap[i] *= bitmap[i];
       }
     } else {
-      throw std::logic_error(
+      throw QueryConditionException(
           "Expression evaluation bitmap has unexpected size");
     }
   } else {
@@ -3010,7 +3042,7 @@ void QueryCondition::Datafusion::apply(
         result_bitmap[i] *= bitmap[i];
       }
     } else {
-      throw std::logic_error(
+      throw QueryConditionException(
           "Expression evaluation bitmap has unexpected size");
     }
   }

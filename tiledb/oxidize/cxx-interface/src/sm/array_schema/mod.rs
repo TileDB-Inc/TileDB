@@ -6,7 +6,7 @@ mod ffi {
         type Layout = crate::sm::enums::Layout;
     }
 
-    #[namespace = "tiledb::oxidize"]
+    #[namespace = "tiledb::oxidize::sm::attribute"]
     unsafe extern "C++" {
         include!("tiledb/oxidize/cxx-interface/cc/array_schema.h");
         type ConstAttribute;
@@ -26,6 +26,9 @@ mod ffi {
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
 
+        #[namespace = "tiledb::oxidize::sm::attribute"]
+        fn enumeration_name_cxx(attr: &Attribute) -> *const CxxString;
+
         fn set_cell_val_num(self: Pin<&mut Attribute>, cell_val_num: u32);
     }
 
@@ -42,10 +45,10 @@ mod ffi {
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
 
-        #[namespace = "tiledb::oxidize"]
+        #[namespace = "tiledb::oxidize::sm::dimension"]
         fn set_domain(dimension: Pin<&mut Dimension>, domain: &[u8]) -> Result<()>;
 
-        #[namespace = "tiledb::oxidize"]
+        #[namespace = "tiledb::oxidize::sm::dimension"]
         fn set_tile_extent(dimension: Pin<&mut Dimension>, extent: &[u8]) -> Result<()>;
     }
 
@@ -65,6 +68,24 @@ mod ffi {
 
     #[namespace = "tiledb::sm"]
     unsafe extern "C++" {
+        include!("tiledb/sm/array_schema/enumeration.h");
+
+        type Enumeration;
+
+        #[cxx_name = "cell_val_num"]
+        fn cell_val_num_cxx(&self) -> u32;
+
+        #[cxx_name = "type"]
+        fn datatype(&self) -> Datatype;
+    }
+
+    #[namespace = "tiledb::oxidize::sm::enumeration"]
+    unsafe extern "C++" {
+        type ConstEnumeration;
+    }
+
+    #[namespace = "tiledb::sm"]
+    unsafe extern "C++" {
         include!("tiledb/sm/array_schema/array_schema.h");
 
         type ArraySchema;
@@ -75,11 +96,17 @@ mod ffi {
         fn is_attr(&self, name: &CxxString) -> bool;
         fn is_dim(&self, name: &CxxString) -> bool;
 
+        fn has_attribute(&self, name: &CxxString) -> bool;
+        fn has_enumeration(&self, name: &CxxString) -> bool;
+
         #[cxx_name = "attribute"]
         fn attribute_by_idx(&self, idx: u32) -> *const Attribute;
 
         #[cxx_name = "attribute"]
         fn attribute_by_name(&self, name: &CxxString) -> *const Attribute;
+
+        #[cxx_name = "get_enumeration"]
+        fn const_enumeration_cxx(&self, name: &CxxString) -> SharedPtr<ConstEnumeration>;
 
         #[cxx_name = "cell_val_num"]
         fn cell_val_num_cxx(&self, name: &CxxString) -> u32;
@@ -103,6 +130,7 @@ mod ffi {
     impl SharedPtr<Attribute> {}
     impl SharedPtr<Dimension> {}
     impl SharedPtr<Domain> {}
+    impl SharedPtr<Enumeration> {}
     impl SharedPtr<ArraySchema> {}
     impl UniquePtr<Attribute> {}
     impl UniquePtr<Dimension> {}
@@ -117,7 +145,7 @@ use std::str::Utf8Error;
 
 use num_traits::ToBytes;
 
-pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain};
+pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain, Enumeration};
 
 #[derive(Debug)]
 pub enum CellValNum {
@@ -222,6 +250,21 @@ impl Attribute {
         // SAFETY: non-zero would have been validated by the ArraySchema
         CellValNum::from_cxx(cxx).unwrap()
     }
+
+    pub fn enumeration_name_cxx(&self) -> Option<&cxx::CxxString> {
+        let ptr = ffi::enumeration_name_cxx(self);
+        if ptr.is_null() {
+            return None;
+        }
+        Some(unsafe {
+            // SAFETY: null check above
+            &*ptr
+        })
+    }
+
+    pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
+        self.enumeration_name_cxx().map(|s| s.to_str())
+    }
 }
 
 impl Debug for Attribute {
@@ -274,6 +317,29 @@ impl Field<'_> {
             Self::Dimension(_) => false,
         }
     }
+
+    pub fn enumeration_name_cxx(&self) -> Option<&cxx::CxxString> {
+        match self {
+            Self::Attribute(a) => a.enumeration_name_cxx(),
+            Self::Dimension(_) => None,
+        }
+    }
+
+    pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
+        match self {
+            Self::Attribute(a) => a.enumeration_name(),
+            Self::Dimension(_) => None,
+        }
+    }
+}
+
+impl Enumeration {
+    pub fn cell_val_num(&self) -> CellValNum {
+        let cxx = self.cell_val_num_cxx();
+
+        // SAFETY: non-zero would have been validated by the ArraySchema
+        CellValNum::from_cxx(cxx).unwrap()
+    }
 }
 
 impl ArraySchema {
@@ -319,5 +385,21 @@ impl ArraySchema {
             .dimensions()
             .map(Field::Dimension)
             .chain(self.attributes().map(Field::Attribute))
+    }
+
+    pub fn enumeration_cxx(&self, name: &cxx::CxxString) -> cxx::SharedPtr<Enumeration> {
+        let e = self.const_enumeration_cxx(name);
+        assert_eq!(
+            std::mem::size_of::<cxx::SharedPtr<Enumeration>>(),
+            std::mem::size_of::<cxx::SharedPtr<ffi::ConstEnumeration>>()
+        );
+        unsafe {
+            // SAFETY:
+            // 1) SharedPtr has the same representation regardless of generic
+            // 2) the deleter for `Enumeration` and `const Enumeration` is the same
+            // 3) the `cxx::SharedPtr` Rust API does not provide a (safe) way to
+            //    get a mutable reference, so this transmutation preserves const-ness
+            std::mem::transmute::<_, cxx::SharedPtr<Enumeration>>(e)
+        }
     }
 }

@@ -187,7 +187,12 @@ struct tiledb_attribute_handle_t
    * Facade for `Attribute` function
    */
   [[nodiscard]] std::optional<std::string> get_enumeration_name() const {
-    return attr_->get_enumeration_name();
+    const auto eref = attr_->get_enumeration_name();
+    if (eref.has_value()) {
+      return eref.value().get();
+    } else {
+      return std::nullopt;
+    }
   };
   /**
    * Facade for `Attribute` function

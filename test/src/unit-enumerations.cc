@@ -1244,7 +1244,7 @@ TEST_CASE_METHOD(
   auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
   REQUIRE(enmr_name.has_value());
 
-  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
+  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value().get());
 
   auto loaded =
       ad->load_enumerations_from_paths({enmr_path}, enc_key_, memory_tracker_);
@@ -1292,7 +1292,7 @@ TEST_CASE_METHOD(
   auto ad = get_array_directory();
 
   auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
-  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
+  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value().get());
 
   memory_tracker_->set_budget(memory_tracker_->get_memory_usage() + 1);
 

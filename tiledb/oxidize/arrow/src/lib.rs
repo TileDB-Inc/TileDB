@@ -14,9 +14,12 @@ pub mod ffi {
         type ArrowSchema;
 
         #[cxx_name = "create"]
-        fn array_schema_to_arrow_schema(
+        fn array_schema_create_arrow_schema(schema: &ArraySchema) -> Result<Box<ArrowSchema>>;
+
+        #[cxx_name = "project"]
+        fn array_schema_project_arrow_schema(
             schema: &ArraySchema,
-            select: &CxxVector<CxxString>,
+            select: &Vec<String>,
         ) -> Result<Box<ArrowSchema>>;
     }
 
@@ -37,7 +40,10 @@ pub mod record_batch;
 pub mod schema;
 
 use record_batch::{ArrowRecordBatch, to_record_batch as result_tile_to_record_batch};
-use schema::{ArrowSchema, cxx::to_arrow as array_schema_to_arrow_schema};
+use schema::{
+    ArrowSchema, cxx::project_arrow as array_schema_project_arrow_schema,
+    cxx::to_arrow as array_schema_create_arrow_schema,
+};
 
 unsafe impl cxx::ExternType for ArrowRecordBatch {
     type Id = cxx::type_id!("tiledb::oxidize::arrow::record_batch::ArrowRecordBatch");

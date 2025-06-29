@@ -584,6 +584,22 @@ int32_t tiledb_query_set_condition(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_query_add_predicate(
+    tiledb_ctx_t* const ctx,
+    tiledb_query_t* const query,
+    const char* const predicate) {
+  // Sanity check
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  } else if (predicate == nullptr) {
+    throw CAPIStatusException("Argument \"predicate\" may not be NULL");
+  }
+
+  throw_if_not_ok(query->query_->add_predicate(predicate));
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Trivial case
   if (query == nullptr)
@@ -2746,6 +2762,15 @@ CAPI_INTERFACE(
     tiledb_query_t* const query,
     const tiledb_query_condition_t* const cond) {
   return api_entry<tiledb::api::tiledb_query_set_condition>(ctx, query, cond);
+}
+
+CAPI_INTERFACE(
+    query_add_predicate,
+    tiledb_ctx_t* const ctx,
+    tiledb_query_t* const query,
+    const char* const predicate) {
+  return api_entry<tiledb::api::tiledb_query_add_predicate>(
+      ctx, query, predicate);
 }
 
 CAPI_INTERFACE(query_finalize, tiledb_ctx_t* ctx, tiledb_query_t* query) {

@@ -58,7 +58,15 @@
 #include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/rust.h"
+#endif
+
 using namespace tiledb::common;
+
+namespace tiledb::oxidize::datafusion::logical_expr {
+class LogicalExpr;
+}
 
 namespace tiledb::sm {
 
@@ -645,6 +653,14 @@ class Query {
   Status set_condition(const QueryCondition& condition);
 
   /**
+   * Adds a predicate for filtering results in a read query.
+   *
+   * @param predicate A string representation of the desired predicate.
+   * @return Status
+   */
+  Status add_predicate(const char* predicate);
+
+  /**
    * Adds an update value for an update query.
    *
    * @param field_name The attribute name.
@@ -1021,6 +1037,9 @@ class Query {
 
   /** The query condition. */
   std::optional<QueryCondition> condition_;
+
+  std::vector<rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>>
+      predicates_;
 
   /** The update values. */
   std::vector<UpdateValue> update_values_;
