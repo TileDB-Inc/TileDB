@@ -806,13 +806,13 @@ void ArraySchema::add_attribute(
 
   auto enmr_name = attr->get_enumeration_name();
   if (enmr_name.has_value()) {
-    // The referenced enumeration must exist when the attribut is added
-    auto iter = enumeration_map_.find(enmr_name.value());
+    // The referenced enumeration must exist when the attribute is added
+    auto iter = enumeration_map_.find(enmr_name.value().get());
     if (iter == enumeration_map_.end()) {
       std::string msg =
           "Cannot add attribute; Attribute refers to an "
           "unknown enumeration named '" +
-          enmr_name.value() + "'.";
+          enmr_name.value().get() + "'.";
       throw ArraySchemaException(msg);
     }
 
@@ -835,14 +835,15 @@ void ArraySchema::add_attribute(
     auto enmr = get_enumeration(enmr_name.value());
     if (enmr == nullptr) {
       throw ArraySchemaException(
-          "Cannot add attribute referencing enumeration '" + enmr_name.value() +
+          "Cannot add attribute referencing enumeration '" +
+          enmr_name.value().get() +
           "' as the enumeration has not been loaded.");
     }
 
     // The +1 here is because of 0 being a valid index into the enumeration.
     if (datatype_max_integral_value(attr->type()) <= enmr->elem_count()) {
       throw ArraySchemaException(
-          "Unable to use enumeration '" + enmr_name.value() +
+          "Unable to use enumeration '" + enmr_name.value().get() +
           "' for attribute '" + attr->name() +
           "' because the attribute's type is not large enough to represent "
           "all enumeration values.");
@@ -1147,7 +1148,7 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
     if (!attr_enmr_name.has_value()) {
       continue;
     }
-    if (attr_enmr_name.value() == enmr_name) {
+    if (attr_enmr_name.value().get() == enmr_name) {
       throw ArraySchemaException(
           "Unable to drop enumeration '" + enmr_name + "' as it is used by" +
           " attribute '" + attr->name() + "'.");

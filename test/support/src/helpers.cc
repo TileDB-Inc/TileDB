@@ -1636,7 +1636,13 @@ void schema_equiv(
     CHECK(a->name() == b->name());
     CHECK(a->type() == b->type());
     CHECK(a->nullable() == b->nullable());
-    CHECK(a->get_enumeration_name() == b->get_enumeration_name());
+
+    const auto a_enmr = a->get_enumeration_name(),
+               b_enmr = b->get_enumeration_name();
+    CHECK(a_enmr.has_value() == b_enmr.has_value());
+    if (a_enmr.has_value() && b_enmr.has_value()) {
+      CHECK(a_enmr.value().get() == b_enmr.value().get());
+    }
   }
   CHECK(schema1.capacity() == schema2.capacity());
   CHECK(schema1.cell_order() == schema2.cell_order());

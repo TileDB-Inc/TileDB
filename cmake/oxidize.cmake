@@ -306,10 +306,9 @@ if (TILEDB_RUST)
       set(bridge_h_src "${bridge_generated_dir}/src/${bridge}.h")
       set(bridge_cc_src "${bridge_generated_dir}/src/${bridge}.cc")
 
+      string(REPLACE "-" "_" bridge_sanitize_relpath ${bridge_sanitize_relpath})
       set(bridge_h_dst "${OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_sanitize_relpath}.h")
       set(bridge_cc_dst "${OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_sanitize_relpath}.cc")
-      string(REPLACE "-" "_" bridge_h_dst ${bridge_h_dst})
-      string(REPLACE "-" "_" bridge_cc_dst ${bridge_cc_dst})
 
       cmake_path(GET bridge_h_dst PARENT_PATH bridge_sanitize_dirname)
 

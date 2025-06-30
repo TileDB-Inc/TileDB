@@ -825,7 +825,7 @@ Status Query::process() {
       }
       auto enmr_name = attr->get_enumeration_name();
       if (enmr_name.has_value()) {
-        deduped_enmr_names.insert(enmr_name.value());
+        deduped_enmr_names.insert(enmr_name.value().get());
       }
     }
     std::vector<std::string> enmr_names;

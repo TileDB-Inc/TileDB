@@ -32,7 +32,7 @@ mod ffi {
         type ResultTile = tiledb_cxx_interface::sm::query::readers::ResultTile;
     }
 
-    #[namespace = "tiledb::oxidize"]
+    #[namespace = "tiledb::oxidize::sm::attribute"]
     extern "C++" {
         type ConstAttribute = tiledb_cxx_interface::sm::array_schema::ConstAttribute;
     }
