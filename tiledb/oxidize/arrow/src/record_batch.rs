@@ -105,11 +105,6 @@ pub unsafe fn to_record_batch(
             .all(|(f, c)| f.data_type() == c.data_type())
     );
 
-    // SAFETY: `schema` has at least one field.
-    // This is not required in general, but `schema` is a projection of an `ArraySchema`
-    // which always has at least one dimension.
-    assert!(!columns.is_empty());
-
     // SAFETY: dependent on the correctness of `tile_to_arrow_array` AND the integrity of
     // the underlying `ResultTile`.
     // Neither of these conditions is a recoverable error from the user perspective -
