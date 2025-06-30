@@ -290,7 +290,7 @@ TEST_CASE_METHOD(
     "C API: Test query add predicate errors",
     "[capi][query][add_predicate]") {
   const std::string array_name =
-      vfs_test_setup_.array_uri("test_qeury_add_predicate_errors");
+      vfs_test_setup_.array_uri("test_query_add_predicate_errors");
 
   create_array(array_name, TILEDB_SPARSE);
   write_array(array_name, TILEDB_SPARSE);
@@ -458,24 +458,77 @@ TEST_CASE_METHOD(
          6,
          7,
          std::nullopt});
+
     const auto result =
         query_array(array_name, TILEDB_GLOBAL_ORDER, "a IS NOT NULL");
-    CHECK(result.d1_ == expect.d1_);
-    CHECK(result.d2_ == expect.d2_);
-    CHECK(std::get<0>(result.atts_) == std::get<0>(expect.atts_));
-    CHECK(std::get<1>(result.atts_) == std::get<1>(expect.atts_));
-    CHECK(std::get<2>(result.atts_) == std::get<2>(expect.atts_));
+    CHECK(result == expect);
   }
 
-  SECTION("WHERE b < 'fourteen'") {
-    // TODO
+  SECTION("WHERE v < 'fourteen'") {
+    const Cells expect = make_cells(
+        {1, 2, 2, 3, 4},
+        {4, 1, 4, 3, 3},
+        {12, std::nullopt, std::nullopt, 5, 1},
+        {"four", "five", "eight", "eleven", "fifteen"},
+        {std::nullopt, 7, 0, 3, 7});
+
+    const auto result =
+        query_array(array_name, TILEDB_GLOBAL_ORDER, "v < 'fourteen'");
+    CHECK(result == expect);
   }
 
   SECTION("WHERE row + col <= 4") {
-    // TODO
+    const Cells expect = make_cells(
+        {1, 1, 1, 2, 2, 3},
+        {1, 2, 3, 1, 2, 1},
+        {15, std::nullopt, std::nullopt, std::nullopt, 10, 7},
+        {"one", "two", "three", "five", "six", "nine"},
+        {4, 4, 7, 7, 7, 1});
+
+    const auto result =
+        query_array(array_name, TILEDB_GLOBAL_ORDER, "row + col <= 4");
+    CHECK(result == expect);
   }
 
-  SECTION("WHERE coalesce(a, row) > a") {
-    // TODO
+  SECTION("WHERE a IS NULL AND row > col") {
+    const Cells expect = make_cells(
+        {2, 4},
+        {1, 1},
+        {std::nullopt, std::nullopt},
+        {"five", "thirteen"},
+        {7, std::nullopt});
+
+    const auto result = query_array(
+        array_name, TILEDB_GLOBAL_ORDER, {"a IS NULL", "row > col"});
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE coalesce(a, row) > col") {
+    const Cells expect = make_cells(
+        {1, 1, 2, 2, 2, 3, 3, 3, 4},
+        {1, 4, 1, 2, 3, 1, 2, 3, 1},
+        {15, 12, std::nullopt, 10, 9, 7, 6, 5, std::nullopt},
+        {"one",
+         "four",
+         "five",
+         "six",
+         "seven",
+         "nine",
+         "ten",
+         "eleven",
+         "thirteen"},
+        {4,
+         std::nullopt,
+         7,
+         7,
+         std::nullopt,
+         1,
+         std::nullopt,
+         3,
+         std::nullopt});
+
+    const auto result = query_array(
+        array_name, TILEDB_GLOBAL_ORDER, {"coalesce(a, row) > col"});
+    CHECK(result == expect);
   }
 }
