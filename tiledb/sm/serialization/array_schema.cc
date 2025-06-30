@@ -412,7 +412,7 @@ void attribute_to_capnp(
 
   auto enmr_name = attribute->get_enumeration_name();
   if (enmr_name.has_value()) {
-    attribute_builder->setEnumerationName(enmr_name.value());
+    attribute_builder->setEnumerationName(enmr_name.value().get());
   }
 }
 

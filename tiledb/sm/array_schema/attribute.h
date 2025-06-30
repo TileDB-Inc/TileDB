@@ -284,7 +284,8 @@ class Attribute {
   void set_enumeration_name(std::optional<std::string> enmr_name);
 
   /** Get the enumeration for this attribute. */
-  std::optional<std::string> get_enumeration_name() const;
+  std::optional<std::reference_wrapper<const std::string>>
+  get_enumeration_name() const;
 
  private:
   /* ********************************* */
