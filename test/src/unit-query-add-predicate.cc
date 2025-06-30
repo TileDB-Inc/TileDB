@@ -96,65 +96,72 @@ struct QueryAddPredicateFx {
   static const Cells INPUT;
 };
 
-const Cells QueryAddPredicateFx::INPUT = Cells{
-    .d1_ = templates::query_buffers<uint64_t>(
-        {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4}),
-    .d2_ = templates::query_buffers<uint64_t>(
-        {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4}),
-    .atts_ = std::make_tuple(
-        templates::query_buffers<std::optional<int32_t>>(
-            std::vector<std::optional<int32_t>>{
-                15,
-                std::nullopt,
-                std::nullopt,
-                12,
-                std::nullopt,
-                10,
-                9,
-                std::nullopt,
-                7,
-                6,
-                5,
-                4,
-                std::nullopt,
-                2,
-                1,
-                0}),
-        templates::query_buffers<std::string>(std::vector<std::string>{
-            "one",
-            "two",
-            "three",
-            "four",
-            "five",
-            "six",
-            "seven",
-            "eight",
-            "nine",
-            "ten",
-            "eleven",
-            "twelve",
-            "thirteen",
-            "fourteen",
-            "fifteen",
-            "sixteen"}),
-        templates::query_buffers<std::optional<int32_t>>(
-            std::vector<std::optional<int32_t>>{
-                4,
-                4,
-                7,
-                std::nullopt,
-                7,
-                7,
-                std::nullopt,
-                0,
-                1,
-                std::nullopt,
-                3,
-                4,
-                std::nullopt,
-                6,
-                7,
-                std::nullopt}))};
+static Cells make_cells(
+    std::vector<uint64_t> d1,
+    std::vector<uint64_t> d2,
+    std::vector<std::optional<int32_t>> a,
+    std::vector<std::string> v,
+    std::vector<std::optional<int32_t>> e) {
+  return Cells{
+      .d1_ = templates::query_buffers<uint64_t>(d1),
+      .d2_ = templates::query_buffers<uint64_t>(d2),
+      .atts_ = std::make_tuple(
+          templates::query_buffers<std::optional<int32_t>>(a),
+          templates::query_buffers<std::string>(v),
+          templates::query_buffers<std::optional<int32_t>>(e))};
+}
+
+const Cells QueryAddPredicateFx::INPUT = make_cells(
+    {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4},
+    {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+    {15,
+     std::nullopt,
+     std::nullopt,
+     12,
+     std::nullopt,
+     10,
+     9,
+     std::nullopt,
+     7,
+     6,
+     5,
+     4,
+     std::nullopt,
+     2,
+     1,
+     0},
+    {"one",
+     "two",
+     "three",
+     "four",
+     "five",
+     "six",
+     "seven",
+     "eight",
+     "nine",
+     "ten",
+     "eleven",
+     "twelve",
+     "thirteen",
+     "fourteen",
+     "fifteen",
+     "sixteen"},
+    {4,
+     4,
+     7,
+     std::nullopt,
+     7,
+     7,
+     std::nullopt,
+     0,
+     1,
+     std::nullopt,
+     3,
+     4,
+     std::nullopt,
+     6,
+     7,
+     std::nullopt});
 
 void QueryAddPredicateFx::create_array(
     const std::string& path, tiledb_array_type_t atype) {
@@ -424,8 +431,40 @@ TEST_CASE_METHOD(
     CHECK(result == INPUT);
   }
 
-  SECTION("WHERE a IS NULL") {
-    // TODO
+  SECTION("WHERE a IS NOT NULL") {
+    const Cells expect = make_cells(
+        {1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4},
+        {1, 4, 2, 3, 1, 2, 3, 4, 2, 3, 4},
+        {15, 12, 10, 9, 7, 6, 5, 4, 2, 1, 0},
+        {"one",
+         "four",
+         "six",
+         "seven",
+         "nine",
+         "ten",
+         "eleven",
+         "twelve",
+         "fourteen",
+         "fifteen",
+         "sixteen"},
+        {4,
+         std::nullopt,
+         7,
+         std::nullopt,
+         1,
+         std::nullopt,
+         3,
+         4,
+         6,
+         7,
+         std::nullopt});
+    const auto result =
+        query_array(array_name, TILEDB_GLOBAL_ORDER, "a IS NOT NULL");
+    CHECK(result.d1_ == expect.d1_);
+    CHECK(result.d2_ == expect.d2_);
+    CHECK(std::get<0>(result.atts_) == std::get<0>(expect.atts_));
+    CHECK(std::get<1>(result.atts_) == std::get<1>(expect.atts_));
+    CHECK(std::get<2>(result.atts_) == std::get<2>(expect.atts_));
   }
 
   SECTION("WHERE b < 'fourteen'") {
