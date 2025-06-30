@@ -1329,7 +1329,9 @@ Status QueryCondition::apply(
     const uint64_t stride) const {
 #ifdef HAVE_RUST
   if (!tree_ && datafusion_.has_value()) {
-    throw QueryConditionException("TODO not supported");
+    throw QueryConditionException(
+        "This query does not support predicates added with "
+        "tiledb_query_add_predicate");
   }
 #endif
 

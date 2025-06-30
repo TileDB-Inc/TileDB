@@ -1494,6 +1494,18 @@ void resize_fields(F& fragment, const auto& field_sizes) {
       std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
+template <FragmentType F>
+F concat(std::initializer_list<F> fragments) {
+  F concat;
+  auto d = concat.dimensions();
+  auto a = concat.attributes();
+  for (const F& fragment : fragments) {
+    stdx::extend(d, fragment.dimensions());
+    stdx::extend(a, fragment.attributes());
+  }
+  return concat;
+}
+
 }  // namespace query
 
 }  // namespace tiledb::test::templates

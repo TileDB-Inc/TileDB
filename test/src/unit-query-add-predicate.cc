@@ -65,6 +65,8 @@ using Cells = templates::Fragment2D<
 struct QueryAddPredicateFx {
   VFSTestSetup vfs_test_setup_;
 
+  static const Cells INPUT;
+
   Context context() const {
     return vfs_test_setup_.ctx();
   }
@@ -75,25 +77,30 @@ struct QueryAddPredicateFx {
    * - 'v VARCHAR NOT NULL'
    * - 'e UINT8:VARCHAR'
    */
-  void create_array(const std::string& path, tiledb_array_type_t atype);
+  void create_array(
+      const std::string& path,
+      tiledb_array_type_t atype,
+      bool allow_dups = false);
 
   /**
    * Writes cells to saturate the ranges [[1, 4], [1, 4]] for an array
    * of the schema given above
    */
-  void write_array(const std::string& path, tiledb_array_type_t atype);
+  void write_array(
+      const std::string& path,
+      tiledb_array_type_t atype,
+      const Cells input = INPUT);
 
   Cells query_array(
       const std::string& path,
       tiledb_layout_t layout,
-      std::vector<const char*> predicates);
+      std::vector<const char*> predicates,
+      const Config& query_config = Config());
 
   Cells query_array(
       const std::string& path, tiledb_layout_t layout, const char* predicate) {
     return query_array(path, layout, std::vector<const char*>{predicate});
   }
-
-  static const Cells INPUT;
 };
 
 static Cells make_cells(
@@ -164,7 +171,7 @@ const Cells QueryAddPredicateFx::INPUT = make_cells(
      std::nullopt});
 
 void QueryAddPredicateFx::create_array(
-    const std::string& path, tiledb_array_type_t atype) {
+    const std::string& path, tiledb_array_type_t atype, bool allow_dups) {
   auto ctx = context();
 
   Domain domain(ctx);
@@ -175,6 +182,7 @@ void QueryAddPredicateFx::create_array(
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_domain(domain);
+  schema.set_allows_dups(allow_dups);
 
   schema.add_attribute(Attribute::create<int32_t>(ctx, "a").set_nullable(true));
   schema.add_attribute(Attribute::create<std::string>(ctx, "v"));
@@ -203,7 +211,7 @@ void QueryAddPredicateFx::create_array(
 }
 
 void QueryAddPredicateFx::write_array(
-    const std::string& path, tiledb_array_type_t atype) {
+    const std::string& path, tiledb_array_type_t atype, const Cells input) {
   auto ctx = context();
   Array array(ctx, path, TILEDB_WRITE);
   Query query(ctx, array);
@@ -218,7 +226,7 @@ void QueryAddPredicateFx::write_array(
         std::optional<int32_t>,
         std::vector<char>,
         std::optional<int32_t>>
-        cells = {.atts_ = INPUT.atts_};
+        cells = {.atts_ = input.atts_};
 
     auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
     templates::query::set_fields<Asserter>(
@@ -231,12 +239,12 @@ void QueryAddPredicateFx::write_array(
     query.submit();
   } else {
     auto field_sizes =
-        templates::query::make_field_sizes<Asserter>(const_cast<Cells&>(INPUT));
+        templates::query::make_field_sizes<Asserter>(const_cast<Cells&>(input));
     templates::query::set_fields<Asserter>(
         ctx.ptr().get(),
         query.ptr().get(),
         field_sizes,
-        const_cast<Cells&>(INPUT),
+        const_cast<Cells&>(input),
         array.ptr().get()->array_schema_latest());
     query.submit();
   }
@@ -245,13 +253,14 @@ void QueryAddPredicateFx::write_array(
 Cells QueryAddPredicateFx::query_array(
     const std::string& path,
     tiledb_layout_t layout,
-    std::vector<const char*> predicates) {
+    std::vector<const char*> predicates,
+    const Config& config) {
   auto ctx = context();
 
   Array array(ctx, path, TILEDB_READ);
   Query query(ctx, array);
 
-  query.set_layout(layout);
+  query.set_config(config).set_layout(layout);
 
   Cells out;
   out.resize(32);
@@ -382,7 +391,7 @@ TEST_CASE_METHOD(
     "C API: Test query add predicate dense",
     "[capi][query][add_predicate]") {
   const std::string array_name =
-      vfs_test_setup_.array_uri("test_qeury_add_predicate_dense");
+      vfs_test_setup_.array_uri("test_query_add_predicate_dense");
 
   create_array(array_name, TILEDB_DENSE);
   write_array(array_name, TILEDB_DENSE);
@@ -397,23 +406,38 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate legacy",
-    "[capi][query][add_predicate]") {
-  const std::string array_name =
-      vfs_test_setup_.array_uri("test_qeury_add_predicate_legacy");
-  // TODO
-}
-
-TEST_CASE_METHOD(
-    QueryAddPredicateFx,
     "C API: Test query add predicate sparse unsupported query order",
     "[capi][query][add_predicate]") {
   const std::string array_name =
-      vfs_test_setup_.array_uri("test_qeury_add_predicate_sparse_unsupported");
+      vfs_test_setup_.array_uri("test_query_add_predicate_sparse_unsupported");
 
   create_array(array_name, TILEDB_SPARSE);
   write_array(array_name, TILEDB_SPARSE);
-  // TODO
+
+  const auto match = Catch::Matchers::ContainsSubstring(
+      "This query does not support predicates added with "
+      "tiledb_query_add_predicate");
+
+  SECTION("Row major") {
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, TILEDB_ROW_MAJOR, {"a IS NULL", "row > col"}),
+        match);
+  }
+
+  SECTION("Col major") {
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, TILEDB_COL_MAJOR, {"a IS NULL", "row > col"}),
+        match);
+  }
+
+  SECTION("Legacy global order") {
+    Config qconf;
+    qconf["sm.query.sparse_global_order.reader"] = "legacy";
+    REQUIRE_THROWS_WITH(
+        query_array(
+            array_name, TILEDB_GLOBAL_ORDER, {"a IS NULL", "row > col"}, qconf),
+        match);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -421,13 +445,15 @@ TEST_CASE_METHOD(
     "C API: Test query add predicate sparse global order",
     "[capi][query][add_predicate]") {
   const std::string array_name =
-      vfs_test_setup_.array_uri("test_qeury_add_predicate_sparse_global_order");
+      vfs_test_setup_.array_uri("test_query_add_predicate_sparse_global_order");
+
+  const auto query_order = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
 
   create_array(array_name, TILEDB_SPARSE);
   write_array(array_name, TILEDB_SPARSE);
 
   SECTION("WHERE TRUE") {
-    const auto result = query_array(array_name, TILEDB_GLOBAL_ORDER, "TRUE");
+    const auto result = query_array(array_name, query_order, "TRUE");
     CHECK(result == INPUT);
   }
 
@@ -459,8 +485,7 @@ TEST_CASE_METHOD(
          7,
          std::nullopt});
 
-    const auto result =
-        query_array(array_name, TILEDB_GLOBAL_ORDER, "a IS NOT NULL");
+    const auto result = query_array(array_name, query_order, "a IS NOT NULL");
     CHECK(result == expect);
   }
 
@@ -472,8 +497,7 @@ TEST_CASE_METHOD(
         {"four", "five", "eight", "eleven", "fifteen"},
         {std::nullopt, 7, 0, 3, 7});
 
-    const auto result =
-        query_array(array_name, TILEDB_GLOBAL_ORDER, "v < 'fourteen'");
+    const auto result = query_array(array_name, query_order, "v < 'fourteen'");
     CHECK(result == expect);
   }
 
@@ -485,8 +509,7 @@ TEST_CASE_METHOD(
         {"one", "two", "three", "five", "six", "nine"},
         {4, 4, 7, 7, 7, 1});
 
-    const auto result =
-        query_array(array_name, TILEDB_GLOBAL_ORDER, "row + col <= 4");
+    const auto result = query_array(array_name, query_order, "row + col <= 4");
     CHECK(result == expect);
   }
 
@@ -498,8 +521,8 @@ TEST_CASE_METHOD(
         {"five", "thirteen"},
         {7, std::nullopt});
 
-    const auto result = query_array(
-        array_name, TILEDB_GLOBAL_ORDER, {"a IS NULL", "row > col"});
+    const auto result =
+        query_array(array_name, query_order, {"a IS NULL", "row > col"});
     CHECK(result == expect);
   }
 
@@ -527,8 +550,131 @@ TEST_CASE_METHOD(
          3,
          std::nullopt});
 
-    const auto result = query_array(
-        array_name, TILEDB_GLOBAL_ORDER, {"coalesce(a, row) > col"});
+    const auto result =
+        query_array(array_name, query_order, "coalesce(a, row) > col");
     CHECK(result == expect);
+  }
+
+  SECTION("WHERE e < 'california'") {
+    // enumeration not supported yet
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, query_order, "e < 'california'"),
+        Catch::Matchers::ContainsSubstring(
+            "QueryCondition: Error evaluating expression: Cannot process field "
+            "'e': Attributes with enumerations are not supported in text "
+            "predicates"));
+  }
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "C API: Test query add predicate sparse unordered with dups",
+    "[capi][query][add_predicate]") {
+  const std::string array_name = vfs_test_setup_.array_uri(
+      "test_query_add_predicate_sparse_unordered_with_dups");
+
+  create_array(array_name, TILEDB_SPARSE, true);
+
+  const auto query_order = TILEDB_UNORDERED;
+
+  const Cells f2 = make_cells(
+      {1, 1, 2, 2, 3, 3, 4, 4},
+      {1, 4, 2, 3, 1, 4, 2, 3},
+      {-1, std::nullopt, std::nullopt, -4, std::nullopt, -6, -7, std::nullopt},
+      {"ένα", "δύο", "τρία", "τέσσερα", "πέντε", "έξι", "επτά", "οκτώ"},
+      {0, 7, 1, std::nullopt, 2, 6, std::nullopt, 3});
+  const Cells f3 = make_cells(
+      {1, 1, 2, 2, 3, 3, 4, 4},
+      {1, 2, 3, 4, 1, 2, 3, 4},
+      {-9, -10, -11, -12, std::nullopt, -14, -15, -16},
+      {"uno", "dos", "tres", "quatro", "cinco", "seis", "siete", "ocho"},
+      {7, 0, 6, std::nullopt, 1, 5, std::nullopt, 2});
+
+  // fragment 1: base input
+  write_array(array_name, TILEDB_SPARSE);
+  write_array(array_name, TILEDB_SPARSE, f2);
+  write_array(array_name, TILEDB_SPARSE, f3);
+
+  SECTION("WHERE TRUE") {
+    const Cells expect = templates::query::concat({INPUT, f2, f3});
+    const auto result = query_array(array_name, query_order, "TRUE");
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE v < 'fourteen'") {
+    const Cells expect = make_cells(
+        {1, 2, 2, 3, 4, 1, 3},
+        {4, 1, 4, 3, 3, 2, 1},
+        {12, std::nullopt, std::nullopt, 5, 1, -10, std::nullopt},
+        {"four", "five", "eight", "eleven", "fifteen", "dos", "cinco"},
+        {std::nullopt, 7, 0, 3, 7, 0, 1});
+
+    const auto result = query_array(array_name, query_order, "v < 'fourteen'");
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE row + col <= 4") {
+    const Cells expect = make_cells(
+        {1, 1, 1, 2, 2, 3, 1, 2, 3, 1, 1, 3},
+        {1, 2, 3, 1, 2, 1, 1, 2, 1, 1, 2, 1},
+        {15,
+         std::nullopt,
+         std::nullopt,
+         std::nullopt,
+         10,
+         7,
+         -1,
+         std::nullopt,
+         std::nullopt,
+         -9,
+         -10,
+         std::nullopt},
+        {"one",
+         "two",
+         "three",
+         "five",
+         "six",
+         "nine",
+         "ένα",
+         "τρία",
+         "πέντε",
+         "uno",
+         "dos",
+         "cinco"},
+        {4, 4, 7, 7, 7, 1, 0, 1, 2, 7, 0, 1});
+
+    const auto result = query_array(array_name, query_order, "row + col <= 4");
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE a IS NULL AND row > col") {
+    const Cells expect = make_cells(
+        {2, 4, 3, 4, 3},
+        {1, 1, 1, 3, 1},
+        {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt},
+        {"five", "thirteen", "πέντε", "οκτώ", "cinco"},
+        {7, std::nullopt, 2, 3, 1});
+
+    const auto result =
+        query_array(array_name, query_order, {"a IS NULL", "row > col"});
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE octet_length(v) > char_length(v)") {
+    const Cells expect = f2;
+
+    const auto result = query_array(
+        array_name, query_order, "octet_length(v) > char_length(v)");
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE e < 'california'") {
+    // enumeration not supported yet
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, query_order, "e < 'california'"),
+        Catch::Matchers::ContainsSubstring(
+            "QueryCondition: Error evaluating expression: Cannot process field "
+            "'e': Attributes with enumerations are not supported in text "
+            "predicates"));
   }
 }
