@@ -34,6 +34,7 @@
 #ifndef TILEDB_CAPI_NDRECTANGLE_API_EXTERNAL_EXPERIMENTAL_H
 #define TILEDB_CAPI_NDRECTANGLE_API_EXTERNAL_EXPERIMENTAL_H
 
+#include "../string/string_api_external.h"
 #include "tiledb/api/c_api/api_external_common.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/domain/domain_api_external.h"
@@ -265,6 +266,31 @@ TILEDB_EXPORT capi_return_t tiledb_ndrectangle_get_dim_num(
     tiledb_ctx_t* ctx,
     tiledb_ndrectangle_t* ndr,
     uint32_t* ndim) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the contents of an ndrectangle in ASCII form to the selected string
+ * output.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_ndrectangle_dump_str(ctx, ndr, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param ndr The ndrectangle.
+ * @param out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_dump_str(
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

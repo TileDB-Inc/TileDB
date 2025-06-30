@@ -30,6 +30,7 @@
  * This file defines the current domain C API of TileDB.
  **/
 
+#include "../string/string_api_internal.h"
 #include "current_domain_api_external_experimental.h"
 #include "current_domain_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
@@ -104,6 +105,17 @@ capi_return_t tiledb_current_domain_get_type(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_current_domain_dump_str(
+    tiledb_current_domain_t* current_domain, tiledb_string_handle_t** out) {
+  ensure_handle_is_valid(current_domain);
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *(current_domain->current_domain());
+  *out = tiledb_string_handle_t::make_handle(ss.str());
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
@@ -157,4 +169,13 @@ CAPI_INTERFACE(
     tiledb_current_domain_type_t* type) {
   return api_entry_context<tiledb::api::tiledb_current_domain_get_type>(
       ctx, current_domain, type);
+}
+
+CAPI_INTERFACE(
+    current_domain_dump_str,
+    tiledb_ctx_t* ctx,
+    tiledb_current_domain_t* current_domain,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_current_domain_dump_str>(
+      ctx, current_domain, out);
 }
