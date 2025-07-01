@@ -236,7 +236,8 @@ unsafe fn to_arrow_array(
             };
             let offsets = crate::offsets::try_from_bytes(1, fixed.as_slice())?;
             let values = unsafe {
-                // SAFETY: TODO add comment
+                // SAFETY: the caller is responsible that `fixed` out-lives
+                // the `Buffer` created here. See function docs.
                 to_buffer::<UInt8Type>(var_tile)
             }?;
 

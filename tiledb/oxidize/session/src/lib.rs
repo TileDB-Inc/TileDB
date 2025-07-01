@@ -27,6 +27,18 @@ mod ffi {
     }
 }
 
+/// Wraps for `tiledb_expr::logical_expr::LogicalExpr`.
+// This ideally would not be necessary but a weakness of cxx is that it does
+// not recognize that the same Rust type in different crates (or even modules)
+// can map to the same C++ type.
+//
+// See https://github.com/dtolnay/cxx/issues/1323
+//
+// We can fortunately work around this as follows:
+// 1) `#[repr(transparent)]` ensures that the wrapper type has the same
+//    underlying representation as the wrapped type
+// 2) `rust::Box::into_raw` and `rust::Box::from_raw` on the C++ side which
+//    allow us to cast the wrapper type into the wrapped type.
 #[repr(transparent)]
 struct ExternLogicalExpr(pub LogicalExpr);
 

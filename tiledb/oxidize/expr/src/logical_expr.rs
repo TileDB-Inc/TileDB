@@ -67,6 +67,7 @@ impl Display for LogicalExpr {
     }
 }
 
+/// Returns a conjunction of the logical exprs `e1 AND e2 AND ... AND eN`.
 pub fn make_conjunction(exprs: &[Box<LogicalExpr>]) -> Box<LogicalExpr> {
     Box::new(LogicalExpr(
         datafusion::logical_expr::utils::conjunction(exprs.iter().map(|e| e.0.clone()))
