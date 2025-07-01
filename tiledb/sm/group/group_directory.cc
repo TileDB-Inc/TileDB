@@ -53,8 +53,8 @@ class GroupDirectoryException : public StatusException {
 namespace {
 
 const std::set<std::string>& dir_names() {
-  static const std::set<std::string> dir_names = {
-      constants::group_detail_dir_name, constants::group_metadata_dir_name};
+  static const std::set<std::string> dir_names(
+      constants::group_dir_names.begin(), constants::group_dir_names.end());
   return dir_names;
 }
 
