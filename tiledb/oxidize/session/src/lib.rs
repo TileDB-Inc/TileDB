@@ -30,11 +30,6 @@ mod ffi {
 #[repr(transparent)]
 struct ExternLogicalExpr(pub LogicalExpr);
 
-unsafe impl cxx::ExternType for ExternLogicalExpr {
-    type Id = cxx::type_id!("tiledb::oxidize::datafusion::logical_expr::LogicalExpr");
-    type Kind = cxx::kind::Opaque;
-}
-
 fn new_session() -> Box<Session> {
     Box::new(Session::new())
 }
