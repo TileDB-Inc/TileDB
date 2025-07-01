@@ -93,7 +93,7 @@ static const char* const states[] = {
  */
 void print_elem(
     int* a, char* b_start, int b_len, int32_t c, float d, uint8_t* e) {
-  char print_a[8], print_e[16];
+  char print_a[8], print_e[32];
   if (a == NULL) {
     strcpy(&print_a[0], "null");
   } else {
