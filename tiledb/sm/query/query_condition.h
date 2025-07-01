@@ -51,7 +51,7 @@ namespace tiledb::oxidize::arrow::schema {
 struct ArrowSchema;
 }
 namespace tiledb::oxidize::datafusion::logical_expr {
-class LogicalExpr;
+struct LogicalExpr;
 }
 namespace tiledb::oxidize::datafusion::physical_expr {
 struct PhysicalExpr;

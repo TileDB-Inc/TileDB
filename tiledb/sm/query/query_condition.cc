@@ -190,7 +190,7 @@ QueryCondition::as_datafusion(const ArraySchema& array_schema) {
 bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
   if (!datafusion_.has_value()) {
     try {
-      datafusion_.emplace(array_schema, std::move(as_datafusion(array_schema)));
+      datafusion_.emplace(array_schema, as_datafusion(array_schema));
     } catch (const ::rust::Error& e) {
       throw QueryConditionException(
           "Error compiling expression: " + std::string(e.what()));

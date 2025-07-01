@@ -67,11 +67,11 @@ using namespace tiledb::common;
 namespace tiledb::oxidize::datafusion {
 
 namespace logical_expr {
-class LogicalExpr;
+struct LogicalExpr;
 }
 
 namespace session {
-class Session;
+struct Session;
 }
 
 }  // namespace tiledb::oxidize::datafusion

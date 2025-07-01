@@ -1537,8 +1537,7 @@ Status Query::add_predicate([[maybe_unused]] const char* predicate) {
 #ifdef HAVE_RUST
   try {
     if (!session_.has_value()) {
-      session_.emplace(
-          std::move(tiledb::oxidize::datafusion::session::new_session()));
+      session_.emplace(tiledb::oxidize::datafusion::session::new_session());
     }
 
     auto box_extern_expr = (*session_)->parse_expr(predicate, array_schema());
