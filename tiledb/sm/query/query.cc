@@ -1532,9 +1532,14 @@ Status Query::add_predicate(const char* predicate) {
         "initialized query is not supported."));
   }
 
+#ifdef HAVE_RUST
   try {
-    auto box_extern_expr =
-        resources_.session().parse_expr(predicate, array_schema());
+    if (!session_.has_value()) {
+      session_.emplace(
+          std::move(tiledb::oxidize::datafusion::session::new_session()));
+    }
+
+    auto box_extern_expr = (*session_)->parse_expr(predicate, array_schema());
     auto extern_expr = box_extern_expr.into_raw();
 
     // NB: Rust cxx does not have a way to have crate A construct and return
@@ -1561,6 +1566,11 @@ Status Query::add_predicate(const char* predicate) {
   }
 
   return Status::Ok();
+#else
+  return logger_->status(
+      Status_QueryError("Cannot add query predicate: feature requires build "
+                        "configuration '-DTILEDB_RUST=ON'"));
+#endif
 }
 
 Status Query::add_update_value(

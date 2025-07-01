@@ -64,9 +64,17 @@
 
 using namespace tiledb::common;
 
-namespace tiledb::oxidize::datafusion::logical_expr {
+namespace tiledb::oxidize::datafusion {
+
+namespace logical_expr {
 class LogicalExpr;
 }
+
+namespace session {
+class Session;
+}
+
+}  // namespace tiledb::oxidize::datafusion
 
 namespace tiledb::sm {
 
@@ -1038,8 +1046,15 @@ class Query {
   /** The query condition. */
   std::optional<QueryCondition> condition_;
 
+#ifdef HAVE_RUST
+  /** Datafusion context for parsing and evaluating predicates */
+  std::optional<rust::Box<tiledb::oxidize::datafusion::session::Session>>
+      session_;
+
+  /** Predicates */
   std::vector<rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>>
       predicates_;
+#endif
 
   /** The update values. */
   std::vector<UpdateValue> update_values_;
