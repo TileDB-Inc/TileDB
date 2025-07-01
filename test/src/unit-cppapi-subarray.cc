@@ -1378,3 +1378,42 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE(
+    "C++ API: Subarray add_range var_size mismatch throws",
+    "[cppapi][subarray][var_size_mismatch]") {
+  // Create a 1D array with a variable-length string dimension
+  const std::string array_name = "cpp_unit_array_varsize";
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  Domain domain(ctx);
+  domain.add_dimension(
+      Dimension::create(ctx, "d", TILEDB_STRING_ASCII, nullptr, nullptr));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+
+  tiledb::Array::create(array_name, schema);
+
+  // Open array for reading
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Subarray subarray(ctx, array);
+
+  // Try to add a fixed-size range to a var-sized dimension (should throw)
+  int fixed_range[2] = {1, 2};
+  CHECK_THROWS(subarray.add_range(0, fixed_range[0], fixed_range[1]));
+
+  // Try to add a var-sized range to a var-sized dimension (should not throw)
+  std::string s1 = "a";
+  std::string s2 = "abc";
+  CHECK_NOTHROW(subarray.add_range(0, s1, s2));
+
+  array.close();
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
