@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API tiledb_query_add_predicate.
+ * Tests for the `tiledb_query_add_predicate` API.
  */
 
 #include <cassert>
@@ -316,7 +316,7 @@ F QueryAddPredicateFx::query_array(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate errors",
+    "Query add predicate errors",
     "[capi][query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_errors");
@@ -408,7 +408,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate dense",
+    "Query add predicate dense array",
     "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_dense");
@@ -426,7 +426,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate sparse unsupported query order",
+    "Query add predicate sparse unsupported query order",
     "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_sparse_unsupported");
@@ -462,7 +462,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate sparse global order",
+    "Query add predicate sparse global order",
     "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_sparse_global_order");
@@ -588,7 +588,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate sparse unordered with dups",
+    "Query add predicate sparse unordered with dups",
     "[query][add_predicate]") {
   const std::string array_name = vfs_test_setup_.array_uri(
       "test_query_add_predicate_sparse_unordered_with_dups");
@@ -706,7 +706,7 @@ TEST_CASE_METHOD(
  */
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
-    "C API: Test query add predicate on evolved schema with different type",
+    "Query add predicate evolved schema",
     "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_evolution");
