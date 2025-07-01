@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This example demonstrates using the `tiledb_query_add_predicate` API
- * to add one or more text predicates to a query. This API parses a SQL
+ * This example demonstrates using the experimental `tiledb_query_add_predicate`
+ * API to add one or more text predicates to a query. This API parses a SQL
  * predicate and uses it to filter results inside of the storage engine
  * before returning them to the user.
  *
@@ -38,7 +38,8 @@
  * the same results.
  *
  * This example also has additional queries which use predicates which
- * combine dimensions and attributes.
+ * combine dimensions and attributes, highlighting a capability which
+ * cannot be replicated by just subarrays and query conditions.
  */
 
 #include <stdarg.h>
