@@ -1158,6 +1158,10 @@ struct query_buffers<std::string> : public query_buffers<std::vector<char>> {
   }
 };
 
+/**
+ * Dimension-less bundle of query buffers of the `Att...` types.
+ * Useful for dense array writes.
+ */
 template <AttributeType... Att>
 struct Fragment {
   std::tuple<query_buffers<Att>...> atts_;
@@ -1166,6 +1170,9 @@ struct Fragment {
     return std::get<0>(atts_).num_cells();
   }
 
+  /**
+   * @return a tuple containing references to the dimension fields
+   */
   std::tuple<> dimensions() const {
     return std::tuple<>();
   }
@@ -1455,6 +1462,10 @@ void set_fields(
   }(fragment.attributes());
 }
 
+/**
+ * Adds the buffers from `fragment` to a query,
+ * using `schema` to look up field names for the positional fields of `F`.
+ */
 template <typename Asserter, FragmentType F>
 void set_fields(
     tiledb_ctx_t* ctx,
@@ -1484,6 +1495,10 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
   }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
+/**
+ * Resizes the fields of `fragment` using the query output field sizes
+ * `field_sizes`.
+ */
 template <typename Asserter, FragmentType F>
 void resize_fields(F& fragment, const auto& field_sizes) {
   std::apply(
@@ -1497,6 +1512,9 @@ void resize_fields(F& fragment, const auto& field_sizes) {
       std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
+/**
+ * @return the concatenation of one or more fragments
+ */
 template <FragmentType F>
 F concat(std::initializer_list<F> fragments) {
   F concat;

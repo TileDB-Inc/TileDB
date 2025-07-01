@@ -37,6 +37,9 @@ namespace tiledb::test {
 
 using namespace tiledb::sm;
 
+/**
+ * @return a SQL representation of a `QueryConditionOp`
+ */
 static const char* to_sql_op(QueryConditionOp op) {
   switch (op) {
     case QueryConditionOp::LT:
@@ -58,6 +61,9 @@ static const char* to_sql_op(QueryConditionOp op) {
   }
 }
 
+/**
+ * @return a SQL representation of the query condition syntax tree
+ */
 std::string to_sql(const ASTNode& ast, const ArraySchema& schema) {
   const ASTNodeVal* valnode = static_cast<const ASTNodeVal*>(&ast);
   const ASTNodeExpr* exprnode = dynamic_cast<const ASTNodeExpr*>(&ast);
