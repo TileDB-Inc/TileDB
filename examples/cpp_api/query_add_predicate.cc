@@ -255,7 +255,11 @@ void read_array_with_predicates(
   auto table = query.result_buffer_elements_nullable();
   size_t num_elements_result = std::get<1>(table["c"]);
   uint64_t b_str_length = std::get<1>(table["b"]);
-  b_data_offsets.push_back(b_str_length);
+  if (num_elements_result < b_data_offsets.size()) {
+    b_data_offsets[num_elements_result] = b_str_length;
+  } else {
+    b_data_offsets.push_back(b_str_length);
+  }
 
   // Here we print all the elements that are returned by the query.
   for (size_t i = 0; i < num_elements_result; ++i) {
