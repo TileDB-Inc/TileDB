@@ -99,3 +99,9 @@ impl Session {
             .map_err(ParseExprError::TypeCoercion)
     }
 }
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}

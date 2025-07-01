@@ -52,6 +52,8 @@ pub mod cxx {
 
     /// Returns a [Schema] which represents the physical field types of
     /// the fields from `array_schema` which are contained in `select`.
+    // NB: we use `Vec` for facilitating the FFI boundary
+    #[allow(clippy::ptr_arg)]
     pub fn project_arrow(
         array_schema: &ArraySchema,
         select: &Vec<String>,

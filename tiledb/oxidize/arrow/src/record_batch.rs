@@ -267,7 +267,7 @@ unsafe fn to_arrow_array(
             // it will require some refactoring so that we build the enumeration
             // ArrowArrays just once for the whole query, in addition to the
             // issues with regards to the enumeration being loaded
-            return Err(FieldError::EnumerationNotSupported);
+            Err(FieldError::EnumerationNotSupported)
         }
         _ => {
             // SAFETY: ensured by limited range of return values of `crate::schema::arrow_datatype`
