@@ -452,12 +452,12 @@ int main() {
   printf("\n");
 
   // Execute a read query with query condition `b < "eve"`.
-  printf("SELECT * WHERE b < 'eve'\n");
+  printf("WHERE b < 'eve'\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "b < 'eve'"));
   printf("\n");
 
   // Execute a read query with query condition `c >= 1`.
-  printf("SELECT * WHERE c >= 1\n");
+  printf("WHERE c >= 1\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "c >= 1"));
   printf("\n");
 
@@ -476,7 +476,7 @@ int main() {
   // BEGIN EXAMPLES WITH ENUMERATIONS
   printf("WHERE e = 'california'\n");
   {
-    // error is expected since the enumeration is not loaded
+    // error is expected as enumerations are not supported yet
     const int32_t ret = read_array_with_predicate(ctx, "e = 'california'");
     if (ret != TILEDB_ERR) {
       return TILEDB_ERR;
