@@ -729,6 +729,7 @@ void Query::init() {
           fragment_name_));
     }
 
+#ifdef HAVE_RUST
     if (!predicates_.empty()) {
       try {
         // treat existing query condition (if any) as datafusion
@@ -749,6 +750,7 @@ void Query::init() {
             "Error initializing predicates: " + std::string(e.what()));
       }
     }
+#endif
 
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
@@ -1520,7 +1522,7 @@ Status Query::set_condition(const QueryCondition& condition) {
   return Status::Ok();
 }
 
-Status Query::add_predicate(const char* predicate) {
+Status Query::add_predicate([[maybe_unused]] const char* predicate) {
   if (type_ != QueryType::READ) {
     return logger_->status(
         Status_QueryError("Cannot add query predicate; Operation only "
