@@ -1382,38 +1382,77 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Subarray add_range var_size mismatch throws",
     "[cppapi][subarray][var_size_mismatch]") {
-  // Create a 1D array with a variable-length string dimension
-  const std::string array_name = "cpp_unit_array_varsize";
+  // This test checks that adding a fixed-size range to a var-sized dimension
+  // or a var-sized range to a fixed-size dimension throws an error.
+  const std::string var_array_name = "cpp_unit_array_varsize";
+  const std::string fixed_array_name = "cpp_unit_array_fixedsize";
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  // Clean up before test
+  if (vfs.is_dir(var_array_name)) {
+    vfs.remove_dir(var_array_name);
+  }
+  if (vfs.is_dir(fixed_array_name)) {
+    vfs.remove_dir(fixed_array_name);
   }
 
-  Domain domain(ctx);
-  domain.add_dimension(
-      Dimension::create(ctx, "d", TILEDB_STRING_ASCII, nullptr, nullptr));
-  ArraySchema schema(ctx, TILEDB_SPARSE);
-  schema.set_domain(domain);
+  // Create var-sized array
+  {
+    Domain domain(ctx);
+    domain.add_dimension(
+        Dimension::create(ctx, "d", TILEDB_STRING_ASCII, nullptr, nullptr));
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+    tiledb::Array::create(var_array_name, schema);
+  }
 
-  tiledb::Array::create(array_name, schema);
+  // Try to add fixed-size range to var-sized dim (should throw)
+  {
+    tiledb::Array array(ctx, var_array_name, TILEDB_READ);
+    tiledb::Subarray subarray(ctx, array);
 
-  // Open array for reading
-  tiledb::Array array(ctx, array_name, TILEDB_READ);
-  tiledb::Subarray subarray(ctx, array);
+    int fixed_range[2] = {1, 2};
+    CHECK_THROWS(subarray.add_range(0, fixed_range[0], fixed_range[1]));
 
-  // Try to add a fixed-size range to a var-sized dimension (should throw)
-  int fixed_range[2] = {1, 2};
-  CHECK_THROWS(subarray.add_range(0, fixed_range[0], fixed_range[1]));
+    std::string s1 = "a";
+    std::string s2 = "abc";
+    // Adding var-size range should not throw
+    CHECK_NOTHROW(subarray.add_range(0, s1, s2));
 
-  // Try to add a var-sized range to a var-sized dimension (should not throw)
-  std::string s1 = "a";
-  std::string s2 = "abc";
-  CHECK_NOTHROW(subarray.add_range(0, s1, s2));
+    array.close();
+  }
 
-  array.close();
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  // Create fixed-size array
+  {
+    Domain domain(ctx);
+    domain.add_dimension(Dimension::create<int>(ctx, "d", {0, 100}, 10));
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+    tiledb::Array::create(fixed_array_name, schema);
+  }
+
+  // Try to add var-size range to fixed-size dim (should throw)
+  {
+    tiledb::Array array(ctx, fixed_array_name, TILEDB_READ);
+    tiledb::Subarray subarray(ctx, array);
+
+    std::string s1 = "a";
+    std::string s2 = "z";
+    CHECK_THROWS(subarray.add_range(0, s1, s2));
+
+    int fixed_range[2] = {10, 20};
+    // Adding fixed-size range should not throw
+    CHECK_NOTHROW(subarray.add_range(0, fixed_range[0], fixed_range[1]));
+
+    array.close();
+  }
+
+  // Clean up after test
+  if (vfs.is_dir(var_array_name)) {
+    vfs.remove_dir(var_array_name);
+  }
+  if (vfs.is_dir(fixed_array_name)) {
+    vfs.remove_dir(fixed_array_name);
   }
 }
