@@ -1147,6 +1147,9 @@ struct query_buffers<std::optional<std::vector<T>>> {
  */
 template <>
 struct query_buffers<std::string> : public query_buffers<std::vector<char>> {
+  query_buffers() {
+  }
+
   query_buffers(std::vector<std::string> cells) {
     for (const auto& cell : cells) {
       offsets_.push_back(values_.size());

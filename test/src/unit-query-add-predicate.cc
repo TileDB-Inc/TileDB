@@ -1,5 +1,5 @@
 /**
- * @file unit-capi-query-add-predicate.cc
+ * @file unit-query-add-predicate.cc
  *
  * @section LICENSE
  *
@@ -83,25 +83,46 @@ struct QueryAddPredicateFx {
       bool allow_dups = false);
 
   /**
-   * Writes cells to saturate the ranges [[1, 4], [1, 4]] for an array
+   * Writes cells to a sparse array using the data in `input`
+   */
+  template <templates::FragmentType F = Cells>
+  void write_array(const std::string& path, const F& input = INPUT);
+
+  /**
+   * Writes `INPUT` to saturate the ranges [[1, 4], [1, 4]] for an array
    * of the schema given above
    */
-  void write_array(
-      const std::string& path,
-      tiledb_array_type_t atype,
-      const Cells input = INPUT);
+  void write_array_dense(const std::string& path);
 
-  Cells query_array(
+  template <templates::FragmentType F = Cells>
+  F query_array(
       const std::string& path,
       tiledb_layout_t layout,
       std::vector<const char*> predicates,
       const Config& query_config = Config());
 
-  Cells query_array(
+  template <templates::FragmentType F = Cells>
+  F query_array(
       const std::string& path, tiledb_layout_t layout, const char* predicate) {
-    return query_array(path, layout, std::vector<const char*>{predicate});
+    return query_array<F>(path, layout, std::vector<const char*>{predicate});
   }
 };
+
+template <templates::FragmentType F, typename... CellType>
+static F make_cells_generic(
+    std::vector<uint64_t> d1,
+    std::vector<uint64_t> d2,
+    std::vector<CellType>... atts) {
+  return F{
+      .d1_ = templates::query_buffers<uint64_t>(d1),
+      .d2_ = templates::query_buffers<uint64_t>(d2),
+      .atts_ = std::apply(
+          []<typename... T>(std::vector<T>... att) {
+            return std::make_tuple<templates::query_buffers<T>...>(
+                templates::query_buffers<T>(att)...);
+          },
+          std::make_tuple(atts...))};
+}
 
 static Cells make_cells(
     std::vector<uint64_t> d1,
@@ -109,13 +130,7 @@ static Cells make_cells(
     std::vector<std::optional<int32_t>> a,
     std::vector<std::string> v,
     std::vector<std::optional<int32_t>> e) {
-  return Cells{
-      .d1_ = templates::query_buffers<uint64_t>(d1),
-      .d2_ = templates::query_buffers<uint64_t>(d2),
-      .atts_ = std::make_tuple(
-          templates::query_buffers<std::optional<int32_t>>(a),
-          templates::query_buffers<std::string>(v),
-          templates::query_buffers<std::optional<int32_t>>(e))};
+  return make_cells_generic<Cells>(d1, d2, a, v, e);
 }
 
 const Cells QueryAddPredicateFx::INPUT = make_cells(
@@ -210,47 +225,52 @@ void QueryAddPredicateFx::create_array(
   Array::create(path, schema);
 }
 
-void QueryAddPredicateFx::write_array(
-    const std::string& path, tiledb_array_type_t atype, const Cells input) {
+template <templates::FragmentType F>
+void QueryAddPredicateFx::write_array(const std::string& path, const F& input) {
   auto ctx = context();
   Array array(ctx, path, TILEDB_WRITE);
   Query query(ctx, array);
 
-  if (atype == TILEDB_DENSE) {
-    Subarray s(ctx, array);
-    s.add_range<uint64_t>(0, 1, 4);
-    s.add_range<uint64_t>(1, 1, 4);
-    query.set_layout(TILEDB_ROW_MAJOR).set_subarray(s);
-
-    templates::Fragment<
-        std::optional<int32_t>,
-        std::vector<char>,
-        std::optional<int32_t>>
-        cells = {.atts_ = input.atts_};
-
-    auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
-    templates::query::set_fields<Asserter>(
-        ctx.ptr().get(),
-        query.ptr().get(),
-        field_sizes,
-        cells,
-        array.ptr().get()->array_schema_latest());
-
-    query.submit();
-  } else {
-    auto field_sizes =
-        templates::query::make_field_sizes<Asserter>(const_cast<Cells&>(input));
-    templates::query::set_fields<Asserter>(
-        ctx.ptr().get(),
-        query.ptr().get(),
-        field_sizes,
-        const_cast<Cells&>(input),
-        array.ptr().get()->array_schema_latest());
-    query.submit();
-  }
+  auto field_sizes =
+      templates::query::make_field_sizes<Asserter>(const_cast<F&>(input));
+  templates::query::set_fields<Asserter>(
+      ctx.ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      const_cast<F&>(input),
+      array.ptr().get()->array_schema_latest());
+  query.submit();
 }
 
-Cells QueryAddPredicateFx::query_array(
+void QueryAddPredicateFx::write_array_dense(const std::string& path) {
+  auto ctx = context();
+  Array array(ctx, path, TILEDB_WRITE);
+  Query query(ctx, array);
+
+  Subarray s(ctx, array);
+  s.add_range<uint64_t>(0, 1, 4);
+  s.add_range<uint64_t>(1, 1, 4);
+  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(s);
+
+  templates::Fragment<
+      std::optional<int32_t>,
+      std::vector<char>,
+      std::optional<int32_t>>
+      cells = {.atts_ = INPUT.atts_};
+
+  auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
+  templates::query::set_fields<Asserter>(
+      ctx.ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      cells,
+      array.ptr().get()->array_schema_latest());
+
+  query.submit();
+}
+
+template <templates::FragmentType F>
+F QueryAddPredicateFx::query_array(
     const std::string& path,
     tiledb_layout_t layout,
     std::vector<const char*> predicates,
@@ -262,7 +282,7 @@ Cells QueryAddPredicateFx::query_array(
 
   query.set_config(config).set_layout(layout);
 
-  Cells out;
+  F out;
   out.resize(32);
 
   auto field_sizes =
@@ -302,7 +322,7 @@ TEST_CASE_METHOD(
       vfs_test_setup_.array_uri("test_query_add_predicate_errors");
 
   create_array(array_name, TILEDB_SPARSE);
-  write_array(array_name, TILEDB_SPARSE);
+  write_array(array_name);
 
   auto ctx = context();
 
@@ -389,12 +409,12 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "C API: Test query add predicate dense",
-    "[capi][query][add_predicate]") {
+    "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_dense");
 
   create_array(array_name, TILEDB_DENSE);
-  write_array(array_name, TILEDB_DENSE);
+  write_array_dense(array_name);
 
   // FIXME: error messages
   REQUIRE_THROWS(query_array(array_name, TILEDB_UNORDERED, "row >= 3"));
@@ -407,12 +427,12 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "C API: Test query add predicate sparse unsupported query order",
-    "[capi][query][add_predicate]") {
+    "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_sparse_unsupported");
 
   create_array(array_name, TILEDB_SPARSE);
-  write_array(array_name, TILEDB_SPARSE);
+  write_array(array_name);
 
   const auto match = Catch::Matchers::ContainsSubstring(
       "This query does not support predicates added with "
@@ -443,14 +463,14 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "C API: Test query add predicate sparse global order",
-    "[capi][query][add_predicate]") {
+    "[query][add_predicate]") {
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_sparse_global_order");
 
   const auto query_order = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
 
   create_array(array_name, TILEDB_SPARSE);
-  write_array(array_name, TILEDB_SPARSE);
+  write_array(array_name);
 
   SECTION("WHERE TRUE") {
     const auto result = query_array(array_name, query_order, "TRUE");
@@ -569,7 +589,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "C API: Test query add predicate sparse unordered with dups",
-    "[capi][query][add_predicate]") {
+    "[query][add_predicate]") {
   const std::string array_name = vfs_test_setup_.array_uri(
       "test_query_add_predicate_sparse_unordered_with_dups");
 
@@ -591,9 +611,9 @@ TEST_CASE_METHOD(
       {7, 0, 6, std::nullopt, 1, 5, std::nullopt, 2});
 
   // fragment 1: base input
-  write_array(array_name, TILEDB_SPARSE);
-  write_array(array_name, TILEDB_SPARSE, f2);
-  write_array(array_name, TILEDB_SPARSE, f3);
+  write_array(array_name);
+  write_array(array_name, f2);
+  write_array(array_name, f3);
 
   SECTION("WHERE TRUE") {
     const Cells expect = templates::query::concat({INPUT, f2, f3});
@@ -676,5 +696,71 @@ TEST_CASE_METHOD(
             "QueryCondition: Error evaluating expression: Cannot process field "
             "'e': Attributes with enumerations are not supported in text "
             "predicates"));
+  }
+}
+
+/**
+ * Test that we do something reasonable when evaluating a predicate
+ * on an array whose schema evolved to have a different type for the
+ * same attribute
+ */
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "C API: Test query add predicate on evolved schema with different type",
+    "[query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_query_add_predicate_evolution");
+
+  create_array(array_name, TILEDB_SPARSE);
+  write_array(array_name, INPUT);
+
+  {
+    auto ctx = context();
+    ArraySchemaEvolution(ctx).drop_attribute("a").array_evolve(array_name);
+
+    ArraySchemaEvolution(ctx)
+        .add_attribute(Attribute::create<std::string>(ctx, "a"))
+        .array_evolve(array_name);
+  }
+
+  using CellsEvolved = templates::Fragment2D<
+      uint64_t,
+      uint64_t,
+      std::string,
+      std::optional<int32_t>,
+      std::string>;
+
+  const CellsEvolved f2 = make_cells_generic<
+      CellsEvolved,
+      std::string,
+      std::optional<int32_t>,
+      std::string>(
+      {1, 2, 3, 4},
+      {1, 2, 3, 4},
+      {"seventeen", "eighteen", "nineteen", "twenty"},
+      {0, 1, 2, 3},
+      {"00", "01", "10", "11"});
+  write_array(array_name, f2);
+
+  SECTION("WHERE a LIKE '%1'") {
+    CellsEvolved expect = make_cells_generic<
+        CellsEvolved,
+        std::string,
+        std::optional<int32_t>,
+        std::string>(
+        {2, 4}, {2, 4}, {"eighteen", "twenty"}, {1, 3}, {"01", "11"});
+
+    const auto result = query_array<CellsEvolved>(
+        array_name, TILEDB_GLOBAL_ORDER, "a LIKE '%1'");
+    CHECK(result == expect);
+  }
+
+  SECTION("WHERE a & 1 = 0") {
+    REQUIRE_THROWS_WITH(
+        query_array<CellsEvolved>(array_name, TILEDB_GLOBAL_ORDER, "a & 1 = 0"),
+        Catch::Matchers::ContainsSubstring(
+            "Error: Error adding predicate: Type coercion error: Error during "
+            "planning: Cannot infer common type for bitwise operation "
+            "LargeUtf8 & Int64"));
   }
 }
