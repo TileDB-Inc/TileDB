@@ -62,13 +62,19 @@ using Cells = templates::Fragment2D<
     std::vector<char>,
     std::optional<int32_t>>;
 
+struct QueryArrayKWArgs {
+  Config config;
+  std::optional<QueryCondition> condition;
+};
+
 struct QueryAddPredicateFx {
   VFSTestSetup vfs_test_setup_;
+  Context ctx_;
 
   static const Cells INPUT;
 
-  Context context() const {
-    return vfs_test_setup_.ctx();
+  QueryAddPredicateFx()
+      : ctx_(vfs_test_setup_.ctx()) {
   }
 
   /**
@@ -99,7 +105,7 @@ struct QueryAddPredicateFx {
       const std::string& path,
       tiledb_layout_t layout,
       const std::vector<std::string>& predicates,
-      const Config& query_config = Config());
+      const QueryArrayKWArgs& kwargs = QueryArrayKWArgs());
 };
 
 template <templates::FragmentType F, typename... CellType>
@@ -179,22 +185,26 @@ const Cells QueryAddPredicateFx::INPUT = make_cells(
      7,
      std::nullopt});
 
+const auto matchEnumerationNotSupported = Catch::Matchers::ContainsSubstring(
+    "QueryCondition: Error evaluating expression: Cannot process field "
+    "'e': Attributes with enumerations are not supported in text "
+    "predicates");
+
 void QueryAddPredicateFx::create_array(
     const std::string& path, tiledb_array_type_t atype, bool allow_dups) {
-  auto ctx = context();
+  Domain domain(ctx_);
+  domain.add_dimension(Dimension::create<uint64_t>(ctx_, "row", {{1, 4}}, 4));
+  domain.add_dimension(Dimension::create<uint64_t>(ctx_, "col", {{1, 4}}, 4));
 
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<uint64_t>(ctx, "row", {{1, 4}}, 4));
-  domain.add_dimension(Dimension::create<uint64_t>(ctx, "col", {{1, 4}}, 4));
-
-  ArraySchema schema(ctx, atype);
+  ArraySchema schema(ctx_, atype);
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_domain(domain);
   schema.set_allows_dups(allow_dups);
 
-  schema.add_attribute(Attribute::create<int32_t>(ctx, "a").set_nullable(true));
-  schema.add_attribute(Attribute::create<std::string>(ctx, "v"));
+  schema.add_attribute(
+      Attribute::create<int32_t>(ctx_, "a").set_nullable(true));
+  schema.add_attribute(Attribute::create<std::string>(ctx_, "v"));
 
   // enumerated attribute
   std::vector<std::string> us_states = {
@@ -207,12 +217,12 @@ void QueryAddPredicateFx::create_array(
       "connecticut",
       "etc"};
   ArraySchemaExperimental::add_enumeration(
-      ctx,
+      ctx_,
       schema,
-      Enumeration::create(ctx, std::string("us_states"), us_states));
+      Enumeration::create(ctx_, std::string("us_states"), us_states));
   {
-    auto e = Attribute::create<int32_t>(ctx, "e").set_nullable(true);
-    AttributeExperimental::set_enumeration_name(ctx, e, "us_states");
+    auto e = Attribute::create<int32_t>(ctx_, "e").set_nullable(true);
+    AttributeExperimental::set_enumeration_name(ctx_, e, "us_states");
     schema.add_attribute(e);
   }
 
@@ -221,14 +231,13 @@ void QueryAddPredicateFx::create_array(
 
 template <templates::FragmentType F>
 void QueryAddPredicateFx::write_array(const std::string& path, const F& input) {
-  auto ctx = context();
-  Array array(ctx, path, TILEDB_WRITE);
-  Query query(ctx, array);
+  Array array(ctx_, path, TILEDB_WRITE);
+  Query query(ctx_, array);
 
   auto field_sizes =
       templates::query::make_field_sizes<Asserter>(const_cast<F&>(input));
   templates::query::set_fields<Asserter>(
-      ctx.ptr().get(),
+      ctx_.ptr().get(),
       query.ptr().get(),
       field_sizes,
       const_cast<F&>(input),
@@ -237,11 +246,10 @@ void QueryAddPredicateFx::write_array(const std::string& path, const F& input) {
 }
 
 void QueryAddPredicateFx::write_array_dense(const std::string& path) {
-  auto ctx = context();
-  Array array(ctx, path, TILEDB_WRITE);
-  Query query(ctx, array);
+  Array array(ctx_, path, TILEDB_WRITE);
+  Query query(ctx_, array);
 
-  Subarray s(ctx, array);
+  Subarray s(ctx_, array);
   s.add_range<uint64_t>(0, 1, 4);
   s.add_range<uint64_t>(1, 1, 4);
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(s);
@@ -254,7 +262,7 @@ void QueryAddPredicateFx::write_array_dense(const std::string& path) {
 
   auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
   templates::query::set_fields<Asserter>(
-      ctx.ptr().get(),
+      ctx_.ptr().get(),
       query.ptr().get(),
       field_sizes,
       cells,
@@ -268,13 +276,11 @@ F QueryAddPredicateFx::query_array(
     const std::string& path,
     tiledb_layout_t layout,
     const std::vector<std::string>& predicates,
-    const Config& config) {
-  auto ctx = context();
+    const QueryArrayKWArgs& kwargs) {
+  Array array(ctx_, path, TILEDB_READ);
+  Query query(ctx_, array);
 
-  Array array(ctx, path, TILEDB_READ);
-  Query query(ctx, array);
-
-  query.set_config(config).set_layout(layout);
+  query.set_config(kwargs.config).set_layout(layout);
 
   F out;
   out.resize(32);
@@ -283,18 +289,22 @@ F QueryAddPredicateFx::query_array(
       templates::query::make_field_sizes<Asserter>(out, out.size());
 
   templates::query::set_fields<Asserter>(
-      ctx.ptr().get(),
+      ctx_.ptr().get(),
       query.ptr().get(),
       field_sizes,
       out,
       array.ptr().get()->array_schema_latest());
 
   for (const std::string& pred : predicates) {
-    QueryExperimental::add_predicate(ctx, query, pred);
+    QueryExperimental::add_predicate(ctx_, query, pred);
+  }
+
+  if (kwargs.condition.has_value()) {
+    query.set_condition(kwargs.condition.value());
   }
 
   if (array.schema().array_type() == TILEDB_DENSE) {
-    Subarray s(ctx, array);
+    Subarray s(ctx_, array);
     s.add_range<uint64_t>(0, 1, 4);
     s.add_range<uint64_t>(1, 1, 4);
     query.set_subarray(s);
@@ -318,28 +328,26 @@ TEST_CASE_METHOD(
   create_array(array_name, TILEDB_SPARSE);
   write_array(array_name);
 
-  auto ctx = context();
-
   SECTION("Non-read query errors") {
-    Array array(ctx, array_name, TILEDB_WRITE);
-    Query query(ctx, array);
+    Array array(ctx_, array_name, TILEDB_WRITE);
+    Query query(ctx_, array);
 
     REQUIRE_THROWS_WITH(
-        QueryExperimental::add_predicate(ctx, query, {"row BETWEEN 4 AND 7"}),
+        QueryExperimental::add_predicate(ctx_, query, {"row BETWEEN 4 AND 7"}),
         Catch::Matchers::ContainsSubstring(
             "Cannot add query predicate; Operation only applicable to read "
             "queries"));
   }
 
   SECTION("Read query errors") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
+    Array array(ctx_, array_name, TILEDB_READ);
+    Query query(ctx_, array);
 
     SECTION("Null") {
       const auto maybe_err = error_if_any(
-          ctx.ptr().get(),
+          ctx_.ptr().get(),
           tiledb_query_add_predicate(
-              ctx.ptr().get(), query.ptr().get(), nullptr));
+              ctx_.ptr().get(), query.ptr().get(), nullptr));
       REQUIRE(maybe_err.has_value());
       REQUIRE_THAT(
           maybe_err.value(),
@@ -352,7 +360,7 @@ TEST_CASE_METHOD(
       // If you dbg! the returned expr it prints `Expr::Column(Column { name:
       // "row" })`
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, {"row col"}),
+          QueryExperimental::add_predicate(ctx_, query, {"row col"}),
           Catch::Matchers::ContainsSubstring(
               "Error: Expression does not return a boolean value"));
     }
@@ -360,7 +368,7 @@ TEST_CASE_METHOD(
     SECTION("Non-expression") {
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(
-              ctx, query, {"CREATE TABLE foo (id INT)"}),
+              ctx_, query, {"CREATE TABLE foo (id INT)"}),
           Catch::Matchers::ContainsSubstring(
               "Error adding predicate: Parse error: SQL error: "
               "ParserError(\"Unsupported command in expression\")"));
@@ -368,14 +376,14 @@ TEST_CASE_METHOD(
 
     SECTION("Not a predicate") {
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, {"row"}),
+          QueryExperimental::add_predicate(ctx_, query, {"row"}),
           Catch::Matchers::ContainsSubstring(
               "Expression does not return a boolean value"));
     }
 
     SECTION("Schema error") {
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, {"depth = 3"}),
+          QueryExperimental::add_predicate(ctx_, query, {"depth = 3"}),
           Catch::Matchers::ContainsSubstring(
               "Error adding predicate: Parse error: Schema error: No field "
               "named depth. Valid fields are row, col, a, v, e."));
@@ -393,13 +401,13 @@ TEST_CASE_METHOD(
           "file an bug report in our issue tracker";
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(
-              ctx, query, {"starts_with(row, '1')"}),
+              ctx_, query, {"starts_with(row, '1')"}),
           Catch::Matchers::ContainsSubstring(dferror));
     }
 
     SECTION("Aggregate") {
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, {"sum(row) >= 10"}),
+          QueryExperimental::add_predicate(ctx_, query, {"sum(row) >= 10"}),
           Catch::Matchers::ContainsSubstring(
               "Aggregate functions in predicate is not supported"));
     }
@@ -416,10 +424,8 @@ TEST_CASE_METHOD(
   create_array(array_name, TILEDB_SPARSE);
   write_array(array_name);
 
-  auto ctx = context();
-
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array);
+  Array array(ctx_, array_name, TILEDB_READ);
+  Query query(ctx_, array);
 
   query.set_layout(TILEDB_GLOBAL_ORDER);
 
@@ -430,7 +436,7 @@ TEST_CASE_METHOD(
       templates::query::make_field_sizes<Asserter>(out, out.size());
 
   templates::query::set_fields<Asserter>(
-      ctx.ptr().get(),
+      ctx_.ptr().get(),
       query.ptr().get(),
       field_sizes,
       out,
@@ -443,7 +449,7 @@ TEST_CASE_METHOD(
       "Cannot add query predicate; Adding a predicate to an already "
       "initialized query is not supported.");
   REQUIRE_THROWS_WITH(
-      QueryExperimental::add_predicate(ctx, query, "row = col"), expect_err);
+      QueryExperimental::add_predicate(ctx_, query, "row = col"), expect_err);
 }
 
 TEST_CASE_METHOD(
@@ -493,9 +499,16 @@ TEST_CASE_METHOD(
   SECTION("Legacy global order") {
     Config qconf;
     qconf["sm.query.sparse_global_order.reader"] = "legacy";
+
+    QueryArrayKWArgs kwargs;
+    kwargs.config = qconf;
+
     REQUIRE_THROWS_WITH(
         query_array(
-            array_name, TILEDB_GLOBAL_ORDER, {"a IS NULL", "row > col"}, qconf),
+            array_name,
+            TILEDB_GLOBAL_ORDER,
+            {"a IS NULL", "row > col"},
+            kwargs),
         match);
   }
 }
@@ -621,10 +634,7 @@ TEST_CASE_METHOD(
     // enumeration not supported yet
     REQUIRE_THROWS_WITH(
         query_array(array_name, query_order, {"e < 'california'"}),
-        Catch::Matchers::ContainsSubstring(
-            "QueryCondition: Error evaluating expression: Cannot process field "
-            "'e': Attributes with enumerations are not supported in text "
-            "predicates"));
+        matchEnumerationNotSupported);
   }
 }
 
@@ -759,11 +769,10 @@ TEST_CASE_METHOD(
   write_array(array_name, INPUT);
 
   {
-    auto ctx = context();
-    ArraySchemaEvolution(ctx).drop_attribute("a").array_evolve(array_name);
+    ArraySchemaEvolution(ctx_).drop_attribute("a").array_evolve(array_name);
 
-    ArraySchemaEvolution(ctx)
-        .add_attribute(Attribute::create<std::string>(ctx, "a"))
+    ArraySchemaEvolution(ctx_)
+        .add_attribute(Attribute::create<std::string>(ctx_, "a"))
         .array_evolve(array_name);
   }
 
@@ -807,5 +816,116 @@ TEST_CASE_METHOD(
             "Error: Error adding predicate: Type coercion error: Error during "
             "planning: Cannot infer common type for bitwise operation "
             "LargeUtf8 & Int64"));
+  }
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "Query add predicate with query condition",
+    "[query][add_predicate]") {
+  const auto query_order = TILEDB_GLOBAL_ORDER;
+
+  const std::string array_name = vfs_test_setup_.array_uri(
+      "test_query_add_predicate_with_query_condition");
+
+  create_array(array_name, TILEDB_SPARSE);
+  write_array(array_name);
+
+  const Cells expect_a_is_null = make_cells(
+      {1, 1, 2, 2, 4},
+      {2, 3, 1, 4, 1},
+      {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt},
+      {"two", "three", "five", "eight", "thirteen"},
+      {4, 7, 7, 0, std::nullopt});
+
+  const Cells expect_v_starts_with_t = make_cells(
+      {1, 1, 3, 3, 4},
+      {2, 3, 2, 4, 1},
+      {std::nullopt, std::nullopt, 6, 4, std::nullopt},
+      {"two", "three", "ten", "twelve", "thirteen"},
+      {4, 7, std::nullopt, 4, std::nullopt});
+
+  const Cells expect_e_is_null = make_cells(
+      {1, 2, 3, 4, 4},
+      {4, 3, 2, 1, 4},
+      {12, 9, 6, std::nullopt, 0},
+      {"four", "seven", "ten", "thirteen", "sixteen"},
+      {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt});
+
+  const Cells expect_a_is_null_and_v_starts_with_t = make_cells(
+      {1, 1, 4},
+      {2, 3, 1},
+      {std::nullopt, std::nullopt, std::nullopt},
+      {"two", "three", "thirteen"},
+      {4, 7, std::nullopt});
+
+  [[maybe_unused]] const Cells expect_a_and_e_are_null =
+      make_cells({4}, {1}, {std::nullopt}, {"thirteen"}, {std::nullopt});
+
+  SECTION("Same") {
+    QueryArrayKWArgs kwargs;
+    kwargs.condition.emplace(ctx_);
+    kwargs.condition.value().init("a", nullptr, 0, TILEDB_EQ);  // `a IS NULL`
+
+    const auto qcresult = query_array(array_name, query_order, {}, kwargs);
+    CHECK(qcresult == expect_a_is_null);
+
+    const auto predresult = query_array(array_name, query_order, {"a IS NULL"});
+    CHECK(predresult == expect_a_is_null);
+
+    const auto andresult =
+        query_array(array_name, query_order, {"a IS NULL"}, kwargs);
+    CHECK(andresult == expect_a_is_null);
+  }
+
+  SECTION("Disjoint") {
+    QueryArrayKWArgs kwargs;
+    kwargs.condition.emplace(ctx_);
+    kwargs.condition.value().init("a", nullptr, 0, TILEDB_EQ);  // `a IS NULL`
+
+    const auto qcresult = query_array(array_name, query_order, {}, kwargs);
+    CHECK(qcresult == expect_a_is_null);
+
+    const auto predresult =
+        query_array(array_name, query_order, {"starts_with(v, 't')"});
+    CHECK(predresult == expect_v_starts_with_t);
+
+    const auto andresult =
+        query_array(array_name, query_order, {"starts_with(v, 't')"}, kwargs);
+    CHECK(andresult == expect_a_is_null_and_v_starts_with_t);
+  }
+
+  SECTION("Enumeration in query condition") {
+    QueryArrayKWArgs kwargs;
+    kwargs.condition.emplace(ctx_);
+    kwargs.condition.value().init("e", nullptr, 0, TILEDB_EQ);  // `e IS NULL`
+
+    const auto qcresult = query_array(array_name, query_order, {}, kwargs);
+    CHECK(qcresult == expect_e_is_null);
+
+    const auto predresult = query_array(array_name, query_order, {"a IS NULL"});
+    CHECK(predresult == expect_a_is_null);
+
+    // NB: since we re-write the query condition into datafusion
+    // it also will not support this
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, query_order, {"a IS NULL"}, kwargs),
+        matchEnumerationNotSupported);
+  }
+
+  SECTION("Enumeration in predicate") {
+    QueryArrayKWArgs kwargs;
+    kwargs.condition.emplace(ctx_);
+    kwargs.condition.value().init("a", nullptr, 0, TILEDB_EQ);  // `a IS NULL`
+
+    const auto qcresult = query_array(array_name, query_order, {}, kwargs);
+    CHECK(qcresult == expect_a_is_null);
+
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, query_order, {"e IS NULL"}),
+        matchEnumerationNotSupported);
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, query_order, {"e IS NULL"}, kwargs),
+        matchEnumerationNotSupported);
   }
 }
