@@ -408,6 +408,46 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
+    "Query add predicate to in progress query",
+    "[query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_query_add_predicate_in_progress");
+
+  create_array(array_name, TILEDB_SPARSE);
+  write_array(array_name);
+
+  auto ctx = context();
+
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+
+  Cells out;
+  out.resize(INPUT.size() - 1);
+
+  auto field_sizes =
+      templates::query::make_field_sizes<Asserter>(out, out.size());
+
+  templates::query::set_fields<Asserter>(
+      ctx.ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      out,
+      array.ptr().get()->array_schema_latest());
+
+  const auto st = query.submit();
+  REQUIRE(st == Query::Status::INCOMPLETE);
+
+  const auto expect_err = Catch::Matchers::ContainsSubstring(
+      "Cannot add query predicate; Adding a predicate to an already "
+      "initialized query is not supported.");
+  REQUIRE_THROWS_WITH(
+      QueryExperimental::add_predicate(ctx, query, "row = col"), expect_err);
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
     "Query add predicate dense array",
     "[query][add_predicate]") {
   const std::string array_name =
