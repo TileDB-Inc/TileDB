@@ -81,9 +81,9 @@ class QueryExperimental {
    * @param predicate A text representation of the desired predicate.
    */
   static void add_predicate(
-      const Context& ctx, Query& query, const char* predicate) {
+      const Context& ctx, Query& query, const std::string& predicate) {
     ctx.handle_error(tiledb_query_add_predicate(
-        ctx.ptr().get(), query.ptr().get(), predicate));
+        ctx.ptr().get(), query.ptr().get(), predicate.c_str()));
   }
 
   /**

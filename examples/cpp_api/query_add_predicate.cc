@@ -242,7 +242,7 @@ void read_array_with_predicates(
       .set_validity_buffer("e", e_validity);
 
   for (const auto& predicate : predicates) {
-    QueryExperimental::add_predicate(ctx, query, predicate.c_str());
+    QueryExperimental::add_predicate(ctx, query, predicate);
   }
 
   query.submit();

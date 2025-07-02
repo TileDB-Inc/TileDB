@@ -98,14 +98,8 @@ struct QueryAddPredicateFx {
   F query_array(
       const std::string& path,
       tiledb_layout_t layout,
-      std::vector<const char*> predicates,
+      const std::vector<std::string>& predicates,
       const Config& query_config = Config());
-
-  template <templates::FragmentType F = Cells>
-  F query_array(
-      const std::string& path, tiledb_layout_t layout, const char* predicate) {
-    return query_array<F>(path, layout, std::vector<const char*>{predicate});
-  }
 };
 
 template <templates::FragmentType F, typename... CellType>
@@ -273,7 +267,7 @@ template <templates::FragmentType F>
 F QueryAddPredicateFx::query_array(
     const std::string& path,
     tiledb_layout_t layout,
-    std::vector<const char*> predicates,
+    const std::vector<std::string>& predicates,
     const Config& config) {
   auto ctx = context();
 
@@ -295,7 +289,7 @@ F QueryAddPredicateFx::query_array(
       out,
       array.ptr().get()->array_schema_latest());
 
-  for (const char* pred : predicates) {
+  for (const std::string& pred : predicates) {
     QueryExperimental::add_predicate(ctx, query, pred);
   }
 
@@ -331,7 +325,7 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
 
     REQUIRE_THROWS_WITH(
-        QueryExperimental::add_predicate(ctx, query, "row BETWEEN 4 AND 7"),
+        QueryExperimental::add_predicate(ctx, query, {"row BETWEEN 4 AND 7"}),
         Catch::Matchers::ContainsSubstring(
             "Cannot add query predicate; Operation only applicable to read "
             "queries"));
@@ -342,8 +336,13 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
 
     SECTION("Null") {
-      REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, nullptr),
+      const auto maybe_err = error_if_any(
+          ctx.ptr().get(),
+          tiledb_query_add_predicate(
+              ctx.ptr().get(), query.ptr().get(), nullptr));
+      REQUIRE(maybe_err.has_value());
+      REQUIRE_THAT(
+          maybe_err.value(),
           Catch::Matchers::ContainsSubstring(
               "Argument \"predicate\" may not be NULL"));
     }
@@ -353,7 +352,7 @@ TEST_CASE_METHOD(
       // If you dbg! the returned expr it prints `Expr::Column(Column { name:
       // "row" })`
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, "row col"),
+          QueryExperimental::add_predicate(ctx, query, {"row col"}),
           Catch::Matchers::ContainsSubstring(
               "Error: Expression does not return a boolean value"));
     }
@@ -361,7 +360,7 @@ TEST_CASE_METHOD(
     SECTION("Non-expression") {
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(
-              ctx, query, "CREATE TABLE foo (id INT)"),
+              ctx, query, {"CREATE TABLE foo (id INT)"}),
           Catch::Matchers::ContainsSubstring(
               "Error adding predicate: Parse error: SQL error: "
               "ParserError(\"Unsupported command in expression\")"));
@@ -369,14 +368,14 @@ TEST_CASE_METHOD(
 
     SECTION("Not a predicate") {
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, "row"),
+          QueryExperimental::add_predicate(ctx, query, {"row"}),
           Catch::Matchers::ContainsSubstring(
               "Expression does not return a boolean value"));
     }
 
     SECTION("Schema error") {
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, "depth = 3"),
+          QueryExperimental::add_predicate(ctx, query, {"depth = 3"}),
           Catch::Matchers::ContainsSubstring(
               "Error adding predicate: Parse error: Schema error: No field "
               "named depth. Valid fields are row, col, a, v, e."));
@@ -393,13 +392,14 @@ TEST_CASE_METHOD(
           "caused by a bug in DataFusion's code and we would welcome that you "
           "file an bug report in our issue tracker";
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, "starts_with(row, '1')"),
+          QueryExperimental::add_predicate(
+              ctx, query, {"starts_with(row, '1')"}),
           Catch::Matchers::ContainsSubstring(dferror));
     }
 
     SECTION("Aggregate") {
       REQUIRE_THROWS_WITH(
-          QueryExperimental::add_predicate(ctx, query, "sum(row) >= 10"),
+          QueryExperimental::add_predicate(ctx, query, {"sum(row) >= 10"}),
           Catch::Matchers::ContainsSubstring(
               "Aggregate functions in predicate is not supported"));
     }
@@ -417,11 +417,11 @@ TEST_CASE_METHOD(
   write_array_dense(array_name);
 
   // FIXME: error messages
-  REQUIRE_THROWS(query_array(array_name, TILEDB_UNORDERED, "row >= 3"));
-  REQUIRE_THROWS(query_array(array_name, TILEDB_ROW_MAJOR, "row >= 3"));
-  REQUIRE_THROWS(query_array(array_name, TILEDB_COL_MAJOR, "row >= 3"));
-  REQUIRE_THROWS(query_array(array_name, TILEDB_GLOBAL_ORDER, "row >= 3"));
-  REQUIRE_THROWS(query_array(array_name, TILEDB_HILBERT, "row >= 3"));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_UNORDERED, {"row >= 3"}));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_ROW_MAJOR, {"row >= 3"}));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_COL_MAJOR, {"row >= 3"}));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_GLOBAL_ORDER, {"row >= 3"}));
+  REQUIRE_THROWS(query_array(array_name, TILEDB_HILBERT, {"row >= 3"}));
 }
 
 TEST_CASE_METHOD(
@@ -473,7 +473,7 @@ TEST_CASE_METHOD(
   write_array(array_name);
 
   SECTION("WHERE TRUE") {
-    const auto result = query_array(array_name, query_order, "TRUE");
+    const auto result = query_array(array_name, query_order, {"TRUE"});
     CHECK(result == INPUT);
   }
 
@@ -505,7 +505,7 @@ TEST_CASE_METHOD(
          7,
          std::nullopt});
 
-    const auto result = query_array(array_name, query_order, "a IS NOT NULL");
+    const auto result = query_array(array_name, query_order, {"a IS NOT NULL"});
     CHECK(result == expect);
   }
 
@@ -517,7 +517,8 @@ TEST_CASE_METHOD(
         {"four", "five", "eight", "eleven", "fifteen"},
         {std::nullopt, 7, 0, 3, 7});
 
-    const auto result = query_array(array_name, query_order, "v < 'fourteen'");
+    const auto result =
+        query_array(array_name, query_order, {"v < 'fourteen'"});
     CHECK(result == expect);
   }
 
@@ -529,7 +530,8 @@ TEST_CASE_METHOD(
         {"one", "two", "three", "five", "six", "nine"},
         {4, 4, 7, 7, 7, 1});
 
-    const auto result = query_array(array_name, query_order, "row + col <= 4");
+    const auto result =
+        query_array(array_name, query_order, {"row + col <= 4"});
     CHECK(result == expect);
   }
 
@@ -571,14 +573,14 @@ TEST_CASE_METHOD(
          std::nullopt});
 
     const auto result =
-        query_array(array_name, query_order, "coalesce(a, row) > col");
+        query_array(array_name, query_order, {"coalesce(a, row) > col"});
     CHECK(result == expect);
   }
 
   SECTION("WHERE e < 'california'") {
     // enumeration not supported yet
     REQUIRE_THROWS_WITH(
-        query_array(array_name, query_order, "e < 'california'"),
+        query_array(array_name, query_order, {"e < 'california'"}),
         Catch::Matchers::ContainsSubstring(
             "QueryCondition: Error evaluating expression: Cannot process field "
             "'e': Attributes with enumerations are not supported in text "
@@ -617,7 +619,7 @@ TEST_CASE_METHOD(
 
   SECTION("WHERE TRUE") {
     const Cells expect = templates::query::concat({INPUT, f2, f3});
-    const auto result = query_array(array_name, query_order, "TRUE");
+    const auto result = query_array(array_name, query_order, {"TRUE"});
     CHECK(result == expect);
   }
 
@@ -629,7 +631,8 @@ TEST_CASE_METHOD(
         {"four", "five", "eight", "eleven", "fifteen", "dos", "cinco"},
         {std::nullopt, 7, 0, 3, 7, 0, 1});
 
-    const auto result = query_array(array_name, query_order, "v < 'fourteen'");
+    const auto result =
+        query_array(array_name, query_order, {"v < 'fourteen'"});
     CHECK(result == expect);
   }
 
@@ -663,7 +666,8 @@ TEST_CASE_METHOD(
          "cinco"},
         {4, 4, 7, 7, 7, 1, 0, 1, 2, 7, 0, 1});
 
-    const auto result = query_array(array_name, query_order, "row + col <= 4");
+    const auto result =
+        query_array(array_name, query_order, {"row + col <= 4"});
     CHECK(result == expect);
   }
 
@@ -684,14 +688,14 @@ TEST_CASE_METHOD(
     const Cells expect = f2;
 
     const auto result = query_array(
-        array_name, query_order, "octet_length(v) > char_length(v)");
+        array_name, query_order, {"octet_length(v) > char_length(v)"});
     CHECK(result == expect);
   }
 
   SECTION("WHERE e < 'california'") {
     // enumeration not supported yet
     REQUIRE_THROWS_WITH(
-        query_array(array_name, query_order, "e < 'california'"),
+        query_array(array_name, query_order, {"e < 'california'"}),
         Catch::Matchers::ContainsSubstring(
             "QueryCondition: Error evaluating expression: Cannot process field "
             "'e': Attributes with enumerations are not supported in text "
@@ -751,13 +755,14 @@ TEST_CASE_METHOD(
         {2, 4}, {2, 4}, {"eighteen", "twenty"}, {1, 3}, {"01", "11"});
 
     const auto result = query_array<CellsEvolved>(
-        array_name, TILEDB_GLOBAL_ORDER, "a LIKE '%1'");
+        array_name, TILEDB_GLOBAL_ORDER, {"a LIKE '%1'"});
     CHECK(result == expect);
   }
 
   SECTION("WHERE a & 1 = 0") {
     REQUIRE_THROWS_WITH(
-        query_array<CellsEvolved>(array_name, TILEDB_GLOBAL_ORDER, "a & 1 = 0"),
+        query_array<CellsEvolved>(
+            array_name, TILEDB_GLOBAL_ORDER, {"a & 1 = 0"}),
         Catch::Matchers::ContainsSubstring(
             "Error: Error adding predicate: Type coercion error: Error during "
             "planning: Cannot infer common type for bitwise operation "
