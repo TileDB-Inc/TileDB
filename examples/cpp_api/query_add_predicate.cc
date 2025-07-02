@@ -228,6 +228,12 @@ void read_array_with_predicates(
   std::vector<uint8_t> e_keys(reserve_cells);
   std::vector<uint8_t> e_validity(reserve_cells);
 
+  // reserve additional space so we can push a trailing offset
+  // to make the printing logic more straightforward
+  // (this should not be necessary but without this the `push_back`
+  // flags -Werror=array-bounds in some compilers)
+  b_data_offsets.reserve(reserve_cells + 1);
+
   // Execute the read query.
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
