@@ -1962,11 +1962,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
     if (array_schema_->dense() && !all_dense) {
       LOG_WARN(
           "This dense array contains sparse fragments. Support for reading "
-          "sparse fragments in dense arrays will be removed in TileDB "
-          "version "
+          "sparse fragments in dense arrays will be removed in TileDB version "
           "2.27 to be released in September 2024. To make sure this array "
-          "continues to work after an upgrade to version 2.27 or later, "
-          "please "
+          "continues to work after an upgrade to version 2.27 or later, please "
           "consolidate the sparse fragments using a TileDB version 2.26 or "
           "earlier.");
     }
@@ -2091,8 +2089,8 @@ Status Query::check_buffer_names() {
                             "cells to be written"));
     }
 
-    // All attributes/dimensions must be provided unless this query is only
-    // for dimension labels.
+    // All attributes/dimensions must be provided unless this query is only for
+    // dimension labels.
     if (!only_dim_label_query() && !allow_separate_attribute_writes()) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(
