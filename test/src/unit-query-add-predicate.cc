@@ -185,10 +185,45 @@ const Cells QueryAddPredicateFx::INPUT = make_cells(
      7,
      std::nullopt});
 
-const auto matchEnumerationNotSupported = Catch::Matchers::ContainsSubstring(
-    "QueryCondition: Error evaluating expression: Cannot process field "
-    "'e': Attributes with enumerations are not supported in text "
-    "predicates");
+const Cells expect_a_is_null = make_cells(
+    {1, 1, 2, 2, 4},
+    {2, 3, 1, 4, 1},
+    {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt},
+    {"two", "three", "five", "eight", "thirteen"},
+    {4, 7, 7, 0, std::nullopt});
+
+const Cells expect_v_starts_with_t = make_cells(
+    {1, 1, 3, 3, 4},
+    {2, 3, 2, 4, 1},
+    {std::nullopt, std::nullopt, 6, 4, std::nullopt},
+    {"two", "three", "ten", "twelve", "thirteen"},
+    {4, 7, std::nullopt, 4, std::nullopt});
+
+const Cells expect_e_is_null = make_cells(
+    {1, 2, 3, 4, 4},
+    {4, 3, 2, 1, 4},
+    {12, 9, 6, std::nullopt, 0},
+    {"four", "seven", "ten", "thirteen", "sixteen"},
+    {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt});
+
+const Cells expect_a_is_null_and_v_starts_with_t = make_cells(
+    {1, 1, 4},
+    {2, 3, 1},
+    {std::nullopt, std::nullopt, std::nullopt},
+    {"two", "three", "thirteen"},
+    {4, 7, std::nullopt});
+
+[[maybe_unused]] const Cells expect_a_and_e_are_null =
+    make_cells({4}, {1}, {std::nullopt}, {"thirteen"}, {std::nullopt});
+
+auto matchEnumerationNotSupported(std::string enumeration_name = "e") {
+  return Catch::Matchers::ContainsSubstring(
+      "QueryCondition: Error evaluating expression: Cannot process field "
+      "'" +
+      enumeration_name +
+      "': Attributes with enumerations are not supported in text "
+      "predicates");
+}
 
 void QueryAddPredicateFx::create_array(
     const std::string& path, tiledb_array_type_t atype, bool allow_dups) {
@@ -634,7 +669,7 @@ TEST_CASE_METHOD(
     // enumeration not supported yet
     REQUIRE_THROWS_WITH(
         query_array(array_name, query_order, {"e < 'california'"}),
-        matchEnumerationNotSupported);
+        matchEnumerationNotSupported());
   }
 }
 
@@ -831,37 +866,6 @@ TEST_CASE_METHOD(
   create_array(array_name, TILEDB_SPARSE);
   write_array(array_name);
 
-  const Cells expect_a_is_null = make_cells(
-      {1, 1, 2, 2, 4},
-      {2, 3, 1, 4, 1},
-      {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt},
-      {"two", "three", "five", "eight", "thirteen"},
-      {4, 7, 7, 0, std::nullopt});
-
-  const Cells expect_v_starts_with_t = make_cells(
-      {1, 1, 3, 3, 4},
-      {2, 3, 2, 4, 1},
-      {std::nullopt, std::nullopt, 6, 4, std::nullopt},
-      {"two", "three", "ten", "twelve", "thirteen"},
-      {4, 7, std::nullopt, 4, std::nullopt});
-
-  const Cells expect_e_is_null = make_cells(
-      {1, 2, 3, 4, 4},
-      {4, 3, 2, 1, 4},
-      {12, 9, 6, std::nullopt, 0},
-      {"four", "seven", "ten", "thirteen", "sixteen"},
-      {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt});
-
-  const Cells expect_a_is_null_and_v_starts_with_t = make_cells(
-      {1, 1, 4},
-      {2, 3, 1},
-      {std::nullopt, std::nullopt, std::nullopt},
-      {"two", "three", "thirteen"},
-      {4, 7, std::nullopt});
-
-  [[maybe_unused]] const Cells expect_a_and_e_are_null =
-      make_cells({4}, {1}, {std::nullopt}, {"thirteen"}, {std::nullopt});
-
   SECTION("Same") {
     QueryArrayKWArgs kwargs;
     kwargs.condition.emplace(ctx_);
@@ -910,7 +914,7 @@ TEST_CASE_METHOD(
     // it also will not support this
     REQUIRE_THROWS_WITH(
         query_array(array_name, query_order, {"a IS NULL"}, kwargs),
-        matchEnumerationNotSupported);
+        matchEnumerationNotSupported());
   }
 
   SECTION("Enumeration in predicate") {
@@ -923,9 +927,92 @@ TEST_CASE_METHOD(
 
     REQUIRE_THROWS_WITH(
         query_array(array_name, query_order, {"e IS NULL"}),
-        matchEnumerationNotSupported);
+        matchEnumerationNotSupported());
     REQUIRE_THROWS_WITH(
         query_array(array_name, query_order, {"e IS NULL"}, kwargs),
-        matchEnumerationNotSupported);
+        matchEnumerationNotSupported());
+  }
+}
+
+/**
+ * Test that field names with special characters can be used by enclosing them
+ * in quotes
+ */
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
+    "Query add predicate field name escaping",
+    "[query][add_predicate]") {
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_query_add_predicate_field_name_escape");
+
+  create_array(array_name, TILEDB_SPARSE);
+
+  // re-name fields to have special characters in them
+  // (preserve order/types of attributes so we can continue using INPUT)
+  {
+    auto enmr = ArrayExperimental::get_enumeration(
+        ctx_, Array(ctx_, array_name, TILEDB_READ), "us_states");
+
+    // first drop the old enumeration due to error adding an attribute trying to
+    // use it: cannot add an attribute using an enumeration which isn't loaded
+    ArraySchemaEvolution(ctx_)
+        .drop_attribute("e")
+        .drop_enumeration("us_states")
+        .array_evolve(array_name);
+
+    auto evolve =
+        ArraySchemaEvolution(ctx_)
+            .drop_attribute("a")
+            .drop_attribute("v")
+            .add_attribute(
+                Attribute::create<int32_t>(ctx_, "'a'").set_nullable(true))
+            .add_attribute(Attribute::create<std::string>(ctx_, "\"v\""));
+
+    auto e = Attribute::create<int32_t>(ctx_, "e e").set_nullable(true);
+    AttributeExperimental::set_enumeration_name(ctx_, e, "us_states");
+
+    evolve.add_attribute(e).add_enumeration(enmr);
+
+    evolve.array_evolve(array_name);
+  }
+
+  write_array(array_name);
+
+  const auto query_order = TILEDB_GLOBAL_ORDER;
+
+  SECTION("WHERE 'a' IS NULL") {
+    const auto result =
+        query_array(array_name, query_order, {"\"'a'\" IS NULL"});
+    CHECK(result == expect_a_is_null);
+  }
+
+  SECTION("WHERE starts_with(\"v\", 't')") {
+    const auto result = query_array(
+        array_name, query_order, {"starts_with(\"\"\"v\"\"\", 't')"});
+    CHECK(result == expect_v_starts_with_t);
+  }
+
+  SECTION("WHERE \"e e\" IS NULL") {
+    REQUIRE_THROWS_WITH(
+        query_array(array_name, query_order, {"\"e e\" IS NULL"}),
+        matchEnumerationNotSupported("e e"));
+  }
+
+  SECTION("Query condition rewrite") {
+    QueryArrayKWArgs kwargs;
+    kwargs.condition.emplace(ctx_);
+    kwargs.condition.value().init(
+        "'a'", nullptr, 0, TILEDB_EQ);  // `"'a'" IS NULL`
+
+    const auto qcresult = query_array(array_name, query_order, {}, kwargs);
+    CHECK(qcresult == expect_a_is_null);
+
+    const std::string pred = "starts_with(\"\"\"v\"\"\", 't')";
+
+    const auto predresult = query_array(array_name, query_order, {pred});
+    CHECK(predresult == expect_v_starts_with_t);
+
+    const auto andresult = query_array(array_name, query_order, {pred}, kwargs);
+    CHECK(andresult == expect_a_is_null_and_v_starts_with_t);
   }
 }
