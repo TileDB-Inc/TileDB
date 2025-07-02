@@ -73,8 +73,8 @@ class QueryExperimental {
    * will be analyzed and evaluated in the subarray step, query condition
    * step, or both.
    *
-   * The predicate is parsed as a SQL expression and must evaluate
-   * to a boolean.
+   * The predicate is parsed as an Apache DataFusion SQL expression and must
+   * evaluate to a boolean.
    *
    * @param ctx The TileDB context.
    * @param query The TileDB query.

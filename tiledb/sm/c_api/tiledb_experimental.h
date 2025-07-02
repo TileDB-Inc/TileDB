@@ -463,8 +463,8 @@ TILEDB_EXPORT int32_t tiledb_query_condition_set_use_enumeration(
  * will be analyzed and evaluated in the subarray step, query condition
  * step, or both.
  *
- * The predicate is parsed as a SQL expression and must evaluate
- * to a boolean.
+ * The predicate is parsed as an Apache DataFusion SQL expression and must
+ * evaluate to a boolean.
  *
  * **Example:**
  *
