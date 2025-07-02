@@ -1524,14 +1524,14 @@ Status Query::set_condition(const QueryCondition& condition) {
 
 Status Query::add_predicate([[maybe_unused]] const char* predicate) {
   if (type_ != QueryType::READ) {
-    return logger_->status(
-        Status_QueryError("Cannot add query predicate; Operation only "
-                          "applicable to read queries"));
+    return Status_QueryError(
+        "Cannot add query predicate; Operation only "
+        "applicable to read queries");
   }
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
-    return logger_->status(Status_QueryError(
+    return Status_QueryError(
         "Cannot add query predicate; Adding a predicate to an already "
-        "initialized query is not supported."));
+        "initialized query is not supported.");
   }
 
 #ifdef HAVE_RUST
@@ -1568,9 +1568,9 @@ Status Query::add_predicate([[maybe_unused]] const char* predicate) {
 
   return Status::Ok();
 #else
-  return logger_->status(
-      Status_QueryError("Cannot add query predicate: feature requires build "
-                        "configuration '-DTILEDB_RUST=ON'"));
+  return Status_QueryError(
+      "Cannot add query predicate: feature requires build "
+      "configuration '-DTILEDB_RUST=ON'");
 #endif
 }
 
