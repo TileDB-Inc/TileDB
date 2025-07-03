@@ -192,19 +192,23 @@ pub fn field_arrow_datatype(
                 ));
             }
 
-            let enumeration = array_schema.enumeration_cxx(e_name);
-
-            let value_type = if let Some(enumeration) = enumeration.as_ref() {
-                arrow_datatype(enumeration.datatype(), enumeration.cell_val_num())?
-            } else {
-                // NB: we don't necessarily want to return an error here
-                // because the enumeration might not actually be used
-                // in a predicate. We can return some representation
-                // which we will check later if it is actually used,
-                // and return an error then.
-                ArrowDataType::Null
-            };
-            Ok(value_type)
+            // NB: This branch is reached from `session::parse_expr` which requires
+            // a schema in order to parse the text into logical expression.
+            // However, we may not have the enumeration loaded, and without
+            // loading it we don't know the type (since the type is co-located
+            // in storage with the variants).
+            // We should not need to load all enumerations (potentially expensive)
+            // in order to parse text.
+            // We also should not error here because then nothing can be parsed
+            // if there are *any* enumerations in the schema.
+            // We can work around this by adding an intermediate step to analyze
+            // the SQL expression tree.
+            // We defer the implementation of this workaround, and other questions
+            // about enumeration evaluation, to CORE-285
+            //
+            // For now we return a type which can only appear in this way,
+            // to return an error later.
+            Ok(ArrowDataType::Null)
         }
         invalid => unreachable!(
             "Request for invalid schema type with discriminant {}",

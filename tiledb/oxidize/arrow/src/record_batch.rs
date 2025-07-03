@@ -261,11 +261,10 @@ pub unsafe fn to_arrow_array(
                 null_buffer,
             )))
         }
-        DataType::Dictionary(_, _) => {
-            // NB: we will do this later,
-            // it will require some refactoring so that we build the enumeration
-            // ArrowArrays just once for the whole query, in addition to the
-            // issues with regards to the enumeration being loaded
+        DataType::Null => {
+            // NB: see `arrow/src/schema.rs`.
+            // This represents the value type of an attribute with an enumeration
+            // which we will implement later in CORE-285.
             Err(FieldError::EnumerationNotSupported)
         }
         _ => {
