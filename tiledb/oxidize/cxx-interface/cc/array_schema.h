@@ -32,17 +32,9 @@ namespace enumeration {
 
 using ConstEnumeration = const tiledb::sm::Enumeration;
 
-static inline rust::Slice<const uint8_t> data_cxx(
-    const Enumeration& enumeration) {
-  std::span<const uint8_t> span = enumeration.data();
-  return rust::Slice(span.data(), span.size());
-}
+rust::Slice<const uint8_t> data_cxx(const Enumeration& enumeration);
 
-static inline rust::Slice<const uint8_t> offsets_cxx(
-    const Enumeration& enumeration) {
-  std::span<const uint8_t> span = enumeration.offsets();
-  return rust::Slice(span.data(), span.size());
-}
+rust::Slice<const uint8_t> offsets_cxx(const Enumeration& enumeration);
 
 }  // namespace enumeration
 
