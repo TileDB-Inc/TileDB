@@ -1,5 +1,14 @@
 #[cxx::bridge]
 pub mod ffi {
+    /// Indicates how an [ArraySchema] should be translated into an Arrow [Schema].
+    ///
+    /// See `schema` module documentation.
+    #[namespace = "tiledb::oxidize::arrow::schema"]
+    enum WhichSchema {
+        Storage,
+        View,
+    }
+
     #[namespace = "tiledb::sm"]
     extern "C++" {
         include!("tiledb/sm/array_schema/array_schema.h");
@@ -16,11 +25,15 @@ pub mod ffi {
         type ArrowArraySchema;
 
         #[cxx_name = "create"]
-        fn array_schema_create_arrow_schema(schema: &ArraySchema) -> Result<Box<ArrowArraySchema>>;
+        fn array_schema_create_arrow_schema(
+            schema: &ArraySchema,
+            which: WhichSchema,
+        ) -> Result<Box<ArrowArraySchema>>;
 
         #[cxx_name = "project"]
         fn array_schema_project_arrow_schema(
             schema: &ArraySchema,
+            which: WhichSchema,
             select: &Vec<String>,
         ) -> Result<Box<ArrowArraySchema>>;
     }

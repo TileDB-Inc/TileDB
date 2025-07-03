@@ -1,5 +1,24 @@
 //! Provides definitions for mapping an [ArraySchema] or the contents of an
 //! [ArraySchema] onto representative Arrow [Schema]ta or [Field]s.
+//!
+//! For the most part, the mapping of fields from [ArraySchema] to Arrow [Schema]
+//! is not complicated. In some cases there is not an exact datatype match.
+//! We resolve this by using the _physical_ Arrow data type when possible.
+//!
+//! The greater complexity comes from enumerations. Arrow does have a Dictionary
+//! type which seems appropriate; however, the Arrow `DictionaryArray` requires
+//! that its keys are valid indices into the dictionary values. But TileDB
+//! enumerations require the opposite: invalid key values are specifically
+//! allowed, with the expectation that a user will attach additional variants
+//! later.
+//!
+//! To address this we will separately consider schemata for the "array storage"
+//! and the "array view".  The "array storage" schema contains the attribute key type
+//! and the "array view" contains the enumeration value type. Like with SQL
+//! views we will apply expression rewrites in order to translate between them.
+//!
+//! As a guideline, the "array storage" schema should be used internally and
+//! the "array view" schema should be used for user endpoint APIs.
 use std::collections::HashMap;
 use std::str::Utf8Error;
 use std::sync::Arc;
@@ -10,6 +29,8 @@ use arrow::datatypes::{
 use itertools::Itertools;
 use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum, Field};
 use tiledb_cxx_interface::sm::enums::Datatype;
+
+pub use super::ffi::WhichSchema;
 
 /// An error converting [ArraySchema] to [Schema].
 #[derive(Debug, thiserror::Error)]
@@ -46,8 +67,11 @@ pub struct ArrowArraySchema {
 pub mod cxx {
     use super::*;
 
-    pub fn to_arrow(array_schema: &ArraySchema) -> Result<Box<ArrowArraySchema>, Error> {
-        let (schema, enumerations) = super::project_arrow(array_schema, |_: &Field| true)?;
+    pub fn to_arrow(
+        array_schema: &ArraySchema,
+        which: WhichSchema,
+    ) -> Result<Box<ArrowArraySchema>, Error> {
+        let (schema, enumerations) = super::project_arrow(array_schema, which, |_: &Field| true)?;
         Ok(Box::new(ArrowArraySchema {
             schema: Arc::new(schema),
             enumerations: Arc::new(enumerations),
@@ -60,9 +84,10 @@ pub mod cxx {
     #[allow(clippy::ptr_arg)]
     pub fn project_arrow(
         array_schema: &ArraySchema,
+        which: WhichSchema,
         select: &Vec<String>,
     ) -> Result<Box<ArrowArraySchema>, Error> {
-        let (schema, enumerations) = super::project_arrow(array_schema, |field: &Field| {
+        let (schema, enumerations) = super::project_arrow(array_schema, which, |field: &Field| {
             select.iter().any(|s| s.as_str() == field.name_cxx())
         })?;
         Ok(Box::new(ArrowArraySchema {
@@ -72,13 +97,17 @@ pub mod cxx {
     }
 }
 
-pub fn to_arrow(array_schema: &ArraySchema) -> Result<(Schema, Enumerations), Error> {
-    project_arrow(array_schema, |_: &Field| true)
+pub fn to_arrow(
+    array_schema: &ArraySchema,
+    which: WhichSchema,
+) -> Result<(Schema, Enumerations), Error> {
+    project_arrow(array_schema, which, |_: &Field| true)
 }
 
 /// Returns a [Schema] which represents the physical field types of the selected fields from `array_schema`.
 pub fn project_arrow<F>(
     array_schema: &ArraySchema,
+    which: WhichSchema,
     select: F,
 ) -> Result<(Schema, Enumerations), Error>
 where
@@ -91,7 +120,7 @@ where
             let field_name = f
                 .name()
                 .map_err(|e| Error::NameNotUtf8(f.name_cxx().as_bytes().to_vec(), e))?;
-            let arrow_type = field_arrow_datatype(array_schema, &f)
+            let arrow_type = field_arrow_datatype(array_schema, which, &f)
                 .map_err(|e| Error::FieldError(field_name.to_owned(), e))?;
 
             // NB: fields can always be null due to schema evolution
@@ -148,34 +177,39 @@ where
 /// Returns an [ArrowDataType] which represents the physical data type of `field`.
 pub fn field_arrow_datatype(
     array_schema: &ArraySchema,
+    which: WhichSchema,
     field: &Field,
 ) -> Result<ArrowDataType, FieldError> {
-    if let Some(e_name) = field.enumeration_name_cxx() {
-        if !array_schema.has_enumeration(e_name) {
-            return Err(FieldError::InternalEnumerationNotFound(
-                e_name.to_string_lossy().into_owned(),
-            ));
+    match which {
+        WhichSchema::Storage => arrow_datatype(field.datatype(), field.cell_val_num()),
+        WhichSchema::View => {
+            let Some(e_name) = field.enumeration_name_cxx() else {
+                return arrow_datatype(field.datatype(), field.cell_val_num());
+            };
+            if !array_schema.has_enumeration(e_name) {
+                return Err(FieldError::InternalEnumerationNotFound(
+                    e_name.to_string_lossy().into_owned(),
+                ));
+            }
+
+            let enumeration = array_schema.enumeration_cxx(e_name);
+
+            let value_type = if let Some(enumeration) = enumeration.as_ref() {
+                arrow_datatype(enumeration.datatype(), enumeration.cell_val_num())?
+            } else {
+                // NB: we don't necessarily want to return an error here
+                // because the enumeration might not actually be used
+                // in a predicate. We can return some representation
+                // which we will check later if it is actually used,
+                // and return an error then.
+                ArrowDataType::Null
+            };
+            Ok(value_type)
         }
-
-        let enumeration = array_schema.enumeration_cxx(e_name);
-
-        let key_type = arrow_datatype(field.datatype(), field.cell_val_num())?;
-        let value_type = if let Some(enumeration) = enumeration.as_ref() {
-            arrow_datatype(enumeration.datatype(), enumeration.cell_val_num())?
-        } else {
-            // NB: we don't necessarily want to return an error here
-            // because the enumeration might not actually be used
-            // in a predicate. We can return some representation
-            // which we will check later if it is actually used,
-            // and return an error then.
-            ArrowDataType::Null
-        };
-        Ok(ArrowDataType::Dictionary(
-            Box::new(key_type),
-            Box::new(value_type),
-        ))
-    } else {
-        arrow_datatype(field.datatype(), field.cell_val_num())
+        invalid => unreachable!(
+            "Request for invalid schema type with discriminant {}",
+            invalid.repr
+        ),
     }
 }
 

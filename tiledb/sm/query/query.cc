@@ -60,6 +60,7 @@
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 #ifdef HAVE_RUST
+#include "tiledb/oxidize/arrow.h"
 #include "tiledb/oxidize/expr.h"
 #include "tiledb/oxidize/session.h"
 #endif
@@ -734,7 +735,9 @@ void Query::init() {
       try {
         // treat existing query condition (if any) as datafusion
         if (condition_.has_value()) {
-          predicates_.push_back(condition_->as_datafusion(array_schema()));
+          predicates_.push_back(condition_->as_datafusion(
+              array_schema(),
+              tiledb::oxidize::arrow::schema::WhichSchema::View));
           condition_.reset();
         }
 
@@ -877,7 +880,8 @@ Status Query::process() {
 #ifdef HAVE_RUST
       auto timer_se =
           stats_->start_timer("query_condition_rewrite_to_datafusion");
-      condition_->rewrite_to_datafusion(array_schema());
+      condition_->rewrite_to_datafusion(
+          array_schema(), tiledb::oxidize::arrow::schema::WhichSchema::Storage);
 #else
       std::stringstream ss;
       ss << "Invalid value for parameter '" << evaluator_param_name

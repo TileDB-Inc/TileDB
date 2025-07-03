@@ -6,6 +6,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use datafusion::common::tree_node::{TreeNode, TreeNodeRecursion, TreeNodeVisitor};
 use datafusion::common::{Column, DFSchema, DataFusionError, ScalarValue};
 use datafusion::logical_expr::{Expr, ExprSchemable};
+use tiledb_arrow::schema::WhichSchema;
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
 
 #[derive(Debug, thiserror::Error)]
@@ -30,7 +31,7 @@ impl LogicalExpr {
 
     pub fn output_type(&self, schema: &ArraySchema) -> Result<ArrowDataType, TypeError> {
         let cols = self.0.column_refs();
-        let arrow_schema = tiledb_arrow::schema::project_arrow(schema, |f| {
+        let arrow_schema = tiledb_arrow::schema::project_arrow(schema, WhichSchema::View, |f| {
             let Ok(field_name) = f.name() else {
                 // NB: if the field name is not UTF-8 then it cannot possibly match the column name
                 return false;

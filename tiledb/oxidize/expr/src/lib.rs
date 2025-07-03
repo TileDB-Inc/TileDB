@@ -18,6 +18,9 @@ mod ffi {
 
         #[namespace = "tiledb::oxidize::arrow::schema"]
         type ArrowArraySchema = tiledb_arrow::schema::ArrowArraySchema;
+
+        #[namespace = "tiledb::oxidize::arrow::schema"]
+        type WhichSchema = tiledb_arrow::schema::WhichSchema;
     }
 
     #[namespace = "tiledb::oxidize::datafusion::logical_expr"]
@@ -32,6 +35,7 @@ mod ffi {
         #[cxx_name = "create"]
         fn query_condition_to_logical_expr(
             schema: &ArraySchema,
+            which: &WhichSchema,
             query_condition: &ASTNode,
         ) -> Result<Box<LogicalExpr>>;
 

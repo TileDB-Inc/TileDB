@@ -114,7 +114,10 @@ QueryCondition::QueryCondition(
     field_names_.insert(std::string(c.data(), c.size()));
   }
 
-  datafusion_.emplace(array_schema, std::move(expr));
+  datafusion_.emplace(
+      array_schema,
+      tiledb::oxidize::arrow::schema::WhichSchema::View,
+      std::move(expr));
 }
 #endif
 
@@ -182,15 +185,20 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
 
 #ifdef HAVE_RUST
 rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
-QueryCondition::as_datafusion(const ArraySchema& array_schema) {
+QueryCondition::as_datafusion(
+    const ArraySchema& array_schema,
+    tiledb::oxidize::arrow::schema::WhichSchema which) {
   return tiledb::oxidize::datafusion::logical_expr::create(
-      array_schema, *tree_.get());
+      array_schema, which, *tree_.get());
 }
 
-bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
+bool QueryCondition::rewrite_to_datafusion(
+    const ArraySchema& array_schema,
+    tiledb::oxidize::arrow::schema::WhichSchema which) {
   if (!datafusion_.has_value()) {
     try {
-      datafusion_.emplace(array_schema, as_datafusion(array_schema));
+      datafusion_.emplace(
+          array_schema, which, as_datafusion(array_schema, which));
     } catch (const ::rust::Error& e) {
       throw QueryConditionException(
           "Error compiling expression: " + std::string(e.what()));
@@ -2987,9 +2995,10 @@ uint64_t QueryCondition::condition_index() const {
 #ifdef HAVE_RUST
 QueryCondition::Datafusion::Datafusion(
     const ArraySchema& array_schema,
+    tiledb::oxidize::arrow::schema::WhichSchema which,
     rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr)
     : schema_(tiledb::oxidize::arrow::schema::project(
-          array_schema, expr->columns()))
+          array_schema, which, expr->columns()))
     , expr_(tiledb::oxidize::datafusion::physical_expr::create(
           *schema_, std::move(expr))) {
 }

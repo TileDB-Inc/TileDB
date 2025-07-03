@@ -50,6 +50,7 @@
 
 #ifdef HAVE_RUST
 #include "test/support/assert_helpers.h"
+#include "tiledb/oxidize/arrow.h"
 #include "tiledb/oxidize/unit_query_condition.h"
 #endif
 
@@ -5194,7 +5195,8 @@ std::vector<uint8_t> instance(
   // set up datafusion evaluation
   QueryCondition qc_datafusion(ast.clone());
   qc_datafusion.rewrite_for_schema(array_schema);
-  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(array_schema);
+  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(
+      array_schema, tiledb::oxidize::arrow::schema::WhichSchema::Storage);
   ASSERTER(datafusion_ok);
 
   // prepare to evaluate
