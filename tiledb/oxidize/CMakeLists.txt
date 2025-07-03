@@ -35,6 +35,7 @@ cxxbridge(
     array_schema.cc
     common/memory_tracker.rs
     sm/array_schema/mod.rs
+    sm/buffer.rs
     sm/enums/mod.rs
     sm/query/readers/mod.rs
     sm/query/ast/mod.rs
