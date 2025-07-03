@@ -17,7 +17,7 @@ mod ffi {
         type ArrowRecordBatch = tiledb_arrow::record_batch::ArrowRecordBatch;
 
         #[namespace = "tiledb::oxidize::arrow::schema"]
-        type ArrowSchema = tiledb_arrow::schema::ArrowSchema;
+        type ArrowArraySchema = tiledb_arrow::schema::ArrowArraySchema;
     }
 
     #[namespace = "tiledb::oxidize::datafusion::logical_expr"]
@@ -48,7 +48,7 @@ mod ffi {
         // see the pdavis 65154 branch
         #[cxx_name = "create"]
         fn create_physical_expr(
-            schema: &ArrowSchema,
+            schema: &ArrowArraySchema,
             expr: Box<LogicalExpr>,
         ) -> Result<Box<PhysicalExpr>>;
     }

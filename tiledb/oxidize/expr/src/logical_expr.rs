@@ -41,7 +41,7 @@ impl LogicalExpr {
             // SAFETY: the only error we can get from the above is if the arrow schema
             // has duplicate names, which will not happen since it was constructed from
             // an ArraySchema which does not allow duplicate names
-            DFSchema::try_from(arrow_schema).unwrap()
+            DFSchema::try_from(arrow_schema.0).unwrap()
         };
 
         Ok(self.0.get_type(&dfschema)?)

@@ -48,7 +48,7 @@
 using namespace tiledb::common;
 
 namespace tiledb::oxidize::arrow::schema {
-struct ArrowSchema;
+struct ArrowArraySchema;
 }
 namespace tiledb::oxidize::datafusion::logical_expr {
 struct LogicalExpr;
@@ -422,7 +422,8 @@ class QueryCondition {
 #ifdef HAVE_RUST
   /** Datafusion expression evaluation */
   struct Datafusion {
-    using BoxSchema = ::rust::Box<tiledb::oxidize::arrow::schema::ArrowSchema>;
+    using BoxSchema =
+        ::rust::Box<tiledb::oxidize::arrow::schema::ArrowArraySchema>;
     using BoxExpr =
         ::rust::Box<tiledb::oxidize::datafusion::physical_expr::PhysicalExpr>;
     BoxSchema schema_;

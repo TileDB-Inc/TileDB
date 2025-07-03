@@ -1,12 +1,13 @@
 //! Provides definitions for mapping an [ArraySchema] or the contents of an
 //! [ArraySchema] onto representative Arrow [Schema]ta or [Field]s.
-use std::ops::Deref;
+use std::collections::HashMap;
 use std::str::Utf8Error;
 use std::sync::Arc;
 
 use arrow::datatypes::{
     DataType as ArrowDataType, Field as ArrowField, Fields as ArrowFields, Schema,
 };
+use itertools::Itertools;
 use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum, Field};
 use tiledb_cxx_interface::sm::enums::Datatype;
 
@@ -17,6 +18,8 @@ pub enum Error {
     NameNotUtf8(Vec<u8>, Utf8Error),
     #[error("Error in field '{0}': {1}")]
     FieldError(String, FieldError),
+    #[error("Error in enumeration '{0}': {1}")]
+    EnumerationError(String, crate::enumeration::Error),
 }
 
 /// An error converting an [ArraySchema] [Field] to [ArrowField].
@@ -28,26 +31,27 @@ pub enum FieldError {
     InternalInvalidDatatype(u8),
     #[error("Internal error: enumeration not found: {0}")]
     InternalEnumerationNotFound(String),
+    #[error("Enumeration name is not UTF-8")]
+    EnumerationNameNotUtf8(Vec<u8>, Utf8Error),
 }
 
-/// Wraps a [Schema] for passing across the FFI boundary.
-pub struct ArrowSchema(pub Arc<Schema>);
+pub type Enumerations = HashMap<String, Option<Arc<dyn arrow::array::Array>>>;
 
-impl Deref for ArrowSchema {
-    type Target = Arc<Schema>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+/// Wraps a [Schema] for passing across the FFI boundary.
+pub struct ArrowArraySchema {
+    pub schema: Arc<Schema>,
+    pub enumerations: Arc<Enumerations>,
 }
 
 pub mod cxx {
     use super::*;
 
-    pub fn to_arrow(array_schema: &ArraySchema) -> Result<Box<ArrowSchema>, Error> {
-        Ok(Box::new(ArrowSchema(Arc::new(super::project_arrow(
-            array_schema,
-            |_: &Field| true,
-        )?))))
+    pub fn to_arrow(array_schema: &ArraySchema) -> Result<Box<ArrowArraySchema>, Error> {
+        let (schema, enumerations) = super::project_arrow(array_schema, |_: &Field| true)?;
+        Ok(Box::new(ArrowArraySchema {
+            schema: Arc::new(schema),
+            enumerations: Arc::new(enumerations),
+        }))
     }
 
     /// Returns a [Schema] which represents the physical field types of
@@ -57,38 +61,88 @@ pub mod cxx {
     pub fn project_arrow(
         array_schema: &ArraySchema,
         select: &Vec<String>,
-    ) -> Result<Box<ArrowSchema>, Error> {
-        Ok(Box::new(ArrowSchema(Arc::new(super::project_arrow(
-            array_schema,
-            |field: &Field| select.iter().any(|s| s.as_str() == field.name_cxx()),
-        )?))))
+    ) -> Result<Box<ArrowArraySchema>, Error> {
+        let (schema, enumerations) = super::project_arrow(array_schema, |field: &Field| {
+            select.iter().any(|s| s.as_str() == field.name_cxx())
+        })?;
+        Ok(Box::new(ArrowArraySchema {
+            schema: Arc::new(schema),
+            enumerations: Arc::new(enumerations),
+        }))
     }
 }
 
-pub fn to_arrow(array_schema: &ArraySchema) -> Result<Schema, Error> {
+pub fn to_arrow(array_schema: &ArraySchema) -> Result<(Schema, Enumerations), Error> {
     project_arrow(array_schema, |_: &Field| true)
 }
 
 /// Returns a [Schema] which represents the physical field types of the selected fields from `array_schema`.
-pub fn project_arrow<F>(array_schema: &ArraySchema, select: F) -> Result<Schema, Error>
+pub fn project_arrow<F>(
+    array_schema: &ArraySchema,
+    select: F,
+) -> Result<(Schema, Enumerations), Error>
 where
     F: Fn(&Field) -> bool,
 {
-    let fields = array_schema.fields().filter(select).map(|f| {
-        let field_name = f
-            .name()
-            .map_err(|e| Error::NameNotUtf8(f.name_cxx().as_bytes().to_vec(), e))?;
-        let arrow_type = field_arrow_datatype(array_schema, &f)
-            .map_err(|e| Error::FieldError(field_name.to_owned(), e))?;
+    let fields = array_schema
+        .fields()
+        .filter(select)
+        .map(|f| {
+            let field_name = f
+                .name()
+                .map_err(|e| Error::NameNotUtf8(f.name_cxx().as_bytes().to_vec(), e))?;
+            let arrow_type = field_arrow_datatype(array_schema, &f)
+                .map_err(|e| Error::FieldError(field_name.to_owned(), e))?;
 
-        // NB: fields can always be null due to schema evolution
-        Ok(ArrowField::new(field_name, arrow_type, true))
-    });
+            // NB: fields can always be null due to schema evolution
+            let arrow = ArrowField::new(field_name, arrow_type, true);
 
-    Ok(Schema {
-        fields: fields.collect::<Result<ArrowFields, _>>()?,
-        metadata: Default::default(),
-    })
+            if let Some(ename) = f.enumeration_name() {
+                let ename = ename
+                    .map_err(|e| {
+                        let ename_cxx = {
+                            // SAFETY: it's `Some` to get into the block, it still will be
+                            f.enumeration_name_cxx().unwrap()
+                        };
+                        FieldError::EnumerationNameNotUtf8(ename_cxx.as_bytes().to_vec(), e)
+                    })
+                    .map_err(|e| Error::FieldError(field_name.to_owned(), e))?;
+                Ok(arrow.with_metadata(HashMap::from([(
+                    "enumeration".to_owned(),
+                    ename.to_owned(),
+                )])))
+            } else {
+                Ok(arrow)
+            }
+        })
+        .collect::<Result<ArrowFields, _>>()?;
+
+    let enumerations = fields
+        .iter()
+        .filter_map(|f| f.metadata().get("enumeration"))
+        .unique()
+        .map(|e| {
+            let enumeration = array_schema.enumeration(e);
+            if enumeration.is_null() {
+                Ok((e.to_owned(), None))
+            } else {
+                let a = unsafe {
+                    // SAFETY: TODO comment
+                    crate::enumeration::array_from_enumeration(&enumeration)
+                }
+                .map_err(|err| Error::EnumerationError(e.to_owned(), err))?;
+                Ok((e.to_owned(), Some(a)))
+            }
+        })
+        .collect::<Result<Enumerations, _>>()?;
+
+    Ok((
+        Schema {
+            fields,
+            metadata: Default::default(),
+        },
+        enumerations,
+    ))
 }
 
 /// Returns an [ArrowDataType] which represents the physical data type of `field`.

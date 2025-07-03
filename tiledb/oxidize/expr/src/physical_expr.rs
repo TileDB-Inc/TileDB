@@ -2,7 +2,6 @@
 //! into DataFusion physical expressions which can be evaluated;
 //! and definitions for evaluating those physical expressions.
 
-use std::ops::Deref;
 use std::sync::Arc;
 
 use datafusion::common::arrow::datatypes::DataType as ArrowDataType;
@@ -12,7 +11,7 @@ use datafusion::execution::context::ExecutionProps;
 use datafusion::logical_expr::ColumnarValue;
 use datafusion::physical_plan::PhysicalExpr as DatafusionPhysicalExpr;
 use tiledb_arrow::record_batch::ArrowRecordBatch;
-use tiledb_arrow::schema::ArrowSchema;
+use tiledb_arrow::schema::ArrowArraySchema;
 use tiledb_cxx_interface::sm::enums::Datatype;
 
 use crate::LogicalExpr;
@@ -55,12 +54,12 @@ impl PhysicalExpr {
 
 /// Returns a [PhysicalExpr] which evaluates a [LogicalExpr] for the given `schema`.
 pub fn create_physical_expr(
-    schema: &ArrowSchema,
+    schema: &ArrowArraySchema,
     expr: Box<LogicalExpr>,
 ) -> Result<Box<PhysicalExpr>, PhysicalExprError> {
     let dfschema = DFSchema::from_field_specific_qualified_schema(
-        vec![None; schema.fields.len()],
-        schema.deref(),
+        vec![None; schema.schema.fields().len()],
+        &schema.schema,
     )
     .map_err(PhysicalExprError::Create)?;
     let dfexpr =
