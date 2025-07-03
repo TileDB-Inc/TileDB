@@ -185,6 +185,10 @@ impl CellValNum {
             n => Some(Self::Fixed(NonZeroU32::new(n)?)),
         }
     }
+
+    pub fn is_var(&self) -> bool {
+        matches!(self, CellValNum::Var)
+    }
 }
 
 impl Display for CellValNum {
