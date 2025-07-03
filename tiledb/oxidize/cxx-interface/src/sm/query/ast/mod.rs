@@ -20,6 +20,7 @@ mod ffi {
         fn get_offsets(&self) -> &ByteVecValue;
         fn num_children(&self) -> u64;
         fn get_child(&self, i: u64) -> *const ASTNode;
+        fn use_enumeration(&self) -> bool;
     }
 
     impl SharedPtr<ASTNode> {}
