@@ -77,11 +77,25 @@ mod ffi {
 
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
+
+        #[namespace = "tiledb::oxidize::sm::enumeration"]
+        fn data_cxx(enumeration: &Enumeration) -> &[u8];
+
+        #[namespace = "tiledb::oxidize::sm::enumeration"]
+        fn offsets_cxx(enumeration: &Enumeration) -> &[u8];
     }
 
     #[namespace = "tiledb::oxidize::sm::enumeration"]
     unsafe extern "C++" {
         type ConstEnumeration;
+    }
+
+    #[namespace = "tiledb::oxidize::sm::array_schema"]
+    unsafe extern "C++" {
+        type MaybeEnumeration;
+
+        fn name(&self) -> &CxxString;
+        fn get(&self) -> SharedPtr<ConstEnumeration>;
     }
 
     #[namespace = "tiledb::sm"]
@@ -125,6 +139,9 @@ mod ffi {
         fn set_cell_order(self: Pin<&mut ArraySchema>, order: Layout);
         fn set_capacity(self: Pin<&mut ArraySchema>, capacity: u64);
         fn set_allows_dups(self: Pin<&mut ArraySchema>, allows_dups: bool);
+
+        #[namespace = "tiledb::oxidize::sm::array_schema"]
+        fn enumerations(schema: &ArraySchema) -> UniquePtr<CxxVector<MaybeEnumeration>>;
     }
 
     impl SharedPtr<Attribute> {}
@@ -145,7 +162,10 @@ use std::str::Utf8Error;
 
 use num_traits::ToBytes;
 
-pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain, Enumeration};
+pub use ffi::{
+    ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain, Enumeration,
+    MaybeEnumeration,
+};
 
 #[derive(Debug)]
 pub enum CellValNum {
@@ -340,6 +360,24 @@ impl Enumeration {
         // SAFETY: non-zero would have been validated by the ArraySchema
         CellValNum::from_cxx(cxx).unwrap()
     }
+
+    pub fn data(&self) -> &[u8] {
+        ffi::data_cxx(self)
+    }
+
+    pub fn offsets(&self) -> Option<&[u64]> {
+        let b = ffi::offsets_cxx(self);
+        if b.is_empty() {
+            None
+        } else {
+            let (prefix, offsets, suffix) = unsafe { b.align_to::<u64>() };
+
+            assert!(prefix.is_empty());
+            assert!(suffix.is_empty());
+
+            Some(offsets)
+        }
+    }
 }
 
 impl ArraySchema {
@@ -401,5 +439,16 @@ impl ArraySchema {
             //    get a mutable reference, so this transmutation preserves const-ness
             std::mem::transmute::<_, cxx::SharedPtr<Enumeration>>(e)
         }
+    }
+
+    pub fn enumeration(&self, name: &str) -> cxx::SharedPtr<Enumeration> {
+        cxx::let_cxx_string!(cxxname = name);
+        self.enumeration_cxx(&cxxname)
+    }
+
+    /// Returns a list of the enumerations in this schema, each of which
+    /// may or may not be loaded.
+    pub fn enumerations(&self) -> cxx::UniquePtr<cxx::Vector<MaybeEnumeration>> {
+        ffi::enumerations(self)
     }
 }
