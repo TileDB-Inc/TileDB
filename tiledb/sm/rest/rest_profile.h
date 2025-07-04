@@ -35,12 +35,12 @@
 
 #include <fstream>
 #include <map>
-#include <set>
 #include <string>
 
 #include "external/include/nlohmann/json.hpp"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/home_directory.h"
+#include "tiledb/sm/misc/constants.h"
 
 using json = nlohmann::json;
 using namespace tiledb::common;
@@ -63,14 +63,14 @@ class RestProfile {
   /*       PARAMETER DEFAULTS       */
   /* ****************************** */
 
-  /** The default name of a RestProfile. */
-  static const std::string DEFAULT_NAME;
-
   /** The user's REST password. */
   static const std::string DEFAULT_PASSWORD;
 
   /** The namespace that should be charged for the request. */
   static const std::string DEFAULT_PAYER_NAMESPACE;
+
+  /** The default name of a RestProfile. */
+  static const std::string DEFAULT_PROFILE_NAME;
 
   /** The user's REST token. */
   static const std::string DEFAULT_TOKEN;
@@ -81,6 +81,9 @@ class RestProfile {
   /** The user's REST username. */
   static const std::string DEFAULT_USERNAME;
 
+  /** A vector of the REST parameters that can be set. */
+  static const std::vector<std::string> REST_PARAMETERS;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -90,16 +93,19 @@ class RestProfile {
    *
    * @param name The name of the RestProfile. Defaulted to "default".
    */
-  RestProfile(const std::string& name = RestProfile::DEFAULT_NAME);
+  RestProfile(const std::string& name = RestProfile::DEFAULT_PROFILE_NAME);
 
   /**
-   * Constructor. Intended for testing purposes only, to preserve the user's
-   * $HOME path and their profiles from in-test changes.
+   * Constructor.
    *
-   * @param name The name of the RestProfile.
-   * @param homedir The user's $HOME directory, or desired in-test path.
+   * @param name The name of the RestProfile. If `std::nullopt`, the default
+   * name is used.
+   * @param dir The path to the local file that stores all profiles. If
+   * `std::nullopt`, the home directory is used.
    */
-  RestProfile(const std::string& name, const std::string& homedir);
+  RestProfile(
+      const std::optional<std::string>& name,
+      const std::optional<std::string>& dir);
 
   /** Destructor. */
   ~RestProfile() = default;
@@ -109,21 +115,21 @@ class RestProfile {
   /* ****************************** */
 
   /**
-   * Returns the name of this profile.
+   * Returns the name of the profile.
    *
-   * @return std::string The name of this profile.
+   * @return std::string The name of the profile.
    */
   inline const std::string& name() const {
     return name_;
   }
 
   /**
-   * Returns the path to the local $HOME directory.
+   * Returns the path to the local file that stores all profiles.
    *
-   * @return std::string The path to the local $HOME directory.
+   * @return std::string The path to the local file that stores all profiles.
    */
-  inline const std::string& homedir() const {
-    return homedir_;
+  inline const std::string& dir() const {
+    return dir_;
   }
 
   /**
@@ -135,17 +141,35 @@ class RestProfile {
   void set_param(const std::string& param, const std::string& value);
 
   /**
-   * Retrieves the value of the given parameter.
+   * Returns true if the given parameter can be handled by RestProfile.
+   */
+  static bool can_have_parameter(std::string_view param);
+
+  /**
+   * Retrieves a pointer to the value of the given parameter.
    *
    * @param param The parameter to fetch.
-   * @return The value of the given parameter.
+   * @return A pointer to the value of the parameter, or nullptr if the
+   * parameter is not set.
    */
-  std::string get_param(const std::string& param) const;
+  const std::string* get_param(const std::string& param) const;
 
-  /** Saves this profile to the local file. */
-  void save_to_file();
+  inline const std::map<std::string, std::string>& param_values() const {
+    return param_values_;
+  }
 
-  /** Loads this profile from the local file. */
+  /**
+   * Saves this profile to the local file.
+   *
+   * @param overwrite If true, overwrite the existing profile with the same
+   * name.
+   */
+  void save_to_file(const bool overwrite = false);
+
+  /**
+   * Loads this profile from the local file.
+   *
+   */
   void load_from_file();
 
   /** Removes this profile from the local file. */
@@ -187,14 +211,11 @@ class RestProfile {
   /** The name of this RestProfile. */
   std::string name_;
 
-  /** The path to the local $HOME directory. */
-  std::string homedir_;
+  /** The path that contains the local file with all profiles. */
+  std::string dir_;
 
   /** The path to the local file which stores all profiles. */
   std::string filepath_;
-
-  /** The path to the old local file which previously stored a profile. */
-  std::string old_filepath_;
 
   /** Stores a map of <param, value> for the set-parameters. */
   std::map<std::string, std::string> param_values_ = {
@@ -206,7 +227,6 @@ class RestProfile {
           "rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
       std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
 };
-
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_REST_PROFILE_H
