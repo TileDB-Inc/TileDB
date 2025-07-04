@@ -116,6 +116,16 @@ const std::vector<std::string> RestProfile::REST_PARAMETERS = {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+/**
+ * Ensure the user's home directory is found.
+ * There's an edge case in which `sudo` does not always preserve the path to
+ * home directory. In this case, the home_directory() API does not throw, but
+ * instead returns an empty string. As such, we can check for a value in the
+ * returned path of the home_directory and throw an error to the user
+ * accordingly, so they may decide the proper course of action:
+ * set the $HOME path, or perhaps stop using `sudo`.
+ */
+
 RestProfile::RestProfile(
     const std::optional<std::string>& name,
     const std::optional<std::string>& dir)
@@ -123,30 +133,21 @@ RestProfile::RestProfile(
     , name_(
           name.has_value() && !name.value().empty() ?
               name.value() :
-              RestProfile::DEFAULT_PROFILE_NAME)
-    , dir_(
-          dir.has_value() && !dir.value().empty() ? dir.value() :
-                                                    home_directory())
-    , filepath_(dir_ + constants::rest_profile_filepath){};
-
-RestProfile::RestProfile(const std::string& name) {
-  /**
-   * Ensure the user's home directory is found.
-   * There's an edge case in which `sudo` does not always preserve the path to
-   * home directory. In this case, the home_directory() API does not throw, but
-   * instead returns an empty string. As such, we can check for a value in the
-   * returned path of the home_directory and throw an error to the user
-   * accordingly, so they may decide the proper course of action:
-   * set the $HOME path, or perhaps stop using `sudo`.
-   */
-  auto dir = home_directory();
-  if (dir.empty()) {
-    throw RestProfileException(
-        "Failed to create RestProfile; $HOME is not set.");
+              RestProfile::DEFAULT_PROFILE_NAME) {
+  if (dir.has_value() && !dir.value().empty()) {
+    dir_ = ensure_trailing_slash(dir.value());
+  } else {
+    // We don't want to directly interact with the home directory of the user,
+    // so we create a folder in the user's home directory.
+    std::string homedir = home_directory();
+    if (homedir.empty()) {
+      throw RestProfileException(
+          "Failed to create RestProfile; $HOME is not set.");
+    }
+    dir_ = ensure_trailing_slash(homedir + constants::rest_profile_foldername);
   }
-
-  RestProfile(name, dir);
-}
+  filepath_ = dir_ + constants::rest_profile_filename;
+};
 
 /* ****************************** */
 /*              API               */
@@ -245,31 +246,27 @@ void RestProfile::load_from_file() {
   }
 }
 
-void RestProfile::remove_from_file() {
-  if (!std::filesystem::exists(filepath_)) {
-    throw RestProfileException(
-        "Failed to remove profile; file does not exist.");
+void RestProfile::remove_profile(
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& dir) {
+  std::string profile_name = name.value_or(RestProfile::DEFAULT_PROFILE_NAME);
+  std::string profile_dir;
+
+  if (dir.has_value() && !dir.value().empty()) {
+    profile_dir = ensure_trailing_slash(dir.value());
+  } else {
+    std::string homedir = home_directory();
+    if (homedir.empty()) {
+      throw RestProfileException(
+          "Failed to create RestProfile; $HOME is not set.");
+    }
+    profile_dir =
+        ensure_trailing_slash(homedir + constants::rest_profile_foldername);
   }
 
-  // Read the file into a json object.
-  json data = read_file(filepath_);
+  std::string filepath = profile_dir + constants::rest_profile_filename;
 
-  // If a profile of the given name exists, remove it.
-  auto it = data.find(name_);
-  if (it == data.end()) {
-    throw RestProfileException(
-        "Failed to remove profile; profile does not exist.");
-  }
-  data.erase(it);
-
-  // Write the json back to the file.
-  try {
-    write_file(data, filepath_);
-  } catch (const std::exception& e) {
-    throw RestProfileException(
-        "Failed to remove profile; error writing file: " +
-        std::string(e.what()));
-  }
+  remove_profile_from_file(profile_name, filepath);
 }
 
 json RestProfile::to_json() {
@@ -316,6 +313,34 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   } else {
     throw RestProfileException(
         "Failed to load profile; profile '" + name_ + "' does not exist.");
+  }
+}
+
+void RestProfile::remove_profile_from_file(
+    const std::string& name, const std::string& filepath) {
+  if (!std::filesystem::exists(filepath)) {
+    throw RestProfileException(
+        "Failed to remove profile; file does not exist.");
+  }
+
+  // Read the file into a json object.
+  json data = read_file(filepath);
+
+  // If a profile of the given name exists, remove it.
+  auto it = data.find(name);
+  if (it == data.end()) {
+    throw RestProfileException(
+        "Failed to remove profile; profile does not exist.");
+  }
+  data.erase(it);
+
+  // Write the json back to the file.
+  try {
+    write_file(data, filepath);
+  } catch (const std::exception& e) {
+    throw RestProfileException(
+        "Failed to remove profile; error writing file: " +
+        std::string(e.what()));
   }
 }
 

@@ -64,8 +64,9 @@ class Profile {
    * preserve local files from in-test changes. Users may pass their own
    * `profile_dir`, but are encouraged to use `nullptr`, the default case.
    *
-   * @param name The profile name if you want to override the default.
-   * @param dir The directory path for the profile, or `nullptr` for the default
+   * @param name The profile name. If std::nullopt, the default name is used.
+   * @param dir The directory path on which the profile will be stored. If
+   * `std::nullopt`, the home directory is used.
    * @throws ProfileException if the profile cannot be allocated.
    */
   explicit Profile(
@@ -105,7 +106,7 @@ class Profile {
    * Factory function to load a profile from the local file.
    *
    * @param name The profile name if you want to override the default.
-   * @param dir The local directory path that contains the profiles file.
+   * @param dir The directory path that contains the profiles file.
    * @return A Profile object loaded from the file.
    */
   static Profile load(
@@ -236,10 +237,19 @@ class Profile {
     }
   }
 
-  /** Removes the profile from the local file. */
-  void remove() {
+  /**
+   * Removes a profile from a profiles file in a given directory.
+   *
+   * @param name The name of the profile to remove.
+   * @param dir The directory path where the profiles file is located.
+   */
+  static void remove(
+      std::optional<std::string> name = std::nullopt,
+      std::optional<std::string> dir = std::nullopt) {
+    const char* n = name.has_value() ? name->c_str() : nullptr;
+    const char* h = dir.has_value() ? dir->c_str() : nullptr;
     tiledb_error_t* capi_error = nullptr;
-    int rc = tiledb_profile_remove(profile_.get(), &capi_error);
+    int rc = tiledb_profile_remove(n, h, &capi_error);
     if (rc != TILEDB_OK) {
       const char* msg_cstr;
       tiledb_error_message(capi_error, &msg_cstr);

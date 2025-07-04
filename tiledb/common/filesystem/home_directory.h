@@ -38,6 +38,11 @@
 namespace tiledb::common::filesystem {
 
 /**
+ * Ensures the given path has a trailing slash appropriate for the platform.
+ */
+std::string ensure_trailing_slash(const std::string& path);
+
+/**
  * Standalone function which returns the path to user's home directory.
  *
  * @invariant `sudo` does not always preserve the path to `$HOME`. Rather than

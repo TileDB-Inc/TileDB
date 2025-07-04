@@ -45,6 +45,20 @@
 
 namespace tiledb::common::filesystem {
 
+// Ensures the given path has a trailing slash appropriate for the platform.
+std::string ensure_trailing_slash(const std::string& path) {
+#ifdef _WIN32
+  if (!path.empty() && path.back() != '\\') {
+    return path + '\\';
+  }
+#else
+  if (!path.empty() && path.back() != '/') {
+    return path + '/';
+  }
+#endif
+  return path;
+}
+
 std::string home_directory() {
   std::string path = "";
 #ifdef _WIN32
@@ -56,20 +70,13 @@ std::string home_directory() {
   if (SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &home) == S_OK) {
     path = std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(home);
   }
-  // Ensure path has trailing slash.
-  if (path.back() != '\\') {
-    path.push_back('\\');
-  }
 #else
   const char* home = std::getenv("HOME");
   if (home != nullptr) {
     path = home;
   }
-  // Ensure path has trailing slash.
-  if (path.back() != '/') {
-    path.push_back('/');
-  }
 #endif
+  path = ensure_trailing_slash(path);
   return path;
 }
 

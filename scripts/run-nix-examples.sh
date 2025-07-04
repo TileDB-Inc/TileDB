@@ -37,6 +37,10 @@ do
   if [ "${example##*/}" == png_ingestion_webp.cc ]; then
     continue
   fi;
+  # Skip Profile example as it requires serialization
+  if [ "${example##*/}" == profile.cc ]; then
+    continue
+  fi;
 
   cd ${TestAppDir}
   rm -rf ${TestAppDataDir}
