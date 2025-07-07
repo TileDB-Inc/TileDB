@@ -293,8 +293,11 @@ Status RestClientRemote::post_array_schema_to_rest(
   URI::RESTURIComponents rest_uri;
   RETURN_NOT_OK(uri.get_rest_components(rest_legacy(), &rest_uri));
 
+  std::optional<std::string> storage =
+      rest_legacy() ? std::nullopt :
+                      std::make_optional<std::string>(rest_uri.asset_storage);
   RETURN_NOT_OK(serialization::array_schema_serialize(
-      array_schema, serialization_type_, buff, false, rest_uri.asset_storage));
+      array_schema, serialization_type_, buff, false, storage));
 
   const auto creation_access_credentials_name{
       config_->get<std::string>("rest.creation_access_credentials_name")};
