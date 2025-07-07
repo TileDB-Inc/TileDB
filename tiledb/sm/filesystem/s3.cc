@@ -612,7 +612,7 @@ void S3::write(
   }
 
   // This write is never considered the last part of an object. The last part is
-  // only uploaded with flush_object().
+  // only uploaded with flush().
   const bool is_last_part = false;
 
   // Get file buffer
@@ -730,7 +730,7 @@ Status S3::disconnect() {
   return ret_st;
 }
 
-void S3::flush_object(const URI& uri, bool finalize) {
+void S3::flush(const URI& uri, bool finalize) {
   if (finalize) {
     finalize_and_flush_object(uri);
     return;
@@ -1054,12 +1054,11 @@ Status S3::move_object(const URI& old_uri, const URI& new_uri) const {
   return Status::Ok();
 }
 
-Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
-  RETURN_NOT_OK(init_client());
+uint64_t S3::file_size(const URI& uri) const {
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
   }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
@@ -1082,16 +1081,14 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
           " The bucket might be located in another region; you can set it with "
           "the 'vfs.s3.region' option.";
     }
-    return LOG_STATUS(Status_S3Error(
+    throw S3Exception(
         std::string(
             "Cannot retrieve S3 object size; Error while listing file s3://") +
         uri.to_string() + outcome_error_message(head_object_outcome) +
-        additional_context));
+        additional_context);
   }
-  *nbytes =
-      static_cast<uint64_t>(head_object_outcome.GetResult().GetContentLength());
-
-  return Status::Ok();
+  return static_cast<uint64_t>(
+      head_object_outcome.GetResult().GetContentLength());
 }
 
 Status S3::read_impl(

@@ -747,16 +747,6 @@ class S3 : FilesystemBase {
   }
 
   /**
-   * Retrieves the size of a file.
-   *
-   * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
-   */
-  void file_size(const URI& uri, uint64_t* size) const override {
-    throw_if_not_ok(object_size(uri, size));
-  }
-
-  /**
    * Renames a file.
    * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
    *
@@ -809,7 +799,7 @@ class S3 : FilesystemBase {
    * @param finalize If `true`, flushes as a result of a remote global order
    * write `finalize()` call.
    */
-  void flush_object(const URI& uri, bool finalize);
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Flushes an s3 object as a result of a remote global order write
@@ -965,10 +955,9 @@ class S3 : FilesystemBase {
    * Returns the size of the input object with a given URI in bytes.
    *
    * @param uri The URI of the object.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
+   * @return The size of the object in bytes.
    */
-  Status object_size(const URI& uri, uint64_t* nbytes) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Reads data from an object into a buffer.

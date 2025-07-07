@@ -515,9 +515,7 @@ uint64_t VFS::file_size(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    uint64_t size;
-    throw_if_not_ok(s3().object_size(uri, &size));
-    return size;
+    return s3().file_size(uri);
 #else
     throw BuiltWithout("S3");
 #endif
@@ -1300,7 +1298,7 @@ void VFS::flush(const URI& uri, bool finalize) {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    s3().flush_object(uri, finalize);
+    s3().flush(uri, finalize);
     return;
 #else
     throw BuiltWithout("S3");
