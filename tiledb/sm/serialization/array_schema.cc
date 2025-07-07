@@ -1202,8 +1202,8 @@ Status array_schema_serialize(
     ::capnp::MallocMessageBuilder message;
     capnp::ArraySchema::Builder arraySchemaBuilder =
         message.initRoot<capnp::ArraySchema>();
-    RETURN_NOT_OK(
-        array_schema_to_capnp(array_schema, &arraySchemaBuilder, client_side));
+    RETURN_NOT_OK(array_schema_to_capnp(
+        array_schema, &arraySchemaBuilder, client_side, storage_uri));
 
     switch (serialize_type) {
       case SerializationType::JSON: {
