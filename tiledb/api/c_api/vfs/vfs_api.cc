@@ -183,7 +183,7 @@ capi_return_t tiledb_vfs_file_size(
     tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(size);
-  throw_if_not_ok(vfs->file_size(tiledb::sm::URI(uri), size));
+  *size = vfs->file_size(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 

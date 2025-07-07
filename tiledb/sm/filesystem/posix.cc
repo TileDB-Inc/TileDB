@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -206,7 +206,7 @@ void Posix::remove_file(const URI& uri) const {
   }
 }
 
-void Posix::file_size(const URI& uri, uint64_t* size) const {
+uint64_t Posix::file_size(const URI& uri) const {
   auto path = uri.to_path();
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
@@ -215,9 +215,10 @@ void Posix::file_size(const URI& uri, uint64_t* size) const {
 
   struct stat st;
   fstat(fd, &st);
-  *size = (uint64_t)st.st_size;
+  uint64_t size = (uint64_t)st.st_size;
 
   close(fd);
+  return size;
 }
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
@@ -278,8 +279,7 @@ void Posix::read(
     [[maybe_unused]] bool use_read_ahead) const {
   // Checks
   auto path = uri.to_path();
-  uint64_t file_size;
-  this->file_size(URI(path), &file_size);
+  uint64_t file_size = this->file_size(URI(path));
   if (offset + nbytes > file_size) {
     throw IOError(fmt::format(
         "Cannot read from file; Read exceeds file size: offset {}, nbytes {}, "
@@ -311,6 +311,10 @@ void Posix::read(
     LOG_STATUS_NO_RETURN_VALUE(
         Status_IOError(std::string("Cannot close file; ") + strerror(errno)));
   }
+}
+
+void Posix::flush(const URI& uri, bool) {
+  sync(uri);
 }
 
 void Posix::sync(const URI& uri) const {
@@ -371,7 +375,7 @@ void Posix::write(
   Status st;
   uint64_t file_offset = 0;
   if (is_file(URI(path))) {
-    file_size(URI(path), &file_offset);
+    file_offset = file_size(URI(path));
   } else {
     throw_if_not_ok(ensure_directory(path));
   }
@@ -418,8 +422,7 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
     if (next_path->d_type == DT_DIR) {
       entries.emplace_back(abspath, 0, true);
     } else {
-      uint64_t size;
-      file_size(URI(abspath), &size);
+      uint64_t size = file_size(URI(abspath));
       entries.emplace_back(abspath, size, false);
     }
   }

@@ -179,7 +179,8 @@ Status VFS::create_dir(const URI& uri) const {
     }
   }
   if (uri.is_memfs()) {
-    return memfs_.create_dir(uri.to_path());
+    memfs_.create_dir(uri);
+    return Status::Ok();
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -247,7 +248,8 @@ Status VFS::touch(const URI& uri) const {
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.touch(uri.to_path());
+    memfs_.touch(uri);
+    return Status::Ok();
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -396,7 +398,8 @@ Status VFS::remove_dir(const URI& uri) const {
     throw BuiltWithout("GCS");
 #endif
   } else if (uri.is_memfs()) {
-    return memfs_.remove(uri.to_path(), true);
+    memfs_.remove_dir(uri);
+    return Status::Ok();
   } else {
     throw UnsupportedURI(uri.to_string());
   }
@@ -459,7 +462,8 @@ Status VFS::remove_file(const URI& uri) const {
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.remove(uri.to_path(), false);
+    memfs_.remove_file(uri);
+    return Status::Ok();
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -497,20 +501,23 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
   return Status::Ok();
 }
 
-Status VFS::file_size(const URI& uri, uint64_t* size) const {
+uint64_t VFS::file_size(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "file_size");
   stats_->add_counter("file_size_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.file_size(uri.to_path(), size);
+    uint64_t size;
+    throw_if_not_ok(win_.file_size(uri.to_path(), &size));
+    return size;
 #else
-    posix_.file_size(uri, size);
-    return Status::Ok();
+    return posix_.file_size(uri);
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().object_size(uri, size);
+    uint64_t size;
+    throw_if_not_ok(s3().object_size(uri, &size));
+    return size;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -518,7 +525,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     try {
-      *size = azure().blob_size(uri);
+      return azure().blob_size(uri);
     } catch (std::exception& e) {
       return Status_Error(e.what());
     }
@@ -530,7 +537,9 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     try {
-      return gcs().object_size(uri, size);
+      uint64_t size;
+      throw_if_not_ok(gcs().object_size(uri, &size));
+      return size;
     } catch (std::exception& e) {
       return Status_Error(e.what());
     }
@@ -539,7 +548,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.file_size(uri.to_path(), size);
+    return memfs_.file_size(uri);
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -580,7 +589,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
 #endif
   }
   if (uri.is_memfs()) {
-    *is_dir = memfs_.is_dir(uri.to_path());
+    *is_dir = memfs_.is_dir(uri);
     return Status::Ok();
   }
   throw UnsupportedURI(uri.to_string());
@@ -624,7 +633,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
 #endif
   }
   if (uri.is_memfs()) {
-    *is_file = memfs_.is_file(uri.to_path());
+    *is_file = memfs_.is_file(uri);
     return Status::Ok();
   }
   throw UnsupportedURI(uri.to_string());
@@ -786,7 +795,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   // In-memory filesystem
   if (old_uri.is_memfs()) {
     if (new_uri.is_memfs()) {
-      return memfs_.move(old_uri.to_path(), new_uri.to_path());
+      memfs_.move_file(old_uri, new_uri);
+      return Status::Ok();
     }
     throw UnsupportedOperation("Moving files");
   }
@@ -849,7 +859,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   // In-memory filesystem
   if (old_uri.is_memfs()) {
     if (new_uri.is_memfs()) {
-      return memfs_.move(old_uri.to_path(), new_uri.to_path());
+      memfs_.move_dir(old_uri, new_uri);
+      return Status::Ok();
     }
     throw UnsupportedOperation("Moving directories");
   }
@@ -1112,7 +1123,8 @@ Status VFS::read_impl(
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.read(uri.to_path(), offset, buffer, nbytes);
+    memfs_.read(uri, offset, buffer, nbytes, use_read_ahead);
+    return Status::Ok();
   }
 
   throw UnsupportedURI(uri.to_string());
@@ -1284,19 +1296,21 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
   return Status::Ok();
 }
 
-Status VFS::close_file(const URI& uri) {
-  auto instrument = make_log_duration_instrument(uri, "close_file");
+void VFS::flush(const URI& uri, bool finalize) {
+  auto instrument = make_log_duration_instrument(uri, "flush");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.sync(uri.to_path());
+    win_.flush(uri);
+    return;
 #else
-    posix_.sync(uri);
-    return Status::Ok();
+    posix_.flush(uri, finalize);
+    return;
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().flush_object(uri);
+    s3().flush_object(uri, finalize);
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -1304,34 +1318,28 @@ Status VFS::close_file(const URI& uri) {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().flush_blob(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().flush_object(uri);
+    throw_if_not_ok(gcs().flush_object(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    return Status::Ok();
+    return;
   }
   throw UnsupportedURI(uri.to_string());
 }
 
-void VFS::finalize_and_close_file(const URI& uri) {
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    s3().finalize_and_flush_object(uri);
-    return;
-#else
-    throw BuiltWithout("S3");
-#endif
-  }
-  throw_if_not_ok(close_file(uri));
+Status VFS::close_file(const URI& uri) {
+  flush(uri);
+  return Status::Ok();
 }
 
 Status VFS::write(
@@ -1375,7 +1383,8 @@ Status VFS::write(
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.write(uri.to_path(), buffer, buffer_size);
+    memfs_.write(uri, buffer, buffer_size, remote_global_order_write);
+    return Status::Ok();
   }
   throw UnsupportedURI(uri.to_string());
 }

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -334,40 +334,39 @@ MemFilesystem::MemFilesystem()
 MemFilesystem::~MemFilesystem() {
 }
 
-Status MemFilesystem::create_dir(const std::string& path) const {
-  return create_dir_internal(path);
+void MemFilesystem::create_dir(const URI& uri) const {
+  create_dir_internal(uri.to_path());
 }
 
-Status MemFilesystem::file_size(
-    const std::string& path, uint64_t* const size) const {
-  iassert(size);
-
+uint64_t MemFilesystem::file_size(const URI& uri) const {
   FSNode* cur;
   std::unique_lock<std::mutex> cur_lock;
-  RETURN_NOT_OK(lookup_node(path, &cur, &cur_lock));
+  auto path = uri.to_path();
+  throw_if_not_ok(lookup_node(path, &cur, &cur_lock));
 
   if (cur == nullptr) {
-    return LOG_STATUS(
-        Status_MemFSError(std::string("Cannot get file size of :" + path)));
+    throw MemFSException(std::string("Cannot get file size of :" + path));
   }
 
-  return cur->get_size(size);
+  uint64_t size;
+  throw_if_not_ok(cur->get_size(&size));
+  return size;
 }
 
-bool MemFilesystem::is_dir(const std::string& path) const {
+bool MemFilesystem::is_dir(const URI& uri) const {
   FSNode* cur;
   std::unique_lock<std::mutex> cur_lock;
-  if (!lookup_node(path, &cur, &cur_lock).ok() || cur == nullptr) {
+  if (!lookup_node(uri.to_path(), &cur, &cur_lock).ok() || cur == nullptr) {
     return false;
   }
 
   return cur->is_dir();
 }
 
-bool MemFilesystem::is_file(const std::string& path) const {
+bool MemFilesystem::is_file(const URI& uri) const {
   FSNode* cur;
   std::unique_lock<std::mutex> cur_lock;
-  if (!lookup_node(path, &cur, &cur_lock).ok() || cur == nullptr) {
+  if (!lookup_node(uri.to_path(), &cur, &cur_lock).ok() || cur == nullptr) {
     return false;
   }
 
@@ -414,12 +413,11 @@ std::vector<directory_entry> MemFilesystem::ls_with_sizes(
   return *entries;
 }
 
-Status MemFilesystem::move(
+void MemFilesystem::move(
     const std::string& old_path, const std::string& new_path) const {
   std::vector<std::string> old_path_tokens = tokenize(old_path);
   if (old_path_tokens.size() <= 1) {
-    return LOG_STATUS(
-        Status_MemFSError(std::string("Cannot move the root directory")));
+    throw MemFSException("Cannot move the root directory");
   }
 
   // Remove the last token so that `old_path_tokens` contains the path
@@ -430,13 +428,12 @@ Status MemFilesystem::move(
   // Lookup the `old_path` parent.
   FSNode* old_node_parent;
   std::unique_lock<std::mutex> old_node_parent_lock;
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       lookup_node(old_path_tokens, &old_node_parent, &old_node_parent_lock));
 
   // Detach `old_path` from the directory tree.
   if (old_node_parent->children_.count(old_path_last_token) == 0) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("Move failed, file not found: " + old_path)));
+    throw MemFSException("Move failed, file not found: " + old_path);
   }
   tdb_unique_ptr<FSNode> old_node_ptr =
       std::move(old_node_parent->children_[old_path_last_token]);
@@ -448,8 +445,7 @@ Status MemFilesystem::move(
   // parent of the new node.
   std::vector<std::string> new_path_tokens = tokenize(new_path);
   if (new_path_tokens.size() <= 1) {
-    return LOG_STATUS(
-        Status_MemFSError(std::string("Cannot move to the root directory")));
+    throw MemFSException("Cannot move to the root directory");
   }
 
   // Remove the last token so that `new_path_tokens` contains the path
@@ -460,33 +456,40 @@ Status MemFilesystem::move(
   // Lookup the `new_path` parent.
   FSNode* new_node_parent;
   std::unique_lock<std::mutex> new_node_parent_lock;
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       lookup_node(new_path_tokens, &new_node_parent, &new_node_parent_lock));
 
   // Add `old_path` to the directory tree.
   new_node_parent->children_[new_path_last_token] = std::move(old_node_ptr);
-
-  return Status::Ok();
 }
 
-Status MemFilesystem::read(
-    const std::string& path,
-    const uint64_t offset,
-    void* const buffer,
-    const uint64_t nbytes) const {
+void MemFilesystem::move_dir(const URI& old_uri, const URI& new_uri) const {
+  move(old_uri.to_path(), new_uri.to_path());
+}
+
+void MemFilesystem::move_file(const URI& old_uri, const URI& new_uri) const {
+  move(old_uri.to_path(), new_uri.to_path());
+}
+
+void MemFilesystem::read(
+    const URI& uri,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes,
+    bool) const {
   FSNode* node;
   std::unique_lock<std::mutex> node_lock;
-  RETURN_NOT_OK(lookup_node(path, &node, &node_lock));
+  auto path = uri.to_path();
+  throw_if_not_ok(lookup_node(path, &node, &node_lock));
 
   if (node == nullptr) {
-    return LOG_STATUS(Status_MemFSError(
-        std::string("File not found, read failed for : " + path)));
+    throw MemFSException("File not found, read failed for : " + path);
   }
 
-  return node->read(offset, buffer, nbytes);
+  throw_if_not_ok(node->read(offset, buffer, nbytes));
 }
 
-Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
+void MemFilesystem::remove(const std::string& path, const bool is_dir) const {
   std::vector<std::string> tokens = tokenize(path);
 
   FSNode* cur = root_.get();
@@ -501,8 +504,7 @@ Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
     passert(!parent || parent_lock.mutex() == &parent->mutex_);
 
     if (!cur->has_child(token)) {
-      return LOG_STATUS(Status_MemFSError(
-          std::string("File not found, remove failed for : " + path)));
+      throw MemFSException("File not found, remove failed for : " + path);
     }
 
     parent = cur;
@@ -513,13 +515,11 @@ Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
   }
 
   if (cur == root_.get()) {
-    return LOG_STATUS(
-        Status_MemFSError(std::string("Cannot remove the root directory")));
+    throw MemFSException("Cannot remove the root directory");
   }
 
   if (cur->is_dir() != is_dir) {
-    return LOG_STATUS(
-        Status_MemFSError(std::string("Remove failed, wrong file type")));
+    throw MemFSException("Remove failed, wrong file type");
   }
 
   cur_lock.unlock();
@@ -527,15 +527,21 @@ Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
   if (parent) {
     parent->children_.erase(tokens.back());
   }
-
-  return Status::Ok();
 }
 
-Status MemFilesystem::touch(const std::string& path) const {
-  return touch_internal(path);
+void MemFilesystem::remove_dir(const URI& uri) const {
+  remove(uri.to_path(), true);
 }
 
-Status MemFilesystem::create_dir_internal(
+void MemFilesystem::remove_file(const URI& uri) const {
+  remove(uri.to_path(), false);
+}
+
+void MemFilesystem::touch(const URI& uri) const {
+  touch_internal(uri.to_path());
+}
+
+void MemFilesystem::create_dir_internal(
     const std::string& path, FSNode** const node) const {
   std::vector<std::string> tokens = tokenize(path);
 
@@ -551,9 +557,9 @@ Status MemFilesystem::create_dir_internal(
     if (!cur->has_child(token)) {
       cur->children_[token] = tdb_unique_ptr<FSNode>(tdb_new(Directory));
     } else if (!cur->is_dir()) {
-      return LOG_STATUS(Status_MemFSError(std::string(
+      throw MemFSException(std::string(
           "Cannot create directory, a file with that name exists already: " +
-          path)));
+          path));
     }
 
     cur = cur->children_[token].get();
@@ -572,11 +578,9 @@ Status MemFilesystem::create_dir_internal(
   if (node != nullptr) {
     *node = cur;
   }
-
-  return Status::Ok();
 }
 
-Status MemFilesystem::touch_internal(
+void MemFilesystem::touch_internal(
     const std::string& path, FSNode** const node) const {
   std::vector<std::string> tokens = tokenize(path);
 
@@ -589,8 +593,8 @@ Status MemFilesystem::touch_internal(
     passert(cur_lock.mutex() == &cur->mutex_);
 
     if (!cur->has_child(token)) {
-      return LOG_STATUS(Status_MemFSError(std::string(
-          "Failed to create file, the parent directory doesn't exist.")));
+      throw MemFSException(
+          "Failed to create file, the parent directory doesn't exist.");
     }
 
     cur = cur->children_[token].get();
@@ -598,8 +602,8 @@ Status MemFilesystem::touch_internal(
   }
 
   if (!cur->is_dir()) {
-    return LOG_STATUS(Status_MemFSError(std::string(
-        "Failed to create file, the parent directory doesn't exist.")));
+    throw MemFSException(
+        "Failed to create file, the parent directory doesn't exist.");
   }
 
   const std::string& filename = tokens[tokens.size() - 1];
@@ -609,25 +613,24 @@ Status MemFilesystem::touch_internal(
   if (node != nullptr) {
     *node = cur->children_[filename].get();
   }
-
-  return Status::Ok();
 }
 
-Status MemFilesystem::write(
-    const std::string& path, const void* const data, const uint64_t nbytes) {
-  iassert(data);
+void MemFilesystem::write(
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
+  iassert(buffer);
+  auto path = uri.to_path();
 
   FSNode* node;
   std::unique_lock<std::mutex> node_lock;
-  RETURN_NOT_OK(lookup_node(path, &node, &node_lock));
+  throw_if_not_ok(lookup_node(path, &node, &node_lock));
 
   // If the file doesn't exist, create it.
   if (node == nullptr) {
-    RETURN_NOT_OK(touch_internal(path, &node));
+    touch_internal(path, &node);
     node_lock = std::unique_lock<std::mutex>(node->mutex_);
   }
 
-  return node->append(data, nbytes);
+  throw_if_not_ok(node->append(buffer, buffer_size));
 }
 
 std::vector<std::string> MemFilesystem::tokenize(

@@ -217,7 +217,7 @@ struct VFSBase {
   VFSBase() = delete;
 
   VFSBase(stats::Stats* const parent_stats)
-      : stats_(parent_stats->create_child("VFS")) {};
+      : stats_(parent_stats->create_child("VFS")){};
 
   ~VFSBase() = default;
 
@@ -524,10 +524,9 @@ class VFS : private VFSBase,
    * Retrieves the size of a file.
    *
    * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
-   * @return Status
+   * @return The file size.
    */
-  Status file_size(const URI& uri, uint64_t* size) const;
+  uint64_t file_size(const URI& uri) const;
 
   /**
    * Checks if a directory exists.
@@ -758,21 +757,31 @@ class VFS : private VFSBase,
   Status open_file(const URI& uri, VFSMode mode);
 
   /**
+   * Flushes a file's contents to persistent storage.
+   *
+   * @note The `finalize` flag provides special S3 logic, tailored to work best
+   * with remote global order writes.
+   *
+   * @invariant This method currently closes local files. This is a known
+   * limitation that is being tracked and slated for improvement.
+   *
+   * @param uri The URI of the file.
+   * @param finalize For s3 objects only. If `true`, flushes as a result of a
+   * remote global order write `finalize()` call.
+   */
+  void flush(const URI& uri, [[maybe_unused]] bool finalize = false);
+
+  /**
    * Closes a file, flushing its contents to persistent storage.
+   *
+   * @note This method is simply a wrapper around flush(). Until the file handle
+   * close semantics are ironed out, we will maintain this method for backward
+   * compatibility.
    *
    * @param uri The URI of the file.
    * @return Status
    */
   Status close_file(const URI& uri);
-
-  /**
-   * Closes a file, flushing its contents to persistent storage.
-   * This function has special S3 logic tailored to work best with remote
-   * global order writes.
-   *
-   * @param uri The URI of the file.
-   */
-  void finalize_and_close_file(const URI& uri);
 
   /**
    * Writes the contents of a buffer into a file.

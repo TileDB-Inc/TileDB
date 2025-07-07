@@ -498,6 +498,10 @@ Status Win::read(
   return Status::Ok();
 }
 
+void Win::flush(const URI& uri, bool) {
+  throw_if_not_ok(sync(uri.to_path()));
+}
+
 Status Win::sync(const std::string& path) const {
   if (!is_file(path)) {
     return Status::Ok();

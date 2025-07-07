@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -231,7 +231,7 @@ struct S3Parameters {
       , object_acl_str_(config.get<std::string>(
             "vfs.s3.object_canned_acl", Config::must_find))
       , config_source_(config.get<std::string>(
-            "vfs.s3.config_source", Config::must_find)) {};
+            "vfs.s3.config_source", Config::must_find)){};
 
   ~S3Parameters() = default;
 
@@ -806,9 +806,10 @@ class S3 : FilesystemBase {
    * Flushes an object to S3, finalizing the multipart upload.
    *
    * @param uri The URI of the object to be flushed.
-   * @return Status
+   * @param finalize If `true`, flushes as a result of a remote global order
+   * write `finalize()` call.
    */
-  Status flush_object(const URI& uri);
+  void flush_object(const URI& uri, bool finalize);
 
   /**
    * Flushes an s3 object as a result of a remote global order write
@@ -1142,7 +1143,7 @@ class S3 : FilesystemBase {
   struct MakeUploadPartCtx {
     /** Constructor. */
     MakeUploadPartCtx()
-        : upload_part_num(0) {};
+        : upload_part_num(0){};
     MakeUploadPartCtx(
         Aws::S3::Model::UploadPartOutcome&& in_upload_part_outcome,
         const int in_upload_part_num)
@@ -1221,7 +1222,7 @@ class S3 : FilesystemBase {
   struct MultiPartUploadState {
     MultiPartUploadState()
         : part_number(0)
-        , st(Status::Ok()) {};
+        , st(Status::Ok()){};
     /** Constructor. */
     MultiPartUploadState(
         const int in_part_number,
@@ -1234,7 +1235,7 @@ class S3 : FilesystemBase {
         , key(std::move(in_key))
         , upload_id(std::move(in_upload_id))
         , completed_parts(std::move(in_completed_parts))
-        , st(Status::Ok()) {};
+        , st(Status::Ok()){};
 
     MultiPartUploadState(MultiPartUploadState&& other) noexcept {
       this->part_number = other.part_number;

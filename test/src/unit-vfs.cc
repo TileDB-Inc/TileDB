@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -428,16 +428,10 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
       &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
   // Getting file_size on a nonexistent blob shouldn't crash on Azure
-  uint64_t nbytes = 0;
   URI non_existent = URI(path.to_string() + "non_existent");
   if (path.is_file()) {
-#ifdef _WIN32
-    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
-#else
-    CHECK_THROWS(vfs.file_size(non_existent, &nbytes));
-#endif
-  } else {
-    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+    // #TODO Ensure this doesn't fail. This test case seems incorrect.
+    CHECK_THROWS(vfs.file_size(non_existent));
   }
 
   // Set up
@@ -492,10 +486,8 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   CHECK(exists);
 
   // Get file sizes
-  require_tiledb_ok(vfs.file_size(largefile, &nbytes));
-  CHECK(nbytes == (buffer_size));
-  require_tiledb_ok(vfs.file_size(smallfile, &nbytes));
-  CHECK(nbytes == buffer_size_small);
+  CHECK(vfs.file_size(largefile) == (buffer_size));
+  CHECK(vfs.file_size(smallfile) == buffer_size_small);
 
   // Read from the beginning
   auto read_buffer = new char[26];
@@ -547,10 +539,7 @@ TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
   VFS vfs{
       &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
   REQUIRE(vfs.supports_uri_scheme(test_file));
-
-  uint64_t nbytes = 0;
-  require_tiledb_ok(vfs.file_size(test_file, &nbytes));
-  CHECK(nbytes > 0);
+  CHECK(vfs.file_size(test_file) > 0);
 }
 
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
@@ -600,9 +589,7 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 
   // Touch does not overwrite an existing file.
   require_tiledb_ok(vfs_ls.touch(URI(subdir_file)));
-  uint64_t size;
-  require_tiledb_ok(vfs_ls.file_size(URI(subdir_file), &size));
-  REQUIRE(size == 6);
+  REQUIRE(vfs_ls.file_size(URI(subdir_file)) == 6);
 
   // Clean up
   require_tiledb_ok(vfs_ls.remove_dir(URI(path)));

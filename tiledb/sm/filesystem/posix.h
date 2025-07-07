@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,9 +135,9 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * Returns the size of the input file.
    *
    * @param path The name of the file whose size is to be retrieved.
-   * @param nbytes Pointer to a value
+   * @return The size of the file.
    */
-  void file_size(const URI& path, uint64_t* size) const override;
+  uint64_t file_size(const URI& path) const override;
 
   /**
    * Move a given filesystem path.
@@ -191,6 +191,14 @@ class Posix : public FilesystemBase, public LocalFilesystem {
       bool use_read_ahead = true) const override;
 
   /**
+   * Flushes a file or directory.
+   *
+   * @param uri The URI of the file.
+   * @param unused An unused flag, reserved for use by the virtual function.
+   */
+  void flush(const URI& uri, bool unused) override;
+
+  /**
    * Syncs a file or directory.
    *
    * @param path The name of the file.
@@ -216,50 +224,55 @@ class Posix : public FilesystemBase, public LocalFilesystem {
   /**
    * Checks if an object store bucket exists.
    *
+   * @invariant No-op for non-object store Filesystems.
+   *
    * @param uri The name of the object store bucket.
    * @return True if the bucket exists, false otherwise.
    */
   bool is_bucket(const URI&) const override {
-    // No concept of buckets for Posix.
     return false;
   }
 
   /**
    * Checks if an object-store bucket is empty.
    *
+   * @invariant No-op for non-object store Filesystems.
+   *
    * @param uri The name of the object store bucket.
    * @return True if the bucket is empty, false otherwise.
    */
   bool is_empty_bucket(const URI&) const override {
-    // No concept of buckets for Posix.
     return true;
   }
 
   /**
    * Creates an object store bucket.
    *
+   * @invariant No-op for non-object store Filesystems.
+   *
    * @param uri The name of the bucket to be created.
    */
   void create_bucket(const URI&) const override {
-    // No-op for Posix, stub function for cloud filesystems.
   }
 
   /**
    * Deletes an object store bucket.
    *
+   * @invariant No-op for non-object store Filesystems.
+   *
    * @param uri The name of the bucket to be deleted.
    */
   void remove_bucket(const URI&) const override {
-    // No-op for Posix, stub function for cloud filesystems.
   }
 
   /**
    * Deletes the contents of an object store bucket.
    *
+   * @invariant No-op for non-object store Filesystems.
+   *
    * @param uri The name of the bucket to be emptied.
    */
   void empty_bucket(const URI&) const override {
-    // No-op for Posix, stub function for cloud filesystems.
   }
 
   /**
