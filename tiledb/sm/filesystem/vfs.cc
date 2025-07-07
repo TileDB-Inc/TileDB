@@ -524,25 +524,16 @@ uint64_t VFS::file_size(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    try {
-      return azure().blob_size(uri);
-    } catch (std::exception& e) {
-      return Status_Error(e.what());
-    }
-    return Status::Ok();
+    return azure().blob_size(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    try {
-      uint64_t size;
-      throw_if_not_ok(gcs().object_size(uri, &size));
-      return size;
-    } catch (std::exception& e) {
-      return Status_Error(e.what());
-    }
+    uint64_t size;
+    throw_if_not_ok(gcs().object_size(uri, &size));
+    return size;
 #else
     throw BuiltWithout("GCS");
 #endif
