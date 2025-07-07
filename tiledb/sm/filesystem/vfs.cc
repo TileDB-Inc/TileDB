@@ -529,9 +529,7 @@ uint64_t VFS::file_size(const URI& uri) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    uint64_t size;
-    throw_if_not_ok(gcs().object_size(uri, &size));
-    return size;
+    return gcs().file_size(uri);
 #else
     throw BuiltWithout("GCS");
 #endif

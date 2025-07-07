@@ -407,10 +407,9 @@ class GCS {
    * Returns the size of the input object with a given URI in bytes.
    *
    * @param uri The URI of the object.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
+   * @return The size of the object.
    */
-  Status object_size(const URI& uri, uint64_t* nbytes) const;
+  uint64_t file_size(const URI& uri) const;
 
   /**
    * Flushes an object to GCS, finalizing the upload.
