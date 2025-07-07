@@ -61,9 +61,7 @@ class URI {
   struct RESTURIComponents {
     /* The namespace of the input URI */
     std::string server_namespace;
-    /* The name of the asset */
-    std::string asset_name;
-    /* The hierarchical path in TileDB Server of the asset */
+    /* The path in TileDB Server of the asset */
     std::string server_path;
     /* The storage path backing this asset */
     std::string asset_storage;

@@ -285,9 +285,8 @@ RestClientRemote::post_array_schema_from_rest(
 }
 
 Status RestClientRemote::post_array_schema_to_rest(
-    // This method called on Array create
-    const URI& uri,
-    const ArraySchema& array_schema) {
+    const URI& uri, const ArraySchema& array_schema) {
+  // This method is called on Array create
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::array_schema_serialize(
