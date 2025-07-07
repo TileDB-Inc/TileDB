@@ -194,7 +194,7 @@ TEST_CASE(
     tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(true, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == arr);
+    REQUIRE(rest_components.asset_storage == arr);
   }
 }
 
@@ -212,7 +212,6 @@ TEST_CASE(
     tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == arr);
     REQUIRE(rest_components.asset_storage == "");
     REQUIRE(rest_components.server_path == arr);
 
@@ -220,7 +219,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == arr);
     REQUIRE(rest_components.asset_storage == "");
     REQUIRE(rest_components.server_path == arr);
 
@@ -228,7 +226,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == arr);
     REQUIRE(rest_components.asset_storage == "");
     REQUIRE(rest_components.server_path == arr);
 
@@ -236,7 +233,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "array_name");
     REQUIRE(rest_components.asset_storage == "");
     REQUIRE(rest_components.server_path == "fld01/array_name");
 
@@ -244,7 +240,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "array_name");
     REQUIRE(rest_components.asset_storage == "");
     REQUIRE(rest_components.server_path == "fld01/fld02/array_name");
 
@@ -252,7 +247,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "array name");
     REQUIRE(rest_components.asset_storage == "");
     REQUIRE(rest_components.server_path == "fld-01/fld 02/array name");
   }
@@ -262,7 +256,6 @@ TEST_CASE(
     tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "array_name");
     REQUIRE(rest_components.asset_storage == "s3://bucket/arrays/array_name");
     REQUIRE(rest_components.server_path == "array_name");
 
@@ -270,7 +263,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "a");
     REQUIRE(rest_components.asset_storage == "s3://b/a");
     REQUIRE(rest_components.server_path == "a");
 
@@ -278,7 +270,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "array_name");
     REQUIRE(rest_components.asset_storage == "s3://bucket/arrays/array_name");
     REQUIRE(rest_components.server_path == "fld01/fld02/array_name");
 
@@ -286,7 +277,6 @@ TEST_CASE(
     uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(false, &rest_components).ok());
     REQUIRE(rest_components.server_namespace == ns);
-    REQUIRE(rest_components.asset_name == "array_name");
     REQUIRE(rest_components.asset_storage == "gs://bucket/array_name");
     REQUIRE(rest_components.server_path == "fld01/array_name");
   }

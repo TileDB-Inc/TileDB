@@ -274,8 +274,8 @@ Status URI::get_rest_components(
     }
     rest_components->server_namespace =
         uri_.substr(prefix.size(), namespace_len);
-    rest_components->asset_name = uri_.substr(slash + 1, array_len);
-    rest_components->server_path = rest_components->asset_name;
+    rest_components->asset_storage = uri_.substr(slash + 1, array_len);
+    rest_components->server_path = rest_components->asset_storage;
   } else {
     // Extract '<workspace>/<teamspace>' if we are talking to TileDB-Server.
 
@@ -299,7 +299,7 @@ Status URI::get_rest_components(
     std::string ws = uri_.substr(prefix.size(), ws_len);
     std::string ts = uri_.substr(ws_slash + 1, ts_len);
     rest_components->server_namespace = ws + "/" + ts;
-    rest_components->asset_name = last_path_part();
+    auto asset_name = last_path_part();
 
     auto storage_component_index = get_storage_component_index(ts_slash + 1);
     if (!storage_component_index.has_value()) {
@@ -315,7 +315,7 @@ Status URI::get_rest_components(
       rest_components->server_path =
           uri_.substr(
               ts_slash + 1, storage_component_index.value() - ts_slash - 1) +
-          rest_components->asset_name;
+          asset_name;
     }
   }
 
