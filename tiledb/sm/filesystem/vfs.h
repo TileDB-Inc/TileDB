@@ -217,7 +217,7 @@ struct VFSBase {
   VFSBase() = delete;
 
   VFSBase(stats::Stats* const parent_stats)
-      : stats_(parent_stats->create_child("VFS")){};
+      : stats_(parent_stats->create_child("VFS")) {};
 
   ~VFSBase() = default;
 
