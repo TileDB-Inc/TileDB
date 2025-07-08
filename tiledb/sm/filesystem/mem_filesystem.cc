@@ -541,8 +541,8 @@ void MemFilesystem::touch(const URI& uri) const {
   touch_internal(uri.to_path());
 }
 
-void MemFilesystem::create_dir_internal(
-    const std::string& path, FSNode** const node) const {
+MemFilesystem::FSNode* MemFilesystem::create_dir_internal(
+    const std::string& path) const {
   std::vector<std::string> tokens = tokenize(path);
 
   FSNode* cur = root_.get();
@@ -574,14 +574,11 @@ void MemFilesystem::create_dir_internal(
   passert(cur_lock.owns_lock());
   cur_lock.unlock();
 
-  // Save the output argument, `node`, if requested.
-  if (node != nullptr) {
-    *node = cur;
-  }
+  return cur;
 }
 
-void MemFilesystem::touch_internal(
-    const std::string& path, FSNode** const node) const {
+MemFilesystem::FSNode* MemFilesystem::touch_internal(
+    const std::string& path) const {
   std::vector<std::string> tokens = tokenize(path);
 
   FSNode* cur = root_.get();
@@ -609,10 +606,7 @@ void MemFilesystem::touch_internal(
   const std::string& filename = tokens[tokens.size() - 1];
   cur->children_[filename] = tdb_unique_ptr<FSNode>(tdb_new(File));
 
-  // Save the output argument, `node`, if requested.
-  if (node != nullptr) {
-    *node = cur->children_[filename].get();
-  }
+  return cur->children_[filename].get();
 }
 
 void MemFilesystem::write(
@@ -626,7 +620,7 @@ void MemFilesystem::write(
 
   // If the file doesn't exist, create it.
   if (node == nullptr) {
-    touch_internal(path, &node);
+    node = touch_internal(path);
     node_lock = std::unique_lock<std::mutex>(node->mutex_);
   }
 

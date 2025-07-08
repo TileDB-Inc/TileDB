@@ -31,3 +31,35 @@
  */
 
 #include "filesystem_base.h"
+
+namespace tiledb::sm {
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+void FilesystemBase::sync(const URI&) const {
+  throw UnsupportedOperation("sync");
+}
+
+bool FilesystemBase::is_bucket(const URI&) const {
+  throw UnsupportedOperation("is_bucket");
+}
+
+bool FilesystemBase::is_empty_bucket(const URI&) const {
+  throw UnsupportedOperation("is_empty_bucket");
+}
+
+void FilesystemBase::create_bucket(const URI&) const {
+  throw UnsupportedOperation("create_bucket");
+}
+
+void FilesystemBase::remove_bucket(const URI&) const {
+  throw UnsupportedOperation("remove_bucket");
+}
+
+void FilesystemBase::empty_bucket(const URI&) const {
+  throw UnsupportedOperation("empty_bucket");
+}
+
+}  // namespace tiledb::sm

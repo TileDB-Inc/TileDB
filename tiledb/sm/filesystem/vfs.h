@@ -789,7 +789,9 @@ class VFS : private VFSBase,
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @param remote_global_order_write Remote global order write
+   * @param remote_global_order_write
+   *    Whether to perform a remote global order write.
+   *    Reserved for S3 objects only.
    * @return Status
    */
   Status write(

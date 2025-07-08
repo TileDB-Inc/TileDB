@@ -1010,7 +1010,7 @@ class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
         s3().touch(object_uri);
         std::string data(j * 10, 'a');
         s3().write(object_uri, data.data(), data.size());
-        s3().flush_object(object_uri).ok();
+        s3().flush(object_uri);
         expected_results().emplace_back(object_uri.to_string(), data.size());
       }
     }

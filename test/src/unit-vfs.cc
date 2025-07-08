@@ -448,6 +448,8 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
       require_tiledb_ok(vfs.remove_dir(path));
     }
     require_tiledb_ok(vfs.create_dir(path));
+    // Bucket-specific operations are only valid for object store filesystems.
+    CHECK_THROWS(vfs.create_bucket(path));
   }
 
   // Prepare buffers
@@ -777,7 +779,7 @@ TEST_CASE(
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "The Content-Md5 you specified is not valid.");
-  REQUIRE_THROWS_WITH(s3.flush_object(uri), matcher);
+  REQUIRE_THROWS_WITH(s3.flush(uri), matcher);
 }
 #endif
 

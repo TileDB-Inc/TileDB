@@ -183,14 +183,14 @@ class MemFilesystem : FilesystemBase {
    * @param offset The offset in the file from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param nbytes The number of bytes to be read from the file.
-   * @param unused Unused flag. Reserved for the base class virtual function.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
   void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool unused) const;
+      bool use_read_ahead) const;
 
   /**
    * Removes a given path and its contents.
@@ -230,10 +230,13 @@ class MemFilesystem : FilesystemBase {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The size of the input buffer in bytes.
-   * @param unused Unused flag. Reserved for the base class virtual function.
+   * @param remote_global_order_write Unused flag. Reserved for S3 objects only.
    */
   void write(
-      const URI& uri, const void* buffer, uint64_t buffer_size, bool unused);
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write);
 
   /**
    * Copies a directory.
@@ -258,77 +261,24 @@ class MemFilesystem : FilesystemBase {
   /**
    * Flushes an object store file.
    *
-   * @invariant No-op for non-object store Filesystems.
+   * @invariant Performs a sync for local filesystems.
    *
    * @param uri The URI of the file.
-   * @param unused Unused flag. Reserved for S3 objects only.
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
   void flush(const URI&, bool) {
+    // No-op for MemFS; stub function for local filesystems.
   }
 
   /**
    * Syncs a local file.
    *
-   * @invariant No-op for non-local Filesystems.
+   * @invariant Valid only for local filesystems.
    *
    * @param uri The URI of the file.
    */
   void sync(const URI&) const {
     // No-op for MemFS; stub function for local filesystems.
-  }
-
-  /**
-   * Checks if an object store bucket exists.
-   *
-   * @invariant No-op for non-object store Filesystems.
-   *
-   * @param uri The name of the object store bucket.
-   * @return True if the bucket exists, false otherwise.
-   */
-  bool is_bucket(const URI&) const {
-    return false;
-  }
-
-  /**
-   * Checks if an object-store bucket is empty.
-   *
-   * @invariant No-op for non-object store Filesystems.
-   *
-   * @param uri The name of the object store bucket.
-   * @return True if the bucket is empty, false otherwise.
-   */
-  bool is_empty_bucket(const URI&) const {
-    return true;
-  }
-
-  /**
-   * Creates an object store bucket.
-   *
-   * @invariant No-op for non-object store Filesystems.
-   *
-   * @param uri The name of the bucket to be created.
-   */
-  void create_bucket(const URI&) const {
-  }
-
-  /**
-   * Deletes an object store bucket.
-   *
-   * @invariant No-op for non-object store Filesystems.
-   *
-   * @param uri The name of the bucket to be deleted.
-   */
-  void remove_bucket(const URI&) const {
-  }
-
-  /**
-   * Deletes the contents of an object store bucket.
-   *
-   * @invariant No-op for non-object store Filesystems.
-   *
-   * @param uri The name of the bucket to be emptied.
-   */
-  void empty_bucket(const URI&) const {
   }
 
  private:
@@ -394,23 +344,20 @@ class MemFilesystem : FilesystemBase {
       const std::string& path, const char delim = '/');
 
   /**
-   * Creates a new directory without acquiring the lock
+   * Creates a new directory without acquiring the lock.
    *
    * @param path The full name of the directory to be created.
-   * @param node Optional output argument to the node of the
-   *    created directory.
+   * @return The node of the created directory.
    */
-  void create_dir_internal(
-      const std::string& path, FSNode** node = nullptr) const;
+  FSNode* create_dir_internal(const std::string& path) const;
 
   /**
-   * Creates an empty file without acquiring the lock
+   * Creates an empty file without acquiring the lock.
    *
    * @param path The full name of the file to be created.
-   * @param node Optional output argument to the node of the
-   *    created file.
+   * @return The node of the created file.
    */
-  void touch_internal(const std::string& path, FSNode** node = nullptr) const;
+  FSNode* touch_internal(const std::string& path) const;
 };
 
 }  // namespace sm

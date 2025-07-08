@@ -47,6 +47,14 @@ class IOError : public StatusException {
   }
 };
 
+class UnsupportedOperation : public IOError {
+ public:
+  explicit UnsupportedOperation(const std::string& operation)
+      : IOError(std::string(
+            operation + " is not supported on the given filesystem.")) {
+  }
+};
+
 class FilesystemBase {
  public:
   FilesystemBase() = default;
@@ -173,10 +181,10 @@ class FilesystemBase {
   /**
    * Flushes an object store file.
    *
-   * @invariant No-op for non-object store Filesystems.
+   * @invariant Performs a sync on local filesystem files.
    *
    * @param uri The URI of the file.
-   * @param finalize For s3 objects only. If `true`, flushes as a result of a
+   * @param finalize For S3 objects only. If `true`, flushes as a result of a
    * remote global order write `finalize()` call.
    */
   virtual void flush(
@@ -185,11 +193,11 @@ class FilesystemBase {
   /**
    * Syncs a local file.
    *
-   * @invariant No-op for non-local Filesystems.
+   * @invariant Valid only for local filesystems.
    *
    * @param uri The URI of the file.
    */
-  virtual void sync(const URI& uri) const = 0;
+  virtual void sync(const URI& uri) const;
 
   /**
    * Writes the contents of a buffer into a file.
@@ -197,7 +205,7 @@ class FilesystemBase {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @param remote_global_order_write Remote global order write
+   * @param remote_global_order_write Remote global order write.
    */
   virtual void write(
       const URI& uri,
@@ -208,49 +216,49 @@ class FilesystemBase {
   /**
    * Checks if an object store bucket exists.
    *
-   * @invariant Valid _only_ for object store Filesystems. No-op otherwise.
+   * @invariant Valid only for object store filesystems.
    *
    * @param uri The name of the object store bucket.
    * @return True if the bucket exists, false otherwise.
    */
-  virtual bool is_bucket(const URI& uri) const = 0;
+  virtual bool is_bucket(const URI& uri) const;
 
   /**
    * Checks if an object-store bucket is empty.
    *
-   * @invariant Valid _only_ for object store Filesystems. No-op otherwise.
+   * @invariant Valid only for object store filesystems.
    *
    * @param uri The name of the object store bucket.
    * @return True if the bucket is empty, false otherwise.
    */
-  virtual bool is_empty_bucket(const URI& uri) const = 0;
+  virtual bool is_empty_bucket(const URI& uri) const;
 
   /**
    * Creates an object store bucket.
    *
-   * @invariant Valid _only_ for object store Filesystems. No-op otherwise.
+   * @invariant Valid only for object store filesystems.
    *
    * @param uri The name of the bucket to be created.
    */
-  virtual void create_bucket(const URI& uri) const = 0;
+  virtual void create_bucket(const URI& uri) const;
 
   /**
    * Deletes an object store bucket.
    *
-   * @invariant Valid _only_ for object store Filesystems. No-op otherwise.
+   * @invariant Valid only for object store filesystems.
    *
    * @param uri The name of the bucket to be deleted.
    */
-  virtual void remove_bucket(const URI& uri) const = 0;
+  virtual void remove_bucket(const URI& uri) const;
 
   /**
    * Deletes the contents of an object store bucket.
    *
-   * @invariant Valid _only_ for object store Filesystems. No-op otherwise.
+   * @invariant Valid only for object store filesystems.
    *
    * @param uri The name of the bucket to be emptied.
    */
-  virtual void empty_bucket(const URI& uri) const = 0;
+  virtual void empty_bucket(const URI& uri) const;
 };
 
 }  // namespace tiledb::sm

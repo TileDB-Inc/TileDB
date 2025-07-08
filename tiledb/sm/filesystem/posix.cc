@@ -352,10 +352,7 @@ void Posix::sync(const URI& uri) const {
 }
 
 void Posix::write(
-    const URI& uri,
-    const void* buffer,
-    uint64_t buffer_size,
-    [[maybe_unused]] bool remote_global_order_write) {
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
   auto path = uri.to_path();
   // Check for valid inputs before attempting the actual
   // write system call. This is to avoid a bug on macOS

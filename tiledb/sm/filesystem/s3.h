@@ -649,14 +649,14 @@ class S3 : FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
   void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const override;
+      bool use_read_ahead) const override;
 
   /**
    * Deletes a bucket.
@@ -704,7 +704,7 @@ class S3 : FilesystemBase {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @param remote_global_order_write
+   * @param remote_global_order_write Whether to perform a global order write.
    */
   void write(
       const URI& uri,
@@ -799,7 +799,7 @@ class S3 : FilesystemBase {
    * @param finalize If `true`, flushes as a result of a remote global order
    * write `finalize()` call.
    */
-  void flush(const URI& uri, bool finalize) override;
+  void flush(const URI& uri, bool finalize = false) override;
 
   /**
    * Flushes an s3 object as a result of a remote global order write

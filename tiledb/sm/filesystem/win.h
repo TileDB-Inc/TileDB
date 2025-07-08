@@ -224,9 +224,9 @@ class Win : LocalFilesystem {
    * Flushes a file or directory.
    *
    * @param uri The URI of the file.
-   * @param unused An unused flag, reserved for use by the virtual function.
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool unused);
+  void flush(const URI& uri, bool finalize);
 
   /**
    * Syncs a file or directory.

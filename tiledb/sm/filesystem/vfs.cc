@@ -1287,7 +1287,7 @@ void VFS::flush(const URI& uri, bool finalize) {
   auto instrument = make_log_duration_instrument(uri, "flush");
   if (uri.is_file()) {
 #ifdef _WIN32
-    win_.flush(uri);
+    win_.flush(uri, finalize);
     return;
 #else
     posix_.flush(uri, finalize);
@@ -1342,7 +1342,7 @@ Status VFS::write(
 #ifdef _WIN32
     return win_.write(uri.to_path(), buffer, buffer_size);
 #else
-    posix_.write(uri, buffer, buffer_size);
+    posix_.write(uri, buffer, buffer_size, remote_global_order_write);
     return Status::Ok();
 #endif
   }
