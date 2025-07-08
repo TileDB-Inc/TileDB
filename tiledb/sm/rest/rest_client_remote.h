@@ -225,6 +225,15 @@ class RestClientRemote : public RestClient {
       const URI& uri, const ArraySchema& array_schema) override;
 
   /**
+   * Post an array creation request to the rest server.
+   *
+   * @param uri Storage URI to use for the created array
+   * @param array_schema Array schema to use for the created array
+   */
+  void post_array_create_to_rest(
+      const URI& uri, const ArraySchema& array_schema) override;
+
+  /**
    * Deletes all written data from array at the given URI from the REST server.
    *
    * @param uri Array URI to delete

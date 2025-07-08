@@ -1279,6 +1279,57 @@ shared_ptr<ArraySchema> array_schema_deserialize(
   }
 }
 
+void array_create_to_capnp(
+    capnp::ArrayCreateRequest::Builder* array_create_builder,
+    const ArraySchema& array_schema,
+    std::string storage_uri) {
+  array_create_builder->setUri(storage_uri);
+  auto schema_builder = array_create_builder->initSchema();
+  throw_if_not_ok(array_schema_to_capnp(
+      array_schema, &schema_builder, true, {storage_uri}));
+}
+
+void array_create_serialize(
+    const ArraySchema& array_schema,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer,
+    std::string storage_uri) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::ArrayCreateRequest::Builder arrayCreateBuilder =
+        message.initRoot<capnp::ArrayCreateRequest>();
+    array_create_to_capnp(&arrayCreateBuilder, array_schema, storage_uri);
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(arrayCreateBuilder);
+        serialized_buffer.assign(capnp_json);
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        serialized_buffer.assign(protomessage.asChars());
+        break;
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error serializing array creation request; Unknown serialization "
+            "type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing array creation request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing array creation request; exception " +
+        std::string(e.what()));
+  }
+}
+
 Status nonempty_domain_serialize(
     const Dimension* dimension,
     const void* nonempty_domain,
@@ -1878,6 +1929,11 @@ Status array_schema_serialize(
     std::optional<std::string>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
+}
+
+void array_create_serialize(
+    const ArraySchema&, SerializationType, SerializationBuffer&, std::string) {
+  throw ArraySchemaSerializationDisabledException();
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
