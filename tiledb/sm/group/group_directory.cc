@@ -61,7 +61,7 @@ const std::set<std::string>& dir_names() {
 std::vector<URI> ls(const VFS& vfs, const URI& uri) {
   auto dir_entries = vfs.ls_with_sizes(uri);
   auto& dirs = dir_names();
-  std::vector<URI> uris;
+  std::vector<URI> uris(dir_entries.size());
 
   for (auto entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
