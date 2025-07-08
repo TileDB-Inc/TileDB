@@ -178,23 +178,111 @@ TEST_CASE("URI: Test schemes", "[uri]") {
   CHECK(URI("tiledb://namespace/array").is_tiledb());
 }
 
-TEST_CASE("URI: Test REST components, valid", "[uri]") {
-  bool legacy = GENERATE(true, false);
-  const std::string ns_component = legacy ? "namespace" : "workspace/teampsace";
-  const std::string array_component = GENERATE(
-      "array", "array/uri", "s3://bucket/dir", "azure://container/dir");
-  const std::string uri{"tiledb://" + ns_component + "/" + array_component};
-  std::string ns, array;
-  DYNAMIC_SECTION(
-      (legacy ? "legacy " : "TileDB-Server ") << "\"" << uri << "\" valid") {
-    CHECK(URI(uri).get_rest_components(&ns, &array, legacy).ok());
-    CHECK(ns == ns_component);
-    CHECK(array == array_component);
+TEST_CASE(
+    "URI: Test REST components, valid, legacy",
+    "[uri][rest-components][legacy]") {
+  std::string arr = GENERATE(
+      "8f039466-6e90-42ea-af53-dc0ba47d00c2",
+      "a",
+      "array_name",
+      "s3://bucket/arrays/array_name",
+      "s3://b/d/a");
+
+  URI::RESTURIComponents rest_components;
+  SECTION("Legacy REST URI components") {
+    std::string ns = GENERATE("demo", "d");
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(true, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == arr);
   }
 }
 
+TEST_CASE(
+    "URI: Test REST components, valid, TileDB-Server",
+    "[uri][rest-components][server]") {
+  std::string ns = GENERATE(
+      "workspace/teamspace",
+      "ws_cvsj3li97ng28m60nhj0/ts_cvsj4ei97ng28m60nhkg",
+      "w/t");
+
+  URI::RESTURIComponents rest_components;
+  SECTION("Without storage component") {
+    std::string arr = "ast_d05mes5q3m0fsaikmdn0";
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "");
+    REQUIRE(rest_components.server_path == arr);
+
+    arr = "a";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "");
+    REQUIRE(rest_components.server_path == arr);
+
+    arr = "array_name";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "");
+    REQUIRE(rest_components.server_path == arr);
+
+    arr = "fld01/array_name";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "");
+    REQUIRE(rest_components.server_path == "fld01/array_name");
+
+    arr = "fld01/fld02/array_name";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "");
+    REQUIRE(rest_components.server_path == "fld01/fld02/array_name");
+
+    arr = "fld-01/fld 02/array name";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "");
+    REQUIRE(rest_components.server_path == "fld-01/fld 02/array name");
+  }
+
+  SECTION("With storage component") {
+    std::string arr = "s3://bucket/arrays/array_name";
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "s3://bucket/arrays/array_name");
+    REQUIRE(rest_components.server_path == "array_name");
+
+    arr = "s3://b/a";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "s3://b/a");
+    REQUIRE(rest_components.server_path == "a");
+
+    arr = "fld01/fld02/s3://bucket/arrays/array_name";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "s3://bucket/arrays/array_name");
+    REQUIRE(rest_components.server_path == "fld01/fld02/array_name");
+
+    arr = "fld01/gs://bucket/array_name";
+    uri = tiledb::sm::URI("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(false, &rest_components).ok());
+    REQUIRE(rest_components.server_namespace == ns);
+    REQUIRE(rest_components.asset_storage == "gs://bucket/array_name");
+    REQUIRE(rest_components.server_path == "fld01/array_name");
+  }
+}
 TEST_CASE("URI: Test REST components, invalid", "[uri]") {
-  std::string ns, array;
+  URI::RESTURIComponents rest_components;
 
   const std::string invalid_rest_uri[] = {
       "",
@@ -218,7 +306,7 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
     std::string x{invalid_rest_uri[j]};
     DYNAMIC_SECTION(
         (legacy ? "legacy " : "TileDB-Server ") << "\"" << x << "\" invalid") {
-      CHECK(!URI(x).get_rest_components(&ns, &array, legacy).ok());
+      CHECK(!URI(x).get_rest_components(legacy, &rest_components).ok());
     }
   }
 }
@@ -243,35 +331,6 @@ TEST_CASE("URI: Test get_fragment_name", "[uri][get_fragment_name]") {
 
   for (auto& test : cases) {
     REQUIRE(test.first.get_fragment_name() == test.second);
-  }
-}
-
-TEST_CASE("URI: Get REST components", "[uri]") {
-  std::string arr = GENERATE(
-      "8f039466-6e90-42ea-af53-dc0ba47d00c2",
-      "a",
-      "array_name",
-      "s3://bucket/arrays/array_name",
-      "s3://b/d/a");
-
-  std::string array_namespace, array_uri;
-  SECTION("Legacy REST URI components") {
-    std::string ns = GENERATE("demo", "d");
-    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
-    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, true).ok());
-    REQUIRE(array_namespace == ns);
-    REQUIRE(array_uri == arr);
-  }
-
-  SECTION("TileDB-Server REST URI components") {
-    std::string ns = GENERATE(
-        "workspace/teamspace",
-        "ws_cvsj3li97ng28m60nhj0/ts_cvsj4ei97ng28m60nhkg",
-        "w/t");
-    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
-    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, false).ok());
-    REQUIRE(array_namespace == ns);
-    REQUIRE(array_uri == arr);
   }
 }
 
