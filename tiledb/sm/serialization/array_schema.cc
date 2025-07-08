@@ -46,7 +46,6 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
@@ -60,7 +59,6 @@
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
-#include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
@@ -1285,9 +1283,14 @@ void array_create_to_capnp(
     const ArraySchema& array_schema,
     std::string storage_uri) {
   array_create_builder->setUri(storage_uri);
-  auto schema_builder = array_create_builder->initSchema();
+
+  ::capnp::MallocMessageBuilder message;
+  capnp::ArraySchema::Builder schema_builder =
+      message.initRoot<capnp::ArraySchema>();
   throw_if_not_ok(array_schema_to_capnp(
       array_schema, &schema_builder, true, {storage_uri}));
+  auto arr = messageToFlatArray(message);
+  array_create_builder->setSchema(arr.asBytes());
 }
 
 void array_create_serialize(

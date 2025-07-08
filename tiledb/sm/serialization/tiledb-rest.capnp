@@ -139,7 +139,7 @@ struct ArrayCreateRequest {
     # Storage URI for the new array.
     # This field will be empty if using default storage.
 
-    schema @1 :ArraySchema;
+    schema @1 :Data;
     # The array schema to create.
 }
 
