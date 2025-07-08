@@ -363,6 +363,12 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
+  inline virtual void post_array_create_to_rest(
+      const URI&, const ArraySchema&) {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
   inline virtual void delete_array_from_rest(const URI&) {
     throw RestClientDisabledException();
   }
