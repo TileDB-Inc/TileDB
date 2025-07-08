@@ -134,6 +134,15 @@ struct ArraySchema {
     # The current domain set on the schema
 }
 
+struct ArrayCreateRequest {
+    uri @0 :Text;
+    # Storage URI for the new array.
+    # This field will be empty if using default storage.
+
+    schema @1 :ArraySchema;
+    # The array schema to create.
+}
+
 struct DimensionLabel {
 # A label of a dimension
     dimensionId @0 :UInt32;
