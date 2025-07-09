@@ -466,9 +466,7 @@ class Azure : FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) const {
-    // No-op. Stub function for other filesystems.
-  }
+  void copy_dir(const URI&, const URI&) const;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.

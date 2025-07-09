@@ -331,22 +331,6 @@ void Azure::flush(const URI& uri, bool) {
     // Save the return status because 'state' will be freed before we return.
     const Status st = state->st();
 
-    // Unlike S3 that can abort a chunked upload to immediately release
-    // uncommited chunks and leave the original object unmodified, the
-    // only way to do this on Azure is by some form of a write. We must
-    // either:
-    // 1. Delete the blob
-    // 2. Overwrite the blob with a zero-length buffer.
-    //
-    // Alternatively, we could do nothing and let Azure release the
-    // uncommited blocks ~7 days later. We chose to delete the blob
-    // as a best-effort operation. We are intentionally ignoring any
-    // errors thrown by `remove_file`.
-    try {
-      remove_file(uri);
-    } catch (...) {
-    }
-
     // Release all instance state associated with this block list
     // transactions.
     finish_block_list_upload(uri);
@@ -576,9 +560,16 @@ std::vector<directory_entry> Azure::ls_with_sizes(
   return entries;
 }
 
-void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
-  copy_file(old_uri, new_uri);
-  remove_file(old_uri);
+void Azure::copy_dir(const URI& old_uri, const URI& new_uri) const {
+  auto paths = ls(old_uri, "");
+  while (!paths.empty()) {
+    std::string filename_abs = paths.front();
+    URI filename_uri = URI(filename_abs);
+    std::string filename = filename_abs.substr(old_uri.to_string().length());
+    paths.erase(paths.begin());
+    URI new_path = URI(new_uri.to_string() + filename);
+    copy_file(filename_uri, new_path);
+  }
 }
 
 void Azure::copy_file(const URI& old_uri, const URI& new_uri) const {
@@ -614,6 +605,11 @@ void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
     const URI new_path = new_uri.join_path(suffix);
     move_file(URI(path), new_path);
   }
+}
+
+void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
+  copy_file(old_uri, new_uri);
+  remove_file(old_uri);
 }
 
 uint64_t Azure::file_size(const URI& uri) const {

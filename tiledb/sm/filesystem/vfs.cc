@@ -905,11 +905,12 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   // Azure
   if (old_uri.is_azure()) {
     if (new_uri.is_azure()) {
-      if constexpr (azure_enabled) {
-        throw VFSException("Copying files on Azure is not yet supported.");
-      } else {
-        throw BuiltWithout("Azure");
-      }
+#ifdef HAVE_AZURE
+      azure().copy_file(old_uri, new_uri);
+      return Status::Ok();
+#else
+      throw BuiltWithout("Azure");
+#endif
     }
     throw UnsupportedOperation("Copying files");
   }
@@ -963,12 +964,12 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   // Azure
   if (old_uri.is_azure()) {
     if (new_uri.is_azure()) {
-      if constexpr (azure_enabled) {
-        throw VFSException(
-            "Copying directories on Azure is not yet supported.");
-      } else {
-        throw BuiltWithout("Azure");
-      }
+#ifdef HAVE_AZURE
+      azure().copy_dir(old_uri, new_uri);
+      return Status::Ok();
+#else
+      throw BuiltWithout("Azure");
+#endif
     }
     throw UnsupportedOperation("Copying directories");
   }
