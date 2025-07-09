@@ -202,6 +202,18 @@ void array_create_serialize(
     SerializationBuffer& serialized_buffer,
     std::string storage_uri);
 
+/**
+ * Deserialize an ArrayCreateRequest
+ *
+ * @param serialize_type Format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer Buffer to read serialized bytes from
+ * @param memory_tracker The MemoryTracker to use for deserialization.
+ */
+shared_ptr<ArraySchema> array_create_deserialize(
+    SerializationType serialize_type,
+    span<const char> serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
+
 Status nonempty_domain_serialize(
     const Array* array,
     const void* nonempty_domain,
