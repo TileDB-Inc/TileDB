@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -612,7 +612,7 @@ void S3::write(
   }
 
   // This write is never considered the last part of an object. The last part is
-  // only uploaded with flush_object().
+  // only uploaded with flush().
   const bool is_last_part = false;
 
   // Get file buffer
@@ -730,21 +730,26 @@ Status S3::disconnect() {
   return ret_st;
 }
 
-Status S3::flush_object(const URI& uri) {
-  RETURN_NOT_OK(init_client());
+void S3::flush(const URI& uri, bool finalize) {
+  if (finalize) {
+    finalize_and_flush_object(uri);
+    return;
+  }
+
+  throw_if_not_ok(init_client());
   if (!s3_params_.use_multipart_upload_) {
-    return flush_direct(uri);
+    throw_if_not_ok(flush_direct(uri));
+    return;
   }
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
   }
 
   // Flush and delete file buffer. For multipart requests, we must
   // continue even if 'flush_file_buffer' fails. In that scenario,
   // we will send an abort request.
   auto buff = (Buffer*)nullptr;
-  RETURN_NOT_OK(get_file_buffer(uri, &buff));
+  throw_if_not_ok(get_file_buffer(uri, &buff));
   const Status flush_st = flush_file_buffer(uri, buff, true);
 
   Aws::Http::URI aws_uri = uri.c_str();
@@ -756,8 +761,8 @@ Status S3::flush_object(const URI& uri) {
   // Do nothing - empty object
   auto state_iter = multipart_upload_states_.find(path);
   if (state_iter == multipart_upload_states_.end()) {
-    RETURN_NOT_OK(flush_st);
-    return Status::Ok();
+    throw_if_not_ok(flush_st);
+    return;
   }
 
   const MultiPartUploadState* state = &multipart_upload_states_.at(path);
@@ -770,9 +775,9 @@ Status S3::flush_object(const URI& uri) {
         make_multipart_complete_request(*state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
     if (!outcome.IsSuccess()) {
-      return LOG_STATUS(Status_S3Error(
+      throw S3Exception(
           std::string("Failed to flush S3 object ") + uri.c_str() +
-          outcome_error_message(outcome)));
+          outcome_error_message(outcome));
     }
 
     auto bucket = state->bucket;
@@ -782,7 +787,7 @@ Status S3::flush_object(const URI& uri) {
 
     throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
 
-    return finish_flush_object(std::move(outcome), uri, buff, false);
+    throw_if_not_ok(finish_flush_object(std::move(outcome), uri, buff, false));
   } else {
     Aws::S3::Model::AbortMultipartUploadRequest abort_request =
         make_multipart_abort_request(*state);
@@ -791,7 +796,7 @@ Status S3::flush_object(const URI& uri) {
 
     state_lck.unlock();
 
-    return finish_flush_object(std::move(outcome), uri, buff, true);
+    throw_if_not_ok(finish_flush_object(std::move(outcome), uri, buff, true));
   }
 }
 
@@ -1049,12 +1054,11 @@ Status S3::move_object(const URI& old_uri, const URI& new_uri) const {
   return Status::Ok();
 }
 
-Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
-  RETURN_NOT_OK(init_client());
+uint64_t S3::file_size(const URI& uri) const {
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
   }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
@@ -1077,16 +1081,14 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
           " The bucket might be located in another region; you can set it with "
           "the 'vfs.s3.region' option.";
     }
-    return LOG_STATUS(Status_S3Error(
+    throw S3Exception(
         std::string(
             "Cannot retrieve S3 object size; Error while listing file s3://") +
         uri.to_string() + outcome_error_message(head_object_outcome) +
-        additional_context));
+        additional_context);
   }
-  *nbytes =
-      static_cast<uint64_t>(head_object_outcome.GetResult().GetContentLength());
-
-  return Status::Ok();
+  return static_cast<uint64_t>(
+      head_object_outcome.GetResult().GetContentLength());
 }
 
 Status S3::read_impl(

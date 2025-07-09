@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -496,6 +496,10 @@ Status Win::read(
   }
 
   return Status::Ok();
+}
+
+void Win::flush(const URI& uri, bool) {
+  throw_if_not_ok(sync(uri.to_path()));
 }
 
 Status Win::sync(const std::string& path) const {

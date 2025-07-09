@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,14 @@ class IOError : public StatusException {
  public:
   explicit IOError(const std::string& message)
       : StatusException("IO Error", message) {
+  }
+};
+
+class UnsupportedOperation : public IOError {
+ public:
+  explicit UnsupportedOperation(const std::string& operation)
+      : IOError(std::string(
+            operation + " is not supported on the given filesystem.")) {
   }
 };
 
@@ -105,9 +113,9 @@ class FilesystemBase {
    * Retrieves the size of a file.
    *
    * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
+   * @return The file size.
    */
-  virtual void file_size(const URI& uri, uint64_t* size) const = 0;
+  virtual uint64_t file_size(const URI& uri) const = 0;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -115,7 +123,7 @@ class FilesystemBase {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  virtual std::vector<filesystem::directory_entry> ls_with_sizes(
+  virtual std::vector<common::filesystem::directory_entry> ls_with_sizes(
       const URI& parent) const = 0;
 
   /**
@@ -171,11 +179,25 @@ class FilesystemBase {
       bool use_read_ahead = true) const = 0;
 
   /**
-   * Syncs (flushes) a file. Note that for S3 this is a noop.
+   * Flushes an object store file.
+   *
+   * @invariant Performs a sync on local filesystem files.
+   *
+   * @param uri The URI of the file.
+   * @param finalize For S3 objects only. If `true`, flushes as a result of a
+   * remote global order write `finalize()` call.
+   */
+  virtual void flush(
+      const URI& uri, [[maybe_unused]] bool finalize = false) = 0;
+
+  /**
+   * Syncs a local file.
+   *
+   * @invariant Valid only for local filesystems.
    *
    * @param uri The URI of the file.
    */
-  virtual void sync(const URI& uri) const = 0;
+  virtual void sync(const URI& uri) const;
 
   /**
    * Writes the contents of a buffer into a file.
@@ -183,7 +205,7 @@ class FilesystemBase {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @param remote_global_order_write Remote global order write
+   * @param remote_global_order_write Remote global order write.
    */
   virtual void write(
       const URI& uri,
@@ -194,39 +216,49 @@ class FilesystemBase {
   /**
    * Checks if an object store bucket exists.
    *
+   * @invariant Valid only for object store filesystems.
+   *
    * @param uri The name of the object store bucket.
    * @return True if the bucket exists, false otherwise.
    */
-  virtual bool is_bucket(const URI& uri) const = 0;
+  virtual bool is_bucket(const URI& uri) const;
 
   /**
    * Checks if an object-store bucket is empty.
    *
+   * @invariant Valid only for object store filesystems.
+   *
    * @param uri The name of the object store bucket.
    * @return True if the bucket is empty, false otherwise.
    */
-  virtual bool is_empty_bucket(const URI& uri) const = 0;
+  virtual bool is_empty_bucket(const URI& uri) const;
 
   /**
    * Creates an object store bucket.
    *
+   * @invariant Valid only for object store filesystems.
+   *
    * @param uri The name of the bucket to be created.
    */
-  virtual void create_bucket(const URI& uri) const = 0;
+  virtual void create_bucket(const URI& uri) const;
 
   /**
    * Deletes an object store bucket.
    *
+   * @invariant Valid only for object store filesystems.
+   *
    * @param uri The name of the bucket to be deleted.
    */
-  virtual void remove_bucket(const URI& uri) const = 0;
+  virtual void remove_bucket(const URI& uri) const;
 
   /**
    * Deletes the contents of an object store bucket.
    *
+   * @invariant Valid only for object store filesystems.
+   *
    * @param uri The name of the bucket to be emptied.
    */
-  virtual void empty_bucket(const URI& uri) const = 0;
+  virtual void empty_bucket(const URI& uri) const;
 };
 
 }  // namespace tiledb::sm

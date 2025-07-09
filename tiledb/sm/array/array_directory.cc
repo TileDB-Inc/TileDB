@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -727,9 +727,7 @@ ArrayDirectory::load_consolidated_commit_uris(
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
             uri.to_string(), constants::ignore_file_suffix)) {
-      uint64_t size = 0;
-      RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
+      uint64_t size = resources_.get().vfs().file_size(uri);
       std::string names;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
@@ -751,9 +749,7 @@ ArrayDirectory::load_consolidated_commit_uris(
     auto& uri = commits_dir_uris[i];
     if (stdx::string::ends_with(
             uri.to_string(), constants::con_commits_file_suffix)) {
-      uint64_t size = 0;
-      RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
+      uint64_t size = resources_.get().vfs().file_size(uri);
       meta_files.emplace_back(uri, std::string());
 
       auto& names = meta_files.back().second;
@@ -1084,9 +1080,8 @@ ArrayDirectory::compute_uris_to_vacuum(
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto& tp = resources_.get().compute_tp();
   auto status = parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
-    uint64_t size = 0;
     auto& vfs = resources_.get().vfs();
-    throw_if_not_ok(vfs.file_size(vac_files[i], &size));
+    uint64_t size = vfs.file_size(vac_files[i]);
     std::string names;
     names.resize(size);
     throw_if_not_ok(vfs.read(vac_files[i], 0, &names[0], size, false));

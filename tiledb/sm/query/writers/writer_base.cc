@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -600,7 +600,8 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
       parallel_for(&resources_.io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
-          resources_.vfs().finalize_and_close_file(file_uri);
+          // flush with finalize == true
+          resources_.vfs().flush(file_uri, true);
         } else {
           throw_if_not_ok(resources_.vfs().close_file(file_uri));
         }

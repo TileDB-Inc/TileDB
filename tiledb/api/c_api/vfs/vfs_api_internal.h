@@ -115,8 +115,8 @@ struct tiledb_vfs_handle_t
     return vfs_.dir_size(dir_name, dir_size);
   }
 
-  Status file_size(const tiledb::sm::URI& uri, uint64_t* size) const {
-    return vfs_.file_size(uri, size);
+  uint64_t file_size(const tiledb::sm::URI& uri) const {
+    return vfs_.file_size(uri);
   }
 
   Status move_file(
