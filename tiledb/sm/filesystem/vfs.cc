@@ -915,11 +915,12 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   // GCS
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs()) {
-      if constexpr (gcs_enabled) {
-        throw VFSException("Copying files on GCS is not yet supported.");
-      } else {
-        throw BuiltWithout("GCS");
-      }
+#ifdef HAVE_GCS
+      gcs().copy_file(old_uri, new_uri);
+      return Status::Ok();
+#else
+      throw BuiltWithout("GCS");
+#endif
     }
     throw UnsupportedOperation("Copying files");
   }
@@ -973,11 +974,12 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   // GCS
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs()) {
-      if constexpr (gcs_enabled) {
-        throw VFSException("Copying directories on GCS is not yet supported.");
-      } else {
-        throw BuiltWithout("GCS");
-      }
+#ifdef HAVE_GCS
+      gcs().copy_dir(old_uri, new_uri);
+      return Status::Ok();
+#else
+      throw BuiltWithout("GCS");
+#endif
     }
     throw UnsupportedOperation("Copying directories");
   }

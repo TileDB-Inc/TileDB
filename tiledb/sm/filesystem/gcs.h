@@ -351,6 +351,14 @@ class GCS : FilesystemBase {
   std::vector<filesystem::directory_entry> ls_with_sizes(const URI& uri) const;
 
   /**
+   * Copies the directory at 'old_uri' to `new_uri`.
+   *
+   * @param old_uri The directory's current URI.
+   * @param new_uri The directory's URI to move to.
+   */
+  void copy_dir(const URI&, const URI&) const;
+
+  /**
    * Copies the blob at 'old_uri' to `new_uri`.
    *
    * @param old_uri The blob's current URI.
@@ -464,16 +472,6 @@ class GCS : FilesystemBase {
    * @param uri The directory's URI.
    */
   void create_dir(const URI&) const {
-    // No-op. Stub function for other filesystems.
-  }
-
-  /**
-   * Copies the directory at 'old_uri' to `new_uri`.
-   *
-   * @param old_uri The directory's current URI.
-   * @param new_uri The directory's URI to move to.
-   */
-  void copy_dir(const URI&, const URI&) const {
     // No-op. Stub function for other filesystems.
   }
 

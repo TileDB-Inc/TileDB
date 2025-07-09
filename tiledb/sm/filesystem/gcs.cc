@@ -596,6 +596,26 @@ void GCS::move_file(const URI& old_uri, const URI& new_uri) const {
   remove_file(old_uri);
 }
 
+void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
+  throw_if_not_ok(init_client());
+  std::vector<std::string> paths;
+  throw_if_not_ok(ls(old_uri, &paths));
+  while (!paths.empty()) {
+    std::string filename_abs = paths.front();
+    URI filename_uri = URI(filename_abs);
+    std::string filename = filename_abs.substr(old_uri.to_string().length());
+    paths.erase(paths.begin());
+    if (is_dir(filename_uri)) {
+      std::vector<std::string> children;
+      throw_if_not_ok(ls(filename_uri, &children));
+      paths.insert(paths.end(), children.begin(), children.end());
+    } else {
+      URI new_path = URI(new_uri.to_string() + filename);
+      copy_file(filename_uri, new_path);
+    }
+  }
+}
+
 void GCS::copy_file(const URI& old_uri, const URI& new_uri) const {
   throw_if_not_ok(copy_object(old_uri, new_uri));
 }
