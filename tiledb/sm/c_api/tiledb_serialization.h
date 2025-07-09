@@ -162,6 +162,25 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema(
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
+ * Deserializes an array creation request from the given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer to deserialize from
+ * @param serialization_type Type of serialization to use
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
+ * @param array_schema Will be set to a newly created array schema.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_array_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
+
+/**
  * Serializes the given array open information into the given buffer.
  *
  * @note The caller must free the returned `tiledb_buffer_t`.
