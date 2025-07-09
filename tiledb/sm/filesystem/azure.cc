@@ -273,7 +273,7 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   return *client_;
 }
 
-void Azure::create_container(const URI& uri) const {
+void Azure::create_bucket(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + uri.to_string());
@@ -295,11 +295,11 @@ void Azure::create_container(const URI& uri) const {
   }
 }
 
-void Azure::empty_container(const URI& container) const {
+void Azure::empty_bucket(const URI& container) const {
   remove_dir(container);
 }
 
-void Azure::flush_blob(const URI& uri) {
+void Azure::flush(const URI& uri, bool) {
   const auto& c = client();
   if (!azure_params_.use_block_list_upload_) {
     flush_blob_direct(uri);
@@ -341,9 +341,9 @@ void Azure::flush_blob(const URI& uri) {
     // Alternatively, we could do nothing and let Azure release the
     // uncommited blocks ~7 days later. We chose to delete the blob
     // as a best-effort operation. We are intentionally ignoring any
-    // errors thrown by `remove_blob`.
+    // errors thrown by `remove_file`.
     try {
-      remove_blob(uri);
+      remove_file(uri);
     } catch (...) {
     }
 
@@ -473,7 +473,7 @@ bool Azure::is_dir(const URI& uri) const {
   return (bool)paths.size();
 }
 
-bool Azure::is_blob(const URI& uri) const {
+bool Azure::is_file(const URI& uri) const {
   auto [container_name, blob_path] = parse_azure_uri(uri);
   const auto& c = client();
   try {
@@ -521,6 +521,10 @@ std::vector<std::string> Azure::ls(
     paths.emplace_back(fs.path().native());
   }
   return paths;
+}
+
+std::vector<directory_entry> Azure::ls_with_sizes(const URI& uri) const {
+  return ls_with_sizes(uri, "/", -1);
 }
 
 std::vector<directory_entry> Azure::ls_with_sizes(
@@ -572,12 +576,12 @@ std::vector<directory_entry> Azure::ls_with_sizes(
   return entries;
 }
 
-void Azure::move_object(const URI& old_uri, const URI& new_uri) {
-  copy_blob(old_uri, new_uri);
-  remove_blob(old_uri);
+void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
+  copy_file(old_uri, new_uri);
+  remove_file(old_uri);
 }
 
-void Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
+void Azure::copy_file(const URI& old_uri, const URI& new_uri) const {
   auto& c = client();
   if (!old_uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + old_uri.to_string());
@@ -603,16 +607,16 @@ void Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
   }
 }
 
-void Azure::move_dir(const URI& old_uri, const URI& new_uri) {
+void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
   std::vector<std::string> paths = ls(old_uri, "");
   for (const auto& path : paths) {
     const std::string suffix = path.substr(old_uri.to_string().size());
     const URI new_path = new_uri.join_path(suffix);
-    move_object(URI(path), new_path);
+    move_file(URI(path), new_path);
   }
 }
 
-uint64_t Azure::blob_size(const URI& uri) const {
+uint64_t Azure::file_size(const URI& uri) const {
   auto& c = client();
   if (!uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + uri.to_string());
@@ -630,7 +634,7 @@ uint64_t Azure::blob_size(const URI& uri) const {
   }
 }
 
-Status Azure::read(
+Status Azure::read_impl(
     const URI& uri,
     const off_t offset,
     void* const buffer,
@@ -672,11 +676,11 @@ Status Azure::read(
   return Status::Ok();
 }
 
-void Azure::remove_container(const URI& uri) const {
+void Azure::remove_bucket(const URI& uri) const {
   auto& c = client();
 
   // Empty container
-  empty_container(uri);
+  empty_bucket(uri);
   auto [container_name, blob_path] = parse_azure_uri(uri);
   bool deleted;
   std::string error_message = "";
@@ -693,7 +697,7 @@ void Azure::remove_container(const URI& uri) const {
   }
 }
 
-void Azure::remove_blob(const URI& uri) const {
+void Azure::remove_file(const URI& uri) const {
   auto& c = client();
   auto [container_name, blob_path] = parse_azure_uri(uri);
   bool deleted;
@@ -716,7 +720,7 @@ void Azure::remove_blob(const URI& uri) const {
 void Azure::remove_dir(const URI& uri) const {
   std::vector<std::string> paths = ls(uri, "");
   throw_if_not_ok(parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
-    remove_blob(URI(paths[i]));
+    remove_file(URI(paths[i]));
     return Status::Ok();
   }));
 }
@@ -752,7 +756,7 @@ void Azure::touch(const URI& uri) const {
 }
 
 void Azure::write(
-    const URI& uri, const void* const buffer, const uint64_t length) {
+    const URI& uri, const void* const buffer, const uint64_t length, bool) {
   auto write_cache_max_size = azure_params_.write_cache_max_size_;
   if (!uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + uri.to_string());
@@ -880,8 +884,8 @@ void Azure::write_blocks(
     auto state_iter = block_list_upload_states_.find(uri.to_string());
     if (state_iter == block_list_upload_states_.end()) {
       // Delete file if it exists (overwrite).
-      if (is_blob(uri)) {
-        remove_blob(uri);
+      if (is_file(uri)) {
+        remove_file(uri);
       }
 
       // Instantiate the new state.

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
@@ -257,7 +258,14 @@ class AzureScanner : public LsScanner<F, D> {
   LsObjects blobs_;
 };
 
-class Azure {
+/**
+ * @note in Azure, the concept of "buckets" are truly called "containers".
+ * The virtual filesystem's base class may view a `directory` and `bucket`
+ * as the same. It may also view an Azure `blob` and traditional `file` as the
+ * same. All internal methods have been renamed to use the "bucket" and "file"
+ * verbiage in compliance with the FilesystemBase class.
+ */
+class Azure : FilesystemBase {
   template <FilePredicate, DirectoryPredicate>
   friend class AzureScanner;
 
@@ -292,17 +300,18 @@ class Azure {
    *
    * @param container The name of the container to be created.
    */
-  void create_container(const URI& container) const;
+  void create_bucket(const URI& container) const;
 
   /** Removes the contents of an Azure container. */
-  void empty_container(const URI& container) const;
+  void empty_bucket(const URI& container) const;
 
   /**
-   * Flushes an blob to Azure, finalizing the upload.
+   * Flushes a blob to Azure, finalizing the upload.
    *
    * @param uri The URI of the blob to be flushed.
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush_blob(const URI& uri);
+  void flush(const URI& uri, bool finalize);
 
   /**
    * Check if a container is empty.
@@ -345,7 +354,7 @@ class Azure {
    * @param uri The URI of the object to be checked.
    * @return `true` if `uri` is an existing blob, `false` otherwise.
    */
-  bool is_blob(const URI& uri) const;
+  bool is_file(const URI& uri) const;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -375,7 +384,14 @@ class Azure {
       int max_paths = -1) const;
 
   /**
+   * Lists objects and object information that start with `uri`.
    *
+   * @param uri The prefix uri.
+   * @return All entries that are contained in the prefix URI.
+   */
+  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& uri) const;
+
+  /**
    * Lists objects and object information that start with `uri`.
    *
    * @param uri The prefix URI.
@@ -384,9 +400,7 @@ class Azure {
    * @return A list of directory_entry objects
    */
   std::vector<filesystem::directory_entry> ls_with_sizes(
-      const URI& uri,
-      const std::string& delimiter = "/",
-      int max_paths = -1) const;
+      const URI& uri, const std::string& delimiter, int max_paths) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
@@ -438,12 +452,39 @@ class Azure {
   }
 
   /**
+   * Creates a directory.
+   *
+   * @param uri The directory's URI.
+   */
+  void create_dir(const URI&) const {
+    // No-op. Stub function for other filesystems.
+  }
+
+  /**
+   * Copies the directory at 'old_uri' to `new_uri`.
+   *
+   * @param old_uri The directory's current URI.
+   * @param new_uri The directory's URI to move to.
+   */
+  void copy_dir(const URI&, const URI&) const {
+    // No-op. Stub function for other filesystems.
+  }
+
+  /**
+   * Copies the blob at 'old_uri' to `new_uri`.
+   *
+   * @param old_uri The blob's current URI.
+   * @param new_uri The blob's URI to move to.
+   */
+  void copy_file(const URI& old_uri, const URI& new_uri) const;
+
+  /**
    * Renames an object.
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_object(const URI& old_uri, const URI& new_uri);
+  void move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -454,7 +495,7 @@ class Azure {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri);
+  void move_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Returns the size of the input blob with a given URI in bytes.
@@ -462,7 +503,7 @@ class Azure {
    * @param uri The URI of the blob.
    * @return The size of the input blob, in bytes
    */
-  uint64_t blob_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const;
 
   /**
    * Reads data from an object into a buffer.
@@ -475,7 +516,7 @@ class Azure {
    * @param length_returned Returns the total length read into `buffer`.
    * @return Status
    */
-  Status read(
+  Status read_impl(
       const URI& uri,
       off_t offset,
       void* buffer,
@@ -484,18 +525,31 @@ class Azure {
       uint64_t* length_returned) const;
 
   /**
+   * Reads data from an object into a buffer.
+   *
+   * @param uri The URI of the object to be read.
+   * @param offset The offset in the object from which the read will start.
+   * @param buffer The buffer into which the data will be written.
+   * @param length The size of the data to be read from the object.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   */
+  void read(const URI&, uint64_t, void*, uint64_t, bool) const {
+    // #TODO. Currently a no-op until read refactor.
+  }
+
+  /**
    * Deletes a container.
    *
    * @param uri The URI of the container to be deleted.
    */
-  void remove_container(const URI& uri) const;
+  void remove_bucket(const URI& uri) const;
 
   /**
    * Deletes an blob with a given URI.
    *
    * @param uri The URI of the blob to be deleted.
    */
-  void remove_blob(const URI& uri) const;
+  void remove_file(const URI& uri) const;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -537,8 +591,13 @@ class Azure {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
+   * @param remote_global_order_write Unused flag. Reserved for S3 objects only.
    */
-  void write(const URI& uri, const void* buffer, uint64_t length);
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t length,
+      bool remote_global_order_write);
 
   /**
    * Initializes the Azure blob service client and returns a reference to it.
@@ -772,14 +831,6 @@ class Azure {
    * @return A tuple of the container name and blob path.
    */
   static std::tuple<std::string, std::string> parse_azure_uri(const URI& uri);
-
-  /**
-   * Copies the blob at 'old_uri' to `new_uri`.
-   *
-   * @param old_uri The blob's current URI.
-   * @param new_uri The blob's URI to move to.
-   */
-  void copy_blob(const URI& old_uri, const URI& new_uri);
 
   /**
    * Removes a leading slash from 'path' if it exists.

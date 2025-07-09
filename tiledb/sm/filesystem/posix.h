@@ -197,7 +197,7 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * @param uri The URI of the file.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool unused) override;
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Syncs a file or directory.
