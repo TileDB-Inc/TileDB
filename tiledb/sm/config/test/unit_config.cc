@@ -34,6 +34,9 @@
 #include <test/support/tdb_catch.h>
 #include "../../misc/parse_argument.h"
 #include "../config.h"
+#include "tiledb/sm/rest/rest_profile.h"
+
+#include "test/support/src/temporary_local_directory.h"
 
 using tiledb::sm::Config;
 using tiledb::sm::utils::parse::convert;
@@ -110,4 +113,79 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   std::string expected_value = GENERATE("test", "true", "0", "1.5");
   CHECK(c.set(key, expected_value).ok());
   TestConfig<std::string>::check_expected(expected_value, c, key);
+}
+
+TEST_CASE("Config::set_profile - failures", "[config]") {
+  Config c{};
+  // Check that setting a profile without parameters throws an exception
+  CHECK_THROWS(c.set_profile());
+
+  std::string profile_name = "test_profile";
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  std::string profile_dir(tempdir_.path());
+  // Set a profile that does not exist. This will throw an exception.
+  CHECK_THROWS(c.set_profile(profile_name, profile_dir).ok());
+}
+
+TEST_CASE("Config::set_params - set and unset", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"the_value"};
+
+  // Set the parameter
+  CHECK(c.set(key, value).ok());
+  auto set_params = c.set_params();
+  CHECK(set_params.find(key) != set_params.end());
+
+  // Unset the parameter
+  CHECK(c.unset(key).ok());
+  set_params = c.set_params();
+  CHECK(set_params.find(key) == set_params.end());
+}
+
+TEST_CASE("Config::set_profile - found", "[config]") {
+  Config c{};
+  CHECK(c.set("rest.server_address", "http://test_server:8080").ok());
+
+  // Create a profile
+  std::string profile_name = "test_profile";
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  std::string profile_dir(tempdir_.path());
+  auto profile = tiledb::sm::RestProfile(profile_name, profile_dir);
+
+  // Set some parameters in the profile
+  profile.set_param("rest.username", "test_user");
+  profile.set_param("rest.password", "test_password");
+
+  // Save the profile
+  profile.save_to_file();
+
+  // Set the profile in the config
+  CHECK(c.set_profile(profile_name, profile_dir).ok());
+
+  // Check that the config has the profile's parameters
+  bool found;
+  auto username = c.get("rest.username", &found);
+  REQUIRE(found);
+  CHECK(username == "test_user");
+
+  // Check that we can retrieve the config's parameters unrelated to the profile
+  auto server_address = c.get("rest.server_address", &found);
+  REQUIRE(found);
+  CHECK(server_address == "http://test_server:8080");
+
+  // In case that the config has alread been set with a different
+  // `rest.username`
+  CHECK(c.set("rest.username", "another_user").ok());
+  // Check that the config's parameters have priority over the profile's
+  // parameters
+  auto another_username = c.get("rest.username", &found);
+  REQUIRE(found);
+  CHECK(another_username == "another_user");
+
+  // Check that removing the config's parameter restores the profile's parameter
+  CHECK(c.unset("rest.username").ok());
+  auto restored_username = c.get("rest.username", &found);
+  REQUIRE(found);
+  CHECK(restored_username == "test_user");
 }

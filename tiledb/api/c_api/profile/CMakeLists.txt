@@ -1,9 +1,9 @@
 #
-# tiledb/sm/config/test/CMakeLists.txt
+# tiledb/api/c_api/profile/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +23,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-include(unit_test)
 
-commence(unit_test config)
-    this_target_object_libraries(config)
-    this_target_sources(unit_config.cc)
-    this_target_link_libraries(tiledb_test_support_lib)
-conclude(unit_test)
+include(common NO_POLICY_SCOPE)
+include(object_library)
+
+list(APPEND SOURCES
+  profile_api.cc
+)
+gather_sources(${SOURCES})
+
+commence(object_library capi_profile)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(rest_profile capi_context_stub)
+conclude(object_library)
+
+add_test_subdirectory()
