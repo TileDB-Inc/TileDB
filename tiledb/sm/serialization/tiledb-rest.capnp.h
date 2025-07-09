@@ -3187,7 +3187,8 @@ class ArrayCreateRequest::Reader {
   inline ::capnp::Text::Reader getUri() const;
 
   inline bool hasSchema() const;
-  inline ::capnp::Data::Reader getSchema() const;
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader getSchema()
+      const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -3236,11 +3237,14 @@ class ArrayCreateRequest::Builder {
   inline ::capnp::Orphan<::capnp::Text> disownUri();
 
   inline bool hasSchema();
-  inline ::capnp::Data::Builder getSchema();
-  inline void setSchema(::capnp::Data::Reader value);
-  inline ::capnp::Data::Builder initSchema(unsigned int size);
-  inline void adoptSchema(::capnp::Orphan<::capnp::Data>&& value);
-  inline ::capnp::Orphan<::capnp::Data> disownSchema();
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder getSchema();
+  inline void setSchema(
+      ::tiledb::sm::serialization::capnp::ArraySchema::Reader value);
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder initSchema();
+  inline void adoptSchema(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
+  disownSchema();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -3262,6 +3266,8 @@ class ArrayCreateRequest::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
+
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline getSchema();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -19016,36 +19022,49 @@ inline bool ArrayCreateRequest::Builder::hasSchema() {
   return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::capnp::Data::Reader ArrayCreateRequest::Reader::getSchema() const {
-  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
-      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader
+ArrayCreateRequest::Reader::getSchema() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline ::capnp::Data::Builder ArrayCreateRequest::Builder::getSchema() {
-  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+ArrayCreateRequest::Builder::getSchema() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline
+ArrayCreateRequest::Pipeline::getSchema() {
+  return ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline(
+      _typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
 inline void ArrayCreateRequest::Builder::setSchema(
-    ::capnp::Data::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Data>::set(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-      value);
+    ::tiledb::sm::serialization::capnp::ArraySchema::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
+      set(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
 }
-inline ::capnp::Data::Builder ArrayCreateRequest::Builder::initSchema(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Data>::init(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-      size);
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+ArrayCreateRequest::Builder::initSchema() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline void ArrayCreateRequest::Builder::adoptSchema(
-    ::capnp::Orphan<::capnp::Data>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Data>::adopt(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-      kj::mv(value));
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::Data>
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
 ArrayCreateRequest::Builder::disownSchema() {
-  return ::capnp::_::PointerHelpers<::capnp::Data>::disown(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline ::uint32_t DimensionLabel::Reader::getDimensionId() const {
