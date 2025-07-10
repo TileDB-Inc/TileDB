@@ -250,7 +250,7 @@ class Win : FilesystemBase, LocalFilesystem {
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead) const;
+      bool use_read_ahead = false) const;
 
   /**
    * Flushes a file or directory.
@@ -282,7 +282,7 @@ class Win : FilesystemBase, LocalFilesystem {
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write);
+      bool remote_global_order_write = false);
 
  private:
   /**
