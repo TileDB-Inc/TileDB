@@ -594,7 +594,8 @@ const std::set<std::string>& ArrayDirectory::dir_names() {
 std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
   auto dir_entries = resources_.get().vfs().ls_with_sizes(uri);
   auto& dirs = dir_names();
-  std::vector<URI> uris(dir_entries.size());
+  std::vector<URI> uris;
+  uris.reserve(dir_entries.size());
 
   for (auto entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
