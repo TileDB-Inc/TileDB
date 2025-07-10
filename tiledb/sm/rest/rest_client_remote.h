@@ -227,7 +227,7 @@ class RestClientRemote : public RestClient {
   /**
    * Post an array creation request to the rest server.
    *
-   * @param uri Storage URI to use for the created array
+   * @param uri URI of array being created
    * @param array_schema Array schema to use for the created array
    */
   void post_array_create_to_rest(

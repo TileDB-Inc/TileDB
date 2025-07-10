@@ -836,16 +836,10 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
-    const bool client_side,
-    std::optional<std::string> storage_uri) {
+    const bool client_side) {
   // Only set the URI if client side
-  if (client_side) {
-    if (storage_uri.has_value()) {
-      array_schema_builder->setUri(storage_uri.value());
-    } else {
-      array_schema_builder->setUri(array_schema.array_uri().to_string());
-    }
-  }
+  if (client_side)
+    array_schema_builder->setUri(array_schema.array_uri().to_string());
 
   array_schema_builder->setName(array_schema.name());
   auto v = kj::heapArray<int32_t>(1);
@@ -1196,14 +1190,13 @@ Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    const bool client_side,
-    std::optional<std::string> storage_uri) {
+    const bool client_side) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArraySchema::Builder arraySchemaBuilder =
         message.initRoot<capnp::ArraySchema>();
-    RETURN_NOT_OK(array_schema_to_capnp(
-        array_schema, &arraySchemaBuilder, client_side, storage_uri));
+    RETURN_NOT_OK(
+        array_schema_to_capnp(array_schema, &arraySchemaBuilder, client_side));
 
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -1283,18 +1276,17 @@ shared_ptr<ArraySchema> array_schema_deserialize(
 void array_create_to_capnp(
     capnp::ArrayCreateRequest::Builder* array_create_builder,
     const ArraySchema& array_schema,
-    std::string storage_uri) {
+    const std::string& storage_uri) {
   array_create_builder->setUri(storage_uri);
   auto schema_builder = array_create_builder->initSchema();
-  throw_if_not_ok(array_schema_to_capnp(
-      array_schema, &schema_builder, true, {storage_uri}));
+  throw_if_not_ok(array_schema_to_capnp(array_schema, &schema_builder, true));
 }
 
 void array_create_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    std::string storage_uri) {
+    const std::string& storage_uri) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArrayCreateRequest::Builder arrayCreateBuilder =
@@ -1331,20 +1323,21 @@ void array_create_serialize(
   }
 }
 
-shared_ptr<ArraySchema> array_create_from_capnp(
+std::tuple<std::string, shared_ptr<ArraySchema>> array_create_from_capnp(
     capnp::ArrayCreateRequest::Reader& array_create_reader,
     shared_ptr<MemoryTracker> memory_tracker) {
+  std::string storage_uri = "";
   if (array_create_reader.hasUri()) {
-    return array_schema_from_capnp(
-        array_create_reader.getSchema(),
-        URI(array_create_reader.getUri().cStr()),
-        memory_tracker);
+    storage_uri = array_create_reader.getUri().cStr();
   }
-  return array_schema_from_capnp(
-      array_create_reader.getSchema(), URI(), memory_tracker);
+
+  return {
+      storage_uri,
+      array_schema_from_capnp(
+          array_create_reader.getSchema(), URI(), memory_tracker)};
 }
 
-shared_ptr<ArraySchema> array_create_deserialize(
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -1363,10 +1356,9 @@ shared_ptr<ArraySchema> array_create_deserialize(
       case SerializationType::CAPNP: {
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(
-            kj::arrayPtr(
-                reinterpret_cast<const ::capnp::word*>(mBytes),
-                serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
         array_create_reader = reader.getRoot<capnp::ArrayCreateRequest>();
         return array_create_from_capnp(array_create_reader, memory_tracker);
       }
@@ -1978,11 +1970,7 @@ deserialize_load_array_schema_response(
 #else
 
 Status array_schema_serialize(
-    const ArraySchema&,
-    SerializationType,
-    SerializationBuffer&,
-    const bool,
-    std::optional<std::string>) {
+    const ArraySchema&, SerializationType, SerializationBuffer&, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -1992,7 +1980,7 @@ void array_create_serialize(
   throw ArraySchemaSerializationDisabledException();
 }
 
-shared_ptr<ArraySchema> array_create_deserialize(
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {

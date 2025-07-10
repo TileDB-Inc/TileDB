@@ -290,8 +290,6 @@ Status RestClientRemote::post_array_schema_to_rest(
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
 
-  URI::RESTURIComponents rest_uri;
-  RETURN_NOT_OK(uri.get_rest_components(rest_legacy(), &rest_uri));
   RETURN_NOT_OK(serialization::array_schema_serialize(
       array_schema, serialization_type_, buff, false));
 
@@ -305,6 +303,8 @@ Status RestClientRemote::post_array_schema_to_rest(
 
   // Init curl and form the URL
   Curl curlc(logger_);
+  URI::RESTURIComponents rest_uri;
+  RETURN_NOT_OK(uri.get_rest_components(rest_legacy(), &rest_uri));
   const std::string cache_key =
       rest_uri.server_namespace + ":" + rest_uri.server_path;
   // We don't want to cache the URI used for array creation as it will

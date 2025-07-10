@@ -107,14 +107,12 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
  * @param array_schema_builder Cap'n proto class
  * @param client_side indicate if client or server side. If server side we won't
  * serialize the array URI
- * @param storage_uri optional storage URI to use when creating an array
  * @return Status
  */
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
-    const bool client_side,
-    std::optional<std::string> storage_uri = std::nullopt);
+    const bool client_side);
 
 /**
  * Deserialize an array schema from a cap'n proto object
@@ -139,7 +137,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
 void array_create_to_capnp(
     capnp::ArrayCreateRequest::Builder* array_create_builder,
     const ArraySchema& array_schema,
-    std::string storage_uri);
+    const std::string& storage_uri);
 
 /**
  * Serialize a dimension label to cap'n proto object
@@ -173,15 +171,13 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
  * @param serialized_buffer buffer to store serialized bytes in
  * @param client_side indicate if client or server side. If server side we won't
  * serialize the array URI
- * @param storage_uri optional storage URI to use when creating an array
  * @return
  */
 Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    const bool client_side,
-    std::optional<std::string> storage_uri = std::nullopt);
+    const bool client_side);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
@@ -200,7 +196,7 @@ void array_create_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    std::string storage_uri);
+    const std::string& storage_uri);
 
 /**
  * Deserialize an ArrayCreateRequest
@@ -209,7 +205,7 @@ void array_create_serialize(
  * @param serialized_buffer Buffer to read serialized bytes from
  * @param memory_tracker The MemoryTracker to use for deserialization.
  */
-shared_ptr<ArraySchema> array_create_deserialize(
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
