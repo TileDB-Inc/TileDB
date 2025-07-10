@@ -154,12 +154,6 @@ struct GCSParameters {
   uint64_t max_direct_upload_size_;
 };
 
-/**
- * @note in GCS, the concept of "files" are truly called "objects".
- * The virtual filesystem's base class may view a these two as the same.
- * All internal methods have been renamed to use the "file" verbiage in
- * compliance with the FilesystemBase class.
- */
 class GCS : FilesystemBase {
  public:
   /* ********************************* */

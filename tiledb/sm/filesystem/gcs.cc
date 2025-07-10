@@ -598,21 +598,14 @@ void GCS::move_file(const URI& old_uri, const URI& new_uri) const {
 
 void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   throw_if_not_ok(init_client());
-  std::vector<std::string> paths;
-  throw_if_not_ok(ls(old_uri, &paths));
+  auto paths = ls_filtered(old_uri, accept_all_files, accept_all_dirs, true);
   while (!paths.empty()) {
-    std::string filename_abs = paths.front();
+    std::string filename_abs = std::get<0>(paths.front());
     URI filename_uri = URI(filename_abs);
     std::string filename = filename_abs.substr(old_uri.to_string().length());
     paths.erase(paths.begin());
-    if (is_dir(filename_uri)) {
-      std::vector<std::string> children;
-      throw_if_not_ok(ls(filename_uri, &children));
-      paths.insert(paths.end(), children.begin(), children.end());
-    } else {
-      URI new_path = URI(new_uri.to_string() + filename);
-      copy_file(filename_uri, new_path);
-    }
+    URI new_path = URI(new_uri.to_string() + filename);
+    copy_file(filename_uri, new_path);
   }
 }
 
