@@ -42,20 +42,27 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 #include "tiledb/sm/filesystem/local.h"
 #include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-
-namespace common::filesystem {
+namespace tiledb::common::filesystem {
 class directory_entry;
 }
 
-namespace sm {
+namespace tiledb::sm {
 
 class URI;
+
+/** Class for Windows status exceptions. */
+class WindowsException : public StatusException {
+ public:
+  explicit WindowsException(const std::string& msg)
+      : StatusException("Windows", msg) {
+  }
+};
 
 /** Typedef this here so we don't have to include Windows.h */
 typedef void* HANDLE;
@@ -63,8 +70,31 @@ typedef void* HANDLE;
 /**
  * This class implements Windows filesystem functions.
  */
-class Win : LocalFilesystem {
+class Win : FilesystemBase, LocalFilesystem {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Default constructor. */
+  Win()
+      : Win(Config()) {
+  }
+
+  /**
+   * Constructor.
+   *
+   * @param config Configuration parameters.
+   */
+  explicit Win(const Config& config);
+
+  /** Destructor. */
+  ~Win() = default;
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
   /**
    * Returns the absolute (string) path of the input in the
    * form of a Windows path.
@@ -74,18 +104,16 @@ class Win : LocalFilesystem {
   /**
    * Creates a new directory.
    *
-   * @param dir The name of the directory to be created.
-   * @return Status
+   * @param uri The URI of the directory to be created.
    */
-  Status create_dir(const std::string& path) const;
+  void create_dir(const URI& uri) const;
 
   /**
    * Creates an empty file.
    *
-   * @param filename The name of the file to be created.
-   * @return Status
+   * @param uri The uri of the file to be created.
    */
-  Status touch(const std::string& filename) const;
+  void touch(const URI& uri) const;
 
   /**
    * Returns the directory where the program is executed.
@@ -99,10 +127,9 @@ class Win : LocalFilesystem {
   /**
    * Removes a given directory recursively.
    *
-   * @param path The path of the directory to be deleted.
-   * @return Status
+   * @param uri The uri of the directory to be deleted.
    */
-  Status remove_dir(const std::string& path) const;
+  void remove_dir(const URI& uri) const;
 
   /**
    * Removes a given empty directory.
@@ -115,43 +142,33 @@ class Win : LocalFilesystem {
   /**
    * Removes a given path.
    *
-   * @param path The path of the file to be deleted.
-   * @return Status
+   * @param uri The uri of the file to be deleted.
    */
-  Status remove_file(const std::string& path) const;
+  void remove_file(const URI& uri) const;
 
   /**
    * Returns the size of the input file.
    *
-   * @param path The name of the file whose size is to be retrieved.
-   * @param nbytes Pointer to a value
-   * @return Status
+   * @param uri The uri of the file whose size is to be retrieved.
+   * @return The size of the input file.
    */
-  Status file_size(const std::string& path, uint64_t* size) const;
-
-  /**
-   * Initialize this instance with the given parameters.
-   *
-   * @param config Config from the parent VFS instance.
-   * @return Status
-   */
-  Status init(const Config& config);
+  uint64_t file_size(const URI& uri) const;
 
   /**
    * Checks if the input is an existing directory.
    *
-   * @param dir The directory to be checked.
-   * @return *True* if *dir* is an existing directory, and *False* otherwise.
+   * @param uri The uri of the directory to be checked.
+   * @return `true` if `dir` is an existing directory, `false` otherwise.
    */
-  bool is_dir(const std::string& path) const;
+  bool is_dir(const URI& uri) const;
 
   /**
    * Checks if the input is an existing file.
    *
-   * @param file The file to be checked.
-   * @return *True* if *file* is an existing file, and *false* otherwise.
+   * @param uri The uri of the file to be checked.
+   * @return `true` if `file` is an existing file, `false` otherwise.
    */
-  bool is_file(const std::string& path) const;
+  bool is_file(const URI& uri) const;
 
   /**
    *
@@ -200,25 +217,60 @@ class Win : LocalFilesystem {
    *
    * @param old_path The old path.
    * @param new_path The new path.
-   * @return Status
    */
-  Status move_path(
-      const std::string& old_path, const std::string& new_path) const;
+  void move_path(const URI& old_path, const URI& new_path) const;
+
+  /**
+   * Renames a directory.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void move_dir(const URI& old_uri, const URI& new_uri) const;
+
+  /**
+   * Renames a file.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void move_file(const URI& old_uri, const URI& new_uri) const;
+
+  /**
+   * Copies a directory.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void copy_dir(const URI&, const URI&) const {
+    // Currently a no-op for Windows, stub function for other filesystems.
+  }
+
+  /**
+   * Copies a file.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void copy_file(const URI&, const URI&) const {
+    // Currently a no-op for Windows, stub function for other filesystems.
+  }
 
   /**
    * Reads data from a file into a buffer.
    *
-   * @param path The name of the file.
+   * @param uri The uri of the file.
    * @param offset The offset in the file from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param nbytes The size of the data to be read from the file.
-   * @return Status.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
-  Status read(
-      const std::string& path,
+  void read(
+      const URI& uri,
       uint64_t offset,
       void* buffer,
-      uint64_t nbytes) const;
+      uint64_t nbytes,
+      bool use_read_ahead) const;
 
   /**
    * Flushes a file or directory.
@@ -231,10 +283,9 @@ class Win : LocalFilesystem {
   /**
    * Syncs a file or directory.
    *
-   * @param path The name of the file.
-   * @return Status
+   * @param uri The uri of the file.
    */
-  Status sync(const std::string& path) const;
+  void sync(const URI& uri) const;
 
   /**
    * Writes the input buffer to a file.
@@ -242,13 +293,16 @@ class Win : LocalFilesystem {
    * If the file exists than it is created.
    * If the file does not exist than it is appended to.
    *
-   * @param path The name of the file.
+   * @param uri The uri of the file.
    * @param buffer The input buffer.
    * @param buffer_size The size of the input buffer.
-   * @return Status
+   * @param remote_global_order_write Unused flag. Reserved for S3 objects only.
    */
-  Status write(
-      const std::string& path, const void* buffer, uint64_t buffer_size) const;
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write);
 
  private:
   /** Config parameters from parent VFS instance. */
@@ -279,8 +333,7 @@ class Win : LocalFilesystem {
       uint64_t buffer_size);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // _WIN32
 

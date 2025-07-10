@@ -93,7 +93,7 @@ VFS::VFS(
 #endif
 
 #ifdef _WIN32
-  throw_if_not_ok(win_.init(config_));
+  win_ = Win(config_);
 #else
   posix_ = Posix(config_);
 #endif
@@ -148,7 +148,8 @@ Status VFS::create_dir(const URI& uri) const {
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.create_dir(uri.to_path());
+    win_.create_dir(uri);
+    return Status::Ok();
 #else
     posix_.create_dir(uri);
     return Status::Ok();
@@ -218,7 +219,8 @@ Status VFS::touch(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "touch");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.touch(uri.to_path());
+    win_.touch(uri);
+    return Status::Ok();
 #else
     posix_.touch(uri);
     return Status::Ok();
@@ -379,7 +381,8 @@ Status VFS::remove_dir(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "remove_dir");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.remove_dir(uri.to_path());
+    win_.remove_dir(uri);
+    return Status::Ok();
 #else
     posix_.remove_dir(uri);
 #endif
@@ -438,7 +441,8 @@ Status VFS::remove_file(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "remove_file");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.remove_file(uri.to_path());
+    win_.remove_file(uri);
+    return Status::Ok();
 #else
     posix_.remove_file(uri);
     return Status::Ok();
@@ -513,9 +517,7 @@ uint64_t VFS::file_size(const URI& uri) const {
   stats_->add_counter("file_size_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
-    uint64_t size;
-    throw_if_not_ok(win_.file_size(uri.to_path(), &size));
-    return size;
+    return win_.file_size(uri);
 #else
     return posix_.file_size(uri);
 #endif
@@ -551,7 +553,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   auto instrument = make_log_duration_instrument(uri, "is_dir");
   if (uri.is_file()) {
 #ifdef _WIN32
-    *is_dir = win_.is_dir(uri.to_path());
+    *is_dir = win_.is_dir(uri);
 #else
     *is_dir = posix_.is_dir(uri);
 #endif
@@ -596,7 +598,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   stats_->add_counter("is_object_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
-    *is_file = win_.is_file(uri.to_path());
+    *is_file = win_.is_file(uri);
 #else
     *is_file = posix_.is_file(uri);
 #endif
@@ -746,7 +748,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
 #ifdef _WIN32
-      return win_.move_path(old_uri.to_path(), new_uri.to_path());
+      win_.move_file(old_uri, new_uri);
+      return Status::Ok();
 #else
       posix_.move_file(old_uri, new_uri);
       return Status::Ok();
@@ -809,7 +812,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
 #ifdef _WIN32
-      return win_.move_path(old_uri.to_path(), new_uri.to_path());
+      win_.move_dir(old_uri, new_uri);
+      return Status::Ok();
 #else
       posix_.move_dir(old_uri, new_uri);
       return Status::Ok();
@@ -1067,7 +1071,8 @@ Status VFS::read_impl(
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.read(uri.to_path(), offset, buffer, nbytes);
+    win_.read(uri, offset, buffer, nbytes, false);
+    return Status::Ok();
 #else
     posix_.read(uri, offset, buffer, nbytes, false);
     return Status::Ok();
@@ -1217,7 +1222,8 @@ Status VFS::sync(const URI& uri) {
   auto instrument = make_log_duration_instrument(uri, "sync");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.sync(uri.to_path());
+    win_.sync(uri);
+    return Status::Ok();
 #else
     posix_.sync(uri);
     return Status::Ok();
@@ -1355,7 +1361,8 @@ Status VFS::write(
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.write(uri.to_path(), buffer, buffer_size);
+    win_.write(uri, buffer, buffer_size, remote_global_order_write);
+    return Status::Ok();
 #else
     posix_.write(uri, buffer, buffer_size, remote_global_order_write);
     return Status::Ok();
