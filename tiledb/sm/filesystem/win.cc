@@ -120,10 +120,6 @@ std::string get_last_error_msg(const std::string_view func_desc) {
 }
 }  // namespace
 
-Win::Win(const Config& config)
-    : config_(config) {
-}
-
 std::string Win::abs_path(const std::string& path) {
   if (path.length() == 0) {
     return current_dir();

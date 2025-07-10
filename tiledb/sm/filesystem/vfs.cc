@@ -92,9 +92,7 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::GCS);
 #endif
 
-#ifdef _WIN32
-  win_ = Win(config_);
-#else
+#ifndef _WIN32
   posix_ = Posix(config_);
 #endif
 

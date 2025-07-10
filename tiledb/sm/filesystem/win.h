@@ -41,7 +41,6 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
 #include "tiledb/sm/filesystem/local.h"
 #include "tiledb/sm/filesystem/ls_scanner.h"
@@ -72,25 +71,6 @@ typedef void* HANDLE;
  */
 class Win : FilesystemBase, LocalFilesystem {
  public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
-  /** Default constructor. */
-  Win()
-      : Win(Config()) {
-  }
-
-  /**
-   * Constructor.
-   *
-   * @param config Configuration parameters.
-   */
-  explicit Win(const Config& config);
-
-  /** Destructor. */
-  ~Win() = default;
-
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -305,9 +285,6 @@ class Win : FilesystemBase, LocalFilesystem {
       bool remote_global_order_write);
 
  private:
-  /** Config parameters from parent VFS instance. */
-  Config config_;
-
   /**
    * Recursively removes the directory at the given path.
    *
