@@ -1323,7 +1323,7 @@ void array_create_serialize(
   }
 }
 
-std::tuple<std::string, shared_ptr<ArraySchema>> array_create_from_capnp(
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_from_capnp(
     capnp::ArrayCreateRequest::Reader& array_create_reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   std::string storage_uri = "";
