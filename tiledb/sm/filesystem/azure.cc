@@ -562,13 +562,9 @@ std::vector<directory_entry> Azure::ls_with_sizes(
 
 void Azure::copy_dir(const URI& old_uri, const URI& new_uri) const {
   auto paths = ls(old_uri, "");
-  while (!paths.empty()) {
-    std::string filename_abs = paths.front();
-    URI filename_uri = URI(filename_abs);
-    std::string filename = filename_abs.substr(old_uri.to_string().length());
-    paths.erase(paths.begin());
-    URI new_path = URI(new_uri.to_string() + filename);
-    copy_file(filename_uri, new_path);
+  for (auto& path : paths) {
+    std::string filename = path.substr(old_uri.to_string().length());
+    copy_file(URI(path), URI(new_uri.to_string() + filename));
   }
 }
 
