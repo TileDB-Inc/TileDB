@@ -205,13 +205,14 @@ class FilesystemBase {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @param remote_global_order_write Remote global order write.
+   * @param remote_global_order_write For S3 objects only. If `true`, performs
+   * a remote global order write.
    */
   virtual void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write) = 0;
+      [[maybe_unused]] bool remote_global_order_write = false) = 0;
 
   /**
    * Checks if an object store bucket exists.
