@@ -238,6 +238,7 @@ TEMPLATE_LIST_TEST_CASE(
    */
   auto dir1 = URI(path.to_string() + "dir1/");
   auto subdir = URI(dir1.to_string() + "subdir/");
+  auto subdir2 = URI(dir1.to_string() + "subdir2/subdir3");
   auto file1 = URI(subdir.to_string() + "file1");
   auto file2 = URI(subdir.to_string() + "file2");
   auto file3 = URI(dir1.to_string() + "file3");
@@ -245,6 +246,7 @@ TEMPLATE_LIST_TEST_CASE(
   auto file5 = URI(path.to_string() + "file5");
   REQUIRE_NOTHROW(vfs.create_dir(URI(dir1)));
   REQUIRE_NOTHROW(vfs.create_dir(URI(subdir)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(subdir2)));
   REQUIRE_NOTHROW(vfs.touch(file1));
   REQUIRE_NOTHROW(vfs.touch(file2));
   REQUIRE_NOTHROW(vfs.touch(file3));
