@@ -178,7 +178,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_create(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    const char** storage_uri,
+    tiledb_string_t** storage_uri,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
