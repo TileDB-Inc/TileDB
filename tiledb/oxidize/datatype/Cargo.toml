@@ -1,0 +1,8 @@
+[package]
+name = "tiledb-datatype"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+tiledb-cxx-interface = { workspace = true }

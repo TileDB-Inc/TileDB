@@ -1,0 +1,18 @@
+[package]
+name = "tiledb-arrow"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+arrow = { workspace = true }
+cxx = { workspace = true }
+iterator-ext = { workspace = true }
+itertools = { workspace = true }
+num-traits = { workspace = true }
+thiserror = { workspace = true }
+tiledb-cxx-interface = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }

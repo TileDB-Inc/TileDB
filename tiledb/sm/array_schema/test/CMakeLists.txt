@@ -41,5 +41,5 @@ commence(unit_test array_schema)
         unit_tile_domain.cc
         unit_current_domain.cc
     )
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
 conclude(unit_test)

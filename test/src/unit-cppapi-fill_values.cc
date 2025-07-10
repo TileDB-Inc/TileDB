@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -480,6 +480,61 @@ TEST_CASE(
          "- Type: INT32\n" + "- Nullable: true\n" + "- Cell val num: 2\n" +
          "- Filters: 0\n" + "- Fill value: -2147483648, -2147483648\n" +
          "- Fill value validity: 0\n";
+  check_dump(a, dump);
+}
+
+TEST_CASE(
+    "C++ API: Test non-printable fill values",
+    "[cppapi][fill-values][non-printable]") {
+  Context ctx;
+
+  // Create an attribute with a non-printable fill value
+  auto a = tiledb::Attribute::create<char>(ctx, "a");
+  char fill_value = '\x08';
+  CHECK_NOTHROW(a.set_fill_value(&fill_value, sizeof(fill_value)));
+
+  // Get the fill value and check it
+  const void* value_ptr;
+  uint64_t value_size;
+  CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size));
+  CHECK(*(const char*)value_ptr == '\x08');
+  CHECK(value_size == sizeof(char));
+
+  // Check dump
+  std::string dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+                     "- Type: STRING_ASCII\n" + "- Nullable: false\n" +
+                     "- Cell val num: 1\n" + "- Filters: 0\n" +
+                     "- Fill value: \\x08\n";
+  check_dump(a, dump);
+
+  // Setting the cell val num, also sets the fill value to a new default
+  CHECK_NOTHROW(a.set_cell_val_num(2));
+  CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size));
+  CHECK(((const char*)value_ptr)[0] == '\x00');
+  CHECK(((const char*)value_ptr)[1] == '\x00');
+  CHECK(value_size == 2 * sizeof(char));
+
+  // Check dump
+  dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+         "- Type: STRING_ASCII\n" + "- Nullable: false\n" +
+         "- Cell val num: 2\n" + "- Filters: 0\n" +
+         "- Fill value: \\x00, \\x00\n";
+  check_dump(a, dump);
+
+  // Set a fill value that is comprised of two non-printable characters
+  char value_2[2] = {'\x01', '\x02'};
+  CHECK_NOTHROW(a.set_fill_value(value_2, sizeof(value_2)));
+  // Get the new value back
+  CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size));
+  CHECK(((const char*)value_ptr)[0] == '\x01');
+  CHECK(((const char*)value_ptr)[1] == '\x02');
+  CHECK(value_size == 2 * sizeof(char));
+
+  // Check dump
+  dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+         "- Type: STRING_ASCII\n" + "- Nullable: false\n" +
+         "- Cell val num: 2\n" + "- Filters: 0\n" +
+         "- Fill value: \\x01, \\x02\n";
   check_dump(a, dump);
 }
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -649,14 +649,14 @@ class S3 : FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
   void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const override;
+      bool use_read_ahead) const override;
 
   /**
    * Deletes a bucket.
@@ -704,7 +704,7 @@ class S3 : FilesystemBase {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @param remote_global_order_write
+   * @param remote_global_order_write Whether to perform a global order write.
    */
   void write(
       const URI& uri,
@@ -744,16 +744,6 @@ class S3 : FilesystemBase {
    */
   void remove_file(const URI& uri) const override {
     throw_if_not_ok(remove_object(uri));
-  }
-
-  /**
-   * Retrieves the size of a file.
-   *
-   * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
-   */
-  void file_size(const URI& uri, uint64_t* size) const override {
-    throw_if_not_ok(object_size(uri, size));
   }
 
   /**
@@ -807,9 +797,10 @@ class S3 : FilesystemBase {
    * Flushes an object to S3, finalizing the multipart upload.
    *
    * @param uri The URI of the object to be flushed.
-   * @return Status
+   * @param finalize If `true`, flushes as a result of a remote global order
+   * write `finalize()` call.
    */
-  Status flush_object(const URI& uri);
+  void flush(const URI& uri, bool finalize = false) override;
 
   /**
    * Flushes an s3 object as a result of a remote global order write
@@ -965,10 +956,9 @@ class S3 : FilesystemBase {
    * Returns the size of the input object with a given URI in bytes.
    *
    * @param uri The URI of the object.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
+   * @return The size of the object in bytes.
    */
-  Status object_size(const URI& uri, uint64_t* nbytes) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Reads data from an object into a buffer.

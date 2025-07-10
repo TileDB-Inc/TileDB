@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -679,7 +679,7 @@ uint64_t FragmentMetadata::fragment_size() const {
   if (meta_file_size == 0) {
     auto meta_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
-    throw_if_not_ok(resources_->vfs().file_size(meta_uri, &meta_file_size));
+    meta_file_size = resources_->vfs().file_size(meta_uri);
   }
   // Validate that the meta_file_size is not zero, either preloaded or fetched
   // above
@@ -829,7 +829,7 @@ void FragmentMetadata::load(
   // Load the metadata file size when we are not reading from consolidated
   // buffer
   if (fragment_metadata_tile == nullptr) {
-    throw_if_not_ok(resources_->vfs().file_size(meta_uri, &meta_file_size_));
+    meta_file_size_ = resources_->vfs().file_size(meta_uri);
   }
 
   // Get fragment name version

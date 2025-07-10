@@ -33,5 +33,5 @@ commence(unit_test capi_array)
     capi_array_schema_stub
     capi_domain_stub
   )
-  this_target_link_libraries(tiledb_test_support_lib)
+  this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
 conclude(unit_test)

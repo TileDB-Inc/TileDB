@@ -46,6 +46,19 @@ static inline bool supported_string_type(Datatype type) {
       type == Datatype::STRING_UTF8);
 }
 
+uint64_t ASTNode::num_children() const {
+  return get_children().size();
+}
+
+const ASTNode* ASTNode::get_child(uint64_t i) const {
+  const auto& children = get_children();
+  if (i < children.size()) {
+    return children[i].get();
+  } else {
+    return nullptr;
+  }
+}
+
 ASTNodeVal::ASTNodeVal(
     const std::string& field_name,
     const void* const data,
@@ -186,7 +199,7 @@ void ASTNodeVal::rewrite_for_schema(const ArraySchema& array_schema) {
     return;
   }
 
-  auto enumeration = array_schema.get_enumeration(enmr_name.value());
+  auto enumeration = array_schema.get_enumeration(enmr_name.value().get());
   if (!enumeration) {
     throw std::logic_error(
         "Missing required enumeration for field '" + field_name_ + "'");
@@ -369,21 +382,20 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
-    const tdb_unique_ptr<ASTNode>& rhs,
-    const QueryConditionCombinationOp& combination_op) {
+    const ASTNode& rhs, const QueryConditionCombinationOp& combination_op) {
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
-  if (!rhs->is_expr()) {
+  if (!rhs.is_expr()) {
     ast_nodes.push_back(clone());
-    ast_nodes.push_back(rhs->clone());
+    ast_nodes.push_back(rhs.clone());
   } else {  // rhs is an expression node.
     // lhs is a simple tree, rhs is a compound tree.
     ast_nodes.push_back(clone());
-    if (rhs->get_combination_op() == combination_op) {
-      for (const auto& elem : rhs->get_children()) {
+    if (rhs.get_combination_op() == combination_op) {
+      for (const auto& elem : rhs.get_children()) {
         ast_nodes.push_back(elem->clone());
       }
     } else {
-      ast_nodes.push_back(rhs->clone());
+      ast_nodes.push_back(rhs.clone());
     }
   }
   return tdb_unique_ptr<ASTNode>(
@@ -548,8 +560,7 @@ Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
-    const tdb_unique_ptr<ASTNode>& rhs,
-    const QueryConditionCombinationOp& combination_op) {
+    const ASTNode& rhs, const QueryConditionCombinationOp& combination_op) {
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
   if (combination_op == combination_op_) {
     for (const auto& child : nodes_) {
@@ -559,12 +570,12 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
     ast_nodes.push_back(clone());
   }
 
-  if (rhs->is_expr() && combination_op == rhs->get_combination_op()) {
-    for (const auto& child : rhs->get_children()) {
+  if (rhs.is_expr() && combination_op == rhs.get_combination_op()) {
+    for (const auto& child : rhs.get_children()) {
       ast_nodes.push_back(child->clone());
     }
   } else {
-    ast_nodes.push_back(rhs->clone());
+    ast_nodes.push_back(rhs.clone());
   }
 
   return tdb_unique_ptr<ASTNode>(

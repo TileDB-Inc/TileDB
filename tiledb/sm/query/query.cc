@@ -825,7 +825,7 @@ Status Query::process() {
       }
       auto enmr_name = attr->get_enumeration_name();
       if (enmr_name.has_value()) {
-        deduped_enmr_names.insert(enmr_name.value());
+        deduped_enmr_names.insert(enmr_name.value().get());
       }
     }
     std::vector<std::string> enmr_names;
@@ -841,6 +841,28 @@ Status Query::process() {
         }));
 
     condition_->rewrite_for_schema(array_schema());
+
+    // experimental feature - maybe evaluate using datafusion
+    const std::string evaluator_param_name = "sm.query.condition_evaluator";
+    const auto evaluator = config_.get<std::string>(evaluator_param_name);
+    if (evaluator == "datafusion") {
+#ifdef HAVE_RUST
+      auto timer_se =
+          stats_->start_timer("query_condition_rewrite_to_datafusion");
+      condition_->rewrite_to_datafusion(array_schema());
+#else
+      std::stringstream ss;
+      ss << "Invalid value for parameter '" << evaluator_param_name
+         << "': 'datafusion' requires build configuration '-DTILEDB_RUST=ON'";
+      throw QueryException(ss.str());
+#endif
+    } else if (evaluator.has_value() && evaluator != "ast") {
+      std::stringstream ss;
+      ss << "Invalid value for parameter '" << evaluator_param_name
+         << "': found '" << evaluator.value()
+         << "', expected 'datafusion' or 'ast'";
+      throw QueryException(ss.str());
+    }
   }
 
   if (type_ == QueryType::READ) {

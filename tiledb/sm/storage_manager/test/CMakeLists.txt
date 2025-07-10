@@ -31,5 +31,5 @@ commence(unit_test static_context)
     target_include_directories(unit_static_context PRIVATE
         "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
     this_target_link_libraries(TILEDB_CORE_OBJECTS)
-    this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib tiledb_core_objects_oxidize)
 conclude(unit_test)

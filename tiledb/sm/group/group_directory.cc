@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -310,8 +310,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto status = parallel_for(&tp_, 0, vac_files.size(), [&](size_t i) {
-    uint64_t size = 0;
-    throw_if_not_ok(vfs_.file_size(vac_files[i], &size));
+    uint64_t size = vfs_.file_size(vac_files[i]);
     std::string names;
     names.resize(size);
     throw_if_not_ok(vfs_.read(vac_files[i], 0, &names[0], size, false));

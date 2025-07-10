@@ -1378,3 +1378,81 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE(
+    "C++ API: Subarray add_range var_size mismatch throws",
+    "[cppapi][subarray][var_size_mismatch]") {
+  // This test checks that adding a fixed-size range to a var-sized dimension
+  // or a var-sized range to a fixed-size dimension throws an error.
+  const std::string var_array_name = "cpp_unit_array_varsize";
+  const std::string fixed_array_name = "cpp_unit_array_fixedsize";
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+
+  // Clean up before test
+  if (vfs.is_dir(var_array_name)) {
+    vfs.remove_dir(var_array_name);
+  }
+  if (vfs.is_dir(fixed_array_name)) {
+    vfs.remove_dir(fixed_array_name);
+  }
+
+  // Create var-sized array
+  {
+    Domain domain(ctx);
+    domain.add_dimension(
+        Dimension::create(ctx, "d", TILEDB_STRING_ASCII, nullptr, nullptr));
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+    tiledb::Array::create(var_array_name, schema);
+  }
+
+  // Try to add fixed-size range to var-sized dim (should throw)
+  {
+    tiledb::Array array(ctx, var_array_name, TILEDB_READ);
+    tiledb::Subarray subarray(ctx, array);
+
+    int fixed_range[2] = {1, 2};
+    CHECK_THROWS(subarray.add_range(0, fixed_range[0], fixed_range[1]));
+
+    std::string s1 = "a";
+    std::string s2 = "abc";
+    // Adding var-size range should not throw
+    CHECK_NOTHROW(subarray.add_range(0, s1, s2));
+
+    array.close();
+  }
+
+  // Create fixed-size array
+  {
+    Domain domain(ctx);
+    domain.add_dimension(Dimension::create<int>(ctx, "d", {0, 100}, 10));
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+    tiledb::Array::create(fixed_array_name, schema);
+  }
+
+  // Try to add var-size range to fixed-size dim (should throw)
+  {
+    tiledb::Array array(ctx, fixed_array_name, TILEDB_READ);
+    tiledb::Subarray subarray(ctx, array);
+
+    std::string s1 = "a";
+    std::string s2 = "z";
+    CHECK_THROWS(subarray.add_range(0, s1, s2));
+
+    int fixed_range[2] = {10, 20};
+    // Adding fixed-size range should not throw
+    CHECK_NOTHROW(subarray.add_range(0, fixed_range[0], fixed_range[1]));
+
+    array.close();
+  }
+
+  // Clean up after test
+  if (vfs.is_dir(var_array_name)) {
+    vfs.remove_dir(var_array_name);
+  }
+  if (vfs.is_dir(fixed_array_name)) {
+    vfs.remove_dir(fixed_array_name);
+  }
+}

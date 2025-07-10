@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
@@ -46,6 +47,11 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
+
+#ifdef HAVE_RUST
+#include "test/support/assert_helpers.h"
+#include "tiledb/oxidize/unit_query_condition.h"
+#endif
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -5082,3 +5088,424 @@ TEST_CASE(
     }
   }
 }
+
+#ifdef HAVE_RUST
+
+namespace tiledb::test::query_condition_datafusion {
+
+/**
+ * Returns a schema for running query condition example tests.
+ *
+ * Dimension "d" INT64
+ * Attribute "a" INT64 NOT NULL
+ * Attribute "v" STRING_ASCII[]
+ * Attribute "f" UINT16[4]
+ * Attribute "ea" INT32:INT64
+ * Attribute "ev" INT16:STRING_ASCII[]
+ */
+std::shared_ptr<ArraySchema> example_schema() {
+  uint64_t d_domain[2] = {0, 10};
+  std::shared_ptr<Dimension> dimension = std::make_shared<Dimension>(
+      "d", Datatype::UINT64, tiledb::test::get_test_memory_tracker());
+  dimension->set_domain(&d_domain[0]);
+
+  std::shared_ptr<ArraySchema> schema = std::make_shared<ArraySchema>(
+      ArrayType::SPARSE, tiledb::test::get_test_memory_tracker());
+  std::shared_ptr<Domain> domain =
+      std::make_shared<Domain>(tiledb::test::get_test_memory_tracker());
+  domain->add_dimension(dimension);
+  schema->set_domain(domain);
+  schema->add_attribute(std::make_shared<Attribute>("a", Datatype::UINT64));
+
+  std::shared_ptr<Attribute> v =
+      std::make_shared<Attribute>("v", Datatype::STRING_ASCII, true);
+  v->set_cell_val_num(constants::var_num);
+  schema->add_attribute(v);
+
+  std::shared_ptr<Attribute> f =
+      std::make_shared<Attribute>("f", Datatype::UINT16, true);
+  f->set_cell_val_num(4);
+  schema->add_attribute(f);
+
+  int64_t interesting_i64s_values[] = {
+      std::numeric_limits<int64_t>::min(),
+      -2,
+      -1,
+      0,
+      1,
+      2,
+      std::numeric_limits<int64_t>::max()};
+  std::shared_ptr<const Enumeration> interesting_i64s = Enumeration::create(
+      "interesting_i64s",
+      Datatype::INT64,
+      1,
+      false,
+      &interesting_i64s_values[0],
+      sizeof(interesting_i64s_values),
+      nullptr,
+      0,
+      tiledb::test::get_test_memory_tracker());
+  schema->add_enumeration(interesting_i64s);
+
+  char interesting_strs_var[] = {"foobarbazquuxgraultgarplygub"};
+  uint64_t interesting_strs_offsets[] = {0, 3, 6, 9, 13, 19, 25};
+  std::shared_ptr<const Enumeration> interesting_strs = Enumeration::create(
+      "interesting_strs",
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      &interesting_strs_var[0],
+      sizeof(interesting_strs_var),
+      &interesting_strs_offsets[0],
+      sizeof(interesting_strs_offsets),
+      tiledb::test::get_test_memory_tracker());
+  schema->add_enumeration(interesting_strs);
+
+  std::shared_ptr<Attribute> ea =
+      std::make_shared<Attribute>("ea", Datatype::INT32, true);
+  ea->set_enumeration_name("interesting_i64s");
+  schema->add_attribute(ea);
+
+  std::shared_ptr<Attribute> ev =
+      std::make_shared<Attribute>("ev", Datatype::INT16, true);
+  ev->set_enumeration_name("interesting_strs");
+  schema->add_attribute(ev);
+
+  return schema;
+}
+
+/**
+ * Evaluates a query condition `ast` on a `tile`
+ * using both the "ast" and "datafusion" evaluators
+ * and compares their results.
+ *
+ * @return the bitmap produce by the "ast" evaluator
+ */
+std::vector<uint8_t> instance(
+    const tiledb::sm::ArraySchema& array_schema,
+    const ResultTile& tile,
+    const tiledb::sm::ASTNode& ast) {
+  using Asserter = tiledb::test::AsserterRapidcheck;
+
+  // set up traditional TileDB evaluation
+  QueryCondition qc_ast(ast.clone());
+  qc_ast.rewrite_for_schema(array_schema);
+
+  // set up datafusion evaluation
+  QueryCondition qc_datafusion(ast.clone());
+  qc_datafusion.rewrite_for_schema(array_schema);
+  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(array_schema);
+  ASSERTER(datafusion_ok);
+
+  // prepare to evaluate
+  QueryCondition::Params params(
+      tiledb::test::get_test_memory_tracker(), array_schema);
+
+  std::vector<uint8_t> bitmap_ast(tile.cell_num(), 1);
+  std::vector<uint8_t> bitmap_datafusion(tile.cell_num(), 1);
+
+  // evaluate traditional ast
+  const auto status_ast =
+      qc_ast.apply_sparse<uint8_t>(params, tile, bitmap_ast);
+  ASSERTER(status_ast.ok());
+
+  // evaluate datafusion
+  const auto status_datafusion =
+      qc_datafusion.apply_sparse<uint8_t>(params, tile, bitmap_datafusion);
+  ASSERTER(status_datafusion.ok());
+
+  // compare
+  ASSERTER(bitmap_ast == bitmap_datafusion);
+
+  return bitmap_ast;
+}
+
+/**
+ * See `instance`. Callable from Rust FFI.
+ */
+std::unique_ptr<std::vector<uint8_t>> instance_ffi(
+    const tiledb::sm::ArraySchema& array_schema,
+    const ResultTile& tile,
+    const tiledb::sm::ASTNode& ast) {
+  return std::make_unique<std::vector<uint8_t>>(
+      instance(array_schema, tile, ast));
+}
+
+}  // namespace tiledb::test::query_condition_datafusion
+
+TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
+  using tiledb::test::query_condition_datafusion::instance;
+
+  SECTION("Example") {
+    auto schema = tiledb::test::query_condition_datafusion::example_schema();
+
+    std::vector<uint64_t> values_d = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::vector<uint64_t> values_a = {
+        1,
+        22,
+        333,
+        4444,
+        55555,
+        666666,
+        7777777,
+        88888888,
+        999999999,
+        1010101010};
+
+    // NB: offsets for tiles are arrow-like, i.e. N elements have N+1 offsets
+    std::string values_v = {
+        "oneonetwoonetwothreeonetwothreefouronetwothreefourfiveonetwothreefourf"
+        "ivesix"};
+    std::vector<uint64_t> offsets_v = {0, 3, 3, 9, 9, 20, 20, 35, 35, 54, 76};
+    std::vector<uint8_t> validity_v = {1, 0, 1, 0, 1, 0, 1, 0, 1, 1};
+
+    std::vector<uint16_t> values_f = {
+        1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5,  5,  5,  5,
+        6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10};
+    std::vector<uint8_t> validity_f = {1, 1, 0, 1, 1, 0, 1, 1, 0, 1};
+
+    std::vector<int32_t> keys_ea = {0, 2, 4, 4, 3, 1, 2, 1, 4, 1};
+    std::vector<uint8_t> validity_ea = {1, 1, 1, 0, 0, 1, 1, 1, 0, 0};
+
+    std::vector<int16_t> keys_ev = {4, 4, 3, 4, 6, 2, 0, 1, 0, 4};
+    std::vector<uint8_t> validity_ev = {1, 0, 1, 1, 1, 1, 0, 0, 1, 1};
+
+    ResultTileSizes d_sizes(
+        values_d.size() * sizeof(uint64_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt);
+    ResultTileData d_data(values_d.data(), nullptr, nullptr);
+
+    ResultTileSizes a_sizes(
+        values_a.size() * sizeof(uint64_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt);
+    ResultTileData a_data(values_a.data(), nullptr, nullptr);
+
+    ResultTileSizes v_sizes(
+        offsets_v.size() * sizeof(uint64_t),
+        0,
+        values_v.size(),
+        0,
+        validity_v.size() * sizeof(uint8_t),
+        0);
+    ResultTileData v_data(offsets_v.data(), values_v.data(), validity_v.data());
+
+    ResultTileSizes f_sizes(
+        values_f.size() * sizeof(uint16_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        validity_f.size() * sizeof(uint8_t),
+        0);
+    ResultTileData f_data(values_f.data(), nullptr, validity_f.data());
+
+    ResultTileSizes ea_sizes(
+        keys_ea.size() * sizeof(int32_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        validity_ea.size() * sizeof(uint8_t),
+        0);
+    ResultTileData ea_data(keys_ea.data(), nullptr, validity_ea.data());
+
+    ResultTileSizes ev_sizes(
+        keys_ev.size() * sizeof(int16_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        validity_ev.size() * sizeof(uint8_t),
+        0);
+    ResultTileData ev_data(keys_ev.data(), nullptr, validity_ev.data());
+
+    ResultTile tile(
+        *schema, values_d.size(), tiledb::test::get_test_memory_tracker());
+    tile.init_coord_tile(
+        constants::format_version, *schema, "d", d_sizes, d_data, 0);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "a", a_sizes, a_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "v", v_sizes, v_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "f", f_sizes, f_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "ea", ea_sizes, ea_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "ev", ev_sizes, ev_data);
+
+    tile.tile_tuple("d")->fixed_tile().write(
+        values_d.data(), 0, values_d.size() * sizeof(uint64_t));
+    tile.tile_tuple("a")->fixed_tile().write(
+        values_a.data(), 0, values_a.size() * sizeof(uint64_t));
+
+    tile.tile_tuple("v")->fixed_tile().write(
+        offsets_v.data(), 0, offsets_v.size() * sizeof(uint64_t));
+    tile.tile_tuple("v")->var_tile().write(&values_v[0], 0, sizeof(values_v));
+    tile.tile_tuple("v")->validity_tile().write(
+        validity_v.data(), 0, validity_v.size() * sizeof(uint8_t));
+
+    tile.tile_tuple("f")->fixed_tile().write(
+        values_f.data(), 0, values_f.size() * sizeof(uint16_t));
+    tile.tile_tuple("f")->validity_tile().write(
+        validity_f.data(), 0, validity_f.size() * sizeof(uint8_t));
+
+    tile.tile_tuple("ea")->fixed_tile().write(
+        keys_ea.data(), 0, keys_ea.size() * sizeof(int32_t));
+    tile.tile_tuple("ea")->validity_tile().write(
+        validity_ea.data(), 0, validity_ea.size() * sizeof(uint8_t));
+
+    tile.tile_tuple("ev")->fixed_tile().write(
+        keys_ev.data(), 0, keys_ev.size() * sizeof(int16_t));
+    tile.tile_tuple("ev")->validity_tile().write(
+        validity_ev.data(), 0, validity_ev.size() * sizeof(uint8_t));
+
+    SECTION("a < 100000") {
+      uint64_t value = 100000;
+      ASTNodeVal ast(
+          "a", &value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::LT);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{1, 1, 1, 1, 1, 0, 0, 0, 0, 0});
+    }
+
+    SECTION("d != 6") {
+      uint64_t value = 6;
+      ASTNodeVal ast(
+          "d", &value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::NE);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{1, 1, 1, 1, 1, 0, 1, 1, 1, 1});
+    }
+
+    SECTION("4 <= d <= 8") {
+      uint64_t lb_value = 4;
+      tdb_unique_ptr<ASTNode> lb(new ASTNodeVal(
+          "d", &lb_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::GE));
+      const auto results_lb = instance(*schema, tile, *lb);
+      CHECK(results_lb == std::vector<uint8_t>{0, 0, 0, 1, 1, 1, 1, 1, 1, 1});
+
+      uint64_t ub_value = 8;
+      tdb_unique_ptr<ASTNode> ub(new ASTNodeVal(
+          "d", &ub_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::LE));
+      const auto results_ub = instance(*schema, tile, *ub);
+      CHECK(results_ub == std::vector<uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 0, 0});
+
+      std::vector<tdb_unique_ptr<ASTNode>> args;
+      args.push_back(std::move(lb));
+      args.push_back(std::move(ub));
+      ASTNodeExpr ast(std::move(args), QueryConditionCombinationOp::AND);
+
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 0, 1, 1, 1, 1, 1, 0, 0});
+    }
+
+    SECTION("v = 'onetwothree'") {
+      std::string value = "onetwothree";
+      ASTNodeVal ast(
+          "v", value.data(), value.size(), tiledb::sm::QueryConditionOp::EQ);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 0, 0, 1, 0, 0, 0, 0, 0});
+    }
+
+    SECTION("f != {5, 5, 5, 5}") {
+      uint16_t value[] = {5, 5, 5, 5};
+      ASTNodeVal ast(
+          "f", &value[0], sizeof(value), tiledb::sm::QueryConditionOp::NE);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{1, 1, 0, 1, 0, 0, 1, 1, 0, 1});
+    }
+
+    SECTION("v IS NOT NULL") {
+      ASTNodeVal ast("v", nullptr, 0, tiledb::sm::QueryConditionOp::NE);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == validity_v);
+    }
+
+    SECTION("v IS NULL") {
+      ASTNodeVal ast("v", nullptr, 0, tiledb::sm::QueryConditionOp::EQ);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 1, 0, 1, 0, 1, 0, 1, 0, 0});
+    }
+
+    SECTION("v IS NOT NULL") {
+      ASTNodeVal ast("f", nullptr, 0, tiledb::sm::QueryConditionOp::NE);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == validity_f);
+    }
+
+    SECTION("v IS NULL") {
+      ASTNodeVal ast("f", nullptr, 0, tiledb::sm::QueryConditionOp::EQ);
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 1, 0, 0, 1, 0, 0, 1, 0});
+    }
+
+    SECTION("d < 4 OR a > 1000000") {
+      uint64_t d_value = 4;
+      tdb_unique_ptr<ASTNode> left(new ASTNodeVal(
+          "d", &d_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::LT));
+      const auto results_d = instance(*schema, tile, *left);
+      CHECK(results_d == std::vector<uint8_t>{1, 1, 1, 0, 0, 0, 0, 0, 0, 0});
+
+      uint64_t a_value = 1000000;
+      tdb_unique_ptr<ASTNode> right(new ASTNodeVal(
+          "a", &a_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::GT));
+      const auto results_a = instance(*schema, tile, *right);
+      CHECK(results_a == std::vector<uint8_t>{0, 0, 0, 0, 0, 0, 1, 1, 1, 1});
+
+      std::vector<tdb_unique_ptr<ASTNode>> args;
+      args.push_back(std::move(left));
+      args.push_back(std::move(right));
+      ASTNodeExpr ast(std::move(args), QueryConditionCombinationOp::OR);
+
+      const auto results = instance(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{1, 1, 1, 0, 0, 0, 1, 1, 1, 1});
+    }
+
+    SECTION("d IN 1, 3, 5, 7, 9") {
+      uint64_t d_accept[] = {1, 3, 5, 7, 9};
+      uint64_t d_offsets[] = {0, 8, 16, 24, 32};
+      ASTNodeVal ast(
+          "d",
+          &d_accept[0],
+          sizeof(d_accept),
+          &d_offsets[0],
+          sizeof(d_offsets),
+          QueryConditionOp::IN);
+
+      instance(*schema, tile, ast);
+    }
+
+    SECTION("ea = -2") {
+      int64_t e_value = -2;
+      tdb_unique_ptr<ASTNode> ast(new ASTNodeVal(
+          "ea", &e_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::EQ));
+      const auto results = instance(*schema, tile, *ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 0, 0, 0, 1, 0, 1, 0, 0});
+    }
+
+    SECTION("ev != 'grault'") {
+      const std::string ev_value = "grault";
+      tdb_unique_ptr<ASTNode> ast(new ASTNodeVal(
+          "ev",
+          ev_value.data(),
+          ev_value.size(),
+          tiledb::sm::QueryConditionOp::NE));
+      const auto results = instance(*schema, tile, *ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 1, 0, 1, 1, 0, 0, 1, 0});
+    }
+  }
+
+  SECTION("Example Oxidized") {
+    REQUIRE(tiledb::test::examples_query_condition_datafusion());
+  }
+
+  SECTION("Proptest") {
+    REQUIRE(tiledb::test::proptest_query_condition_datafusion());
+  }
+}
+
+#endif

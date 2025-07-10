@@ -69,6 +69,23 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /* ****************************** */
 
 ResultTile::ResultTile(
+    const ArraySchema& array_schema,
+    uint64_t cell_num,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , domain_(&array_schema.domain())
+    , frag_idx_(0)
+    , tile_idx_(0)
+    , cell_num_(cell_num)
+    , attr_tiles_(array_schema.attribute_num())
+    , coord_tiles_(domain_->dim_num()) {
+  for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
+    auto attribute = array_schema.attribute(i);
+    attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
+  }
+}
+
+ResultTile::ResultTile(
     unsigned frag_idx,
     uint64_t tile_idx,
     const FragmentMetadata& frag_md,
@@ -222,6 +239,45 @@ void ResultTile::init_coord_tile(
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
   coord_func_ = &ResultTile::unzipped_coord;
+}
+
+const ResultTile::TileTuple* ResultTile::tile_tuple(
+    const std::string& name) const {
+  // Handle zipped coordinates tile
+  if (coords_tile_.has_value() && name == constants::coords) {
+    return &coords_tile_.value();
+  }
+
+  // Handle timestamps tile
+  if (timestamps_tile_.has_value() && name == constants::timestamps) {
+    return &timestamps_tile_.value();
+  }
+
+  // Handle delete timestamps tile
+  if (delete_timestamps_tile_.has_value() &&
+      name == constants::delete_timestamps) {
+    return &delete_timestamps_tile_.value();
+  }
+
+  if (delete_condition_index_tile_.has_value() &&
+      name == constants::delete_condition_index) {
+    return &delete_condition_index_tile_.value();
+  }
+
+  // Handle attribute tile
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second.has_value()) {
+      return &(at.second.value());
+    }
+  }
+
+  // Handle separate coordinates tile
+  for (auto& ct : coord_tiles_) {
+    if (ct.second.has_value() && ct.first == name)
+      return &(ct.second.value());
+  }
+
+  return nullptr;
 }
 
 ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {

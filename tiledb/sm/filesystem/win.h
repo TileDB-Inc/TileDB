@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -220,6 +220,14 @@ class Win : LocalFilesystem {
       uint64_t offset,
       void* buffer,
       uint64_t nbytes) const;
+
+  /**
+   * Flushes a file or directory.
+   *
+   * @param uri The URI of the file.
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
+   */
+  void flush(const URI& uri, bool finalize);
 
   /**
    * Syncs a file or directory.

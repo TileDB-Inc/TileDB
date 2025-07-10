@@ -863,9 +863,8 @@ Status GCS::write(
   return Status::Ok();
 }
 
-Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
-  RETURN_NOT_OK(init_client());
-  iassert(nbytes);
+uint64_t GCS::file_size(const URI& uri) const {
+  throw_if_not_ok(init_client());
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -873,7 +872,7 @@ Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
 
   std::string bucket_name;
   std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  throw_if_not_ok(parse_gcs_uri(uri, &bucket_name, &object_path));
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
@@ -886,9 +885,7 @@ Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
         ")");
   }
 
-  *nbytes = object_metadata->size();
-
-  return Status::Ok();
+  return object_metadata->size();
 }
 
 Buffer* GCS::get_write_cache_buffer(const std::string& uri) {

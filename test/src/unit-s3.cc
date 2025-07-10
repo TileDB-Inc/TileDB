@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -124,7 +124,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     CHECK(!exists);
 
     // Flush the file
-    CHECK(!s3_.flush_object(URI(largefile)).ok());
+    CHECK_THROWS(s3_.flush(URI(largefile)));
 
     // After flushing, the file does not exist
     CHECK(s3_.is_object(URI(largefile), &exists).ok());

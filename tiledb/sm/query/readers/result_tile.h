@@ -329,6 +329,13 @@ class ResultTile {
     /* ********************************* */
     /*                API                */
     /* ********************************* */
+    bool has_var_tile() const {
+      return var_tile_.has_value();
+    }
+
+    bool has_validity_tile() const {
+      return validity_tile_.has_value();
+    }
 
     /** @returns Fixed tile. */
     Tile& fixed_tile() {
@@ -390,7 +397,10 @@ class ResultTile {
    *
    * @param memory_tracker The memory tracker to use.
    */
-  ResultTile(shared_ptr<MemoryTracker> memory_tracker);
+  ResultTile(
+      const ArraySchema& array_schema,
+      uint64_t cell_num,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor. The number of dimensions `dim_num` is used to allocate
@@ -454,6 +464,9 @@ class ResultTile {
       const TileSizes tile_sizes,
       const TileData tile_data,
       unsigned dim_idx);
+
+  /** Returns the tile pair for the input attribute or dimension. */
+  const TileTuple* tile_tuple(const std::string& name) const;
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);
@@ -840,16 +853,6 @@ class ResultTileWithBitmap : public ResultTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   ResultTileWithBitmap() = delete;
-
-  /**
-   * Constructor
-   *
-   * @param memory_tracker The memory tracker to use.
-   */
-  ResultTileWithBitmap(shared_ptr<MemoryTracker> memory_tracker)
-      : ResultTile(memory_tracker)
-      , bitmap_(memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP)) {
-  }
 
   ResultTileWithBitmap(
       unsigned frag_idx,
@@ -1252,6 +1255,10 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   inline void compute_per_cell_delete_condition(QueryCondition*) {
   }
 };
+
+using TileTuple = ResultTile::TileTuple;
+using ResultTileSizes = ResultTile::TileSizes;
+using ResultTileData = ResultTile::TileData;
 
 }  // namespace sm
 }  // namespace tiledb

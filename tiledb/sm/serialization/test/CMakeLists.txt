@@ -36,7 +36,7 @@ conclude(unit_test)
 
 commence(unit_test capnp_array_schema)
   this_target_sources(main.cc unit_capnp_array_schema.cc)
-  this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB tiledb_test_support_lib)
+  this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB tiledb_test_support_lib tiledb_core_objects_oxidize)
 
   # Enable serialization
   target_compile_definitions(unit_capnp_array_schema PRIVATE -DTILEDB_SERIALIZATION)

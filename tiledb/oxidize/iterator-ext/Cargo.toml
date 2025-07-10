@@ -1,0 +1,5 @@
+[package]
+name = "iterator-ext"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }

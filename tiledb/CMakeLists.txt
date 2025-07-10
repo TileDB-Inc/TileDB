@@ -50,15 +50,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(api)
 add_subdirectory(as_built)
 add_subdirectory(common)
+add_subdirectory(oxidize)
 add_subdirectory(platform)
 add_subdirectory(type)
 add_subdirectory(sm)
 add_subdirectory(stdx)
 add_subdirectory(storage_format)
-
-if (TILEDB_RUST)
-    add_subdirectory(oxidize)
-endif()
 
 ############################################################
 # Header files
@@ -431,6 +428,9 @@ set(TILEDB_CORE_OBJECTS_LIBS
   assert
   baseline
 )
+if (TILEDB_RUST)
+  list(APPEND TILEDB_CORE_OBJECTS_LIBS tiledb_core_objects_oxidize)
+endif ()
 
 list(TRANSFORM TILEDB_CORE_OBJECTS_LIBS PREPEND "$<TARGET_OBJECTS:" OUTPUT_VARIABLE TILEDB_CORE_OBJECTS_LIBS_SOURCES)
 list(TRANSFORM TILEDB_CORE_OBJECTS_LIBS_SOURCES APPEND ">" OUTPUT_VARIABLE TILEDB_CORE_OBJECTS_LIBS_SOURCES)

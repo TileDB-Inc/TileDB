@@ -419,15 +419,28 @@ inline bool datatype_is_boolean(Datatype type) {
   return (type == Datatype::BOOL);
 }
 
-/** Throws error if the input Datatype's enum is not between 0 and 43. */
+/**
+ * Returns true if the input Datatype discriminant represents a valid datatype
+ */
+inline bool datatype_is_valid(uint8_t datatype_enum) {
+  // 43 is the value assigned to the current highest datatype
+  return datatype_enum <= 43;
+}
+
+/** Throws error if the input Datatype discriminant is not valid */
 inline void ensure_datatype_is_valid(uint8_t datatype_enum) {
-  if (datatype_enum > 43) {
+  if (!(datatype_is_valid(datatype_enum))) {
     throw std::runtime_error(
         "Invalid Datatype (" + std::to_string(datatype_enum) + ")");
   }
 }
 
-/** Throws error if the input Datatype's enum is not between 0 and 43. */
+/** Returns true if the input Datatype represents a valid datatype */
+inline bool datatype_is_valid(Datatype type) {
+  return datatype_is_valid(::stdx::to_underlying(type));
+}
+
+/** Throws error if the input Datatype discriminant is not valid */
 inline void ensure_datatype_is_valid(Datatype type) {
   ensure_datatype_is_valid(::stdx::to_underlying(type));
 }

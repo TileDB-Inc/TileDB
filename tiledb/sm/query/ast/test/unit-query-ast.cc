@@ -105,7 +105,7 @@ tdb_unique_ptr<ASTNode> test_expression_node(
     const std::string& expected_result,
     bool negate = false) {
   // Test validity of construction of expression node.
-  auto combined_node = lhs->combine(rhs, op);
+  auto combined_node = lhs->combine(*rhs, op);
 
   if (!negate) {
     CHECK(ast_node_to_str(combined_node) == expected_result);

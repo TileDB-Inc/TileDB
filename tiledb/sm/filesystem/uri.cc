@@ -210,8 +210,43 @@ bool URI::is_tiledb() const {
   return utils::parse::starts_with(uri_, "tiledb://");
 }
 
+std::optional<size_t> URI::get_storage_component_index(
+    size_t start_index) const {
+  // Find '://' between path and array name. iff it exists
+  auto storage_indicator = uri_.find("://", start_index + 1);
+  if (storage_indicator == std::string::npos) {
+    return std::nullopt;  // No storage component found
+  }
+
+  // Find the beginning of the storage path (e.g., s3, gs, azure)
+  size_t storage_path_start = storage_indicator;
+  while (storage_path_start > start_index &&
+         uri_[storage_path_start - 1] != '/') {
+    auto c = uri_[storage_path_start - 1];
+    if (!(std::isalnum(c) || c == '+' || c == '-' || c == '.')) {
+      // This is not a valid storage path.
+      throw std::invalid_argument(
+          "Invalid URI format; invalid character in storage URI scheme.");
+    }
+    --storage_path_start;
+  }
+
+  if (storage_path_start == storage_indicator) {
+    // No storage path found, just the separator
+    throw std::invalid_argument(
+        "Invalid URI format; missing storage URI scheme before '://'.");
+  }
+
+  if (!std::isalpha(uri_[storage_path_start])) {
+    throw std::invalid_argument(
+        "Invalid URI format; storage URI scheme must begin with a letter.");
+  }
+
+  return storage_path_start;
+}
+
 Status URI::get_rest_components(
-    std::string* array_namespace, std::string* array_uri, bool legacy) const {
+    bool legacy, RESTURIComponents* rest_components) const {
   const std::string prefix = "tiledb://";
   const std::string ns_component =
       legacy ? "tiledb://<namespace>" : "tiledb://<workspace>/<teamspace>";
@@ -237,8 +272,10 @@ Status URI::get_rest_components(
     if (namespace_len == 0 || array_len == 0) {
       return LOG_STATUS(error_st);
     }
-    *array_namespace = uri_.substr(prefix.size(), namespace_len);
-    *array_uri = uri_.substr(slash + 1, array_len);
+    rest_components->server_namespace =
+        uri_.substr(prefix.size(), namespace_len);
+    rest_components->asset_storage = uri_.substr(slash + 1, array_len);
+    rest_components->server_path = rest_components->asset_storage;
   } else {
     // Extract '<workspace>/<teamspace>' if we are talking to TileDB-Server.
 
@@ -247,7 +284,7 @@ Status URI::get_rest_components(
     if (ws_slash == std::string::npos) {
       return LOG_STATUS(error_st);
     }
-    // Find '/' between teamspace and array uri.
+    // Find '/' between teamspace and array path.
     auto ts_slash = uri_.find('/', ws_slash + 1);
     if (ts_slash == std::string::npos) {
       return LOG_STATUS(error_st);
@@ -261,8 +298,25 @@ Status URI::get_rest_components(
 
     std::string ws = uri_.substr(prefix.size(), ws_len);
     std::string ts = uri_.substr(ws_slash + 1, ts_len);
-    *array_namespace = ws + "/" + ts;
-    *array_uri = uri_.substr(ts_slash + 1, array_len);
+    rest_components->server_namespace = ws + "/" + ts;
+    auto asset_name = last_path_part();
+
+    auto storage_component_index = get_storage_component_index(ts_slash + 1);
+    if (!storage_component_index.has_value()) {
+      // No storage component found, just the array name.
+      rest_components->asset_storage = "";
+      rest_components->server_path = uri_.substr(ts_slash + 1);
+    } else {
+      // Storage component found, extract it.
+      rest_components->asset_storage =
+          uri_.substr(storage_component_index.value());
+      // Construct the server path, it's what's between teamspace and the
+      // storage scheme
+      rest_components->server_path =
+          uri_.substr(
+              ts_slash + 1, storage_component_index.value() - ts_slash - 1) +
+          asset_name;
+    }
   }
 
   return Status::Ok();
