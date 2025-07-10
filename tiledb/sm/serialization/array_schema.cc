@@ -1363,17 +1363,18 @@ std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
       }
       default: {
         throw ArraySchemaSerializationException(
-            "Error deserializing array schema; Unknown serialization type "
-            "passed");
+            "Error deserializing array creation request; Unknown serialization "
+            "type passed");
       }
     }
   } catch (kj::Exception& e) {
     throw ArraySchemaSerializationException(
-        "Error deserializing array schema; kj::Exception: " +
+        "Error deserializing array creation request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
     throw ArraySchemaSerializationException(
-        "Error deserializing array schema; exception " + std::string(e.what()));
+        "Error deserializing array creation request; exception " +
+        std::string(e.what()));
   }
 }
 
