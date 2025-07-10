@@ -1981,9 +1981,7 @@ void array_create_serialize(
 }
 
 std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
-    SerializationType serialize_type,
-    span<const char> serialized_buffer,
-    shared_ptr<MemoryTracker> memory_tracker) {
+    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
   throw ArraySchemaSerializationDisabledException();
 }
 
