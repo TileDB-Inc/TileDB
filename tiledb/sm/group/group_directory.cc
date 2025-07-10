@@ -62,7 +62,8 @@ std::vector<URI> ls(const VFS& vfs, const URI& uri) {
   auto dir_entries = vfs.ls_with_sizes(uri);
   auto uri_no_slash = uri.remove_trailing_slash();
   auto& dirs = dir_names();
-  std::vector<URI> uris(dir_entries.size());
+  std::vector<URI> uris;
+  uris.reserve(dir_entries.size());
 
   for (auto entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
