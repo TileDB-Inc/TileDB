@@ -303,8 +303,7 @@ TEST_CASE_METHOD(
     "C++ API: Group on object storage with empty subfolders",
     "[cppapi][group][empty_subfolders]") {
   if (vfs_test_setup_.is_local()) {
-    // Only makes sense in object storage.
-    return;
+    SKIP("Test only makes sense in object storage.");
   }
 
   std::string group1_uri = vfs_test_setup_.array_uri("group1");

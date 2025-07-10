@@ -60,6 +60,7 @@ const std::set<std::string>& dir_names() {
 
 std::vector<URI> ls(const VFS& vfs, const URI& uri) {
   auto dir_entries = vfs.ls_with_sizes(uri);
+  auto uri_no_slash = uri.remove_trailing_slash();
   auto& dirs = dir_names();
   std::vector<URI> uris(dir_entries.size());
 
@@ -73,7 +74,7 @@ std::vector<URI> ls(const VFS& vfs, const URI& uri) {
     }
 
     // Filter out empty files of the same name as the directory
-    if (entry_uri.remove_trailing_slash() == uri.remove_trailing_slash() &&
+    if (entry_uri.remove_trailing_slash() == uri_no_slash &&
         entry.file_size() == 0) {
       continue;
     }
@@ -83,10 +84,14 @@ std::vector<URI> ls(const VFS& vfs, const URI& uri) {
     if (iter == dirs.end() || entry.file_size() > 0) {
       uris.emplace_back(entry_uri);
     } else {
-      // Handle MinIO-based s3 implementation limitation
+      // Handle MinIO-based s3 implementation limitation. If an object exists
+      // with the same name as a directory, the objects under the directory are
+      // masked and cannot be listed. See
+      // https://github.com/minio/minio/issues/7335
       throw GroupDirectoryException(
           "Cannot list given uri; File '" + entry_uri.to_string() +
-          "' may be masking a non-empty directory by the same name.");
+          "' may be masking a non-empty directory by the same name. Removing "
+          "that file might fix this.");
     }
   }
 
