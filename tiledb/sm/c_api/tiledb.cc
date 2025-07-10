@@ -1472,6 +1472,7 @@ int32_t tiledb_deserialize_array_create(
     tiledb_array_schema_t** array_schema) {
   api::ensure_buffer_is_valid(buffer);
   ensure_output_pointer_is_valid(array_schema);
+  ensure_output_pointer_is_valid(storage_uri);
 
   // Create array schema struct
   auto memory_tracker = ctx->resources().create_memory_tracker();
