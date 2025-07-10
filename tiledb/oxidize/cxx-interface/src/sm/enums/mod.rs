@@ -125,7 +125,7 @@ impl Display for Datatype {
         if s.is_empty() {
             write!(f, "<INVALID DATATYPE: {}>", self.repr)
         } else {
-            write!(f, "{}", s)
+            write!(f, "{s}")
         }
     }
 }
