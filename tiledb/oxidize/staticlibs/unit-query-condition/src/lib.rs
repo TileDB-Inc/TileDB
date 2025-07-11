@@ -52,8 +52,8 @@ use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
 use tiledb_pod::array::schema::SchemaData;
 use tiledb_pod::array::schema::strategy::Requirements as SchemaRequirements;
-use tiledb_test_cells::Cells;
 use tiledb_test_cells::strategy::{CellsParameters, CellsStrategySchema, SchemaWithDomain};
+use tiledb_test_cells::{Cells, FieldData};
 
 fn instance_query_condition_datafusion(
     schema: &SchemaData,
@@ -279,6 +279,33 @@ fn examples_query_condition_datafusion_impl() -> anyhow::Result<bool> {
     Ok(true)
 }
 
+fn cells_ensure_utf8(schema: &SchemaData, cells: Cells) -> Cells {
+    let mut new_fields = cells.fields().clone();
+    for (fname, fdata) in new_fields.iter_mut() {
+        let Some(field) = schema.field(fname.clone()) else {
+            continue;
+        };
+
+        use tiledb_common::array::CellValNum;
+        use tiledb_common::datatype::Datatype;
+
+        if matches!(field.cell_val_num(), Some(CellValNum::Var))
+            && matches!(
+                field.datatype(),
+                Datatype::StringAscii | Datatype::StringUtf8
+            )
+        {
+            let FieldData::VecUInt8(strs) = fdata else {
+                continue;
+            };
+            strs.iter_mut().for_each(|s| {
+                *s = String::from_utf8_lossy(s).into_owned().into_bytes();
+            });
+        }
+    }
+    Cells::new(new_fields)
+}
+
 /// Returns a [Strategy] which produces inputs to `instance_query_condition_datafusion`.
 fn strat_query_condition_datafusion()
 -> impl Strategy<Value = (Rc<SchemaData>, Rc<Cells>, Vec<QueryConditionExpr>)> {
@@ -293,23 +320,21 @@ fn strat_query_condition_datafusion()
     any_with::<SchemaData>(schema_params.into())
         .prop_flat_map(|schema| {
             let schema = Rc::new(schema);
+            let schema_move_into_strat = Rc::clone(&schema);
             let strat_cells = any_with::<Cells>(CellsParameters {
                 schema: Some(CellsStrategySchema::WriteSchema(Rc::clone(&schema))),
                 ..Default::default()
-            });
+            })
+            .prop_map(move |cells| cells_ensure_utf8(&schema_move_into_strat, cells));
             (Just(schema), strat_cells)
         })
         .prop_flat_map(|(schema, cells)| {
             let cells = Rc::new(cells);
-            let strat_params = any_with::<QueryConditionExpr>(QueryConditionParameters {
+            let strat_qc = any_with::<QueryConditionExpr>(QueryConditionParameters {
                 domain: Some(Rc::new(SchemaWithDomain::new(Rc::clone(&schema), &cells))),
                 ..Default::default()
             });
-            (
-                Just(schema),
-                Just(cells),
-                strat_params.prop_map(|qc| vec![qc]),
-            )
+            (Just(schema), Just(cells), strat_qc.prop_map(|qc| vec![qc]))
         })
 }
 
