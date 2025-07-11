@@ -1273,6 +1273,112 @@ shared_ptr<ArraySchema> array_schema_deserialize(
   }
 }
 
+void array_create_to_capnp(
+    capnp::ArrayCreateRequest::Builder* array_create_builder,
+    const ArraySchema& array_schema,
+    const std::string& storage_uri) {
+  array_create_builder->setUri(storage_uri);
+  auto schema_builder = array_create_builder->initSchema();
+  throw_if_not_ok(array_schema_to_capnp(array_schema, &schema_builder, true));
+}
+
+void array_create_serialize(
+    const ArraySchema& array_schema,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer,
+    const std::string& storage_uri) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::ArrayCreateRequest::Builder arrayCreateBuilder =
+        message.initRoot<capnp::ArrayCreateRequest>();
+    array_create_to_capnp(&arrayCreateBuilder, array_schema, storage_uri);
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(arrayCreateBuilder);
+        serialized_buffer.assign(capnp_json);
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        serialized_buffer.assign(protomessage.asChars());
+        break;
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error serializing array creation request; Unknown serialization "
+            "type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing array creation request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing array creation request; exception " +
+        std::string(e.what()));
+  }
+}
+
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_from_capnp(
+    capnp::ArrayCreateRequest::Reader& array_create_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  std::string storage_uri = "";
+  if (array_create_reader.hasUri()) {
+    storage_uri = array_create_reader.getUri().cStr();
+  }
+
+  return {
+      storage_uri,
+      array_schema_from_capnp(
+          array_create_reader.getSchema(), URI(), memory_tracker)};
+}
+
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
+    SerializationType serialize_type,
+    span<const char> serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  capnp::ArrayCreateRequest::Reader array_create_reader;
+  ::capnp::MallocMessageBuilder message_builder;
+
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        capnp::ArrayCreateRequest::Builder array_create_builder =
+            message_builder.initRoot<capnp::ArrayCreateRequest>();
+        utils::decode_json_message(serialized_buffer, array_create_builder);
+        array_create_reader = array_create_builder.asReader();
+        return array_create_from_capnp(array_create_reader, memory_tracker);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        array_create_reader = reader.getRoot<capnp::ArrayCreateRequest>();
+        return array_create_from_capnp(array_create_reader, memory_tracker);
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error deserializing array creation request; Unknown serialization "
+            "type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error deserializing array creation request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error deserializing array creation request; exception " +
+        std::string(e.what()));
+  }
+}
+
 Status nonempty_domain_serialize(
     const Dimension* dimension,
     const void* nonempty_domain,
@@ -1870,10 +1976,19 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
+void array_create_serialize(
+    const ArraySchema&, SerializationType, SerializationBuffer&, std::string) {
+  throw ArraySchemaSerializationDisabledException();
+}
+
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
+    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
+  throw ArraySchemaSerializationDisabledException();
+}
+
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
-  throw StatusException(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+  throw ArraySchemaSerializationDisabledException();
 }
 
 Status nonempty_domain_serialize(
