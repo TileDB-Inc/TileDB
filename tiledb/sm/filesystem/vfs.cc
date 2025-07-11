@@ -46,10 +46,32 @@
 #include <iostream>
 #include <list>
 #include <sstream>
+#include <type_traits>
 #include <unordered_map>
 
 using namespace tiledb::common;
 using namespace tiledb::sm::filesystem;
+
+namespace {
+/**
+ * Wraps the call of a void-returning function to return a status. This is
+ * effectively the inverse of throw_if_not_ok.
+ *
+ * @return Status::Ok if calling f(args) did not throw, a failing Status if it
+ * threw.
+ */
+template <class F, class... Args>
+Status ok_if_not_throw(F&& f, Args&&... args)
+  requires(std::is_invocable_r_v<void, F, Args...>)
+{
+  try {
+    std::invoke(f, std::forward<Args>(args)...);
+    return Status::Ok();
+  } catch (std::exception& e) {
+    return Status_IOError(e.what());
+  }
+}
+}  // namespace
 
 namespace tiledb::sm {
 
@@ -143,8 +165,7 @@ Status VFS::create_dir(const URI& uri) const {
   }
 
   if (uri.is_file()) {
-    local_.create_dir(uri);
-    return Status::Ok();
+    return ok_if_not_throw(&LocalFS::create_dir, local_, uri);
   }
   if (uri.is_s3()) {
     if constexpr (s3_enabled) {
@@ -209,8 +230,7 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
 Status VFS::touch(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "touch");
   if (uri.is_file()) {
-    local_.touch(uri);
-    return Status::Ok();
+    return ok_if_not_throw(&LocalFS::touch, local_, uri);
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -366,8 +386,7 @@ Status VFS::is_empty_bucket(
 Status VFS::remove_dir(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "remove_dir");
   if (uri.is_file()) {
-    local_.remove_dir(uri);
-    return Status::Ok();
+    return ok_if_not_throw(&LocalFS::remove_dir, local_, uri);
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().remove_dir(uri);
@@ -418,8 +437,7 @@ void VFS::remove_dirs(
 Status VFS::remove_file(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "remove_file");
   if (uri.is_file()) {
-    local_.remove_file(uri);
-    return Status::Ok();
+    return ok_if_not_throw(&LocalFS::remove_file, local_, uri);
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -521,8 +539,7 @@ uint64_t VFS::file_size(const URI& uri) const {
 Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   auto instrument = make_log_duration_instrument(uri, "is_dir");
   if (uri.is_file()) {
-    *is_dir = local_.is_dir(uri);
-    return Status::Ok();
+    return ok_if_not_throw([&]() { *is_dir = local_.is_dir(uri); });
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -562,8 +579,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   auto instrument = make_log_duration_instrument(uri, "is_file");
   stats_->add_counter("is_object_num", 1);
   if (uri.is_file()) {
-    *is_file = local_.is_file(uri);
-    return Status::Ok();
+    return ok_if_not_throw([&]() { *is_file = local_.is_file(uri); });
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -704,8 +720,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
-      local_.move_file(old_uri, new_uri);
-      return Status::Ok();
+      return ok_if_not_throw(&LocalFS::move_file, local_, old_uri, new_uri);
     }
     throw UnsupportedOperation("Moving files");
   }
@@ -763,8 +778,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
-      local_.move_dir(old_uri, new_uri);
-      return Status::Ok();
+      return ok_if_not_throw(&LocalFS::move_dir, local_, old_uri, new_uri);
     }
     throw UnsupportedOperation("Moving directories");
   }
@@ -830,8 +844,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
-      local_.copy_file(old_uri, new_uri);
-      return Status::Ok();
+      return ok_if_not_throw(&LocalFS::copy_file, local_, old_uri, new_uri);
     }
     throw UnsupportedOperation("Copying files");
   }
@@ -884,8 +897,7 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
-      local_.copy_dir(old_uri, new_uri);
-      return Status::Ok();
+      return ok_if_not_throw(&LocalFS::copy_dir, local_, old_uri, new_uri);
     }
     throw UnsupportedOperation("Copying directories");
   }
@@ -1008,8 +1020,8 @@ Status VFS::read_impl(
   // backends.
 
   if (uri.is_file()) {
-    local_.read(uri, offset, buffer, nbytes, false);
-    return Status::Ok();
+    return ok_if_not_throw(
+        &LocalFS::read, local_, uri, offset, buffer, nbytes, false);
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -1154,8 +1166,7 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
 Status VFS::sync(const URI& uri) {
   auto instrument = make_log_duration_instrument(uri, "sync");
   if (uri.is_file()) {
-    local_.sync(uri);
-    return Status::Ok();
+    return ok_if_not_throw(&LocalFS::sync, local_, uri);
   }
   if (uri.is_s3()) {
     if constexpr (s3_enabled) {
@@ -1236,6 +1247,7 @@ void VFS::flush(const URI& uri, bool finalize) {
   auto instrument = make_log_duration_instrument(uri, "flush");
   if (uri.is_file()) {
     local_.flush(uri, finalize);
+    return;
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -1282,8 +1294,13 @@ Status VFS::write(
   stats_->add_counter("write_ops_num", 1);
 
   if (uri.is_file()) {
-    local_.write(uri, buffer, buffer_size, remote_global_order_write);
-    return Status::Ok();
+    return ok_if_not_throw(
+        &LocalFS::write,
+        local_,
+        uri,
+        buffer,
+        buffer_size,
+        remote_global_order_write);
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
