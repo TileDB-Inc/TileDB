@@ -137,6 +137,7 @@ Posix::Posix(const Config& config) {
 void Posix::create_dir(const URI& uri) const {
   // If the directory does not exist, create it
   auto path = uri.to_path();
+  throw_if_not_ok(ensure_directory(path));
   if (is_dir(uri)) {
     throw IOError(
         std::string("Cannot create directory '") + path +
