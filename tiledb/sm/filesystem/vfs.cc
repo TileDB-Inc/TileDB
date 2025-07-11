@@ -92,9 +92,7 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::GCS);
 #endif
 
-#ifndef _WIN32
   local_ = LocalFS(config_);
-#endif
 
   supported_fs_.insert(Filesystem::MEMFS);
 }
@@ -832,12 +830,8 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
-#ifdef _WIN32
-      throw VFSException("Copying files on Windows is not yet supported.");
-#else
       local_.copy_file(old_uri, new_uri);
       return Status::Ok();
-#endif
     }
     throw UnsupportedOperation("Copying files");
   }
@@ -890,13 +884,8 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
-#ifdef _WIN32
-      throw VFSException(
-          "Copying directories on Windows is not yet supported.");
-#else
       local_.copy_dir(old_uri, new_uri);
       return Status::Ok();
-#endif
     }
     throw UnsupportedOperation("Copying directories");
   }

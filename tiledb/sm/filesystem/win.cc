@@ -347,6 +347,15 @@ bool Win::is_file(const URI& uri) const {
   return PathFileExists(path.c_str()) && !PathIsDirectory(path.c_str());
 }
 
+void Win::copy_file(const URI&, const URI&) const {
+  throw WindowsException("Copying files on Windows is not yet supported.");
+}
+
+void Win::copy_dir(const URI&, const URI&) const {
+  throw WindowsException(
+      "Copying directories on Windows is not yet supported.");
+}
+
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
   for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());

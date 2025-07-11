@@ -53,6 +53,7 @@ class directory_entry;
 
 namespace tiledb::sm {
 
+class Config;
 class URI;
 
 /** Class for Windows status exceptions. */
@@ -74,6 +75,17 @@ class Win : FilesystemBase, LocalFilesystem {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /**
+   * Constructor.
+   */
+  Win() = default;
+
+  /**
+   * Constructor. Accepts an unused Config for symmetry with POSIX.
+   */
+  Win(const Config&) {
+  }
 
   /**
    * Returns the absolute (string) path of the input in the
@@ -222,9 +234,7 @@ class Win : FilesystemBase, LocalFilesystem {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI&, const URI&) const {
-    // Currently a no-op for Windows, stub function for other filesystems.
-  }
+  void copy_dir(const URI&, const URI&) const override;
 
   /**
    * Copies a file.
@@ -232,9 +242,7 @@ class Win : FilesystemBase, LocalFilesystem {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI&, const URI&) const {
-    // Currently a no-op for Windows, stub function for other filesystems.
-  }
+  void copy_file(const URI&, const URI&) const override;
 
   /**
    * Reads data from a file into a buffer.
