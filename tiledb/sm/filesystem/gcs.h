@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 #include "tiledb/sm/filesystem/ls_scanner.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/constants.h"
@@ -153,7 +154,7 @@ struct GCSParameters {
   uint64_t max_direct_upload_size_;
 };
 
-class GCS {
+class GCS : FilesystemBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -178,39 +179,35 @@ class GCS {
    * Creates a bucket.
    *
    * @param uri The uri of the bucket to be created.
-   * @return Status
    */
-  Status create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const;
 
   /** Removes the contents of a GCS bucket. */
-  Status empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const;
 
   /**
    * Check if a bucket is empty.
    *
    * @param bucket The name of the bucket.
-   * @param is_empty Mutates to `true` if the bucket is empty.
-   * @return Status
+   * @return `true` if the bucket is empty, `false` otherwise.
    */
-  Status is_empty_bucket(const URI& uri, bool* is_empty) const;
+  bool is_empty_bucket(const URI& uri) const;
 
   /**
    * Check if a bucket exists.
    *
    * @param bucket The name of the bucket.
-   * @param is_bucket Mutates to `true` if `uri` is a bucket.
-   * @return Status
+   * @return `true` if `uri` is a bucket, `false` otherwise.
    */
-  Status is_bucket(const URI& uri, bool* is_bucket) const;
+  bool is_bucket(const URI& uri) const;
 
   /**
-   * Check if 'is_object' is a object on GCS.
+   * Check if 'uri' is an object on GCS.
    *
-   * @param uri Uri of the object.
-   * @param is_object Mutates to the output.
-   * @return Status
+   * @param uri URI of the object.
+   * @return `true` if `uri` is an obkect on GCS, `false` otherwise.
    */
-  Status is_object(const URI& uri, bool* const is_object) const;
+  bool is_file(const URI& uri) const;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -227,26 +224,23 @@ class GCS {
    * prefix `gcs://some_gcs/foo2/` (in this case there is not).
    *
    * @param uri The URI to check.
-   * @param exists Sets it to `true` if the above mentioned condition holds.
-   * @return Status
+   * @return`true` if the above mentioned condition holds, `false` otherwise.
    */
-  Status is_dir(const URI& uri, bool* exists) const;
+  bool is_dir(const URI& uri) const;
 
   /**
    * Deletes a bucket.
    *
    * @param uri The URI of the bucket to be deleted.
-   * @return Status
    */
-  Status remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const;
 
   /**
    * Deletes an object with a given URI.
    *
    * @param uri The URI of the object to be deleted.
-   * @return Status
    */
-  Status remove_object(const URI& uri) const;
+  void remove_file(const URI& uri) const;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -271,9 +265,8 @@ class GCS {
    * this example.
    *
    * @param uri The prefix uri of the objects to be deleted.
-   * @return Status
    */
-  Status remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -339,19 +332,41 @@ class GCS {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri,
-      const std::string& delimiter = "/",
-      int max_paths = -1) const;
+  std::vector<filesystem::directory_entry> ls_with_sizes(
+      const URI& uri, const std::string& delimiter, int max_paths) const;
+
+  /**
+   *
+   * Lists objects and object information that start with `prefix`.
+   *
+   * @param uri The parent path to list sub-paths.
+   * @return A list of directory_entry objects.
+   */
+  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& uri) const;
+
+  /**
+   * Copies the directory at 'old_uri' to `new_uri`.
+   *
+   * @param old_uri The directory's current URI.
+   * @param new_uri The directory's URI to move to.
+   */
+  void copy_dir(const URI&, const URI&) const;
+
+  /**
+   * Copies the blob at 'old_uri' to `new_uri`.
+   *
+   * @param old_uri The blob's current URI.
+   * @param new_uri The blob's URI to move to.
+   */
+  void copy_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames an object.
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_object(const URI& old_uri, const URI& new_uri);
+  void move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -361,17 +376,15 @@ class GCS {
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  void move_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Creates an empty object.
    *
    * @param uri The URI of the object to be created.
-   * @return Status
    */
-  Status touch(const URI& uri) const;
+  void touch(const URI& uri) const;
 
   /**
    * Writes the input buffer to an GCS object. Note that this is essentially
@@ -380,9 +393,13 @@ class GCS {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return Status
+   * @param remote_global_order_write Unused flag. Reserved for S3 objects only.
    */
-  Status write(const URI& uri, const void* buffer, uint64_t length);
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t length,
+      bool remote_global_order_write);
 
   /**
    * Reads data from an object into a buffer.
@@ -395,13 +412,26 @@ class GCS {
    * @param length_returned Returns the total length read into `buffer`.
    * @return Status
    */
-  Status read(
+  Status read_impl(
       const URI& uri,
       off_t offset,
       void* buffer,
       uint64_t length,
       uint64_t read_ahead_length,
       uint64_t* length_returned) const;
+
+  /**
+   * Reads data from an object into a buffer.
+   *
+   * @param uri The URI of the object to be read.
+   * @param offset The offset in the object from which the read will start.
+   * @param buffer The buffer into which the data will be written.
+   * @param length The size of the data to be read from the object.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   */
+  void read(const URI&, uint64_t, void*, uint64_t, bool) const {
+    // #TODO. Currently a no-op until read refactor.
+  }
 
   /**
    * Returns the size of the input object with a given URI in bytes.
@@ -415,9 +445,9 @@ class GCS {
    * Flushes an object to GCS, finalizing the upload.
    *
    * @param uri The URI of the object to be flushed.
-   * @return Status
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  Status flush_object(const URI& uri);
+  void flush(const URI& uri, bool finalize);
 
   /**
    * Creates a GCS credentials object.
@@ -429,6 +459,15 @@ class GCS {
    */
   std::shared_ptr<google::cloud::Credentials> make_credentials(
       const google::cloud::Options& options) const;
+
+  /**
+   * Creates a directory.
+   *
+   * @param uri The directory's URI.
+   */
+  void create_dir(const URI&) const {
+    // No-op. Stub function for other filesystems.
+  }
 
  private:
   /* ********************************* */
@@ -615,7 +654,7 @@ class GCS {
    * @param new_uri The object's URI to move to.
    * @return Status
    */
-  Status copy_object(const URI& old_uri, const URI& new_uri);
+  Status copy_object(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Waits for a object with `bucket_name` and `object_path`
@@ -658,26 +697,22 @@ class GCS {
   Status wait_for_bucket_to_be_deleted(const std::string& bucket_name) const;
 
   /**
-   * Check if 'is_object' is a object on GCS.
+   * Check if 'bucket_name/object_path' is an object on GCS.
    *
    * @param bucket_name The object's bucket name.
    * @param object_path The object's path.
-   * @param is_object Mutates to the output.
-   * @return Status
+   * @return `true` if the given object exists on GCS, `false` otherwise
    */
-  Status is_object(
-      const std::string& bucket_name,
-      const std::string& object_path,
-      bool* const is_object) const;
+  bool is_object(
+      const std::string& bucket_name, const std::string& object_path) const;
 
   /**
    * Check if 'bucket_name' is a bucket on GCS.
    *
    * @param bucket_name The bucket's name.
-   * @param is_bucket Mutates to the output.
-   * @return Status
+   * @return `true` if `bucket_name` is a bucket on GCS, `false` otherwise.
    */
-  Status is_bucket(const std::string& bucket_name, bool* const is_bucket) const;
+  bool is_bucket(const std::string& bucket_name) const;
 
   /**
    * Contains the implementation of ls_filtered.

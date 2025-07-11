@@ -555,6 +555,11 @@ class S3Scanner : public LsScanner<F, D> {
 /**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
+ *
+ * @note in S3, the concept of "files" are truly called "objects".
+ * The virtual filesystem's base class may view a these two as the same.
+ * All internal methods have been renamed to use the "file" verbiage in
+ * compliance with the FilesystemBase class.
  */
 class S3 : FilesystemBase {
  private:
@@ -726,25 +731,11 @@ class S3 : FilesystemBase {
   }
 
   /**
-   * Checks if a file exists.
-   *
-   * @param uri The URI to check for existence.
-   * @return True if the file exists, else False.
-   */
-  bool is_file(const URI& uri) const override {
-    bool object = false;
-    throw_if_not_ok(is_object(uri, &object));
-    return object;
-  }
-
-  /**
    * Deletes a file.
    *
    * @param uri The URI of the file.
    */
-  void remove_file(const URI& uri) const override {
-    throw_if_not_ok(remove_object(uri));
-  }
+  void remove_file(const URI& uri) const override;
 
   /**
    * Renames a file.
@@ -765,19 +756,6 @@ class S3 : FilesystemBase {
   void sync(const URI&) const override {
     // No-op for S3.
   }
-
-  /**
-   * Checks if a directory exists.
-   *
-   * @param uri The URI to check for existence.
-   * @return True if the directory exists, else False.
-   */
-  bool is_dir(const URI& uri) const override {
-    bool dir = false;
-    throw_if_not_ok(is_dir(uri, &dir));
-    return dir;
-  }
-
   /**
    * Retrieves all the entries contained in the parent.
    *
@@ -825,20 +803,17 @@ class S3 : FilesystemBase {
    * case there is not).
    *
    * @param uri The URI to check.
-   * @param exists Sets it to `true` if the above mentioned condition holds.
-   * @return Status
+   * @return `true` if the above mentioned condition holds, `false` otherwise.
    */
-  Status is_dir(const URI& uri, bool* exists) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
-   * Checks if the given URI is an existing S3 object.
+   * Checks if a file exists.
    *
-   * @param uri The URI of the object to be checked.
-   * @param exists Mutates to `true` if `uri` is an existing object,
-   *   and `false` otherwise.
-   * @return Status
+   * @param uri The URI to check for existence.
+   * @return True if the file exists, else False.
    */
-  Status is_object(const URI& uri, bool* exists) const;
+  bool is_file(const URI& uri) const override;
 
   /** Checks if the given object exists on S3. */
   Status is_object(
@@ -978,14 +953,6 @@ class S3 : FilesystemBase {
       const uint64_t length,
       const uint64_t read_ahead_length,
       uint64_t* const length_returned) const;
-
-  /**
-   * Deletes an object with a given URI.
-   *
-   * @param uri The URI of the object to be deleted.
-   * @return Status
-   */
-  Status remove_object(const URI& uri) const;
 
   /**
    * Writes the input buffer to an S3 object. This function buffers in memory
