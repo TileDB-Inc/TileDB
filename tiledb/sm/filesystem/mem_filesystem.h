@@ -149,7 +149,7 @@ class MemFilesystem : FilesystemBase {
    * @param path  The parent path to list sub-paths
    * @return A list of directory_entry objects
    */
-  std::vector<common::filesystem::directory_entry> ls_with_sizes(
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
       const URI& path) const;
 
   /**
