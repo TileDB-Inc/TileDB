@@ -38,6 +38,7 @@
 #include <vector>
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
