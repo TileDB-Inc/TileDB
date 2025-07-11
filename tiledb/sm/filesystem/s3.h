@@ -860,7 +860,7 @@ class S3 : FilesystemBase {
    * @param max_paths The maximum number of paths to be retrieved.
    * @return A list of directory_entry objects.
    */
-  std::vector<directory_entry> ls_with_sizes(
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
       const URI& prefix, const std::string& delimiter, int max_paths) const;
 
   /**

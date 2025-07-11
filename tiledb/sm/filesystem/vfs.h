@@ -608,11 +608,7 @@ class VFS : private VFSBase,
     LsObjects results;
     try {
       if (parent.is_file()) {
-#ifdef _WIN32
-        results = win_.ls_filtered(parent, f, d, recursive);
-#else
-        results = posix_.ls_filtered(parent, f, d, recursive);
-#endif
+        results = local_.ls_filtered(parent, f, d, recursive);
       } else if (parent.is_s3()) {
 #ifdef HAVE_S3
         results = s3().ls_filtered(parent, f, d, recursive);
@@ -999,10 +995,12 @@ class VFS : private VFSBase,
   /* ********************************* */
 
 #ifdef _WIN32
-  Win win_;
+  using LocalFS = Win;
 #else
-  Posix posix_;
+  using LocalFS = Posix;
 #endif
+
+  LocalFS local_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
