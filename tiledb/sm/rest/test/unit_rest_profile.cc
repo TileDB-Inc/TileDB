@@ -58,9 +58,9 @@ struct RestProfileFx {
 
   RestProfileFx()
       : dir_(TemporaryLocalDirectory("unit_rest_profile").path())
-      , cloudpath_(dir_ + ".tiledb/cloud.json") {
-    // Fstream cannot create directories, only files, so create the .tiledb dir.
-    std::filesystem::create_directories(dir_ + ".tiledb");
+      , cloudpath_(dir_ + "cloud.json") {
+    // Fstream cannot create directories, only files, so create the dir.
+    std::filesystem::create_directories(dir_);
 
     // Write to the cloud path.
     json j = {
@@ -134,8 +134,8 @@ TEST_CASE_METHOD(
     RestProfileFx,
     "REST Profile: Default profile, empty directory",
     "[rest_profile][default][empty_directory]") {
-  // Remove the .tiledb directory to ensure the cloud.json file isn't inherited.
-  std::filesystem::remove_all(dir_ + ".tiledb");
+  // Remove the dir_ to ensure the cloud.json file isn't inherited.
+  std::filesystem::remove_all(dir_);
 
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
@@ -160,7 +160,7 @@ TEST_CASE_METHOD(
     "[rest_profile][save][remove]") {
   // Create a default RestProfile.
   RestProfile p(create_profile());
-  std::string filepath = dir_ + ".tiledb/profiles.json";
+  std::string filepath = dir_ + "profiles.json";
   CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
   // Validate.
@@ -171,7 +171,7 @@ TEST_CASE_METHOD(
   CHECK(!profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
   // Remove the profile and validate that the local json object is removed.
-  p.remove_from_file();
+  RestProfile::remove_profile(std::nullopt, dir_);
   CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
 }
 
@@ -289,7 +289,7 @@ TEST_CASE_METHOD(
       Catch::Matchers::Equals("RestProfile: Failed to save 'default'; This "
                               "profile has already been saved and must be "
                               "explicitly removed in order to be replaced."));
-  p.remove_from_file();
+  RestProfile::remove_profile(std::nullopt, dir_);
   p2.save_to_file();
   e.token = token;
   CHECK(is_expected(p2, e));
