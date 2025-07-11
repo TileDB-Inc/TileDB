@@ -60,6 +60,7 @@ struct GroupCPPFx {
   tiledb::test::VFSTestSetup vfs_test_setup_;
   tiledb_ctx_t* ctx_c_;
   tiledb::Context ctx_;
+  tiledb::VFS vfs_;
 
   // Functions
   GroupCPPFx();
@@ -75,7 +76,8 @@ struct GroupCPPFx {
 
 GroupCPPFx::GroupCPPFx()
     : ctx_c_(vfs_test_setup_.ctx_c)
-    , ctx_(vfs_test_setup_.ctx()) {
+    , ctx_(vfs_test_setup_.ctx())
+    , vfs_(ctx_, vfs_test_setup_.vfs_c, false) {
 }
 
 void GroupCPPFx::set_group_timestamp(
@@ -294,6 +296,38 @@ TEST_CASE_METHOD(
 
   // Close group
   group.close();
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Group on object storage with empty subfolders",
+    "[cppapi][group][empty_subfolders]") {
+  if (vfs_test_setup_.is_local()) {
+    SKIP("Test only makes sense in object storage.");
+  }
+
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+
+  tiledb::Group::create(ctx_, group1_uri);
+  tiledb::Group group(ctx_, group1_uri, TILEDB_WRITE);
+  // Add non-existent member. Because we supply its type, we don't check if it
+  // exists.
+  group.add_member("my-array", true, "my-array", TILEDB_ARRAY);
+  group.close();
+
+  // Create an object with the same name as the __group directory.
+  // It should be filtered out when listing.
+  vfs_.touch(group1_uri + "/__group");
+
+  // Try to read from the group with empty files
+  // Note: MinIO will delete the actual commits if commits_uri is deleted,
+  // per the s3 implementation limitation, making the group invalid
+  try {
+    group.open(TILEDB_READ);
+  } catch (std::exception& e) {
+    REQUIRE_THAT(
+        e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
+  }
 }
 
 TEST_CASE_METHOD(
