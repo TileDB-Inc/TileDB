@@ -128,6 +128,18 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**
+ * Serialize an ArrayCreateRequest via Cap'n Proto
+ *
+ * @param array_create_builder ArrayCreateRequest Cap'n Proto builder
+ * @param array_schema Array schema for the created array
+ * @param storage_uri Storage URI to use when creating an array
+ */
+void array_create_to_capnp(
+    capnp::ArrayCreateRequest::Builder* array_create_builder,
+    const ArraySchema& array_schema,
+    const std::string& storage_uri);
+
+/**
  * Serialize a dimension label to cap'n proto object
  *
  * @param dim_label Dimension label to serialize
@@ -168,6 +180,32 @@ Status array_schema_serialize(
     const bool client_side);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType serialize_type,
+    span<const char> serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
+
+/**
+ * Serialize an ArrayCreateRequest
+ *
+ * @param array_schema Array schema for the created array
+ * @param serialize_type Format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer Buffer to store serialized bytes in
+ * @param storage_uri Storage URI to use when creating an array
+ */
+void array_create_serialize(
+    const ArraySchema& array_schema,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer,
+    const std::string& storage_uri);
+
+/**
+ * Deserialize an ArrayCreateRequest
+ *
+ * @param serialize_type Format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer Buffer to read serialized bytes from
+ * @param memory_tracker The MemoryTracker to use for deserialization.
+ */
+std::pair<std::string, shared_ptr<ArraySchema>> array_create_deserialize(
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
