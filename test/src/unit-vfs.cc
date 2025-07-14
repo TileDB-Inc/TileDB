@@ -188,7 +188,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
       require_tiledb_ok(vfs.is_file(testfile, &exists));
 
       // Creating the file is not
-      REQUIRE_THROWS(vfs.touch(testfile));
+      REQUIRE_FALSE(vfs.touch(testfile).ok());
     }
 
     // Creating the URI is invalid on Win32 (failure to canonicalize path)
