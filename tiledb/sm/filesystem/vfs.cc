@@ -1174,22 +1174,6 @@ void VFS::sync(const URI& uri) const {
     throw BuiltWithout("S3");
 #endif
   }
-  if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-    azure().sync(uri);
-    return;
-#else
-    throw BuiltWithout("Azure");
-#endif
-  }
-  if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-    gcs().sync(uri);
-    return;
-#else
-    throw BuiltWithout("GCS");
-#endif
-  }
   if (uri.is_memfs()) {
     memfs_.sync(uri);
     return;
