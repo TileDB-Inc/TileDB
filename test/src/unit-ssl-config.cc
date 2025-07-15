@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -298,14 +298,9 @@ void check_success(Filesystem fs, Config& cfg) {
   }
 
   URI bucket_uri = URI(scheme + "://" + bucket_name);
-
-  bool is_bucket;
-  throw_if_not_ok(vfs.is_bucket(bucket_uri, &is_bucket));
-  if (is_bucket) {
-    throw_if_not_ok(vfs.remove_bucket(bucket_uri));
+  if (vfs.is_bucket(bucket_uri)) {
+    vfs.remove_bucket(bucket_uri);
   }
-  throw_if_not_ok(vfs.create_bucket(bucket_uri));
-
-  throw_if_not_ok(vfs.is_bucket(bucket_uri, &is_bucket));
-  REQUIRE(is_bucket);
+  vfs.create_bucket(bucket_uri);
+  REQUIRE(vfs.is_bucket(bucket_uri));
 }

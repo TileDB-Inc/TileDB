@@ -414,7 +414,7 @@ void Azure::flush_blob_direct(const URI& uri) {
   }
 }
 
-bool Azure::is_empty_container(const URI& uri) const {
+bool Azure::is_empty_bucket(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + uri.to_string());
@@ -433,7 +433,7 @@ bool Azure::is_empty_container(const URI& uri) const {
   }
 }
 
-bool Azure::is_container(const URI& uri) const {
+bool Azure::is_bucket(const URI& uri) const {
   if (!uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }

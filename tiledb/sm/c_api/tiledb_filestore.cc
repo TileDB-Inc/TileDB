@@ -455,10 +455,10 @@ int32_t tiledb_filestore_uri_export(
     }
     throw_if_not_ok(query.submit());
 
-    throw_if_not_ok(vfs.write(
+    vfs.write(
         tiledb::sm::URI(file_uri),
         reinterpret_cast<char*>(data.data()),
-        write_size));
+        write_size);
 
     start_range = end_range + 1;
     end_range = std::min(file_size - 1, end_range + buffer_size);

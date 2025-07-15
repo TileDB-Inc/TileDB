@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -71,44 +71,44 @@ struct tiledb_vfs_handle_t
     return vfs_.config();
   }
 
-  Status create_bucket(const tiledb::sm::URI& uri) const {
-    return vfs_.create_bucket(uri);
+  void create_bucket(const tiledb::sm::URI& uri) const {
+    vfs_.create_bucket(uri);
   }
 
-  Status remove_bucket(const tiledb::sm::URI& uri) const {
-    return vfs_.remove_bucket(uri);
+  void remove_bucket(const tiledb::sm::URI& uri) const {
+    vfs_.remove_bucket(uri);
   }
 
-  Status empty_bucket(const tiledb::sm::URI& uri) const {
-    return vfs_.empty_bucket(uri);
+  void empty_bucket(const tiledb::sm::URI& uri) const {
+    vfs_.empty_bucket(uri);
   }
 
-  Status is_empty_bucket(const tiledb::sm::URI& uri, bool* is_empty) const {
-    return vfs_.is_empty_bucket(uri, is_empty);
+  bool is_empty_bucket(const tiledb::sm::URI& uri) const {
+    return vfs_.is_empty_bucket(uri);
   }
 
-  Status is_bucket(const tiledb::sm::URI& uri, bool* is_bucket) const {
-    return vfs_.is_bucket(uri, is_bucket);
+  bool is_bucket(const tiledb::sm::URI& uri) const {
+    return vfs_.is_bucket(uri);
   }
 
-  Status create_dir(const tiledb::sm::URI& uri) const {
-    return vfs_.create_dir(uri);
+  void create_dir(const tiledb::sm::URI& uri) const {
+    vfs_.create_dir(uri);
   }
 
-  Status is_dir(const tiledb::sm::URI& uri, bool* is_dir) const {
-    return vfs_.is_dir(uri, is_dir);
+  bool is_dir(const tiledb::sm::URI& uri) const {
+    return vfs_.is_dir(uri);
   }
 
-  Status remove_dir(const tiledb::sm::URI& uri) const {
-    return vfs_.remove_dir(uri);
+  void remove_dir(const tiledb::sm::URI& uri) const {
+    vfs_.remove_dir(uri);
   }
 
-  Status is_file(const tiledb::sm::URI& uri, bool* is_file) const {
-    return vfs_.is_file(uri, is_file);
+  bool is_file(const tiledb::sm::URI& uri) const {
+    return vfs_.is_file(uri);
   }
 
-  Status remove_file(const tiledb::sm::URI& uri) const {
-    return vfs_.remove_file(uri);
+  void remove_file(const tiledb::sm::URI& uri) const {
+    vfs_.remove_file(uri);
   }
 
   Status dir_size(const tiledb::sm::URI& dir_name, uint64_t* dir_size) const {
@@ -119,24 +119,24 @@ struct tiledb_vfs_handle_t
     return vfs_.file_size(uri);
   }
 
-  Status move_file(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.move_file(old_uri, new_uri);
+  void move_file(
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+    vfs_.move_file(old_uri, new_uri);
   }
 
-  Status move_dir(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.move_dir(old_uri, new_uri);
+  void move_dir(
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+    vfs_.move_dir(old_uri, new_uri);
   }
 
-  Status copy_file(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.copy_file(old_uri, new_uri);
+  void copy_file(
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+    vfs_.copy_file(old_uri, new_uri);
   }
 
-  Status copy_dir(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.copy_dir(old_uri, new_uri);
+  void copy_dir(
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+    vfs_.copy_dir(old_uri, new_uri);
   }
 
   Status ls(
@@ -144,8 +144,8 @@ struct tiledb_vfs_handle_t
     return vfs_.ls(parent, uris);
   }
 
-  Status touch(const tiledb::sm::URI& uri) const {
-    return vfs_.touch(uri);
+  void touch(const tiledb::sm::URI& uri) const {
+    vfs_.touch(uri);
   }
 
   void ls_recursive(

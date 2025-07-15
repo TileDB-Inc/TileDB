@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,19 +60,12 @@ bool is_array(ContextResources& resources, const URI& uri) {
   } else {
     // Check if the schema directory exists or not
     auto& vfs = resources.vfs();
-    bool dir_exists = false;
-    throw_if_not_ok(vfs.is_dir(
-        uri.join_path(constants::array_schema_dir_name), &dir_exists));
-
-    if (dir_exists) {
+    if (vfs.is_dir(uri.join_path(constants::array_schema_dir_name))) {
       return true;
     }
 
-    bool schema_exists = false;
     // If there is no schema directory, we check schema file
-    throw_if_not_ok(vfs.is_file(
-        uri.join_path(constants::array_schema_filename), &schema_exists));
-    return schema_exists;
+    return vfs.is_file(uri.join_path(constants::array_schema_filename));
   }
 }
 
@@ -86,18 +79,12 @@ bool is_group(ContextResources& resources, const URI& uri) {
   } else {
     // Check for new group details directory
     auto& vfs = resources.vfs();
-    bool dir_exists = false;
-    throw_if_not_ok(vfs.is_dir(
-        uri.join_path(constants::group_detail_dir_name), &dir_exists));
-
-    if (dir_exists) {
+    if (vfs.is_dir(uri.join_path(constants::group_detail_dir_name))) {
       return true;
     }
 
     // Fall back to older group file to check for legacy (pre-format 12) groups
-    throw_if_not_ok(
-        vfs.is_file(uri.join_path(constants::group_filename), &dir_exists));
-    return dir_exists;
+    return vfs.is_file(uri.join_path(constants::group_filename));
   }
 }
 
@@ -112,9 +99,7 @@ ObjectType object_type(ContextResources& resources, const URI& uri) {
         URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
   } else if (!uri.is_tiledb()) {
     // For non public cloud backends, listing a non-directory is an error.
-    bool is_dir = false;
-    throw_if_not_ok(resources.vfs().is_dir(uri, &is_dir));
-    if (!is_dir) {
+    if (!resources.vfs().is_dir(uri)) {
       return ObjectType::INVALID;
     }
   }
@@ -149,7 +134,7 @@ void object_move(
         "'; Invalid TileDB object");
   }
 
-  throw_if_not_ok(resources.vfs().move_dir(old_uri, new_uri));
+  resources.vfs().move_dir(old_uri, new_uri);
 }
 
 void object_remove(ContextResources& resources, const char* path) {
@@ -165,7 +150,7 @@ void object_remove(ContextResources& resources, const char* path) {
         "'; Invalid TileDB object");
   }
 
-  throw_if_not_ok(resources.vfs().remove_dir(uri));
+  resources.vfs().remove_dir(uri);
 }
 
 }  // namespace tiledb::sm

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -502,13 +502,13 @@ void GlobalOrderWriter::clean_up() {
     // Cleanup the fragment we are currently writing. There is a chance that the
     // URI is empty if creating the first fragment had failed.
     if (!uri.empty()) {
-      throw_if_not_ok(resources_.vfs().remove_dir(uri));
+      resources_.vfs().remove_dir(uri);
     }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
     for (auto& uri : frag_uris_to_commit_) {
-      throw_if_not_ok(resources_.vfs().remove_dir(uri));
+      resources_.vfs().remove_dir(uri);
     }
     frag_uris_to_commit_.clear();
   }
@@ -699,7 +699,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Write either one commit file or a consolidated commit file if multiple
   // fragments were written.
   if (frag_uris_to_commit_.size() == 0) {
-    throw_if_not_ok(resources_.vfs().touch(commit_uri));
+    resources_.vfs().touch(commit_uri);
   } else {
     std::vector<URI> commit_uris;
     commit_uris.reserve(frag_uris_to_commit_.size() + 1);
@@ -848,7 +848,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 void GlobalOrderWriter::nuke_global_write_state() {
   auto meta = global_write_state_->frag_meta_;
   throw_if_not_ok(close_files(meta));
-  throw_if_not_ok(resources_.vfs().remove_dir(meta->fragment_uri()));
+  resources_.vfs().remove_dir(meta->fragment_uri());
   global_write_state_.reset(nullptr);
 }
 

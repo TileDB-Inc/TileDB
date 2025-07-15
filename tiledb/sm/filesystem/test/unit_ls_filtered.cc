@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -71,15 +71,18 @@ class VFSTest {
   }
 
   virtual ~VFSTest() {
-    bool is_dir = false;
-    vfs_.is_dir(temp_dir_, &is_dir).ok();
-    if (is_dir) {
-      vfs_.remove_dir(temp_dir_).ok();
+    if (vfs_.is_dir(temp_dir_)) {
+      REQUIRE_NOTHROW(vfs_.remove_dir(temp_dir_));
     }
   }
 
   Status mkdir() const {
-    return vfs_.create_dir(temp_dir_);
+    try {
+      vfs_.create_dir(temp_dir_);
+    } catch (std::exception& e) {
+      return Status_Error(e.what());
+    }
+    return Status::Ok();
   }
 
 #ifdef __windows__
@@ -170,16 +173,17 @@ struct TestPath {
 
       parents.pop_back(); /* temp_dir_ */
       while (!parents.empty()) {
-        REQUIRE(vfs_test.vfs_.create_dir(parents.back()).ok());
+        REQUIRE_NOTHROW(vfs_test.vfs_.create_dir(parents.back()));
         parents.pop_back();
       }
     }
-    REQUIRE(vfs_test.vfs_.touch(tiledb::sm::URI(abspath.string())).ok());
+    REQUIRE_NOTHROW(vfs_test.vfs_.touch(tiledb::sm::URI(abspath.string())));
     std::filesystem::resize_file(abspath, size);
   }
 
   void mkdir() {
-    REQUIRE(vfs_test.vfs_.create_dir(tiledb::sm::URI(abspath.string())).ok());
+    REQUIRE_NOTHROW(
+        vfs_test.vfs_.create_dir(tiledb::sm::URI(abspath.string())));
   }
 
   /**
@@ -671,7 +675,7 @@ TEST_CASE("VFS: Throwing FileFilter ls_recursive", "[vfs][ls_recursive]") {
       "directories") {
   }
   SECTION("Throwing FileFilter with N objects should throw") {
-    vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")).ok();
+    REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     CHECK_THROWS_AS(
         vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, always_throw_filter),
         std::logic_error);

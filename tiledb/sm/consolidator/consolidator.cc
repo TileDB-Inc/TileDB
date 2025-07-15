@@ -303,8 +303,7 @@ void Consolidator::write_consolidated_commits_file(
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
           .join_path(name + constants::con_commits_file_suffix);
-  throw_if_not_ok(resources.vfs().write(
-      consolidated_commits_uri, data.data(), data.size()));
+  resources.vfs().write(consolidated_commits_uri, data.data(), data.size());
   throw_if_not_ok(resources.vfs().close_file(consolidated_commits_uri));
 }
 

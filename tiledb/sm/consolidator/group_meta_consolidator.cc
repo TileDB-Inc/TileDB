@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -107,7 +107,7 @@ Status GroupMetaConsolidator::consolidate(
   group_for_writes.close();
 
   // Write vacuum file
-  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  resources_.vfs().write(vac_uri, data.c_str(), data.size());
   throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();
