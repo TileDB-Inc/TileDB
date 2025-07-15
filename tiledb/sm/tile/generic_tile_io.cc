@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -204,8 +204,8 @@ void GenericTileIO::write_generic(
 
   write_generic_tile_header(&header);
 
-  throw_if_not_ok(resources_.vfs().write(
-      uri_, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
+  resources_.vfs().write(
+      uri_, tile->filtered_buffer().data(), tile->filtered_buffer().size());
 
   *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
             header.filter_pipeline_size + header.persisted_size;
@@ -237,7 +237,7 @@ void GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   serialize_generic_tile_header(serializer, *header);
 
   // Write buffer to file
-  throw_if_not_ok(resources_.vfs().write(uri_, data.data(), data.size()));
+  resources_.vfs().write(uri_, data.data(), data.size());
 }
 
 void GenericTileIO::configure_encryption_filter(

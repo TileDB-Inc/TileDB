@@ -319,7 +319,7 @@ class Azure : FilesystemBase {
    * @param container The name of the container.
    * @return `true` if the container is empty, `false` otherwise.
    */
-  bool is_empty_container(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const;
 
   /**
    * Check if a container exists.
@@ -327,7 +327,7 @@ class Azure : FilesystemBase {
    * @param container The name of the container.
    * @return `true` if `uri` is a container, `false` otherwise.
    */
-  bool is_container(const URI& uri) const;
+  bool is_bucket(const URI& uri) const;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose

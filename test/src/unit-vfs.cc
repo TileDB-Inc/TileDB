@@ -147,7 +147,11 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
     bool success = true;
     while (tmpdir.size() < 512) {
       tmpdir += "subdir/";
-      success &= vfs.create_dir(URI(tmpdir)).ok();
+      try {
+        vfs.create_dir(URI(tmpdir));
+      } catch (...) {
+        success = false;
+      }
       if constexpr (tiledb::sm::filesystem::posix_enabled) {
         REQUIRE(success);
       }
@@ -160,13 +164,11 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
       // Check we can create files within the deep hierarchy
       URI testfile(tmpdir + "file.txt");
       REQUIRE(!testfile.is_invalid());
-      bool exists = false;
-      require_tiledb_ok(vfs.is_file(testfile, &exists));
-      if (exists) {
-        require_tiledb_ok(vfs.remove_file(testfile));
+      if (vfs.is_file(testfile)) {
+        REQUIRE_NOTHROW(vfs.remove_file(testfile));
       }
-      require_tiledb_ok(vfs.touch(testfile));
-      require_tiledb_ok(vfs.remove_file(testfile));
+      vfs.touch(testfile);
+      REQUIRE_NOTHROW(vfs.remove_file(testfile));
     } else {
       // Don't check anything; directory creation failed.
     }
@@ -184,11 +186,10 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
     // Creating the URI and checking its existence is fine on posix
     if constexpr (tiledb::sm::filesystem::posix_enabled) {
       REQUIRE(!testfile.is_invalid());
-      bool exists = false;
-      require_tiledb_ok(vfs.is_file(testfile, &exists));
+      REQUIRE_NOTHROW(vfs.is_file(testfile));
 
       // Creating the file is not
-      REQUIRE_FALSE(vfs.touch(testfile).ok());
+      REQUIRE_THROWS(vfs.touch(testfile));
     }
 
     // Creating the URI is invalid on Win32 (failure to canonicalize path)
@@ -215,19 +216,16 @@ TEMPLATE_LIST_TEST_CASE(
   URI path = fs.temp_dir_.add_trailing_slash();
 
   // Set up
-  bool exists = false;
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    require_tiledb_ok(vfs.is_bucket(path, &exists));
-    if (exists) {
-      require_tiledb_ok(vfs.remove_bucket(path));
+    if (vfs.is_bucket(path)) {
+      REQUIRE_NOTHROW(vfs.remove_bucket(path));
     }
-    require_tiledb_ok(vfs.create_bucket(path));
+    REQUIRE_NOTHROW(vfs.create_bucket(path));
   } else {
-    require_tiledb_ok(vfs.is_dir(path, &exists));
-    if (exists) {
-      require_tiledb_ok(vfs.remove_dir(path));
+    if (vfs.is_dir(path)) {
+      REQUIRE_NOTHROW(vfs.remove_dir(path));
     }
-    require_tiledb_ok(vfs.create_dir(path));
+    REQUIRE_NOTHROW(vfs.create_dir(path));
   }
 
   /* Create the following file hierarchy:
@@ -245,13 +243,13 @@ TEMPLATE_LIST_TEST_CASE(
   auto file3 = URI(dir1.to_string() + "file3");
   auto file4 = URI(path.to_string() + "file4");
   auto file5 = URI(path.to_string() + "file5");
-  require_tiledb_ok(vfs.create_dir(URI(dir1)));
-  require_tiledb_ok(vfs.create_dir(URI(subdir)));
-  require_tiledb_ok(vfs.touch(file1));
-  require_tiledb_ok(vfs.touch(file2));
-  require_tiledb_ok(vfs.touch(file3));
-  require_tiledb_ok(vfs.touch(file4));
-  require_tiledb_ok(vfs.touch(file5));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir1)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(subdir)));
+  REQUIRE_NOTHROW(vfs.touch(file1));
+  REQUIRE_NOTHROW(vfs.touch(file2));
+  REQUIRE_NOTHROW(vfs.touch(file3));
+  REQUIRE_NOTHROW(vfs.touch(file4));
+  REQUIRE_NOTHROW(vfs.touch(file5));
 
   /**
    * URI Semantics
@@ -295,8 +293,7 @@ TEMPLATE_LIST_TEST_CASE(
    */
   {
     // Check invalid file
-    require_tiledb_ok(vfs.is_file(URI(path.to_string() + "foo"), &exists));
-    CHECK(!exists);
+    CHECK(!vfs.is_file(URI(path.to_string() + "foo")));
 
     // List with prefix
     std::vector<URI> paths;
@@ -311,21 +308,17 @@ TEMPLATE_LIST_TEST_CASE(
     paths.clear();
 
     // Check if a directory exists
-    require_tiledb_ok(vfs.is_dir(file1, &exists));
-    CHECK(!exists);  // Not a dir
-    require_tiledb_ok(vfs.is_dir(file4, &exists));
-    CHECK(!exists);  // Not a dir
-    require_tiledb_ok(vfs.is_dir(dir1, &exists));
-    CHECK(exists);  // This is viewed as a dir
-    require_tiledb_ok(vfs.is_dir(URI(path.to_string() + "dir1"), &exists));
-    CHECK(exists);  // This is viewed as a dir
+    CHECK(!vfs.is_dir(file1));                          // Not a dir
+    CHECK(!vfs.is_dir(file4));                          // Not a dir
+    CHECK(vfs.is_dir(dir1));                            // Viewed as a dir
+    CHECK(vfs.is_dir(URI(path.to_string() + "dir1")));  // Viewed as a dir
 
     // Check ls_with_sizes
     URI ls_dir = dir1;
     URI ls_subdir = subdir;
     URI ls_file = file3;
     std::string s = "abcdef";
-    require_tiledb_ok(vfs.write(ls_file, s.data(), s.size()));
+    REQUIRE_NOTHROW(vfs.write(ls_file, s.data(), s.size()));
     require_tiledb_ok(vfs.close_file(ls_file));
     auto children = vfs.ls_with_sizes(ls_dir);
 #ifdef _WIN32
@@ -341,51 +334,39 @@ TEMPLATE_LIST_TEST_CASE(
 
     // Move file
     auto file6 = URI(path.to_string() + "file6");
-    require_tiledb_ok(vfs.move_file(file5, file6));
-    require_tiledb_ok(vfs.is_file(file5, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.is_file(file6, &exists));
-    CHECK(exists);
+    REQUIRE_NOTHROW(vfs.move_file(file5, file6));
+    CHECK(!vfs.is_file(file5));
+    CHECK(vfs.is_file(file6));
     paths.clear();
 
     // Move directory
     auto dir2 = URI(path.to_string() + "dir2/");
-    require_tiledb_ok(vfs.move_dir(dir1, URI(dir2)));
-    require_tiledb_ok(vfs.is_dir(dir1, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.is_dir(dir2, &exists));
-    CHECK(exists);
+    REQUIRE_NOTHROW(vfs.move_dir(dir1, URI(dir2)));
+    CHECK(!vfs.is_dir(dir1));
+    CHECK(vfs.is_dir(dir2));
     paths.clear();
 
     // Remove files
-    require_tiledb_ok(vfs.remove_file(file4));
-    require_tiledb_ok(vfs.is_file(file4, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.remove_file(file6));
-    require_tiledb_ok(vfs.is_file(file6, &exists));
-    CHECK(!exists);
+    REQUIRE_NOTHROW(vfs.remove_file(file4));
+    CHECK(!vfs.is_file(file4));
+    REQUIRE_NOTHROW(vfs.remove_file(file6));
+    CHECK(!vfs.is_file(file6));
 
     // Remove directories
-    require_tiledb_ok(vfs.remove_dir(dir2));
-    require_tiledb_ok(vfs.is_file(file1, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.is_file(file2, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.is_file(file3, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.is_dir(dir2, &exists));
-    CHECK(!exists);
+    REQUIRE_NOTHROW(vfs.remove_dir(dir2));
+    CHECK(!vfs.is_file(file1));
+    CHECK(!vfs.is_file(file2));
+    CHECK(!vfs.is_file(file3));
+    CHECK(!vfs.is_dir(dir2));
   }  // File Management
 
   // Clean up
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    require_tiledb_ok(vfs.remove_bucket(path));
-    require_tiledb_ok(vfs.is_bucket(path, &exists));
-    REQUIRE(!exists);
+    REQUIRE_NOTHROW(vfs.remove_bucket(path));
+    REQUIRE(!vfs.is_bucket(path));
   } else {
-    require_tiledb_ok(vfs.remove_dir(path));
-    require_tiledb_ok(vfs.is_dir(path, &exists));
-    REQUIRE(!exists);
+    REQUIRE_NOTHROW(vfs.remove_dir(path));
+    REQUIRE(!vfs.is_dir(path));
   }
 }
 
@@ -435,19 +416,16 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   }
 
   // Set up
-  bool exists = false;
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    require_tiledb_ok(vfs.is_bucket(path, &exists));
-    if (exists) {
-      require_tiledb_ok(vfs.remove_bucket(path));
+    if (vfs.is_bucket(path)) {
+      REQUIRE_NOTHROW(vfs.remove_bucket(path));
     }
-    require_tiledb_ok(vfs.create_bucket(path));
+    REQUIRE_NOTHROW(vfs.create_bucket(path));
   } else {
-    require_tiledb_ok(vfs.is_dir(path, &exists));
-    if (exists) {
-      require_tiledb_ok(vfs.remove_dir(path));
+    if (vfs.is_dir(path)) {
+      REQUIRE_NOTHROW(vfs.remove_dir(path));
     }
-    require_tiledb_ok(vfs.create_dir(path));
+    REQUIRE_NOTHROW(vfs.create_dir(path));
     // Bucket-specific operations are only valid for object store filesystems.
     CHECK_THROWS(vfs.create_bucket(path));
   }
@@ -464,17 +442,14 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
 
   // Write to two files
   URI largefile = URI(path.to_string() + "largefile");
-  require_tiledb_ok(vfs.write(largefile, write_buffer, buffer_size));
+  REQUIRE_NOTHROW(vfs.write(largefile, write_buffer, buffer_size));
   URI smallfile = URI(path.to_string() + "smallfile");
-  require_tiledb_ok(
-      vfs.write(smallfile, write_buffer_small, buffer_size_small));
+  REQUIRE_NOTHROW(vfs.write(smallfile, write_buffer_small, buffer_size_small));
 
   // On non-local systems, before flushing, the files do not exist
   if (!(path.is_file())) {
-    require_tiledb_ok(vfs.is_file(largefile, &exists));
-    CHECK(!exists);
-    require_tiledb_ok(vfs.is_file(smallfile, &exists));
-    CHECK(!exists);
+    CHECK(!vfs.is_file(largefile));
+    CHECK(!vfs.is_file(smallfile));
 
     // Flush the files
     require_tiledb_ok(vfs.close_file(largefile));
@@ -482,13 +457,11 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   }
 
   // After flushing, the files exist
-  require_tiledb_ok(vfs.is_file(largefile, &exists));
-  CHECK(exists);
-  require_tiledb_ok(vfs.is_file(smallfile, &exists));
-  CHECK(exists);
+  CHECK(vfs.is_file(largefile));
+  CHECK(vfs.is_file(smallfile));
 
   // Get file sizes
-  CHECK(vfs.file_size(largefile) == (buffer_size));
+  CHECK(vfs.file_size(largefile) == buffer_size);
   CHECK(vfs.file_size(smallfile) == buffer_size_small);
 
   // Read from the beginning
@@ -516,13 +489,11 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
 
   // Clean up
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    require_tiledb_ok(vfs.remove_bucket(path));
-    require_tiledb_ok(vfs.is_bucket(path, &exists));
-    REQUIRE(!exists);
+    REQUIRE_NOTHROW(vfs.remove_bucket(path));
+    REQUIRE(!vfs.is_bucket(path));
   } else {
-    require_tiledb_ok(vfs.remove_dir(path));
-    require_tiledb_ok(vfs.is_dir(path, &exists));
-    REQUIRE(!exists);
+    REQUIRE_NOTHROW(vfs.remove_dir(path));
+    REQUIRE(!vfs.is_dir(path));
   }
 }
 
@@ -557,19 +528,19 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   std::string subdir_file = subdir + "/file";
 
   // Create directories and files
-  require_tiledb_ok(vfs_ls.create_dir(URI(path)));
-  require_tiledb_ok(vfs_ls.create_dir(URI(dir)));
-  require_tiledb_ok(vfs_ls.create_dir(URI(subdir)));
-  require_tiledb_ok(vfs_ls.touch(URI(file)));
-  require_tiledb_ok(vfs_ls.touch(URI(subdir_file)));
+  REQUIRE_NOTHROW(vfs_ls.create_dir(URI(path)));
+  REQUIRE_NOTHROW(vfs_ls.create_dir(URI(dir)));
+  REQUIRE_NOTHROW(vfs_ls.create_dir(URI(subdir)));
+  REQUIRE_NOTHROW(vfs_ls.touch(URI(file)));
+  REQUIRE_NOTHROW(vfs_ls.touch(URI(subdir_file)));
 
   // Write to file
   std::string s1 = "abcdef";
-  require_tiledb_ok(vfs_ls.write(URI(file), s1.data(), s1.size()));
+  REQUIRE_NOTHROW(vfs_ls.write(URI(file), s1.data(), s1.size()));
 
   // Write to subdir file
   std::string s2 = "abcdef";
-  require_tiledb_ok(vfs_ls.write(URI(subdir_file), s2.data(), s2.size()));
+  REQUIRE_NOTHROW(vfs_ls.write(URI(subdir_file), s2.data(), s2.size()));
 
   // List
   auto children = vfs_ls.ls_with_sizes(URI(dir));
@@ -590,11 +561,11 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   REQUIRE(children[1].file_size() == 0);
 
   // Touch does not overwrite an existing file.
-  require_tiledb_ok(vfs_ls.touch(URI(subdir_file)));
+  REQUIRE_NOTHROW(vfs_ls.touch(URI(subdir_file)));
   REQUIRE(vfs_ls.file_size(URI(subdir_file)) == 6);
 
   // Clean up
-  require_tiledb_ok(vfs_ls.remove_dir(URI(path)));
+  REQUIRE_NOTHROW(vfs_ls.remove_dir(URI(path)));
 }
 
 // Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
@@ -666,7 +637,7 @@ TEST_CASE(
         vfs_test.temp_dir_, file_filter, tiledb::sm::accept_all_dirs));
   }
   SECTION("Throwing FileFilter with N objects should throw") {
-    vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")).ok();
+    REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     CHECK_THROWS_AS(
         vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
         std::logic_error);
@@ -686,30 +657,26 @@ TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
   std::string file1 = dir + "file1";
 
   // Create directories and files
-  require_tiledb_ok(vfs.create_dir(URI(path)));
-  require_tiledb_ok(vfs.create_dir(URI(dir)));
-  require_tiledb_ok(vfs.create_dir(URI(subdir)));
-  require_tiledb_ok(vfs.touch(URI(file1)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(path)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(subdir)));
+  REQUIRE_NOTHROW(vfs.touch(URI(file1)));
 
   // Check that remove_dir_if_empty fails for non-empty directories
   vfs.remove_dir_if_empty(URI(dir));
-  bool exists;
-  require_tiledb_ok(vfs.is_dir(URI(dir), &exists));
-  CHECK(exists);
+  CHECK(vfs.is_dir(URI(dir)));
 
   // Check that it succeeds for empty directories
   vfs.remove_dir_if_empty(URI(subdir));
-  require_tiledb_ok(vfs.is_dir(URI(subdir), &exists));
-  CHECK_FALSE(exists);
+  CHECK_FALSE(vfs.is_dir(URI(subdir)));
 
   // Empty the directory and try again
-  require_tiledb_ok(vfs.remove_file(URI(file1)));
+  REQUIRE_NOTHROW(vfs.remove_file(URI(file1)));
   vfs.remove_dir_if_empty(URI(dir));
-  require_tiledb_ok(vfs.is_dir(URI(dir), &exists));
-  CHECK_FALSE(exists);
+  CHECK_FALSE(vfs.is_dir(URI(dir)));
 
   // Clean up
-  require_tiledb_ok(vfs.remove_dir(URI(path)));
+  REQUIRE_NOTHROW(vfs.remove_dir(URI(path)));
 }
 
 #ifdef HAVE_AZURE

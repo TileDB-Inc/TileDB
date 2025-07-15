@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -149,7 +149,7 @@ std::string OrderedWriter::name() {
 
 void OrderedWriter::clean_up() {
   if (frag_uri_.has_value()) {
-    throw_if_not_ok(resources_.vfs().remove_dir(frag_uri_.value()));
+    resources_.vfs().remove_dir(frag_uri_.value());
   }
 }
 
@@ -281,7 +281,7 @@ Status OrderedWriter::ordered_write() {
 
   // The following will make the fragment visible
   URI commit_uri = array_->array_directory().get_commit_uri(frag_uri_.value());
-  throw_if_not_ok(resources_.vfs().touch(commit_uri));
+  resources_.vfs().touch(commit_uri);
 
   return Status::Ok();
 }
