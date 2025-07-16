@@ -289,6 +289,7 @@ Status RestClientRemote::post_array_schema_to_rest(
   // This method is called on Array create
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
+
   RETURN_NOT_OK(serialization::array_schema_serialize(
       array_schema, serialization_type_, buff, false));
 
@@ -324,6 +325,47 @@ Status RestClientRemote::post_array_schema_to_rest(
       &returned_data,
       cache_key);
   return sc;
+}
+
+void RestClientRemote::post_array_create_to_rest(
+    const URI& uri, const ArraySchema& array_schema) {
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
+
+  URI::RESTURIComponents rest_uri;
+  throw_if_not_ok(uri.get_rest_components(rest_legacy(), &rest_uri));
+  serialization::array_create_serialize(
+      array_schema, serialization_type_, buff, {rest_uri.asset_storage});
+
+  const auto creation_access_credentials_name{
+      config_->get<std::string>("rest.creation_access_credentials_name")};
+  if (creation_access_credentials_name.has_value()) {
+    add_header(
+        "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
+        creation_access_credentials_name.value());
+  }
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  const std::string cache_key =
+      rest_uri.server_namespace + ":" + rest_uri.server_path;
+  // We don't want to cache the URI used for array creation as it will
+  // always be hardcoded to the default server. After creation the REST
+  // server knows the right region to direct the request to, so client
+  // side caching should start from then on.
+  throw_if_not_ok(curlc.init(
+      config_, extra_headers_, &redirect_meta_, &redirect_mtx_, false));
+  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" +
+                     curlc.url_escape_namespace(rest_uri.server_namespace) +
+                     "/" + curlc.url_escape(rest_uri.server_path);
+  Buffer returned_data;
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      deduced_url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
 }
 
 void RestClientRemote::post_array_from_rest(

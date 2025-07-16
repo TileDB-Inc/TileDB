@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -176,22 +176,16 @@ void store_array_schema(
   resources.stats().add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
-  bool exists;
-  throw_if_not_ok(resources.vfs().is_file(schema_uri, &exists));
-  if (exists) {
-    throw_if_not_ok(resources.vfs().remove_file(schema_uri));
+  if (resources.vfs().is_file(schema_uri)) {
+    resources.vfs().remove_file(schema_uri);
   }
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
-  bool schema_dir_exists = false;
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
-  throw_if_not_ok(
-      resources.vfs().is_dir(array_schema_dir_uri, &schema_dir_exists));
-
-  if (!schema_dir_exists) {
-    throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
+  if (!resources.vfs().is_dir(array_schema_dir_uri)) {
+    resources.vfs().create_dir(array_schema_dir_uri);
   }
 
   GenericTileIO::store_data(resources, schema_uri, tile, encryption_key);
@@ -199,14 +193,10 @@ void store_array_schema(
   // Create the `__enumerations` directory under `__schema` if it doesn't
   // exist. This might happen if someone tries to add an enumeration to an
   // array created before version 19.
-  bool enumerations_dir_exists = false;
   URI array_enumerations_dir_uri =
       array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  throw_if_not_ok(resources.vfs().is_dir(
-      array_enumerations_dir_uri, &enumerations_dir_exists));
-
-  if (!enumerations_dir_exists) {
-    throw_if_not_ok(resources.vfs().create_dir(array_enumerations_dir_uri));
+  if (!resources.vfs().is_dir(array_enumerations_dir_uri)) {
+    resources.vfs().create_dir(array_enumerations_dir_uri);
   }
 
   // Serialize all enumerations into the `__enumerations` directory

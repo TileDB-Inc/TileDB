@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -229,12 +229,9 @@ void GroupDetails::store(
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
-  bool group_detail_dir_exists = false;
   auto& vfs = resources.vfs();
-  throw_if_not_ok(
-      vfs.is_dir(group_detail_folder_uri, &group_detail_dir_exists));
-  if (!group_detail_dir_exists) {
-    throw_if_not_ok(vfs.create_dir(group_detail_folder_uri));
+  if (!vfs.is_dir(group_detail_folder_uri)) {
+    vfs.create_dir(group_detail_folder_uri);
   }
   GenericTileIO::store_data(resources, group_detail_uri, tile, encryption_key);
 }

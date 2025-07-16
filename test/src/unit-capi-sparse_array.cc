@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -7162,6 +7162,6 @@ TEST_CASE_METHOD(
       deserialized_array_dir->timestamp_start() == array_dir.timestamp_start());
   REQUIRE(deserialized_array_dir->timestamp_end() == array_dir.timestamp_end());
 
-  REQUIRE(resources.vfs().remove_dir(tiledb::sm::URI(array_name)).ok());
+  REQUIRE_NOTHROW(resources.vfs().remove_dir(tiledb::sm::URI(array_name)));
 #endif
 }

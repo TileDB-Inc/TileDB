@@ -1043,15 +1043,15 @@ class AzureTest : public VFSTestBase {
   explicit AzureTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "azure://") {
 #ifdef HAVE_AZURE
-    vfs_.create_bucket(temp_dir_).ok();
+    vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
       sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
       // VFS::create_dir is a no-op for Azure; Just create objects.
       for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
         auto object_uri = path.join_path("test_file_" + std::to_string(j));
-        vfs_.touch(object_uri).ok();
+        vfs_.touch(object_uri);
         std::string data(j * 10, 'a');
-        vfs_.write(object_uri, data.data(), data.size()).ok();
+        vfs_.write(object_uri, data.data(), data.size());
         vfs_.close_file(object_uri).ok();
         expected_results().emplace_back(object_uri.to_string(), data.size());
       }
@@ -1067,15 +1067,15 @@ class GCSTest : public VFSTestBase {
   explicit GCSTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "gcs://") {
 #ifdef HAVE_GCS
-    vfs_.create_bucket(temp_dir_).ok();
+    vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
       sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
       // VFS::create_dir is a no-op for GCS; Just create objects.
       for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
         auto object_uri = path.join_path("test_file_" + std::to_string(j));
-        vfs_.touch(object_uri).ok();
+        vfs_.touch(object_uri);
         std::string data(j * 10, 'a');
-        vfs_.write(object_uri, data.data(), data.size()).ok();
+        vfs_.write(object_uri, data.data(), data.size());
         vfs_.close_file(object_uri).ok();
         expected_results().emplace_back(object_uri.to_string(), data.size());
       }

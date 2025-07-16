@@ -438,10 +438,8 @@ VFSTestBase::VFSTestBase(
 VFSTestBase::~VFSTestBase() {
   try {
     if (vfs_.supports_uri_scheme(temp_dir_)) {
-      bool is_dir = false;
-      vfs_.is_dir(temp_dir_, &is_dir).ok();
-      if (is_dir) {
-        vfs_.remove_dir(temp_dir_).ok();
+      if (vfs_.is_dir(temp_dir_)) {
+        REQUIRE_NOTHROW(vfs_.remove_dir(temp_dir_));
       }
     }
   } catch (const std::exception& e) {
@@ -477,20 +475,20 @@ VFSTest::VFSTest(
   }
 
   if (temp_dir_.is_file() || temp_dir_.is_memfs()) {
-    vfs_.create_dir(temp_dir_).ok();
+    REQUIRE_NOTHROW(vfs_.create_dir(temp_dir_));
   } else {
-    vfs_.create_bucket(temp_dir_).ok();
+    REQUIRE_NOTHROW(vfs_.create_bucket(temp_dir_));
   }
   for (size_t i = 1; i <= test_tree_.size(); i++) {
     sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
     // VFS::create_dir is a no-op for S3.
-    vfs_.create_dir(path).ok();
+    REQUIRE_NOTHROW(vfs_.create_dir(path));
     for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
       auto object_uri = path.join_path("test_file_" + std::to_string(j));
-      vfs_.touch(object_uri).ok();
+      REQUIRE_NOTHROW(vfs_.touch(object_uri));
       std::string data(j * 10, 'a');
       vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
-      vfs_.write(object_uri, data.data(), data.size()).ok();
+      REQUIRE_NOTHROW(vfs_.write(object_uri, data.data(), data.size()));
       vfs_.close_file(object_uri).ok();
       expected_results().emplace_back(object_uri.to_string(), data.size());
     }
@@ -508,18 +506,18 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
       tiledb::test::test_dir(prefix_ + tiledb::sm::Posix::current_dir() + "/");
 #endif
 
-  vfs_.create_dir(temp_dir_).ok();
+  REQUIRE_NOTHROW(vfs_.create_dir(temp_dir_));
   // TODO: We could refactor to remove duplication with S3Test()
   for (size_t i = 1; i <= test_tree_.size(); i++) {
     sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
-    vfs_.create_dir(path).ok();
+    REQUIRE_NOTHROW(vfs_.create_dir(path));
     expected_results().emplace_back(path.to_string(), 0);
     for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
       auto object_uri = path.join_path("test_file_" + std::to_string(j));
-      vfs_.touch(object_uri).ok();
+      REQUIRE_NOTHROW(vfs_.touch(object_uri));
       std::string data(j * 10, 'a');
       vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
-      vfs_.write(object_uri, data.data(), data.size()).ok();
+      REQUIRE_NOTHROW(vfs_.write(object_uri, data.data(), data.size()));
       vfs_.close_file(object_uri).ok();
       expected_results().emplace_back(object_uri.to_string(), data.size());
     }
