@@ -73,7 +73,7 @@ typedef void* HANDLE;
 class Win : FilesystemBase, LocalFilesystem {
  public:
   /* ********************************* */
-  /*                 API               */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /**
@@ -87,11 +87,23 @@ class Win : FilesystemBase, LocalFilesystem {
   Win(const Config&) {
   }
 
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
   /**
    * Returns the absolute (string) path of the input in the
    * form of a Windows path.
    */
   static std::string abs_path(const std::string& path);
+
+  /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const;
 
   /**
    * Creates a new directory.

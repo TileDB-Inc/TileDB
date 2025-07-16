@@ -346,6 +346,10 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
+bool S3::supports_uri(const URI& uri) const {
+  return uri.is_s3();
+}
+
 void S3::create_bucket(const URI& bucket) const {
   throw_if_not_ok(init_client());
 

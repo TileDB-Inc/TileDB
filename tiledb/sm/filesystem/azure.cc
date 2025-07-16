@@ -273,6 +273,10 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   return *client_;
 }
 
+bool Azure::supports_uri(const URI& uri) const {
+  return uri.is_azure();
+}
+
 void Azure::create_bucket(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {

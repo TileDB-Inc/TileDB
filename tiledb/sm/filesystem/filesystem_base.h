@@ -47,11 +47,25 @@ class IOError : public StatusException {
   }
 };
 
-class UnsupportedOperation : public IOError {
+class FilesystemException : public StatusException {
+ public:
+  explicit FilesystemException(const std::string& message)
+      : StatusException("Filesystem", message) {
+  }
+};
+
+class UnsupportedOperation : public FilesystemException {
  public:
   explicit UnsupportedOperation(const std::string& operation)
-      : IOError(std::string(
+      : FilesystemException(std::string(
             operation + " is not supported on the given filesystem.")) {
+  }
+};
+
+class UnsupportedURI : public FilesystemException {
+ public:
+  explicit UnsupportedURI(const std::string& uri)
+      : FilesystemException("Unsupported URI scheme: " + uri) {
   }
 };
 
@@ -60,6 +74,17 @@ class FilesystemBase {
   FilesystemBase() = default;
 
   virtual ~FilesystemBase() = default;
+
+  /**
+   * Checks if the filesystem supports the given URI.
+   *
+   * - s3.supports_uri(s3://test) will return true.
+   * - posix.supports_uri(s3://test) will return false.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on the filesystem, `false` otherwise.
+   */
+  virtual bool supports_uri(const URI& uri) const;
 
   /**
    * Creates a directory.

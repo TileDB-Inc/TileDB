@@ -134,6 +134,10 @@ Posix::Posix(const Config& config) {
   directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
 }
 
+bool Posix::supports_uri(const URI& uri) const {
+  return uri.is_file();
+}
+
 void Posix::create_dir(const URI& uri) const {
   // If the directory does not exist, create it
   auto path = uri.to_path();
@@ -222,6 +226,9 @@ uint64_t Posix::file_size(const URI& uri) const {
 }
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
+  if (this->is_file(new_path)) {
+    remove_file(new_path);
+  }
   auto new_uri_path = new_path.to_path();
   throw_if_not_ok(ensure_directory(new_uri_path));
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
@@ -234,6 +241,9 @@ void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 void Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
+  if (this->is_file(new_uri)) {
+    remove_file(new_uri);
+  }
   std::ifstream src(old_uri.to_path(), std::ios::binary);
   auto new_uri_path = new_uri.to_path();
   throw_if_not_ok(ensure_directory(new_uri_path));

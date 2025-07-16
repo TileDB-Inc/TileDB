@@ -242,6 +242,10 @@ Status GCS::init_client() const {
   return Status::Ok();
 }
 
+bool GCS::supports_uri(const URI& uri) const {
+  return uri.is_gcs();
+}
+
 void GCS::create_bucket(const URI& uri) const {
   throw_if_not_ok(init_client());
 

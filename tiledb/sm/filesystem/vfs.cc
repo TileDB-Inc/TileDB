@@ -680,12 +680,6 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 }
 
 void VFS::move_file(const URI& old_uri, const URI& new_uri) const {
-  auto instrument = make_log_duration_instrument(old_uri, new_uri);
-  // If new_uri exists, delete it or raise an error based on `force`
-  if (this->is_file(new_uri)) {
-    remove_file(new_uri);
-  }
-
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
@@ -807,11 +801,6 @@ void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
 
 void VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
-  // If new_uri exists, delete it or raise an error based on `force`
-  if (this->is_file(new_uri)) {
-    remove_file(new_uri);
-  }
-
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {

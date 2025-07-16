@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,10 @@ namespace tiledb::sm {
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+bool FilesystemBase::supports_uri(const URI& uri) const {
+  throw UnsupportedURI(uri.to_string());
+}
 
 void FilesystemBase::sync(const URI&) const {
   throw UnsupportedOperation("sync");

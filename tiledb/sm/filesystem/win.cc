@@ -146,6 +146,10 @@ std::string Win::abs_path(const std::string& path) {
   return str_result;
 }
 
+bool Win::supports_uri(const URI& uri) const {
+  return uri.is_file();
+}
+
 void Win::create_dir(const URI& uri) const {
   auto path = uri.to_path();
   if (is_dir(uri)) {

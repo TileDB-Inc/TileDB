@@ -296,6 +296,14 @@ class Azure : FilesystemBase {
   /* ********************************* */
 
   /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const;
+
+  /**
    * Creates a container.
    *
    * @param container The name of the container to be created.
