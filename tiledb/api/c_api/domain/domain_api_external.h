@@ -34,6 +34,9 @@
 #include "../dimension/dimension_api_external.h"
 #include "../string/string_api_external.h"
 
+// For the `FILE *` argument in `tiledb_domain_dump`
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
