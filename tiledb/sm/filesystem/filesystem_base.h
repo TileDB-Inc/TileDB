@@ -158,7 +158,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void move_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames a directory.
@@ -167,7 +167,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void move_dir(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void move_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies a file.
@@ -176,7 +176,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void copy_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies directory.
@@ -185,7 +185,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Reads from a file.

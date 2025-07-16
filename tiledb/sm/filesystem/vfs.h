@@ -395,6 +395,14 @@ class VFS : FilesystemBase,
   /* ********************************* */
 
   /**
+   * Returns the filesystem which corresponds to the given URI.
+   *
+   * @param uri The URI which may correspond to a filesystem.
+   * @return The filesystem on which `uri` is stored.
+   */
+  const FilesystemBase& get_fs(const URI& uri) const;
+
+  /**
    * Returns the absolute path of the input string (mainly useful for
    * posix URI's).
    *

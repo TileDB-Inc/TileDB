@@ -42,6 +42,22 @@ bool FilesystemBase::supports_uri(const URI& uri) const {
   throw UnsupportedURI(uri.to_string());
 }
 
+void FilesystemBase::move_file(const URI&, const URI&) const {
+  throw UnsupportedOperation("move_file");
+}
+
+void FilesystemBase::move_dir(const URI&, const URI&) const {
+  throw UnsupportedOperation("move_dir");
+}
+
+void FilesystemBase::copy_file(const URI&, const URI&) const {
+  throw UnsupportedOperation("copy_file");
+}
+
+void FilesystemBase::copy_dir(const URI&, const URI&) const {
+  throw UnsupportedOperation("copy_dir");
+}
+
 void FilesystemBase::sync(const URI&) const {
   throw UnsupportedOperation("sync");
 }
