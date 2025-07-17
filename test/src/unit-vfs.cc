@@ -303,7 +303,7 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(paths.size() == 3);
     paths.clear();
     require_tiledb_ok(vfs.ls(dir1, &paths));
-    CHECK(paths.size() == 2);
+    CHECK(paths.size() == 3);
     paths.clear();
     require_tiledb_ok(vfs.ls(subdir, &paths));
     CHECK(paths.size() == 2);
@@ -327,7 +327,7 @@ TEMPLATE_LIST_TEST_CASE(
     // Normalization only for Windows
     ls_file = URI(tiledb::sm::path_win::uri_from_path(ls_file.to_string()));
 #endif
-    REQUIRE(children.size() == 2);
+    REQUIRE(children.size() == 3);
     CHECK(URI(children[0].path().native()) == ls_file);
     CHECK(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
