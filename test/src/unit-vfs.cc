@@ -238,7 +238,6 @@ TEMPLATE_LIST_TEST_CASE(
    */
   auto dir1 = URI(path.to_string() + "dir1/");
   auto subdir = URI(dir1.to_string() + "subdir/");
-  auto subdir2 = URI(dir1.to_string() + "subdir2/subdir3");
   auto file1 = URI(subdir.to_string() + "file1");
   auto file2 = URI(subdir.to_string() + "file2");
   auto file3 = URI(dir1.to_string() + "file3");
@@ -246,7 +245,6 @@ TEMPLATE_LIST_TEST_CASE(
   auto file5 = URI(path.to_string() + "file5");
   REQUIRE_NOTHROW(vfs.create_dir(URI(dir1)));
   REQUIRE_NOTHROW(vfs.create_dir(URI(subdir)));
-  REQUIRE_NOTHROW(vfs.create_dir(URI(subdir2)));
   REQUIRE_NOTHROW(vfs.touch(file1));
   REQUIRE_NOTHROW(vfs.touch(file2));
   REQUIRE_NOTHROW(vfs.touch(file3));
@@ -303,7 +301,7 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(paths.size() == 3);
     paths.clear();
     require_tiledb_ok(vfs.ls(dir1, &paths));
-    CHECK(paths.size() == 3);
+    CHECK(paths.size() == 2);
     paths.clear();
     require_tiledb_ok(vfs.ls(subdir, &paths));
     CHECK(paths.size() == 2);
@@ -327,7 +325,7 @@ TEMPLATE_LIST_TEST_CASE(
     // Normalization only for Windows
     ls_file = URI(tiledb::sm::path_win::uri_from_path(ls_file.to_string()));
 #endif
-    REQUIRE(children.size() == 3);
+    REQUIRE(children.size() == 2);
     CHECK(URI(children[0].path().native()) == ls_file);
     CHECK(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
@@ -370,6 +368,26 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE_NOTHROW(vfs.remove_dir(path));
     REQUIRE(!vfs.is_dir(path));
   }
+}
+
+TEST_CASE("VFS: Create directory", "[vfs][create-dir]") {
+  LocalFsTest fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
+  URI path = fs.temp_dir_.add_trailing_slash();
+
+  URI subdir = URI(path.to_string() + "subdir/");
+  URI subdir2 = URI(path.to_string() + "subdir/nested/nested2/");
+
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
+  REQUIRE(fs.vfs_.is_dir(subdir));
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir2));
+  REQUIRE(fs.vfs_.is_dir(subdir2));
+
+  // Try creating existing directory.
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
 }
 
 TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
