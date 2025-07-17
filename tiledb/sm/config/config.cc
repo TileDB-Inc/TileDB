@@ -78,6 +78,8 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
 const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
+const std::string Config::PROFILE_NAME = "";
+const std::string Config::PROFILE_DIR = "";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -243,6 +245,8 @@ const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
+    std::make_pair("profile_name", Config::PROFILE_NAME),
+    std::make_pair("profile_dir", Config::PROFILE_DIR),
     std::make_pair("rest.server_address", Config::REST_SERVER_DEFAULT_ADDRESS),
     std::make_pair(
         "rest.server_serialization_format",
@@ -635,6 +639,13 @@ Status Config::set(const std::string& param, const std::string& value) {
   param_values_[param] = value;
   set_params_.insert(param);
 
+  // We need to reset the profile load attempt flag in order to allow
+  // loading a new profile in case the user changes a profile-related parameter.
+  if (param.starts_with("profile")) {
+    rest_profile_load_attempted_ = false;
+    rest_profile_.reset();
+  }
+
   return Status::Ok();
 }
 
@@ -713,24 +724,6 @@ void Config::inherit(const Config& config) {
     assert(found);
     throw_if_not_ok(set(p, v));
   }
-}
-
-Status Config::set_profile(
-    const std::optional<std::string>& profile_name,
-    const std::optional<std::string>& profile_dir) {
-  try {
-    // Load the Profile
-    tiledb::sm::RestProfile loaded_profile =
-        RestProfile(profile_name, profile_dir);
-    loaded_profile.load_from_file();
-    // Set the profile
-    rest_profile_ = std::move(loaded_profile);
-  } catch (const RestProfileException& e) {
-    throw RestProfileException(
-        "Failed to load profile; " + std::string(e.what()));
-  }
-
-  return Status::Ok();
 }
 
 bool Config::operator==(const Config& rhs) const {
@@ -927,6 +920,63 @@ const char* Config::get_from_config(
   return *found ? it->second.c_str() : "";
 }
 
+const char* Config::get_from_profile(
+    const std::string& param, bool* found) const {
+  if (param == "profile_name" || param == "profile_dir") {
+    // If the parameter is profile_name or profile_dir, we do not
+    // want to have an infinite recursion. So, we return early.
+    *found = false;
+    return "";
+  }
+
+  if (RestProfile::can_have_parameter(param)) {
+    // If there is no profile loaded yet and we have not attempted to load it,
+    // we try to load the configure specified profile.
+    if (!rest_profile_.has_value() && !rest_profile_load_attempted_) {
+      bool found_name = false;
+      const char* profile_name_cstr =
+          get_from_config_or_fallback("profile_name", &found_name);
+      std::optional<std::string> profile_name =
+          found_name ? std::make_optional(profile_name_cstr) : std::nullopt;
+
+      bool found_dir = false;
+      const char* profile_dir_cstr =
+          get_from_config_or_fallback("profile_dir", &found_dir);
+      std::optional<std::string> profile_dir =
+          found_dir ? std::make_optional(profile_dir_cstr) : std::nullopt;
+
+      try {
+        // Create a Profile object and load the profile
+        rest_profile_ = RestProfile(profile_name, profile_dir);
+        rest_profile_.value().load_from_file();
+      } catch (const std::exception&) {
+        // Throw an exception if the user has specified profile-related
+        // parameters but the profile could not be loaded.
+        if ((profile_name.has_value() && !profile_name.value().empty()) ||
+            (profile_dir.has_value() && !profile_dir.value().empty())) {
+          throw ConfigException(
+              "Failed to load the REST profile. "
+              "Please check the profile name and directory parameters.");
+        }
+        // Do not throw an exception for the default profile since this might
+        // not be intended by the user.
+        rest_profile_load_attempted_ = true;
+        rest_profile_.reset();
+      }
+    }
+    // If the profile was loaded successfully, try to get the parameter from it.
+    if (rest_profile_.has_value()) {
+      const std::string* value = rest_profile_.value().get_param(param);
+      if (value) {
+        *found = true;
+        return value->c_str();
+      }
+    }
+  }
+  *found = false;
+  return "";
+}
+
 const char* Config::get_from_config_or_fallback(
     const std::string& param, bool* found) const {
   // First check if the user has set the parameter
@@ -953,27 +1003,10 @@ const char* Config::get_from_config_or_fallback(
     return value_env;
 
   // [3. profiles] -- only for rest.* params
-  if (RestProfile::can_have_parameter(param)) {
-    // If the there is no set profile and there was no previous attempt to
-    // load the default profile, attempt to load it.
-    if (!rest_profile_.has_value() && !default_rest_profile_not_found_) {
-      try {
-        // Create a Profile object and load the default profile
-        rest_profile_ = RestProfile();
-        rest_profile_.value().load_from_file();
-      } catch (const std::exception&) {
-        default_rest_profile_not_found_ = true;
-      }
-    }
-    // If the profile was loaded successfully, try to get the parameter from it.
-    if (rest_profile_.has_value()) {
-      const std::string* value = rest_profile_.value().get_param(param);
-      if (value) {
-        *found = true;
-        return value->c_str();
-      }
-    }
-  }
+  const char* value_profile = get_from_profile(param, found);
+  if (*found)
+    return value_profile;
+
   // [4. default config value]
   *found = found_config;
 
