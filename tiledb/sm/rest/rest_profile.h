@@ -63,26 +63,8 @@ class RestProfile {
   /*       PARAMETER DEFAULTS       */
   /* ****************************** */
 
-  /** The default REST password of a RestProfile. */
-  static const std::string DEFAULT_PASSWORD;
-
-  /** The default namespace that should be charged for the request. */
-  static const std::string DEFAULT_PAYER_NAMESPACE;
-
   /** The default name of a RestProfile. */
   static const std::string DEFAULT_PROFILE_NAME;
-
-  /** The default REST token of a RestProfile. */
-  static const std::string DEFAULT_TOKEN;
-
-  /** The default REST server address of a RestProfile. */
-  static const std::string DEFAULT_SERVER_ADDRESS;
-
-  /** The default REST username of a RestProfile. */
-  static const std::string DEFAULT_USERNAME;
-
-  /** A vector of the REST parameters that can be set. */
-  static const std::vector<std::string> REST_PARAMETERS;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -132,11 +114,6 @@ class RestProfile {
    * @param value The value to set on the given parameter.
    */
   void set_param(const std::string& param, const std::string& value);
-
-  /**
-   * Returns true if the given parameter can be handled by RestProfile.
-   */
-  static bool can_have_parameter(std::string_view param);
 
   /**
    * Retrieves a pointer to the value of the given parameter.
@@ -230,14 +207,7 @@ class RestProfile {
   std::string filepath_;
 
   /** Stores a map of <param, value> for the set-parameters. */
-  std::map<std::string, std::string> param_values_ = {
-      std::make_pair("rest.password", RestProfile::DEFAULT_PASSWORD),
-      std::make_pair(
-          "rest.payer_namespace", RestProfile::DEFAULT_PAYER_NAMESPACE),
-      std::make_pair("rest.token", RestProfile::DEFAULT_TOKEN),
-      std::make_pair(
-          "rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
-      std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
+  std::map<std::string, std::string> param_values_;
 };
 }  // namespace tiledb::sm
 

@@ -100,17 +100,6 @@ static void write_file(json data, const std::string& filepath) {
 /* ****************************** */
 
 const std::string RestProfile::DEFAULT_PROFILE_NAME{"default"};
-const std::string RestProfile::DEFAULT_PASSWORD{""};
-const std::string RestProfile::DEFAULT_PAYER_NAMESPACE{""};
-const std::string RestProfile::DEFAULT_TOKEN{""};
-const std::string RestProfile::DEFAULT_SERVER_ADDRESS{"https://api.tiledb.com"};
-const std::string RestProfile::DEFAULT_USERNAME{""};
-const std::vector<std::string> RestProfile::REST_PARAMETERS = {
-    "rest.password",
-    "rest.payer_namespace",
-    "rest.token",
-    "rest.server_address",
-    "rest.username"};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -160,12 +149,6 @@ void RestProfile::set_param(
         "Failed to retrieve parameter; parameter name must not be empty.");
   }
 
-  // Validate incoming parameter name
-  auto it = param_values_.find(param);
-  if (it == param_values_.end()) {
-    throw RestProfileException(
-        "Failed to set parameter of invalid name '" + param + "'");
-  }
   param_values_[param] = value;
 }
 
@@ -185,16 +168,18 @@ const std::string* RestProfile::get_param(const std::string& param) const {
  */
 void RestProfile::save_to_file(const bool overwrite) {
   // Validate that the profile is complete (if username is set, so is password)
-  if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
-      (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
+  if ((param_values_.contains("rest.username") &&
+       !param_values_.contains("rest.password")) ||
+      (!param_values_.contains("rest.username") &&
+       param_values_.contains("rest.password"))) {
     throw RestProfileException(
         "Failed to save profile: 'rest.username' and 'rest.password' must "
         "either both be set or both remain unset. Mixing a default username "
         "with a custom password (or vice versa) is not allowed.");
   }
-  // Fstream cannot create directories. If `profile_dir/.tiledb/` DNE, create
-  // it.
-  std::filesystem::create_directories(dir_ + ".tiledb");
+  // Fstream cannot create directories. If the directory does not exist,
+  // create it.
+  std::filesystem::create_directories(dir_);
 
   // If the file already exists, load it into a json object.
   json data;
@@ -306,13 +291,8 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   }
   json profile = it.value();
 
-  if (!profile.is_null()) {
-    for (auto it = profile.begin(); it != profile.end(); ++it) {
-      param_values_[it.key()] = profile[it.key()];
-    }
-  } else {
-    throw RestProfileException(
-        "Failed to load profile; profile '" + name_ + "' does not exist.");
+  for (auto it = profile.begin(); it != profile.end(); ++it) {
+    param_values_[it.key()] = profile[it.key()];
   }
 }
 
@@ -342,13 +322,6 @@ void RestProfile::remove_profile_from_file(
         "Failed to remove profile; error writing file: " +
         std::string(e.what()));
   }
-}
-
-bool RestProfile::can_have_parameter(std::string_view param) {
-  return std::find(
-             RestProfile::REST_PARAMETERS.begin(),
-             RestProfile::REST_PARAMETERS.end(),
-             param) != RestProfile::REST_PARAMETERS.end();
 }
 
 }  // namespace tiledb::sm

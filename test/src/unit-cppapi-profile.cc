@@ -62,24 +62,6 @@ struct ProfileCPPFx {
   }
 };
 
-struct expected_values_t {
-  std::string profile_name = sm::RestProfile::DEFAULT_PROFILE_NAME;
-  std::string password = sm::RestProfile::DEFAULT_PASSWORD;
-  std::string payer_namespace = sm::RestProfile::DEFAULT_PAYER_NAMESPACE;
-  std::string token = sm::RestProfile::DEFAULT_TOKEN;
-  std::string server_address = sm::RestProfile::DEFAULT_SERVER_ADDRESS;
-  std::string username = sm::RestProfile::DEFAULT_USERNAME;
-};
-
-bool is_expected(const Profile& p, const expected_values_t& e) {
-  return p.name() == e.profile_name &&
-         p.get_param("rest.username") == e.username &&
-         p.get_param("rest.password") == e.password &&
-         p.get_param("rest.payer_namespace") == e.payer_namespace &&
-         p.get_param("rest.server_address") == e.server_address &&
-         p.get_param("rest.token") == e.token;
-}
-
 TEST_CASE_METHOD(
     ProfileCPPFx,
     "C++ API: Profile get_name validation",
@@ -202,13 +184,11 @@ TEST_CASE_METHOD(
     "[cppapi][profile][load]") {
   SECTION("success") {
     Profile p(name_, tempdir_.path());
-    expected_values_t expected;
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save some parameters
-    p.set_param("rest.username", "test_user");
-    p.set_param("rest.password", "test_password");
+    p.set_param("rest.token", "test_token");
     // save the profile
     p.save();
     // check that the profiles file is created
@@ -218,9 +198,8 @@ TEST_CASE_METHOD(
     // load the profile again
     Profile p2 = Profile::load(name_, tempdir_.path());
     // check that the parameters are loaded correctly
-    expected.username = "test_user";
-    expected.password = "test_password";
-    is_expected(p2, expected);
+    REQUIRE(p2.name() == name_);
+    REQUIRE(p2.get_param("rest.token") == "test_token");
   }
   SECTION("profiles file is present") {
     // check that the profiles file is not there
@@ -312,19 +291,12 @@ TEST_CASE_METHOD(
     "[cppapi][profile][dump]") {
   SECTION("success") {
     Profile p(name_, tempdir_.path());
-    p.set_param("rest.username", "test_user");
-    p.set_param("rest.password", "test_password");
+    p.set_param("rest.token", "test_token");
     std::string dump_str = p.dump();
 
     // check that the dump string contains the expected values
-    REQUIRE(dump_str.find("rest.username") != std::string::npos);
-    REQUIRE(dump_str.find("test_user") != std::string::npos);
-    REQUIRE(dump_str.find("rest.password") != std::string::npos);
-    REQUIRE(dump_str.find("test_password") != std::string::npos);
-    REQUIRE(dump_str.find("rest.payer_namespace") != std::string::npos);
-    REQUIRE(dump_str.find("rest.server_address") != std::string::npos);
-    REQUIRE(dump_str.find("https://api.tiledb.com") != std::string::npos);
     REQUIRE(dump_str.find("rest.token") != std::string::npos);
+    REQUIRE(dump_str.find("test_token") != std::string::npos);
   }
 }
 
@@ -333,17 +305,15 @@ TEST_CASE_METHOD(
     "C++ API: Profile default constructor validation",
     "[cppapi][profile][default_constructor]") {
   SECTION("Default constructor") {
-    expected_values_t expected;
-
     Profile p1;
-    REQUIRE(p1.name() == expected.profile_name);
+    REQUIRE(p1.name() == sm::RestProfile::DEFAULT_PROFILE_NAME);
     REQUIRE(
         p1.dir() == tiledb::common::filesystem::ensure_trailing_slash(
                         tiledb::common::filesystem::home_directory() +
                         tiledb::sm::constants::rest_profile_foldername));
 
     Profile p2(std::nullopt, std::nullopt);
-    REQUIRE(p2.name() == expected.profile_name);
+    REQUIRE(p2.name() == sm::RestProfile::DEFAULT_PROFILE_NAME);
     REQUIRE(
         p2.dir() == tiledb::common::filesystem::ensure_trailing_slash(
                         tiledb::common::filesystem::home_directory() +
