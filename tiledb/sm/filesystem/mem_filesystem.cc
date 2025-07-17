@@ -471,12 +471,8 @@ void MemFilesystem::move_file(const URI& old_uri, const URI& new_uri) const {
   move(old_uri.to_path(), new_uri.to_path());
 }
 
-void MemFilesystem::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    bool) const {
+uint64_t MemFilesystem::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes, uint64_t) {
   FSNode* node;
   std::unique_lock<std::mutex> node_lock;
   auto path = uri.to_path();
@@ -487,6 +483,7 @@ void MemFilesystem::read(
   }
 
   throw_if_not_ok(node->read(offset, buffer, nbytes));
+  return nbytes;
 }
 
 void MemFilesystem::remove(const std::string& path, const bool is_dir) const {

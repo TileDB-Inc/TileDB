@@ -662,14 +662,14 @@ class S3 : FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
+   * @param read_ahead_nbytes The number of bytes to read ahead.
    */
-  void read(
+  uint64_t read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead) const override;
+      uint64_t read_ahead_nbytes = 0) override;
 
   /**
    * Deletes a bucket.
@@ -942,25 +942,6 @@ class S3 : FilesystemBase {
    * @return The size of the object in bytes.
    */
   uint64_t file_size(const URI& uri) const override;
-
-  /**
-   * Reads data from an object into a buffer.
-   *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param read_ahead_length The additional length to read ahead.
-   * @param length_returned Returns the total length read into `buffer`.
-   * @return Status
-   */
-  Status read_impl(
-      const URI& uri,
-      const off_t offset,
-      void* const buffer,
-      const uint64_t length,
-      const uint64_t read_ahead_length,
-      uint64_t* const length_returned) const;
 
   /**
    * Writes the input buffer to an S3 object. This function buffers in memory

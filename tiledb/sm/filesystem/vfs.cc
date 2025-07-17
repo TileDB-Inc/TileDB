@@ -52,27 +52,6 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::filesystem;
 
-namespace {
-/**
- * Wraps the call of a void-returning function to return a status. This is
- * effectively the inverse of throw_if_not_ok.
- *
- * @return Status::Ok if calling f(args) did not throw, a failing Status if it
- * threw.
- */
-template <class F, class... Args>
-Status ok_if_not_throw(F&& f, Args&&... args)
-  requires(std::is_invocable_r_v<void, F, Args...>)
-{
-  try {
-    std::invoke(f, std::forward<Args>(args)...);
-    return Status::Ok();
-  } catch (std::exception& e) {
-    return Status_IOError(e.what());
-  }
-}
-}  // namespace
-
 namespace tiledb::sm {
 
 /* ********************************* */
@@ -371,48 +350,67 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 }
 
 void VFS::move_file(const URI& old_uri, const URI& new_uri) const {
-  if (old_uri.backend_name() == new_uri.backend_name()) {
-    get_fs(old_uri).move_file(old_uri, new_uri);
+  auto& old_fs = get_fs(old_uri);
+  auto& new_fs = get_fs(new_uri);
+  if (typeid(old_fs) == typeid(new_fs)) {
+    old_fs.move_file(old_uri, new_uri);
+  } else {
+    throw UnsupportedOperation("move_file");
   }
 }
 
 void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
-  if (old_uri.backend_name() == new_uri.backend_name()) {
-    get_fs(old_uri).move_dir(old_uri, new_uri);
+  auto& old_fs = get_fs(old_uri);
+  auto& new_fs = get_fs(new_uri);
+  if (typeid(old_fs) == typeid(new_fs)) {
+    old_fs.move_dir(old_uri, new_uri);
+  } else {
+    throw UnsupportedOperation("move_dir");
   }
 }
 
 void VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
-  if (old_uri.backend_name() == new_uri.backend_name()) {
-    get_fs(old_uri).copy_file(old_uri, new_uri);
+  auto& old_fs = get_fs(old_uri);
+  auto& new_fs = get_fs(new_uri);
+  if (typeid(old_fs) == typeid(new_fs)) {
+    old_fs.copy_file(old_uri, new_uri);
+  } else {
+    throw UnsupportedOperation("copy_file");
   }
 }
 
 void VFS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
-  if (old_uri.backend_name() == new_uri.backend_name()) {
-    get_fs(old_uri).copy_dir(old_uri, new_uri);
+  auto& old_fs = get_fs(old_uri);
+  auto& new_fs = get_fs(new_uri);
+  if (typeid(old_fs) == typeid(new_fs)) {
+    old_fs.copy_dir(old_uri, new_uri);
+  } else {
+    throw UnsupportedOperation("copy_dir");
   }
 }
 
-void VFS::read(
+Status VFS::read_exactly(
     const URI& uri,
     const uint64_t offset,
     void* const buffer,
-    const uint64_t nbytes,
-    bool use_read_ahead) const {
-  throw_if_not_ok(const_cast<VFS*>(this)->read(
-      uri, offset, buffer, nbytes, use_read_ahead));
+    const uint64_t nbytes) {
+  uint64_t length_read;
+  RETURN_NOT_OK(ok_if_not_throw(
+      [&]() { length_read = read(uri, offset, buffer, nbytes); }));
+
+  if (length_read < nbytes) {
+    return Status_VFSError(
+        "The read did not return the correct number of bytes. Expected: " +
+        std::to_string(nbytes) + " Actual: " + std::to_string(length_read));
+  }
+  return Status::Ok();
 }
 
-Status VFS::read(
-    const URI& uri,
-    const uint64_t offset,
-    void* const buffer,
-    const uint64_t nbytes,
-    bool use_read_ahead) {
+uint64_t VFS::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes, uint64_t) {
   stats_->add_counter("read_byte_num", nbytes);
 
   // Ensure that each thread is responsible for at least min_parallel_size
@@ -422,14 +420,16 @@ Status VFS::read(
       std::max(nbytes / vfs_params_.min_parallel_size_, uint64_t(1)),
       max_parallel_ops(uri));
 
+  uint64_t length_read = 0;
+  bool use_read_ahead = true;
   if (num_ops == 1) {
-    return read_impl(uri, offset, buffer, nbytes, use_read_ahead);
+    throw_if_not_ok(
+        read_impl(uri, offset, buffer, nbytes, use_read_ahead, &length_read));
   } else {
     // we don't want read-ahead when performing random access reads
     use_read_ahead = false;
     std::vector<ThreadPool::Task> results;
     uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
-
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_read_nbytes,
                end = std::min((i + 1) * thread_read_nbytes - 1, nbytes - 1);
@@ -443,117 +443,46 @@ Status VFS::read(
            thread_offset,
            thread_buffer,
            thread_nbytes,
-           use_read_ahead]() {
+           use_read_ahead,
+           &thread_read_nbytes]() {
             return read_impl(
                 uri,
                 thread_offset,
                 thread_buffer,
                 thread_nbytes,
-                use_read_ahead);
+                use_read_ahead,
+                &thread_read_nbytes);
           });
+      length_read += thread_read_nbytes;
       results.push_back(std::move(task));
     }
     Status st = io_tp_->wait_all(results);
     if (!st.ok()) {
-      std::stringstream errmsg;
-      errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
-             << st.message();
-      return Status_VFSError(errmsg.str());
+      throw VFSException(
+          "VFS parallel read error '" + uri.to_string() + "'; " + st.message());
     }
-    return st;
   }
+  return length_read;
 }
 
 Status VFS::read_impl(
     const URI& uri,
-    const uint64_t offset,
-    void* const buffer,
-    const uint64_t nbytes,
-    [[maybe_unused]] const bool use_read_ahead) {
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes,
+    [[maybe_unused]] bool use_read_ahead,
+    uint64_t* length_read) {
   auto instrument = make_log_duration_instrument(uri, "read");
   stats_->add_counter("read_ops_num", 1);
   log_read(uri, offset, nbytes);
+  FilesystemBase& fs = const_cast<FilesystemBase&>(get_fs(uri));
 
-  // We only check to use the read-ahead cache for cloud-storage
-  // backends.
-
-  if (uri.is_file()) {
-    return ok_if_not_throw(
-        &LocalFS::read, local_, uri, offset, buffer, nbytes, false);
-  }
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    const auto read_fn = std::bind(
-        &S3::read_impl,
-        &s3(),
-        std::placeholders::_1,
-        std::placeholders::_2,
-        std::placeholders::_3,
-        std::placeholders::_4,
-        std::placeholders::_5,
-        std::placeholders::_6);
-    return read_ahead_impl(
-        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
-#else
-    throw BuiltWithout("S3");
-#endif
-  }
-  if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-    const auto read_fn = std::bind(
-        &Azure::read_impl,
-        &azure(),
-        std::placeholders::_1,
-        std::placeholders::_2,
-        std::placeholders::_3,
-        std::placeholders::_4,
-        std::placeholders::_5,
-        std::placeholders::_6);
-    return read_ahead_impl(
-        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
-#else
-    throw BuiltWithout("Azure");
-#endif
-  }
-  if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-    const auto read_fn = std::bind(
-        &GCS::read_impl,
-        &gcs(),
-        std::placeholders::_1,
-        std::placeholders::_2,
-        std::placeholders::_3,
-        std::placeholders::_4,
-        std::placeholders::_5,
-        std::placeholders::_6);
-    return read_ahead_impl(
-        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
-#else
-    throw BuiltWithout("GCS");
-#endif
-  }
-  if (uri.is_memfs()) {
-    memfs_.read(uri, offset, buffer, nbytes, use_read_ahead);
+  // Do not read-ahead on local filesystems, or if disabled by the caller.
+  if (typeid(fs) == typeid(LocalFS) || typeid(fs) == typeid(MemFilesystem) ||
+      !use_read_ahead) {
+    *length_read = fs.read(uri, offset, buffer, nbytes, 0);
     return Status::Ok();
   }
-
-  throw UnsupportedURI(uri.to_string());
-}
-
-Status VFS::read_ahead_impl(
-    const std::function<Status(
-        const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
-    const URI& uri,
-    const uint64_t offset,
-    void* const buffer,
-    const uint64_t nbytes,
-    const bool use_read_ahead) {
-  // Stores the total number of bytes read.
-  uint64_t nbytes_read = 0;
-
-  // Do not use the read-ahead cache if disabled by the caller.
-  if (!use_read_ahead)
-    return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
 
   // Only perform a read-ahead if the requested read size
   // is smaller than the size of the buffers in the read-ahead
@@ -564,8 +493,10 @@ Status VFS::read_ahead_impl(
   //    to a future small read.
   // 3. It saves us a copy. We must make a copy of the buffer at
   //    some point (one for the user, one for the cache).
-  if (nbytes >= vfs_params_.read_ahead_size_)
-    return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
+  if (nbytes >= vfs_params_.read_ahead_size_) {
+    *length_read = fs.read(uri, offset, buffer, nbytes, 0);
+    return Status::Ok();
+  }
 
   // Avoid a read if the requested buffer can be read from the
   // read cache. Note that we intentionally do not use a read
@@ -573,8 +504,9 @@ Status VFS::read_ahead_impl(
   // system's file system to cache readahead data in memory.
   bool success;
   RETURN_NOT_OK(read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
-  if (success)
+  if (success) {
     return Status::Ok();
+  }
 
   // We will read directly into the read-ahead buffer and then copy
   // the subrange of this buffer back to the user to satisfy the
@@ -587,19 +519,18 @@ Status VFS::read_ahead_impl(
   const uint64_t ra_nbytes = vfs_params_.read_ahead_size_ - nbytes;
 
   // Read into `ra_buffer`.
-  RETURN_NOT_OK(
-      read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read));
+  *length_read = fs.read(uri, offset, ra_buffer.data(), nbytes, ra_nbytes);
 
   // Copy the requested read range back into the caller's output `buffer`.
   iassert(
-      nbytes_read >= nbytes,
+      *length_read >= nbytes,
       "nbytes_read = {}, nbytes = {}",
-      nbytes_read,
+      *length_read,
       nbytes);
   std::memcpy(buffer, ra_buffer.data(), nbytes);
 
   // Cache `ra_buffer` at `offset`.
-  ra_buffer.set_size(nbytes_read);
+  ra_buffer.set_size(*length_read);
   RETURN_NOT_OK(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
 
   return Status::Ok();

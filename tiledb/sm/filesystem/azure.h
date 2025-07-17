@@ -513,36 +513,20 @@ class Azure : FilesystemBase {
   uint64_t file_size(const URI& uri) const;
 
   /**
-   * Reads data from an object into a buffer.
+   * Reads from a file.
    *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param read_ahead_length The additional length to read ahead.
-   * @param length_returned Returns the total length read into `buffer`.
-   * @return Status
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @param read_ahead_nbytes The number of bytes to read ahead.
    */
-  Status read_impl(
+  uint64_t read(
       const URI& uri,
-      off_t offset,
+      uint64_t offset,
       void* buffer,
-      uint64_t length,
-      uint64_t read_ahead_length,
-      uint64_t* length_returned) const;
-
-  /**
-   * Reads data from an object into a buffer.
-   *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   */
-  void read(const URI&, uint64_t, void*, uint64_t, bool) const {
-    // #TODO. Currently a no-op until read refactor.
-  }
+      uint64_t nbytes,
+      uint64_t read_ahead_nbytes = 0);
 
   /**
    * Deletes a container.

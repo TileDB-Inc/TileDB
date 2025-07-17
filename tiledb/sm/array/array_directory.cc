@@ -733,7 +733,7 @@ ArrayDirectory::load_consolidated_commit_uris(
       std::string names;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().read(uri, 0, &names[0], size, false),
+          resources_.get().vfs().read_exactly(uri, 0, &names[0], size),
           nullopt,
           nullopt);
       std::stringstream ss(names);
@@ -757,7 +757,7 @@ ArrayDirectory::load_consolidated_commit_uris(
       auto& names = meta_files.back().second;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().read(uri, 0, &names[0], size, false),
+          resources_.get().vfs().read_exactly(uri, 0, &names[0], size),
           nullopt,
           nullopt);
       std::stringstream ss(names);
@@ -1086,7 +1086,7 @@ ArrayDirectory::compute_uris_to_vacuum(
     uint64_t size = vfs.file_size(vac_files[i]);
     std::string names;
     names.resize(size);
-    throw_if_not_ok(vfs.read(vac_files[i], 0, &names[0], size, false));
+    throw_if_not_ok(vfs.read_exactly(vac_files[i], 0, &names[0], size));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {

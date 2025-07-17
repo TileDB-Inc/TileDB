@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -182,6 +182,25 @@ inline void throw_if_not_ok(const Status& st) {
   if (!st.ok()) {
     // friend declaration allows calling this private constructor
     throw StatusException(st, std::nothrow);
+  }
+}
+
+/**
+ * Wraps the call of a void-returning function to return a status. This is
+ * effectively the inverse of throw_if_not_ok.
+ *
+ * @return Status::Ok if calling f(args) did not throw, a failing Status if it
+ * threw.
+ */
+template <class F, class... Args>
+inline Status ok_if_not_throw(F&& f, Args&&... args)
+  requires(std::is_invocable_r_v<void, F, Args...>)
+{
+  try {
+    std::invoke(f, std::forward<Args>(args)...);
+    return Status::Ok();
+  } catch (std::exception& e) {
+    return Status_Error(e.what());
   }
 }
 

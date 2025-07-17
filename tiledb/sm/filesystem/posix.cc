@@ -281,12 +281,8 @@ void Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void Posix::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    [[maybe_unused]] bool use_read_ahead) const {
+uint64_t Posix::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes, uint64_t) {
   // Checks
   auto path = uri.to_path();
   uint64_t file_size = this->file_size(URI(path));
@@ -297,7 +293,7 @@ void Posix::read(
         offset,
         nbytes,
         file_size,
-        uri.to_path()));
+        path));
   }
 
   // Open file
@@ -321,6 +317,7 @@ void Posix::read(
     LOG_STATUS_NO_RETURN_VALUE(
         Status_IOError(std::string("Cannot close file; ") + strerror(errno)));
   }
+  return nbytes;
 }
 
 void Posix::flush(const URI& uri, bool) {

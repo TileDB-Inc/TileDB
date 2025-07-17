@@ -194,14 +194,14 @@ class FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @param read_ahead_nbytes The number of bytes to read ahead.
    */
-  virtual void read(
+  virtual uint64_t read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const = 0;
+      uint64_t read_ahead_nbytes = 0) = 0;
 
   /**
    * Flushes an object store file.

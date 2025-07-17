@@ -448,12 +448,8 @@ void Win::move_file(const URI& old_uri, const URI& new_uri) const {
   move_path(old_uri, new_uri);
 }
 
-void Win::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    bool) const {
+uint64_t Win::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes, uint64_t) {
   auto path = uri.to_path();
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
@@ -514,6 +510,7 @@ void Win::read(
         "Cannot read from file '" + path + "'; File closing error " +
         get_last_error_msg("CloseHandle"));
   }
+  return (uint64_t)num_bytes_read;
 }
 
 void Win::flush(const URI& uri, bool) {

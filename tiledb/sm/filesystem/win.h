@@ -258,20 +258,20 @@ class Win : FilesystemBase, LocalFilesystem {
   void copy_file(const URI&, const URI&) const override;
 
   /**
-   * Reads data from a file into a buffer.
+   * Reads from a file.
    *
-   * @param uri The uri of the file.
-   * @param offset The offset in the file from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param nbytes The size of the data to be read from the file.
-   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @param read_ahead_nbytes The number of bytes to read ahead. Unused.
    */
-  void read(
+  uint64_t read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = false) const;
+      uint64_t read_ahead_nbytes = 0);
 
   /**
    * Flushes a file or directory.

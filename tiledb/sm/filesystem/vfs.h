@@ -699,31 +699,27 @@ class VFS : FilesystemBase,
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @param read_ahead_nbytes The number of bytes to read ahead on object store.
+   * Not intended for use by user. Calculated internally for object store reads.
    */
-  void read(
+  uint64_t read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const;
+      [[maybe_unused]] uint64_t read_ahead_nbytes = 0);
 
   /**
-   * Reads from a file.
+   * Reads the specified number of bytes from a file.
    *
    * @param uri The URI of the file.
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
-  Status read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead = true);
+  Status read_exactly(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
@@ -1065,27 +1061,8 @@ class VFS : FilesystemBase,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead);
-
-  /**
-   * Executes a read, using the read-ahead cache as necessary.
-   *
-   * @param read_fn The read routine to execute.
-   * @param uri The URI of the file.
-   * @param offset The offset where the read begins.
-   * @param buffer The buffer to read into.
-   * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
-   */
-  Status read_ahead_impl(
-      const std::function<Status(
-          const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
-      const URI& uri,
-      const uint64_t offset,
-      void* const buffer,
-      const uint64_t nbytes,
-      const bool use_read_ahead);
+      bool use_read_ahead,
+      uint64_t* length_read);
 
   /**
    * Retrieves the backend-specific max number of parallel operations for VFS
