@@ -397,7 +397,7 @@ Status VFS::read_exactly(
     const uint64_t offset,
     void* const buffer,
     const uint64_t nbytes) {
-  uint64_t length_read;
+  uint64_t length_read = 0;
   RETURN_NOT_OK(ok_if_not_throw(
       [&]() { length_read = read(uri, offset, buffer, nbytes); }));
 
