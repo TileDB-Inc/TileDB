@@ -1,7 +1,9 @@
 # TileDB v2.28.1 Release Notes
 
+
 ## New features
 * Add support for `Profiles` onto the `Config`. [#5570](https://github.com/TileDB-Inc/TileDB/pull/5570)
+
 
 ## Improvements
 * Finalize Profile feature and add example. [#5572](https://github.com/TileDB-Inc/TileDB/pull/5572)
@@ -12,6 +14,7 @@
 * URL encode workspace and teamspace for REST URIs. [#5549](https://github.com/TileDB-Inc/TileDB/pull/5549)
 * Update to use new route for group creation. [#5581](https://github.com/TileDB-Inc/TileDB/pull/5581)
 
+
 ## Defects removed
 * Fixed compile errors in the S3 VFS. [#5554](https://github.com/TileDB-Inc/TileDB/pull/5554)
 * Fix Subarray::add_point_ranges_var to use the appropriate variable data Range constructor. [#5562](https://github.com/TileDB-Inc/TileDB/pull/5562)
@@ -20,13 +23,17 @@
 
 ## API changes
 
+
 ### C API
-* Profile C APIs: tiledb_profile_alloc, tiledb_profile_free, tiledb_profile_get_name, tiledb_profile_get_homedir, tiledb_profile_set_param, tiledb_profile_get_param, tiledb_profile_save, tiledb_profile_load, tiledb_profile_remove, and tiledb_profile_dump_str. [#5564](https://github.com/TileDB-Inc/TileDB/pull/5564)
+* Introduce Profile C APIs: tiledb_profile_alloc, tiledb_profile_free, tiledb_profile_get_name, tiledb_profile_get_homedir, tiledb_profile_set_param, tiledb_profile_get_param, tiledb_profile_save, tiledb_profile_load, tiledb_profile_remove, and tiledb_profile_dump_str. [#5564](https://github.com/TileDB-Inc/TileDB/pull/5564)
 * Introduce `tiledb_current_domain_dump_str` and `tiledb_ndrectangle_dump_str`. [#5561](https://github.com/TileDB-Inc/TileDB/pull/5561)
 
+
 ### C++ API
-* Profile C++ APIs: name, homedir, set_param, get_param, save, load, remove, dump. [#5564](https://github.com/TileDB-Inc/TileDB/pull/5564)
+
+* Introduce Profile C++ APIs: name, homedir, set_param, get_param, save, load, remove, dump. [#5564](https://github.com/TileDB-Inc/TileDB/pull/5564)
 * Introduce `operator<<` overloads for the `CurrentDomain` and `NDRectangle`. [#5561](https://github.com/TileDB-Inc/TileDB/pull/5561)
+
 
 ## Build System Changes
 * Install serialization C API headers regardless of build configuration. [#5559](https://github.com/TileDB-Inc/TileDB/pull/5559)
