@@ -265,7 +265,7 @@ class AzureScanner : public LsScanner<F, D> {
  * same. All internal methods have been renamed to use the "bucket" and "file"
  * verbiage in compliance with the FilesystemBase class.
  */
-class Azure : FilesystemBase {
+class Azure : public FilesystemBase {
   template <FilePredicate, DirectoryPredicate>
   friend class AzureScanner;
 

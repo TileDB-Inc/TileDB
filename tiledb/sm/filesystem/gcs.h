@@ -154,7 +154,7 @@ struct GCSParameters {
   uint64_t max_direct_upload_size_;
 };
 
-class GCS : FilesystemBase {
+class GCS : public FilesystemBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
