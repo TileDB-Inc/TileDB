@@ -468,6 +468,7 @@ uint64_t Win::read(
   }
 
   char* byte_buffer = reinterpret_cast<char*>(buffer);
+  uint64_t length_returned = 0;
   do {
     LARGE_INTEGER offset_lg_int;
     offset_lg_int.QuadPart = offset;
@@ -504,13 +505,14 @@ uint64_t Win::read(
     byte_buffer += num_bytes_read;
     offset += num_bytes_read;
     nbytes -= num_bytes_read;
+    length_returned += num_bytes_read;
   } while (nbytes > 0);
   if (CloseHandle(file_h) == 0) {
     throw WindowsException(
         "Cannot read from file '" + path + "'; File closing error " +
         get_last_error_msg("CloseHandle"));
   }
-  return (uint64_t)num_bytes_read;
+  return length_returned;
 }
 
 void Win::flush(const URI& uri, bool) {
