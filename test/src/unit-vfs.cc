@@ -370,6 +370,26 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
+TEST_CASE("VFS: Create directory", "[vfs][create-dir]") {
+  LocalFsTest fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
+  URI path = fs.temp_dir_.add_trailing_slash();
+
+  URI subdir = URI(path.to_string() + "subdir/");
+  URI subdir2 = URI(path.to_string() + "subdir/nested/nested2/");
+
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
+  REQUIRE(fs.vfs_.is_dir(subdir));
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir2));
+  REQUIRE(fs.vfs_.is_dir(subdir2));
+
+  // Try creating existing directory.
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
+}
+
 TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   TestType fs({0});
   if (!fs.is_supported()) {
