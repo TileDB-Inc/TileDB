@@ -98,3 +98,29 @@ TEST_CASE("NDRectangle - Errors", "[cppapi][ArraySchema][NDRectangle]") {
   CHECK_THROWS(ndrect.set_range(0, 2, 1));
   CHECK_THROWS(ndrect.set_range("d2", "bbb", "aaa"));
 }
+
+TEST_CASE("NDRectangle - Dump", "[cppapi][ArraySchema][NDRectangle]") {
+  tiledb::Context ctx;
+
+  // Create a domain
+  tiledb::Domain domain(ctx);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx, "d1", {{1, 10}}, 5);
+  auto d2 = tiledb::Dimension::create(
+      ctx, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create an NDRectangle
+  tiledb::NDRectangle ndrect(ctx, domain);
+
+  // Set ranges
+  ndrect.set_range(0, 1, 5);
+  ndrect.set_range("d2", "aaa", "zzz");
+
+  // Check that operator<< works correctly
+  std::stringstream ss;
+  ss << ndrect;
+  CHECK(ss.str().find("NDRectangle") != std::string::npos);
+  CHECK(ss.str().find("[1, 5]") != std::string::npos);
+  CHECK(ss.str().find("[aaa, zzz]") != std::string::npos);
+}
