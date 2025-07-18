@@ -29,6 +29,7 @@
 #ifndef TILEDB_COMMON_EXCEPTION_H
 #define TILEDB_COMMON_EXCEPTION_H
 
+#include <functional>
 #include <stdexcept>
 #include "tiledb/common/common-std.h"
 #include "tiledb/common/status.h"
