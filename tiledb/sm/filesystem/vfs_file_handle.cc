@@ -96,7 +96,7 @@ Status VFSFileHandle::read(uint64_t offset, void* buffer, uint64_t nbytes) {
     return LOG_STATUS(st);
   }
 
-  return vfs_->read(uri_, offset, buffer, nbytes);
+  return vfs_->read_exactly(uri_, offset, buffer, nbytes);
 }
 
 Status VFSFileHandle::sync() {

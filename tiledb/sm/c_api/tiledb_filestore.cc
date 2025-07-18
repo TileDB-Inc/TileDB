@@ -323,8 +323,8 @@ int32_t tiledb_filestore_uri_import(
     if (start + buffer.size() > file_size) {
       readlen = file_size - start;
     }
-    throw_if_not_ok(
-        vfs.read(tiledb::sm::URI(file_uri), start, buffer.data(), readlen));
+    throw_if_not_ok(vfs.read_exactly(
+        tiledb::sm::URI(file_uri), start, buffer.data(), readlen));
     return readlen;
   };
 
@@ -767,7 +767,7 @@ void read_file_header(
     tiledb::sm::VFS& vfs, const char* uri, std::vector<char>& header) {
   const tiledb::sm::URI uri_obj = tiledb::sm::URI(uri);
   throw_if_not_ok(vfs.open_file(uri_obj, tiledb::sm::VFSMode::VFS_READ));
-  throw_if_not_ok(vfs.read(uri_obj, 0, header.data(), header.size()));
+  throw_if_not_ok(vfs.read_exactly(uri_obj, 0, header.data(), header.size()));
   throw_if_not_ok(vfs.close_file(uri_obj));
 }
 
