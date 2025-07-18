@@ -155,7 +155,8 @@ std::string vfs_array_uri(
     return "tiledb://unit/" + array_name;
   } else if (fs->is_rest() && !legacy) {
     // Include a space in the URI to test URL encoding.
-    return "tiledb://unit workspace/unit teamspace/" + array_name;
+    return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
+           array_name;
   } else {
     return array_name;
   }

@@ -299,7 +299,14 @@ Status URI::get_rest_components(
     std::string ws = uri_.substr(prefix.size(), ws_len);
     std::string ts = uri_.substr(ws_slash + 1, ts_len);
     rest_components->server_namespace = ws + "/" + ts;
+    // If there is a trailing slash in the URI, this returns an empty string.
     auto asset_name = last_path_part();
+    if (asset_name.empty()) {
+      asset_name = last_two_path_parts();
+      if (asset_name.ends_with('/')) {
+        asset_name.pop_back();
+      }
+    }
 
     auto storage_component_index = get_storage_component_index(ts_slash + 1);
     if (!storage_component_index.has_value()) {

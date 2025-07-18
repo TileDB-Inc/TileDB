@@ -865,7 +865,8 @@ struct VFSTestSetup {
       return "tiledb://unit/" + temp_dir + array_name;
     } else {
       // Include a space in the URI to test URL encoding.
-      return "tiledb://unit workspace/unit teamspace/" + temp_dir + array_name;
+      return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
+             temp_dir + array_name;
     }
   }
 
