@@ -204,13 +204,6 @@ class GroupDirectory {
   /** Loads the URIs from the various group subdirectories. */
   Status load();
 
-  /**
-   * List the root directory uris for v1 to v11.
-   *
-   * @return Status, vector of URIs.
-   */
-  tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
-
   /** Loads the group metadata URIs. */
   Status load_group_meta_uris();
 

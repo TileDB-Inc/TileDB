@@ -586,8 +586,9 @@ const std::set<std::string>& ArrayDirectory::dir_names() {
 
 std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
   auto dir_entries = resources_.get().vfs().ls_with_sizes(uri);
-  auto dirs = dir_names();
+  auto& dirs = dir_names();
   std::vector<URI> uris;
+  uris.reserve(dir_entries.size());
 
   for (auto entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
@@ -609,10 +610,14 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
     if (iter == dirs.end() || entry.file_size() > 0) {
       uris.emplace_back(entry_uri);
     } else {
-      // Handle MinIO-based s3 implementation limitation
+      // Handle MinIO-based s3 implementation limitation. If an object exists
+      // with the same name as a directory, the objects under the directory are
+      // masked and cannot be listed. See
+      // https://github.com/minio/minio/issues/7335
       throw ArrayDirectoryException(
           "Cannot list given uri; File '" + entry_uri.to_string() +
-          "' may be masking a non-empty directory by the same name.");
+          "' may be masking a non-empty directory by the same name. Removing "
+          "that file might fix this.");
     }
   }
 
