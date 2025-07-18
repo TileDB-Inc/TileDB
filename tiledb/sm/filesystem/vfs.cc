@@ -505,6 +505,7 @@ Status VFS::read_impl(
   bool success;
   RETURN_NOT_OK(read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
   if (success) {
+    *length_read = nbytes;
     return Status::Ok();
   }
 
