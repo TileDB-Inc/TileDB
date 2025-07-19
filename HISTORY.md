@@ -13,6 +13,7 @@
 * Avoid throwing on missing Profile parameters in getter APIs. [#5588](https://github.com/TileDB-Inc/TileDB/pull/5588)
 * URL encode workspace and teamspace for REST URIs. [#5549](https://github.com/TileDB-Inc/TileDB/pull/5549)
 * Update to use new route for group creation. [#5581](https://github.com/TileDB-Inc/TileDB/pull/5581)
+* Fix empty array name for URIs with trailing slash. [#5592] (https://github.com/TileDB-Inc/TileDB/pull/5592)
 
 
 ## Defects removed
