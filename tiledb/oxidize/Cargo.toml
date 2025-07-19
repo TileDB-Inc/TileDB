@@ -10,6 +10,7 @@ members = [
   "staticlibs/core-objects",
   "staticlibs/unit-arithmetic",
   "staticlibs/unit-query-condition",
+  "session",
   "test-support/array-schema",
   "test-support/cxx-interface",
   "test-support/ffi",
@@ -38,6 +39,7 @@ tiledb-cxx-interface = { path = "cxx-interface" }
 tiledb-datatype = { path = "datatype" }
 tiledb-expr = { path = "expr" }
 tiledb-pod = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-session = { path = "session" }
 tiledb-test-array-schema = { path = "test-support/array-schema" }
 tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
 tiledb-test-ffi = { path = "test-support/ffi" }
