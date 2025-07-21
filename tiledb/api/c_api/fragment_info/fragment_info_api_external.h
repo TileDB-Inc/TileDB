@@ -714,6 +714,84 @@ TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_var_from_name(
     void* end) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves the minimum coordinate in global order for a
+ * particular bounding rectangle in a fragment.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t cell_id;
+ * size_t gene_name_size;
+ * char gene_name[MAX_GENE_NAME_LEN];
+ *
+ * size_t dimension_sizes[] = { nullptr, &gene_name_size };
+ * void *dimensions[] = { &cell_id, &gene_name[0] };
+ *
+ * tiledb_fragment_info_get_global_order_lower_bound(ctx,
+ *                                                   fragment_info, 0, 0,
+ *                                                   &dimension_sizes[0],
+ *                                                   &dimensions[0]);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fragment_id The index of the fragment of interest
+ * @param[in] mbr_id The mbr of the fragment of interest
+ * @param[in/out] dimension_sizes An array of pointers to sizes to store the
+ * length of the value of each variable-length dimension
+ * @param[in/out] dimensions An array of pointers to buffers to store the value
+ * from each dimension
+ * @return TILEDB_OK if successful, TILEDB_ERR if an error occurs or if the
+ *         fragment version is prior
+ */
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_global_order_lower_bound(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fragment_id,
+    uint32_t mbr_id,
+    size_t* dimension_sizes,
+    void** dimensions) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the maximum coordinate in global order for a
+ * particular bounding rectangle in a fragment.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t cell_id;
+ * size_t gene_name_size;
+ * char gene_name[MAX_GENE_NAME_LEN];
+ *
+ * size_t dimension_sizes[] = { nullptr, &gene_name_size };
+ * void *dimensions[] = { &cell_id, &gene_name[0] };
+ *
+ * tiledb_fragment_info_get_global_order_upper_bound(ctx,
+ *                                                   fragment_info, 0, 0,
+ *                                                   &dimension_sizes[0],
+ *                                                   &dimensions[0]);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fragment_id The index of the fragment of interest
+ * @param[in] mbr_id The mbr of the fragment of interest
+ * @param[in/out] dimension_sizes An array of pointers to sizes to store the
+ * length of the value of each variable-length dimension
+ * @param[in/out] dimensions An array of pointers to buffers to store the value
+ * from each dimension
+ * @return TILEDB_OK if successful, TILEDB_ERR if an error occurs or if the
+ *         fragment version is prior
+ */
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_global_order_upper_bound(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fragment_id,
+    uint32_t mbr_id,
+    size_t* dimension_sizes,
+    void** dimensions) TILEDB_NOEXCEPT;
+
+/**
  * Retrieves the number of cells written to the fragment by the user.
  *
  * In the case of sparse fragments, this is the number of non-empty

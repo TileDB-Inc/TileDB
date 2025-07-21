@@ -316,6 +316,36 @@ capi_return_t tiledb_fragment_info_get_mbr_var_from_name(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_fragment_info_get_global_order_lower_bound(
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fragment_id,
+    uint32_t mbr_id,
+    size_t* dimension_sizes,
+    void** dimensions) TILEDB_NOEXCEPT {
+  ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(dimensions);
+
+  throw_if_not_ok(fragment_info->get_global_order_upper_bound(
+      fragment_id, mbr_id, dimension_sizes, dimensions));
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_fragment_info_get_global_order_upper_bound(
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fragment_id,
+    uint32_t mbr_id,
+    size_t* dimension_sizes,
+    void** dimensions) TILEDB_NOEXCEPT {
+  ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(dimensions);
+
+  throw_if_not_ok(fragment_info->get_global_order_upper_bound(
+      fragment_id, mbr_id, dimension_sizes, dimensions));
+
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_fragment_info_get_cell_num(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, uint64_t* cell_num) {
   ensure_fragment_info_is_valid(fragment_info);
@@ -707,6 +737,32 @@ CAPI_INTERFACE(
   return api_entry_context<
       tiledb::api::tiledb_fragment_info_get_mbr_var_from_name>(
       ctx, fragment_info, fid, mid, dim_name, start, end);
+}
+
+CAPI_INTERFACE(
+    fragment_info_get_global_order_lower_bound,
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fragment_id,
+    uint32_t mbr_id,
+    size_t* dimension_sizes,
+    void** dimensions) {
+  return api_entry_context<
+      tiledb::api::tiledb_fragment_info_get_global_order_lower_bound>(
+      ctx, fragment_info, fragment_id, mbr_id, dimension_sizes, dimensions);
+}
+
+CAPI_INTERFACE(
+    fragment_info_get_global_order_upper_bound,
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fragment_id,
+    uint32_t mbr_id,
+    size_t* dimension_sizes,
+    void** dimensions) {
+  return api_entry_context<
+      tiledb::api::tiledb_fragment_info_get_global_order_upper_bound>(
+      ctx, fragment_info, fragment_id, mbr_id, dimension_sizes, dimensions);
 }
 
 CAPI_INTERFACE(

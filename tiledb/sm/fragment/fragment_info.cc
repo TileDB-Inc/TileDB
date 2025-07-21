@@ -722,6 +722,24 @@ Status FragmentInfo::get_mbr_var(
   return get_mbr_var(fid, mid, did, start, end);
 }
 
+Status FragmentInfo::get_global_order_lower_bound(
+    uint32_t fid, uint32_t mid, size_t* dimension_sizes, void** dimensions) {
+  (void)fid;
+  (void)mid;
+  (void)dimension_sizes;
+  (void)dimensions;
+  throw FragmentInfoException("TODO");
+}
+
+Status FragmentInfo::get_global_order_upper_bound(
+    uint32_t fid, uint32_t mid, size_t* dimension_sizes, void** dimensions) {
+  (void)fid;
+  (void)mid;
+  (void)dimension_sizes;
+  (void)dimensions;
+  throw FragmentInfoException("TODO");
+}
+
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   ensure_loaded();
   if (version == nullptr) {
