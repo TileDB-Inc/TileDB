@@ -43,6 +43,10 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
 
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif
+
 #include <iostream>
 #include <list>
 #include <sstream>
@@ -53,6 +57,10 @@ using namespace tiledb::common;
 using namespace tiledb::sm::filesystem;
 
 namespace tiledb::sm {
+
+#ifdef HAVE_S3
+S3_within_VFS::~S3_within_VFS() = default;
+#endif
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
