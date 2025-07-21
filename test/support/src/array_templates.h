@@ -1442,7 +1442,8 @@ void set_fields(
       std::decay_t<decltype(field_cursors)>,
       std::tuple_size_v<decltype(fragment.dimensions())>>::value(field_cursors);
 
-  if constexpr (!std::is_same_v<decltype(fragment.dimensions()), std::tuple<>>) {
+  if constexpr (!std::
+                    is_same_v<decltype(fragment.dimensions()), std::tuple<>>) {
     [&]<typename... Ts>(std::tuple<Ts...> fields) {
       query_applicator<Asserter, Ts...>::set(
           ctx,
@@ -1453,7 +1454,8 @@ void set_fields(
           split_cursors.first);
     }(fragment.dimensions());
   }
-  if constexpr (!std::is_same_v<decltype(fragment.attributes()), std::tuple<>>) {
+  if constexpr (!std::
+                    is_same_v<decltype(fragment.attributes()), std::tuple<>>) {
     [&]<typename... Ts>(std::tuple<Ts...> fields) {
       query_applicator<Asserter, Ts...>::set(
           ctx,
