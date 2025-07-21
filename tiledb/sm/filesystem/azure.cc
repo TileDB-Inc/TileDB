@@ -1074,6 +1074,67 @@ std::string Azure::BlockListUploadState::next_block_id() {
   return b64_block_id_str;
 }
 
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    FileFilter&& file_filter,
+    DirectoryFilter&& dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(
+          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+void AzureScanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto& object = *ptr;
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(object.first, object.second)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
+}
+
+AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
+  if (!more_to_fetch()) {
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+
+  blobs_ = client_.list_blobs_impl(
+      container_name_,
+      blob_path_,
+      this->is_recursive_,
+      max_keys_,
+      continuation_token_);
+  has_fetched_ = true;
+  // Update pointers to the newly fetched results.
+  begin_ = blobs_.begin();
+  end_ = blobs_.end();
+
+  return begin_;
+}
+
 }  // namespace tiledb::sm
 
 #if defined(_WIN32)
