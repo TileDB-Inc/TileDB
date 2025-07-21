@@ -1573,61 +1573,6 @@ class S3 : public FilesystemBase {
       const URI& attribute_uri, const std::string& chunk_name);
 };
 
-inline S3Scanner::S3Scanner(
-    const shared_ptr<TileDBS3Client>& client,
-    const URI& prefix,
-    FileFilter&& file_filter,
-    DirectoryFilter&& dir_filter,
-    bool recursive,
-    int max_keys)
-    : LsScanner(
-          prefix, std::move(file_filter), std::move(dir_filter), recursive)
-    , client_(client) {
-  const auto prefix_dir = prefix.add_trailing_slash();
-  auto prefix_str = prefix_dir.to_string();
-  Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
-
-  list_objects_request_.SetBucket(aws_uri.GetAuthority());
-  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
-  // Empty delimiter returns recursive results from S3.
-  list_objects_request_.SetDelimiter(delimiter());
-  // The default max_keys for ListObjects is 1000.
-  list_objects_request_.SetMaxKeys(max_keys);
-
-  if (client_->requester_pays()) {
-    list_objects_request_.SetRequestPayer(
-        Aws::S3::Model::RequestPayer::requester);
-  }
-  fetch_results();
-  next(begin_);
-}
-
-inline void S3Scanner::next(typename Iterator::pointer& ptr) {
-  if (ptr == end_) {
-    ptr = fetch_results();
-  }
-
-  while (ptr != end_) {
-    auto object = *ptr;
-    uint64_t size = object.GetSize();
-    std::string path = "s3://" +
-                       std::string(list_objects_request_.GetBucket()) +
-                       S3::add_front_slash(std::string(object.GetKey()));
-
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(path, size)) {
-      // Iterator is at the next object within results accepted by the filters.
-      return;
-    } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
-      advance(ptr);
-    }
-  }
-}
-
 }  // namespace tiledb::sm
 
 #endif  // HAVE_S3
