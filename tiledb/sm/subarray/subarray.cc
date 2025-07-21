@@ -294,12 +294,22 @@ void Subarray::add_range(
         "Cannot add range to dimension; Invalid dimension index");
   }
 
+  // Check that the range var_size matches the dimension var_size
+  auto dim = array_->array_schema_latest().dimension_ptr(dim_idx);
+  if (range.var_size() != dim->var_size()) {
+    throw SubarrayException(
+        "Cannot add range to dimension '" + dim->name() +
+        "'; Range var_size (" + std::to_string(range.var_size()) +
+        ") does not match dimension var_size (" +
+        std::to_string(dim->var_size()) + ")");
+  }
+
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
   tile_overlap_.clear();
 
   // Restrict the range to the dimension domain and add.
-  auto dim_name = array_->array_schema_latest().dimension_ptr(dim_idx)->name();
+  auto dim_name = dim->name();
   auto&& [error_status, oob_warning] =
       range_subset_[dim_idx].add_range(range, read_range_oob_error);
   if (!error_status.ok()) {

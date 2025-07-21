@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -461,10 +461,7 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
     URI file_name_uri = URI(file_name_abs);
     std::string file_name = file_name_abs.substr(old_uri_string.length());
     paths.erase(paths.begin());
-
-    bool dir_exists;
-    throw_if_not_ok(is_dir(file_name_uri, &dir_exists));
-    if (dir_exists) {
+    if (is_dir(file_name_uri)) {
       std::vector<std::string> child_paths;
       throw_if_not_ok(ls(file_name_uri, &child_paths));
       paths.insert(paths.end(), child_paths.begin(), child_paths.end());
@@ -517,7 +514,7 @@ void S3::remove_dir(const URI& uri) const {
 
   throw_if_not_ok(
       parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(paths[i])));
+        remove_file(URI(paths[i]));
         return Status::Ok();
       }));
 
@@ -538,7 +535,7 @@ void S3::remove_dir(const URI& uri) const {
   // Delete the uncovered object prefixes.
   throw_if_not_ok(
       parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(paths[i])));
+        remove_file(URI(paths[i]));
         return Status::Ok();
       }));
 }
@@ -556,9 +553,7 @@ void S3::touch(const URI& uri) const {
         "Cannot create file; URI is a directory: " + uri.to_string()));
   }
 
-  bool exists;
-  throw_if_not_ok(is_object(uri, &exists));
-  if (exists) {
+  if (is_file(uri)) {
     return;
   }
 
@@ -612,7 +607,7 @@ void S3::write(
   }
 
   // This write is never considered the last part of an object. The last part is
-  // only uploaded with flush_object().
+  // only uploaded with flush().
   const bool is_last_part = false;
 
   // Get file buffer
@@ -655,6 +650,31 @@ void S3::write(
     }
     passert(offset == length, "offset = {}, length = {}", offset, length);
   }
+}
+
+void S3::remove_file(const URI& uri) const {
+  throw_if_not_ok(init_client());
+
+  if (!uri.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
+  }
+
+  Aws::Http::URI aws_uri = uri.to_string().c_str();
+  Aws::S3::Model::DeleteObjectRequest delete_object_request;
+  delete_object_request.SetBucket(aws_uri.GetAuthority());
+  delete_object_request.SetKey(aws_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    delete_object_request.SetRequestPayer(request_payer_);
+
+  auto delete_object_outcome = client_->DeleteObject(delete_object_request);
+  if (!delete_object_outcome.IsSuccess()) {
+    throw S3Exception(
+        std::string("Failed to delete S3 object '") + uri.c_str() +
+        outcome_error_message(delete_object_outcome));
+  }
+
+  throw_if_not_ok(wait_for_object_to_be_deleted(
+      delete_object_request.GetBucket(), delete_object_request.GetKey()));
 }
 
 std::vector<directory_entry> S3::ls_with_sizes(const URI& parent) const {
@@ -730,21 +750,26 @@ Status S3::disconnect() {
   return ret_st;
 }
 
-Status S3::flush_object(const URI& uri) {
-  RETURN_NOT_OK(init_client());
+void S3::flush(const URI& uri, bool finalize) {
+  if (finalize) {
+    finalize_and_flush_object(uri);
+    return;
+  }
+
+  throw_if_not_ok(init_client());
   if (!s3_params_.use_multipart_upload_) {
-    return flush_direct(uri);
+    throw_if_not_ok(flush_direct(uri));
+    return;
   }
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
   }
 
   // Flush and delete file buffer. For multipart requests, we must
   // continue even if 'flush_file_buffer' fails. In that scenario,
   // we will send an abort request.
   auto buff = (Buffer*)nullptr;
-  RETURN_NOT_OK(get_file_buffer(uri, &buff));
+  throw_if_not_ok(get_file_buffer(uri, &buff));
   const Status flush_st = flush_file_buffer(uri, buff, true);
 
   Aws::Http::URI aws_uri = uri.c_str();
@@ -756,8 +781,8 @@ Status S3::flush_object(const URI& uri) {
   // Do nothing - empty object
   auto state_iter = multipart_upload_states_.find(path);
   if (state_iter == multipart_upload_states_.end()) {
-    RETURN_NOT_OK(flush_st);
-    return Status::Ok();
+    throw_if_not_ok(flush_st);
+    return;
   }
 
   const MultiPartUploadState* state = &multipart_upload_states_.at(path);
@@ -770,9 +795,9 @@ Status S3::flush_object(const URI& uri) {
         make_multipart_complete_request(*state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
     if (!outcome.IsSuccess()) {
-      return LOG_STATUS(Status_S3Error(
+      throw S3Exception(
           std::string("Failed to flush S3 object ") + uri.c_str() +
-          outcome_error_message(outcome)));
+          outcome_error_message(outcome));
     }
 
     auto bucket = state->bucket;
@@ -782,7 +807,7 @@ Status S3::flush_object(const URI& uri) {
 
     throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
 
-    return finish_flush_object(std::move(outcome), uri, buff, false);
+    throw_if_not_ok(finish_flush_object(std::move(outcome), uri, buff, false));
   } else {
     Aws::S3::Model::AbortMultipartUploadRequest abort_request =
         make_multipart_abort_request(*state);
@@ -791,7 +816,7 @@ Status S3::flush_object(const URI& uri) {
 
     state_lck.unlock();
 
-    return finish_flush_object(std::move(outcome), uri, buff, true);
+    throw_if_not_ok(finish_flush_object(std::move(outcome), uri, buff, true));
   }
 }
 
@@ -880,7 +905,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
   // Remove intermediate chunk files if any
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
+        remove_file(URI(intermediate_chunks[i].uri));
         return Status::Ok();
       }));
 
@@ -890,28 +915,28 @@ void S3::finalize_and_flush_object(const URI& uri) {
   unique_wl.unlock();
 }
 
-Status S3::is_dir(const URI& uri, bool* exists) const {
-  RETURN_NOT_OK(init_client());
+bool S3::is_dir(const URI& uri) const {
+  throw_if_not_ok(init_client());
 
   // Potentially add `/` to the end of `uri`
   auto uri_dir = uri.add_trailing_slash();
   std::vector<std::string> paths;
-  RETURN_NOT_OK(ls(uri_dir, &paths, "/", 1));
-  *exists = (bool)paths.size();
-  return Status::Ok();
+  throw_if_not_ok(ls(uri_dir, &paths, "/", 1));
+  return (bool)paths.size();
 }
 
-Status S3::is_object(const URI& uri, bool* const exists) const {
+bool S3::is_file(const URI& uri) const {
   throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
   }
 
+  bool exists = false;
   Aws::Http::URI aws_uri = uri.c_str();
-
-  return is_object(aws_uri.GetAuthority(), aws_uri.GetPath(), exists);
+  throw_if_not_ok(
+      is_object(aws_uri.GetAuthority(), aws_uri.GetPath(), &exists));
+  return exists;
 }
 
 Status S3::is_object(
@@ -1045,16 +1070,15 @@ Status S3::move_object(const URI& old_uri, const URI& new_uri) const {
   RETURN_NOT_OK(init_client());
 
   RETURN_NOT_OK(copy_object(old_uri, new_uri));
-  RETURN_NOT_OK(remove_object(old_uri));
+  remove_file(old_uri);
   return Status::Ok();
 }
 
-Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
-  RETURN_NOT_OK(init_client());
+uint64_t S3::file_size(const URI& uri) const {
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
   }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
@@ -1077,16 +1101,14 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
           " The bucket might be located in another region; you can set it with "
           "the 'vfs.s3.region' option.";
     }
-    return LOG_STATUS(Status_S3Error(
+    throw S3Exception(
         std::string(
             "Cannot retrieve S3 object size; Error while listing file s3://") +
         uri.to_string() + outcome_error_message(head_object_outcome) +
-        additional_context));
+        additional_context);
   }
-  *nbytes =
-      static_cast<uint64_t>(head_object_outcome.GetResult().GetContentLength());
-
-  return Status::Ok();
+  return static_cast<uint64_t>(
+      head_object_outcome.GetResult().GetContentLength());
 }
 
 Status S3::read_impl(
@@ -1136,33 +1158,6 @@ Status S3::read_impl(
         std::to_string(*length_returned) + " vs " + std::to_string(length)));
   }
 
-  return Status::Ok();
-}
-
-Status S3::remove_object(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
-  if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
-  }
-
-  Aws::Http::URI aws_uri = uri.to_string().c_str();
-  Aws::S3::Model::DeleteObjectRequest delete_object_request;
-  delete_object_request.SetBucket(aws_uri.GetAuthority());
-  delete_object_request.SetKey(aws_uri.GetPath());
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
-    delete_object_request.SetRequestPayer(request_payer_);
-
-  auto delete_object_outcome = client_->DeleteObject(delete_object_request);
-  if (!delete_object_outcome.IsSuccess()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Failed to delete S3 object '") + uri.c_str() +
-        outcome_error_message(delete_object_outcome)));
-  }
-
-  throw_if_not_ok(wait_for_object_to_be_deleted(
-      delete_object_request.GetBucket(), delete_object_request.GetKey()));
   return Status::Ok();
 }
 
@@ -1226,10 +1221,8 @@ void S3::global_order_write(
 
     unique_wl.unlock();
 
-    bool exists;
-    throw_if_not_ok(is_object(uri, &exists));
-    if (exists) {
-      throw_if_not_ok(remove_object(uri));
+    if (is_file(uri)) {
+      remove_file(uri);
     }
 
     throw_if_not_ok(initiate_multipart_request(aws_uri, &state_iter->second));
@@ -1334,7 +1327,7 @@ void S3::global_order_write(
 
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
+        remove_file(URI(intermediate_chunks[i].uri));
         return Status::Ok();
       }));
 
@@ -1902,10 +1895,8 @@ Status S3::write_multipart(
       unique_wl.unlock();
 
       // Delete file if it exists (overwrite) and initiate multipart request
-      bool exists;
-      RETURN_NOT_OK(is_object(uri, &exists));
-      if (exists) {
-        RETURN_NOT_OK(remove_object(uri));
+      if (is_file(uri)) {
+        remove_file(uri);
       }
 
       const Status st = initiate_multipart_request(aws_uri, state);

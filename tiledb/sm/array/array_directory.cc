@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -293,8 +293,7 @@ void ArrayDirectory::write_commit_ignore_file(
   auto data = ss.str();
   URI ignore_file_uri = get_commits_dir(constants::format_version)
                             .join_path(name + constants::ignore_file_suffix);
-  throw_if_not_ok(
-      resources_.get().vfs().write(ignore_file_uri, data.c_str(), data.size()));
+  resources_.get().vfs().write(ignore_file_uri, data.c_str(), data.size());
   throw_if_not_ok(resources_.get().vfs().close_file(ignore_file_uri));
 }
 
@@ -324,11 +323,9 @@ void ArrayDirectory::delete_fragments_list(
   throw_if_not_ok(parallel_for(
       &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
         auto& vfs = resources_.get().vfs();
-        throw_if_not_ok(vfs.remove_dir(uris[i]));
-        bool is_file = false;
-        throw_if_not_ok(vfs.is_file(commit_uris_to_delete[i], &is_file));
-        if (is_file) {
-          throw_if_not_ok(vfs.remove_file(commit_uris_to_delete[i]));
+        vfs.remove_dir(uris[i]);
+        if (vfs.is_file(commit_uris_to_delete[i])) {
+          vfs.remove_file(commit_uris_to_delete[i]);
         }
         return Status::Ok();
       }));
@@ -593,8 +590,9 @@ const std::set<std::string>& ArrayDirectory::dir_names() {
 
 std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
   auto dir_entries = resources_.get().vfs().ls_with_sizes(uri);
-  auto dirs = dir_names();
+  auto& dirs = dir_names();
   std::vector<URI> uris;
+  uris.reserve(dir_entries.size());
 
   for (auto entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
@@ -616,10 +614,14 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
     if (iter == dirs.end() || entry.file_size() > 0) {
       uris.emplace_back(entry_uri);
     } else {
-      // Handle MinIO-based s3 implementation limitation
+      // Handle MinIO-based s3 implementation limitation. If an object exists
+      // with the same name as a directory, the objects under the directory are
+      // masked and cannot be listed. See
+      // https://github.com/minio/minio/issues/7335
       throw ArrayDirectoryException(
           "Cannot list given uri; File '" + entry_uri.to_string() +
-          "' may be masking a non-empty directory by the same name.");
+          "' may be masking a non-empty directory by the same name. Removing "
+          "that file might fix this.");
     }
   }
 
@@ -727,9 +729,7 @@ ArrayDirectory::load_consolidated_commit_uris(
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
             uri.to_string(), constants::ignore_file_suffix)) {
-      uint64_t size = 0;
-      RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
+      uint64_t size = resources_.get().vfs().file_size(uri);
       std::string names;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
@@ -751,9 +751,7 @@ ArrayDirectory::load_consolidated_commit_uris(
     auto& uri = commits_dir_uris[i];
     if (stdx::string::ends_with(
             uri.to_string(), constants::con_commits_file_suffix)) {
-      uint64_t size = 0;
-      RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
+      uint64_t size = resources_.get().vfs().file_size(uri);
       meta_files.emplace_back(uri, std::string());
 
       auto& names = meta_files.back().second;
@@ -1084,9 +1082,8 @@ ArrayDirectory::compute_uris_to_vacuum(
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto& tp = resources_.get().compute_tp();
   auto status = parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
-    uint64_t size = 0;
     auto& vfs = resources_.get().vfs();
-    throw_if_not_ok(vfs.file_size(vac_files[i], &size));
+    uint64_t size = vfs.file_size(vac_files[i]);
     std::string names;
     names.resize(size);
     throw_if_not_ok(vfs.read(vac_files[i], 0, &names[0], size, false));
@@ -1198,9 +1195,7 @@ Status ArrayDirectory::compute_array_schema_uris(
     // dir.
     // Optionally add the old array schema from the root array folder
     auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
-    bool has_file = false;
-    RETURN_NOT_OK(resources_.get().vfs().is_file(old_schema_uri, &has_file));
-    if (has_file) {
+    if (resources_.get().vfs().is_file(old_schema_uri)) {
       array_schema_uris_.push_back(old_schema_uri);
     }
   }
@@ -1310,10 +1305,8 @@ Status ArrayDirectory::is_fragment(
   }
 
   // Versions < 5
-  bool is_file;
-  RETURN_NOT_OK(resources_.get().vfs().is_file(
-      uri.join_path(constants::fragment_metadata_filename), &is_file));
-  *is_fragment = (int)is_file;
+  *is_fragment = (int)resources_.get().vfs().is_file(
+      uri.join_path(constants::fragment_metadata_filename));
   return Status::Ok();
 }
 

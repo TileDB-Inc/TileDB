@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,9 +135,9 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * Returns the size of the input file.
    *
    * @param path The name of the file whose size is to be retrieved.
-   * @param nbytes Pointer to a value
+   * @return The size of the file.
    */
-  void file_size(const URI& path, uint64_t* size) const override;
+  uint64_t file_size(const URI& path) const override;
 
   /**
    * Move a given filesystem path.
@@ -182,13 +182,22 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * @param offset The offset in the file from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param nbytes The size of the data to be read from the file.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
   void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const override;
+      bool use_read_ahead) const override;
+
+  /**
+   * Flushes a file or directory.
+   *
+   * @param uri The URI of the file.
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
+   */
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Syncs a file or directory.
@@ -206,61 +215,13 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * @param path The name of the file.
    * @param buffer The input buffer.
    * @param buffer_size The size of the input buffer.
+   * @param remote_global_order_write Unused flag. Reserved for S3 objects only.
    */
   void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write = false) override;
-
-  /**
-   * Checks if an object store bucket exists.
-   *
-   * @param uri The name of the object store bucket.
-   * @return True if the bucket exists, false otherwise.
-   */
-  bool is_bucket(const URI&) const override {
-    // No concept of buckets for Posix.
-    return false;
-  }
-
-  /**
-   * Checks if an object-store bucket is empty.
-   *
-   * @param uri The name of the object store bucket.
-   * @return True if the bucket is empty, false otherwise.
-   */
-  bool is_empty_bucket(const URI&) const override {
-    // No concept of buckets for Posix.
-    return true;
-  }
-
-  /**
-   * Creates an object store bucket.
-   *
-   * @param uri The name of the bucket to be created.
-   */
-  void create_bucket(const URI&) const override {
-    // No-op for Posix, stub function for cloud filesystems.
-  }
-
-  /**
-   * Deletes an object store bucket.
-   *
-   * @param uri The name of the bucket to be deleted.
-   */
-  void remove_bucket(const URI&) const override {
-    // No-op for Posix, stub function for cloud filesystems.
-  }
-
-  /**
-   * Deletes the contents of an object store bucket.
-   *
-   * @param uri The name of the bucket to be emptied.
-   */
-  void empty_bucket(const URI&) const override {
-    // No-op for Posix, stub function for cloud filesystems.
-  }
+      bool remote_global_order_write) override;
 
   /**
    *
@@ -269,7 +230,7 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * @param uri The parent path to list sub-paths.
    * @return A list of directory_entry objects
    */
-  std::vector<filesystem::directory_entry> ls_with_sizes(
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
       const URI& uri) const override;
 
   /**

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -89,19 +89,19 @@ capi_return_t tiledb_vfs_get_config(
 
 capi_return_t tiledb_vfs_create_bucket(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->create_bucket(tiledb::sm::URI(uri)));
+  vfs->create_bucket(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_remove_bucket(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->remove_bucket(tiledb::sm::URI(uri)));
+  vfs->remove_bucket(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_empty_bucket(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->empty_bucket(tiledb::sm::URI(uri)));
+  vfs->empty_bucket(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
@@ -109,11 +109,7 @@ capi_return_t tiledb_vfs_is_empty_bucket(
     tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty) {
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(is_empty);
-
-  bool b;
-  throw_if_not_ok(vfs->is_empty_bucket(tiledb::sm::URI(uri), &b));
-  *is_empty = (int32_t)b;
-
+  *is_empty = (int32_t)vfs->is_empty_bucket(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
@@ -121,17 +117,13 @@ capi_return_t tiledb_vfs_is_bucket(
     tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket) {
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(is_bucket);
-
-  bool exists;
-  throw_if_not_ok(vfs->is_bucket(tiledb::sm::URI(uri), &exists));
-  *is_bucket = (int32_t)exists;
-
+  *is_bucket = (int32_t)vfs->is_bucket(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_create_dir(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->create_dir(tiledb::sm::URI(uri)));
+  vfs->create_dir(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
@@ -139,17 +131,14 @@ capi_return_t tiledb_vfs_is_dir(
     tiledb_vfs_t* vfs, const char* uri, int32_t* is_dir) {
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(is_dir);
-
-  bool exists;
-  throw_if_not_ok(vfs->is_dir(tiledb::sm::URI(uri), &exists));
-  *is_dir = (int32_t)exists;
+  *is_dir = (int32_t)vfs->is_dir(tiledb::sm::URI(uri));
 
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_remove_dir(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->remove_dir(tiledb::sm::URI(uri)));
+  vfs->remove_dir(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
@@ -157,17 +146,14 @@ capi_return_t tiledb_vfs_is_file(
     tiledb_vfs_t* vfs, const char* uri, int32_t* is_file) {
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(is_file);
-
-  bool exists;
-  throw_if_not_ok(vfs->is_file(tiledb::sm::URI(uri), &exists));
-  *is_file = (int32_t)exists;
+  *is_file = (int32_t)vfs->is_file(tiledb::sm::URI(uri));
 
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_remove_file(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->remove_file(tiledb::sm::URI(uri)));
+  vfs->remove_file(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
@@ -183,39 +169,35 @@ capi_return_t tiledb_vfs_file_size(
     tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(size);
-  throw_if_not_ok(vfs->file_size(tiledb::sm::URI(uri), size));
+  *size = vfs->file_size(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_move_file(
     tiledb_vfs_t* vfs, const char* old_uri, const char* new_uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(
-      vfs->move_file(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
+  vfs->move_file(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_move_dir(
     tiledb_vfs_t* vfs, const char* old_uri, const char* new_uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(
-      vfs->move_dir(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
+  vfs->move_dir(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_copy_file(
     tiledb_vfs_t* vfs, const char* old_uri, const char* new_uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(
-      vfs->copy_file(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
+  vfs->copy_file(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_vfs_copy_dir(
     tiledb_vfs_t* vfs, const char* old_uri, const char* new_uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(
-      vfs->copy_dir(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
+  vfs->copy_dir(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri));
   return TILEDB_OK;
 }
 
@@ -311,7 +293,7 @@ capi_return_t tiledb_vfs_fh_is_closed(tiledb_vfs_fh_t* fh, int32_t* is_closed) {
 
 capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
   ensure_vfs_is_valid(vfs);
-  throw_if_not_ok(vfs->touch(tiledb::sm::URI(uri)));
+  vfs->touch(tiledb::sm::URI(uri));
   return TILEDB_OK;
 }
 

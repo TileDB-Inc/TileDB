@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -119,16 +119,13 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     CHECK_THROWS(s3_.write(URI(largefile), write_buffer, buffer_size));
 
     // Before flushing, the file does not exist
-    bool exists = false;
-    CHECK(s3_.is_object(URI(largefile), &exists).ok());
-    CHECK(!exists);
+    CHECK(!s3_.is_file(URI(largefile)));
 
     // Flush the file
-    CHECK(!s3_.flush_object(URI(largefile)).ok());
+    CHECK_THROWS(s3_.flush(URI(largefile)));
 
     // After flushing, the file does not exist
-    CHECK(s3_.is_object(URI(largefile), &exists).ok());
-    CHECK(!exists);
+    CHECK(!s3_.is_file(URI(largefile)));
   }
 }
 
@@ -224,30 +221,23 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     CHECK(is_empty);
 
     // Continue building the hierarchy
-    bool exists = false;
     CHECK_NOTHROW(s3_.touch(URI(file1)));
-    CHECK(s3_.is_object(URI(file1), &exists).ok());
-    CHECK(exists);
+    CHECK(s3_.is_file(URI(file1)));
     CHECK_NOTHROW(s3_.touch(URI(file2)));
-    CHECK(s3_.is_object(URI(file2), &exists).ok());
-    CHECK(exists);
+    CHECK(s3_.is_file(URI(file2)));
     CHECK_NOTHROW(s3_.touch(URI(file3)));
-    CHECK(s3_.is_object(URI(file3), &exists).ok());
-    CHECK(exists);
+    CHECK(s3_.is_file(URI(file3)));
     CHECK_NOTHROW(s3_.touch(URI(file4)));
-    CHECK(s3_.is_object(URI(file4), &exists).ok());
-    CHECK(exists);
+    CHECK(s3_.is_file(URI(file4)));
     CHECK_NOTHROW(s3_.touch(URI(file5)));
-    CHECK(s3_.is_object(URI(file5), &exists).ok());
-    CHECK(exists);
+    CHECK(s3_.is_file(URI(file5)));
 
     // Check that the bucket is not empty
     is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(!is_empty);
 
     // Check invalid file
-    CHECK(s3_.is_object(URI(TEST_DIR + "foo"), &exists).ok());
-    CHECK(!exists);
+    CHECK(!s3_.is_file(URI(TEST_DIR + "foo")));
 
     // List with prefix
     std::vector<std::string> paths;
@@ -264,49 +254,36 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     CHECK(paths.size() == 5);
 
     // Check if a directory exists
-    bool is_dir = false;
-    CHECK(s3_.is_dir(URI(file1), &is_dir).ok());
-    CHECK(!is_dir);  // Not a dir
-    CHECK(s3_.is_dir(URI(file4), &is_dir).ok());
-    CHECK(!is_dir);  // Not a dir
-    CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
-    CHECK(is_dir);  // This is viewed as a dir
-    CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-    CHECK(is_dir);  // This is viewed as a dir
+    CHECK(!s3_.is_dir(URI(file1)));            // Not a dir
+    CHECK(!s3_.is_dir(URI(file4)));            // Not a dir
+    CHECK(s3_.is_dir(URI(dir)));               // Viewed as a dir
+    CHECK(s3_.is_dir(URI(TEST_DIR + "dir")));  // Viewed as a dir
 
     // Move file
     CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
-    CHECK(s3_.is_object(URI(file5), &exists).ok());
-    CHECK(!exists);
-    CHECK(s3_.is_object(URI(file6), &exists).ok());
-    CHECK(exists);
+    CHECK(!s3_.is_file(URI(file5)));
+    CHECK(s3_.is_file(URI(file6)));
     paths.clear();
     CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
     CHECK(paths.size() == 5);
 
     // Move directory
     CHECK_NOTHROW(s3_.move_dir(URI(dir), URI(dir2)));
-    CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
-    CHECK(!is_dir);
-    CHECK(s3_.is_dir(URI(dir2), &is_dir).ok());
-    CHECK(is_dir);
+    CHECK(!s3_.is_dir(URI(dir)));
+    CHECK(s3_.is_dir(URI(dir2)));
     paths.clear();
     CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
     CHECK(paths.size() == 5);
 
     // Remove files
-    CHECK(s3_.remove_object(URI(file4)).ok());
-    CHECK(s3_.is_object(URI(file4), &exists).ok());
-    CHECK(!exists);
+    REQUIRE_NOTHROW(s3_.remove_file(URI(file4)));
+    CHECK(!s3_.is_file(URI(file4)));
 
     // Remove directories
     CHECK_NOTHROW(s3_.remove_dir(URI(dir2)));
-    CHECK(s3_.is_object(URI(file1), &exists).ok());
-    CHECK(!exists);
-    CHECK(s3_.is_object(URI(file2), &exists).ok());
-    CHECK(!exists);
-    CHECK(s3_.is_object(URI(file3), &exists).ok());
-    CHECK(!exists);
+    CHECK(!s3_.is_file(URI(file1)));
+    CHECK(!s3_.is_file(URI(file2)));
+    CHECK(!s3_.is_file(URI(file3)));
   };
   // function to try creating bucket with BucketCannedACL indicated
   // by string parameter.

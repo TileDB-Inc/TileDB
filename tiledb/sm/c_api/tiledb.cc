@@ -1479,6 +1479,32 @@ int32_t tiledb_deserialize_array_schema(
   return TILEDB_OK;
 }
 
+int32_t tiledb_deserialize_array_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t,
+    tiledb_string_t** storage_uri,
+    tiledb_array_schema_t** array_schema) {
+  api::ensure_buffer_is_valid(buffer);
+  ensure_output_pointer_is_valid(array_schema);
+  ensure_output_pointer_is_valid(storage_uri);
+
+  // Create array schema struct
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
+  auto [storage, shared_schema] =
+      tiledb::sm::serialization::array_create_deserialize(
+          (tiledb::sm::SerializationType)serialize_type,
+          buffer->buffer(),
+          memory_tracker);
+
+  *array_schema = tiledb_array_schema_t::make_handle(shared_schema);
+  *storage_uri = tiledb_string_handle_t::make_handle(storage.c_str());
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_serialize_array_open(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
@@ -3200,6 +3226,18 @@ CAPI_INTERFACE(
     tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_deserialize_array_schema>(
       ctx, buffer, serialize_type, client_side, array_schema);
+}
+
+CAPI_INTERFACE(
+    deserialize_array_create,
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_string_t** storage,
+    tiledb_array_schema_t** array_schema) {
+  return api_entry<tiledb::api::tiledb_deserialize_array_create>(
+      ctx, buffer, serialize_type, client_side, storage, array_schema);
 }
 
 CAPI_INTERFACE(

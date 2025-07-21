@@ -335,10 +335,9 @@ Status group_create_details_to_capnp(
 
   const auto& group_uri = group->group_uri();
   if (group_uri.is_tiledb()) {
-    std::string group_ns, group_uri_component;
-    RETURN_NOT_OK(group->group_uri().get_rest_components(
-        &group_ns, &group_uri_component, legacy));
-    group_create_details_builder->setUri(group_uri_component);
+    URI::RESTURIComponents rest_uri;
+    RETURN_NOT_OK(group->group_uri().get_rest_components(legacy, &rest_uri));
+    group_create_details_builder->setUri(rest_uri.asset_storage);
   } else {
     group_create_details_builder->setUri(group_uri.to_string());
   }

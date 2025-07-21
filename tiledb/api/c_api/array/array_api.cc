@@ -122,8 +122,13 @@ capi_return_t tiledb_array_create(
   tiledb::sm::URI uri(array_uri, URI::must_be_valid);
   if (uri.is_tiledb()) {
     auto& rest_client = ctx->context().rest_client();
-    throw_if_not_ok(rest_client.post_array_schema_to_rest(
-        uri, *(array_schema->array_schema())));
+    if (rest_client.rest_legacy()) {
+      throw_if_not_ok(rest_client.post_array_schema_to_rest(
+          uri, *(array_schema->array_schema())));
+    } else {
+      rest_client.post_array_create_to_rest(
+          uri, *(array_schema->array_schema()));
+    }
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;

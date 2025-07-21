@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -555,6 +555,11 @@ class S3Scanner : public LsScanner<F, D> {
 /**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
+ *
+ * @note in S3, the concept of "files" are truly called "objects".
+ * The virtual filesystem's base class may view a these two as the same.
+ * All internal methods have been renamed to use the "file" verbiage in
+ * compliance with the FilesystemBase class.
  */
 class S3 : FilesystemBase {
  private:
@@ -649,14 +654,14 @@ class S3 : FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
   void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const override;
+      bool use_read_ahead) const override;
 
   /**
    * Deletes a bucket.
@@ -704,7 +709,7 @@ class S3 : FilesystemBase {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @param remote_global_order_write
+   * @param remote_global_order_write Whether to perform a global order write.
    */
   void write(
       const URI& uri,
@@ -726,35 +731,11 @@ class S3 : FilesystemBase {
   }
 
   /**
-   * Checks if a file exists.
-   *
-   * @param uri The URI to check for existence.
-   * @return True if the file exists, else False.
-   */
-  bool is_file(const URI& uri) const override {
-    bool object = false;
-    throw_if_not_ok(is_object(uri, &object));
-    return object;
-  }
-
-  /**
    * Deletes a file.
    *
    * @param uri The URI of the file.
    */
-  void remove_file(const URI& uri) const override {
-    throw_if_not_ok(remove_object(uri));
-  }
-
-  /**
-   * Retrieves the size of a file.
-   *
-   * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
-   */
-  void file_size(const URI& uri, uint64_t* size) const override {
-    throw_if_not_ok(object_size(uri, size));
-  }
+  void remove_file(const URI& uri) const override;
 
   /**
    * Renames a file.
@@ -775,26 +756,14 @@ class S3 : FilesystemBase {
   void sync(const URI&) const override {
     // No-op for S3.
   }
-
-  /**
-   * Checks if a directory exists.
-   *
-   * @param uri The URI to check for existence.
-   * @return True if the directory exists, else False.
-   */
-  bool is_dir(const URI& uri) const override {
-    bool dir = false;
-    throw_if_not_ok(is_dir(uri, &dir));
-    return dir;
-  }
-
   /**
    * Retrieves all the entries contained in the parent.
    *
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
+      const URI& parent) const override;
 
   /**
    * Disconnects a S3 client.
@@ -806,9 +775,10 @@ class S3 : FilesystemBase {
    * Flushes an object to S3, finalizing the multipart upload.
    *
    * @param uri The URI of the object to be flushed.
-   * @return Status
+   * @param finalize If `true`, flushes as a result of a remote global order
+   * write `finalize()` call.
    */
-  Status flush_object(const URI& uri);
+  void flush(const URI& uri, bool finalize = false) override;
 
   /**
    * Flushes an s3 object as a result of a remote global order write
@@ -833,20 +803,17 @@ class S3 : FilesystemBase {
    * case there is not).
    *
    * @param uri The URI to check.
-   * @param exists Sets it to `true` if the above mentioned condition holds.
-   * @return Status
+   * @return `true` if the above mentioned condition holds, `false` otherwise.
    */
-  Status is_dir(const URI& uri, bool* exists) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
-   * Checks if the given URI is an existing S3 object.
+   * Checks if a file exists.
    *
-   * @param uri The URI of the object to be checked.
-   * @param exists Mutates to `true` if `uri` is an existing object,
-   *   and `false` otherwise.
-   * @return Status
+   * @param uri The URI to check for existence.
+   * @return True if the file exists, else False.
    */
-  Status is_object(const URI& uri, bool* exists) const;
+  bool is_file(const URI& uri) const override;
 
   /** Checks if the given object exists on S3. */
   Status is_object(
@@ -893,7 +860,7 @@ class S3 : FilesystemBase {
    * @param max_paths The maximum number of paths to be retrieved.
    * @return A list of directory_entry objects.
    */
-  std::vector<directory_entry> ls_with_sizes(
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
       const URI& prefix, const std::string& delimiter, int max_paths) const;
 
   /**
@@ -964,10 +931,9 @@ class S3 : FilesystemBase {
    * Returns the size of the input object with a given URI in bytes.
    *
    * @param uri The URI of the object.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
+   * @return The size of the object in bytes.
    */
-  Status object_size(const URI& uri, uint64_t* nbytes) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Reads data from an object into a buffer.
@@ -987,14 +953,6 @@ class S3 : FilesystemBase {
       const uint64_t length,
       const uint64_t read_ahead_length,
       uint64_t* const length_returned) const;
-
-  /**
-   * Deletes an object with a given URI.
-   *
-   * @param uri The URI of the object to be deleted.
-   * @return Status
-   */
-  Status remove_object(const URI& uri) const;
 
   /**
    * Writes the input buffer to an S3 object. This function buffers in memory

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/stats/stats.h"
@@ -323,7 +324,8 @@ class S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase,
+class VFS : FilesystemBase,
+            private VFSBase,
             protected Azure_within_VFS,
             GCS_within_VFS,
             S3_within_VFS {
@@ -410,22 +412,16 @@ class VFS : private VFSBase,
   /**
    * Creates a directory.
    *
-   * - On S3, this is a noop.
-   * - On all other backends, if the directory exists, the function
-   *   just succeeds without doing anything.
-   *
    * @param uri The URI of the directory.
-   * @return Status
    */
-  Status create_dir(const URI& uri) const;
+  void create_dir(const URI& uri) const;
 
   /**
    * Creates an empty file.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  Status touch(const URI& uri) const;
+  void touch(const URI& uri) const;
 
   /**
    * Cancels all background or queued tasks.
@@ -436,9 +432,8 @@ class VFS : private VFSBase,
    * Creates an object store bucket.
    *
    * @param uri The name of the bucket to be created.
-   * @return Status
    */
-  Status create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const;
 
   /**
    * Returns the size of the files in the input directory.
@@ -457,25 +452,22 @@ class VFS : private VFSBase,
    * Deletes an object store bucket.
    *
    * @param uri The name of the bucket to be deleted.
-   * @return Status
    */
-  Status remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const;
 
   /**
    * Deletes the contents of an object store bucket.
    *
    * @param uri The name of the bucket to be emptied.
-   * @return Status
    */
-  Status empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const;
 
   /**
    * Removes a given directory (recursive)
    *
-   * @param uri The uri of the directory to be removed
-   * @return Status
+   * @param uri The uri of the directory to be removed.
    */
-  Status remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const;
 
   /**
    * Removes a given empty directory. No exceptions are raised if the directory
@@ -499,9 +491,8 @@ class VFS : private VFSBase,
    * Deletes a file.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  Status remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const;
 
   /**
    * Deletes files in parallel from the given vector of files.
@@ -524,49 +515,45 @@ class VFS : private VFSBase,
    * Retrieves the size of a file.
    *
    * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
-   * @return Status
+   * @return The file size.
    */
-  Status file_size(const URI& uri, uint64_t* size) const;
+  uint64_t file_size(const URI& uri) const;
 
   /**
    * Checks if a directory exists.
    *
-   * @param uri The URI of the directory.
-   * @param is_dir Set to `true` if the directory exists and `false` otherwise.
-   * @return Status
-   *
    * @note For S3, this function will return `true` if there is an object
    *     with prefix `uri/` (TileDB will append `/` internally to `uri`
    *     only if it does not exist), and `false` othewise.
+   *
+   * @param uri The URI of the directory.
+   * @return `true` if the directory exists and `false` otherwise.
    */
-  Status is_dir(const URI& uri, bool* is_dir) const;
+  bool is_dir(const URI& uri) const;
 
   /**
    * Checks if a file exists.
    *
    * @param uri The URI of the file.
-   * @param is_file Set to `true` if the file exists and `false` otherwise.
-   * @return Status
+   * @return `true` if the file exists and `false` otherwise.
    */
-  Status is_file(const URI& uri, bool* is_file) const;
+  bool is_file(const URI& uri) const;
 
   /**
    * Checks if an object store bucket exists.
    *
    * @param uri The name of the object store bucket.
-   * @return is_bucket Set to `true` if the bucket exists and `false` otherwise.
-   * @return Status
+   * @return `true` if the bucket exists and `false` otherwise.
    */
-  Status is_bucket(const URI& uri, bool* is_bucket) const;
+  bool is_bucket(const URI& uri) const;
 
   /**
    * Checks if an object-store bucket is empty.
    *
    * @param uri The name of the object store bucket.
-   * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
+   * @return `true` if the bucket is empty and `false` otherwise.
    */
-  Status is_empty_bucket(const URI& uri, bool* is_empty) const;
+  bool is_empty_bucket(const URI& uri) const;
 
   /**
    * Retrieves all the URIs that have the first input as parent.
@@ -609,11 +596,7 @@ class VFS : private VFSBase,
     LsObjects results;
     try {
       if (parent.is_file()) {
-#ifdef _WIN32
-        results = win_.ls_filtered(parent, f, d, recursive);
-#else
-        results = posix_.ls_filtered(parent, f, d, recursive);
-#endif
+        results = local_.ls_filtered(parent, f, d, recursive);
       } else if (parent.is_s3()) {
 #ifdef HAVE_S3
         results = s3().ls_filtered(parent, f, d, recursive);
@@ -674,36 +657,48 @@ class VFS : private VFSBase,
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status move_file(const URI& old_uri, const URI& new_uri);
+  void move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames a directory.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  void move_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies a file.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri);
+  void copy_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies directory.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status copy_dir(const URI& old_uri, const URI& new_uri);
+  void copy_dir(const URI& old_uri, const URI& new_uri) const;
+
+  /**
+   * Reads from a file.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   */
+  void read(
+      const URI& uri,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes,
+      bool use_read_ahead = true) const;
 
   /**
    * Reads from a file.
@@ -729,12 +724,13 @@ class VFS : private VFSBase,
   bool supports_uri_scheme(const URI& uri) const;
 
   /**
-   * Syncs (flushes) a file. Note that for S3 this is a noop.
+   * Syncs a local file.
+   *
+   * @invariant Valid only for local filesystems.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  Status sync(const URI& uri);
+  void sync(const URI& uri) const;
 
   /**
    * Opens a file in a given mode.
@@ -758,7 +754,26 @@ class VFS : private VFSBase,
   Status open_file(const URI& uri, VFSMode mode);
 
   /**
+   * Flushes a file's contents to persistent storage.
+   *
+   * @note The `finalize` flag provides special S3 logic, tailored to work best
+   * with remote global order writes.
+   *
+   * @invariant This method currently closes local files. This is a known
+   * limitation that is being tracked and slated for improvement.
+   *
+   * @param uri The URI of the file.
+   * @param finalize For s3 objects only. If `true`, flushes as a result of a
+   * remote global order write `finalize()` call.
+   */
+  void flush(const URI& uri, [[maybe_unused]] bool finalize = false);
+
+  /**
    * Closes a file, flushing its contents to persistent storage.
+   *
+   * @note This method is simply a wrapper around flush(). Until the file handle
+   * close semantics are ironed out, we will maintain this method for backward
+   * compatibility.
    *
    * @param uri The URI of the file.
    * @return Status
@@ -766,24 +781,16 @@ class VFS : private VFSBase,
   Status close_file(const URI& uri);
 
   /**
-   * Closes a file, flushing its contents to persistent storage.
-   * This function has special S3 logic tailored to work best with remote
-   * global order writes.
-   *
-   * @param uri The URI of the file.
-   */
-  void finalize_and_close_file(const URI& uri);
-
-  /**
    * Writes the contents of a buffer into a file.
    *
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @param remote_global_order_write Remote global order write
-   * @return Status
+   * @param remote_global_order_write
+   *    Whether to perform a remote global order write.
+   *    Reserved for S3 objects only.
    */
-  Status write(
+  void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
@@ -988,10 +995,12 @@ class VFS : private VFSBase,
   /* ********************************* */
 
 #ifdef _WIN32
-  Win win_;
+  using LocalFS = Win;
 #else
-  Posix posix_;
+  using LocalFS = Posix;
 #endif
+
+  LocalFS local_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
@@ -1074,7 +1083,7 @@ class VFS : private VFSBase,
    * Retrieves the backend-specific max number of parallel operations for VFS
    * read.
    */
-  Status max_parallel_ops(const URI& uri, uint64_t* ops) const;
+  uint64_t max_parallel_ops(const URI& uri) const;
 
   /**
    * Log a read operation. The format of the log message depends on the

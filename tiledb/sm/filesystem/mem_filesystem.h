@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,10 @@
 #include <vector>
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 
 using namespace tiledb::common;
 
@@ -67,7 +69,7 @@ class MemFSException : public StatusException {
  * @invariant The MemFilesystem is associated with a single VFS instance.
  * @invariant The MemFilesystem exists on a single, global Context.
  */
-class MemFilesystem {
+class MemFilesystem : FilesystemBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -102,35 +104,33 @@ class MemFilesystem {
   /**
    * Creates a new directory.
    *
-   * @param path The full name of the directory to be created
-   * @return Status
+   * @param uri The URI of the directory to be created.
    */
-  Status create_dir(const std::string& path) const;
+  void create_dir(const URI& uri) const;
 
   /**
    * Returns the size of an existing file.
    *
-   * @param path The full name of the file to retrieve the size of
-   * @param nbytes A pointer to retrun the size of the file
-   * @return Status
+   * @param uri The URI of the file to retrieve the size of.
+   * @return The size of the file.
    */
-  Status file_size(const std::string& path, uint64_t* size) const;
+  uint64_t file_size(const URI& uri) const;
 
   /**
-   * Checks if a path corresponds to an existing directory.
+   * Checks if a URI corresponds to an existing directory.
    *
-   * @param path The path to the directory to be checked
-   * @return *True* if *path* is an existing directory,  *False* otherwise
+   * @param uri The URI to the directory to be checked
+   * @return *True* if *uri* is an existing directory,  *False* otherwise
    */
-  bool is_dir(const std::string& path) const;
+  bool is_dir(const URI& uri) const;
 
   /**
-   * if a path corresponds to an existing file.
+   * Checks if a URI corresponds to an existing file.
    *
-   * @param path The path to the file to be checked
-   * @return *True* if *path* is an existing file, *false* otherwise
+   * @param uri The URI to the file to be checked
+   * @return *True* if *uri* is an existing file, *false* otherwise
    */
-  bool is_file(const std::string& path) const;
+  bool is_file(const URI& uri) const;
 
   /**
    *
@@ -150,48 +150,77 @@ class MemFilesystem {
    * @param path  The parent path to list sub-paths
    * @return A list of directory_entry objects
    */
-  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& path) const;
+  std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
+      const URI& path) const;
 
   /**
    * Move a given filesystem path.
    *
    * @param old_path The old path.
    * @param new_path The new path.
-   * @return Status
    */
-  Status move(const std::string& old_path, const std::string& new_path) const;
+  void move(const std::string& old_path, const std::string& new_path) const;
+
+  /**
+   * Move a given file.
+   *
+   * @param old_uri The old uri.
+   * @param new_uri The new uri.
+   */
+  void move_dir(const URI& old_uri, const URI& new_uri) const;
+
+  /**
+   * Move a given directory.
+   *
+   * @param old_uri The old uri.
+   * @param new_uri The new uri.
+   */
+  void move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Reads data from a file into a buffer.
    *
-   * @param path The full name of the file
-   * @param offset The offset in the file from which the read will start
-   * @param buffer The buffer into which the data will be written
-   * @param nbytes The number of bytes to be read from the file
-   * @return Status.
+   * @param uri The URI of the file.
+   * @param offset The offset in the file from which the read will start.
+   * @param buffer The buffer into which the data will be written.
+   * @param nbytes The number of bytes to be read from the file.
+   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
-  Status read(
-      const std::string& path,
-      const uint64_t offset,
+  void read(
+      const URI& uri,
+      uint64_t offset,
       void* buffer,
-      const uint64_t nbytes) const;
+      uint64_t nbytes,
+      bool use_read_ahead) const;
 
   /**
    * Removes a given path and its contents.
    *
-   * @param path The full name of the directory/file to be deleted
+   * @param path The full path of the directory/file to be deleted.
    * @param is_dir *True* if *path* is a directory, *false* if it's a file
-   * @return Status
    */
-  Status remove(const std::string& path, bool is_dir) const;
+  void remove(const std::string& path, bool is_dir) const;
+
+  /**
+   * Removes a directory and its contents.
+   *
+   * @param uri The URI of the directory to be deleted.
+   */
+  void remove_dir(const URI& uri) const;
+
+  /**
+   * Removes a file.
+   *
+   * @param uri The URI of the file to be deleted.
+   */
+  void remove_file(const URI& uri) const;
 
   /**
    * Creates an empty file.
    *
-   * @param path The full name of the file to be created
-   * @return Status
+   * @param uri The URI of the file to be created.
    */
-  Status touch(const std::string& path) const;
+  void touch(const URI& path) const;
 
   /**
    * Writes the input buffer to a file.
@@ -199,13 +228,59 @@ class MemFilesystem {
    * If the file does not exist than it is created with data as content.
    * If the file exits than the data is appended to the end of the file.
    *
-   * @param path The full name of the file
-   * @param data The input data
-   * @param nbytes The size of the input buffer in bytes
-   * @return Status
+   * @param uri The URI of the file.
+   * @param buffer The buffer to write from.
+   * @param buffer_size The size of the input buffer in bytes.
+   * @param remote_global_order_write Unused flag. Reserved for S3 objects only.
    */
-  Status write(
-      const std::string& path, const void* data, const uint64_t nbytes);
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write);
+
+  /**
+   * Copies a directory.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void copy_dir(const URI&, const URI&) const {
+    // No-op for MemFS; stub function for other filesystems.
+  }
+
+  /**
+   * Copies a file.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void copy_file(const URI&, const URI&) const {
+    // No-op for MemFS; stub function for other filesystems.
+  }
+
+  /**
+   * Flushes an object store file.
+   *
+   * @invariant Performs a sync for local filesystems.
+   *
+   * @param uri The URI of the file.
+   * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
+   */
+  void flush(const URI&, bool) {
+    // No-op for MemFS; stub function for local filesystems.
+  }
+
+  /**
+   * Syncs a local file.
+   *
+   * @invariant Valid only for local filesystems.
+   *
+   * @param uri The URI of the file.
+   */
+  void sync(const URI&) const {
+    // No-op for MemFS; stub function for local filesystems.
+  }
 
  private:
   /* ********************************* */
@@ -270,25 +345,20 @@ class MemFilesystem {
       const std::string& path, const char delim = '/');
 
   /**
-   * Creates a new directory without acquiring the lock
+   * Creates a new directory without acquiring the lock.
    *
    * @param path The full name of the directory to be created.
-   * @param node Optional output argument to the node of the
-   *    created directory.
-   * @return Status
+   * @return The node of the created directory.
    */
-  Status create_dir_internal(
-      const std::string& path, FSNode** node = nullptr) const;
+  FSNode* create_dir_internal(const std::string& path) const;
 
   /**
-   * Creates an empty file without acquiring the lock
+   * Creates an empty file without acquiring the lock.
    *
    * @param path The full name of the file to be created.
-   * @param node Optional output argument to the node of the
-   *    created file.
-   * @return Status
+   * @return The node of the created file.
    */
-  Status touch_internal(const std::string& path, FSNode** node = nullptr) const;
+  FSNode* touch_internal(const std::string& path) const;
 };
 
 }  // namespace sm

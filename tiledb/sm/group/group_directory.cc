@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
 using namespace tiledb::common;
@@ -48,6 +49,57 @@ class GroupDirectoryException : public StatusException {
       : StatusException("GroupDirectory", message) {
   }
 };
+
+namespace {
+
+const std::set<std::string>& dir_names() {
+  static const std::set<std::string> dir_names(
+      constants::group_dir_names.begin(), constants::group_dir_names.end());
+  return dir_names;
+}
+
+std::vector<URI> ls(const VFS& vfs, const URI& uri) {
+  auto dir_entries = vfs.ls_with_sizes(uri);
+  auto uri_no_slash = uri.remove_trailing_slash();
+  auto& dirs = dir_names();
+  std::vector<URI> uris;
+  uris.reserve(dir_entries.size());
+
+  for (auto entry : dir_entries) {
+    auto entry_uri = URI(entry.path().native());
+
+    // Always list directories
+    if (entry.is_directory()) {
+      uris.emplace_back(entry_uri);
+      continue;
+    }
+
+    // Filter out empty files of the same name as the directory
+    if (entry_uri.remove_trailing_slash() == uri_no_slash &&
+        entry.file_size() == 0) {
+      continue;
+    }
+
+    // List non-known (user-added) directory names and non-empty files
+    auto iter = dirs.find(entry_uri.last_path_part());
+    if (iter == dirs.end() || entry.file_size() > 0) {
+      uris.emplace_back(entry_uri);
+    } else {
+      // Handle MinIO-based s3 implementation limitation. If an object exists
+      // with the same name as a directory, the objects under the directory are
+      // masked and cannot be listed. See
+      // https://github.com/minio/minio/issues/7335
+      throw GroupDirectoryException(
+          "Cannot list given uri; File '" + entry_uri.to_string() +
+          "' may be masking a non-empty directory by the same name. Removing "
+          "that file might fix this.");
+    }
+  }
+
+  return uris;
+}
+
+}  // namespace
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -131,10 +183,7 @@ Status GroupDirectory::load() {
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
   tasks.emplace_back(tp_.execute([&]() {
-    auto&& [st, uris] = list_root_dir_uris();
-    throw_if_not_ok(st);
-
-    root_dir_uris = std::move(uris.value());
+    root_dir_uris = ls(vfs_, uri_);
 
     return Status::Ok();
   }));
@@ -179,19 +228,10 @@ bool GroupDirectory::loaded() const {
 /*         PRIVATE METHODS           */
 /* ********************************* */
 
-tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
-  // List the group directory URIs
-  std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_.ls(uri_, &group_dir_uris), nullopt);
-
-  return {Status::Ok(), group_dir_uris};
-}
-
 Status GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
-  std::vector<URI> group_meta_dir_uris;
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
-  throw_if_not_ok(vfs_.ls(group_meta_uri, &group_meta_dir_uris));
+  std::vector<URI> group_meta_dir_uris = ls(vfs_, group_meta_uri);
 
   // Compute and group metadata URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
@@ -213,9 +253,8 @@ Status GroupDirectory::load_group_meta_uris() {
 
 Status GroupDirectory::load_group_detail_uris() {
   // Load the URIs in the group details directory
-  std::vector<URI> group_detail_dir_uris;
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
-  throw_if_not_ok(vfs_.ls(group_detail_uri, &group_detail_dir_uris));
+  std::vector<URI> group_detail_dir_uris = ls(vfs_, group_detail_uri);
 
   // Compute and group details URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =
@@ -272,8 +311,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto status = parallel_for(&tp_, 0, vac_files.size(), [&](size_t i) {
-    uint64_t size = 0;
-    throw_if_not_ok(vfs_.file_size(vac_files[i], &size));
+    uint64_t size = vfs_.file_size(vac_files[i]);
     std::string names;
     names.resize(size);
     throw_if_not_ok(vfs_.read(vac_files[i], 0, &names[0], size, false));

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,19 +103,17 @@ void Group::create(ContextResources& resources, const URI& uri) {
   }
 
   // Create group directory
-  throw_if_not_ok(resources.vfs().create_dir(uri));
+  resources.vfs().create_dir(uri);
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  throw_if_not_ok(resources.vfs().touch(group_filename));
+  resources.vfs().touch(group_filename);
 
   // Create metadata folder
-  throw_if_not_ok(resources.vfs().create_dir(
-      uri.join_path(constants::group_metadata_dir_name)));
+  resources.vfs().create_dir(uri.join_path(constants::group_metadata_dir_name));
 
   // Create group detail folder
-  throw_if_not_ok(resources.vfs().create_dir(
-      uri.join_path(constants::group_detail_dir_name)));
+  resources.vfs().create_dir(uri.join_path(constants::group_detail_dir_name));
 }
 
 void Group::open(

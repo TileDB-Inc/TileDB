@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -272,7 +272,7 @@ void Consolidator::write_consolidated_commits_file(
     // the size variable.
     if (stdx::string::ends_with(
             uri.to_string(), constants::delete_file_suffix)) {
-      throw_if_not_ok(resources.vfs().file_size(uri, &file_sizes[i]));
+      file_sizes[i] = resources.vfs().file_size(uri);
       total_size += file_sizes[i];
       total_size += sizeof(storage_size_t);
     }
@@ -303,8 +303,7 @@ void Consolidator::write_consolidated_commits_file(
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
           .join_path(name + constants::con_commits_file_suffix);
-  throw_if_not_ok(resources.vfs().write(
-      consolidated_commits_uri, data.data(), data.size()));
+  resources.vfs().write(consolidated_commits_uri, data.data(), data.size());
   throw_if_not_ok(resources.vfs().close_file(consolidated_commits_uri));
 }
 

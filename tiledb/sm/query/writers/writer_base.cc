@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -600,7 +600,8 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
       parallel_for(&resources_.io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
-          resources_.vfs().finalize_and_close_file(file_uri);
+          // flush with finalize == true
+          resources_.vfs().flush(file_uri, true);
         } else {
           throw_if_not_ok(resources_.vfs().close_file(file_uri));
         }
@@ -766,11 +767,9 @@ Status WriterBase::create_fragment(
   // Create the directories.
   // Create the fragment directory, the directory for the new fragment
   // URI, and the commit directory.
-  throw_if_not_ok(
-      resources_.vfs().create_dir(array_dir.get_fragments_dir(write_version)));
-  throw_if_not_ok(resources_.vfs().create_dir(fragment_uri_));
-  throw_if_not_ok(
-      resources_.vfs().create_dir(array_dir.get_commits_dir(write_version)));
+  resources_.vfs().create_dir(array_dir.get_fragments_dir(write_version));
+  resources_.vfs().create_dir(fragment_uri_);
+  resources_.vfs().create_dir(array_dir.get_commits_dir(write_version));
 
   // Create fragment metadata.
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -1106,21 +1105,21 @@ Status WriterBase::write_tiles(
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
-    throw_if_not_ok(resources_.vfs().write(
+    resources_.vfs().write(
         uri,
         t.filtered_buffer().data(),
         t.filtered_buffer().size(),
-        remote_global_order_write));
+        remote_global_order_write);
     frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
     auto null_count = tile.null_count();
 
     if (var_size) {
       auto& t_var = tile.var_tile();
-      throw_if_not_ok(resources_.vfs().write(
+      resources_.vfs().write(
           var_uri,
           t_var.filtered_buffer().data(),
           t_var.filtered_buffer().size(),
-          remote_global_order_write));
+          remote_global_order_write);
       frag_meta->set_tile_var_offset(
           name, tile_id, t_var.filtered_buffer().size());
       frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
@@ -1141,11 +1140,11 @@ Status WriterBase::write_tiles(
 
     if (nullable) {
       auto& t_val = tile.validity_tile();
-      throw_if_not_ok(resources_.vfs().write(
+      resources_.vfs().write(
           validity_uri,
           t_val.filtered_buffer().data(),
           t_val.filtered_buffer().size(),
-          remote_global_order_write));
+          remote_global_order_write);
       frag_meta->set_tile_validity_offset(
           name, tile_id, t_val.filtered_buffer().size());
       frag_meta->set_tile_null_count(name, tile_id, null_count);

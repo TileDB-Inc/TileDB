@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -146,24 +146,19 @@ std::string Win::abs_path(const std::string& path) {
   return str_result;
 }
 
-Status Win::create_dir(const std::string& path) const {
-  if (is_dir(path)) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot create directory '") + path +
-        "'; Directory already exists"));
-  }
+void Win::create_dir(const URI& uri) const {
+  auto path = uri.to_path();
   std::error_code ec;
   std::filesystem::create_directories(path, ec);
   if (ec) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot create directory '") + path + "'; " +
-        ec.message()));
+    throw WindowsException(
+        std::string("Cannot create directory '" + path + "'; " + ec.message()));
   }
-  return Status::Ok();
 }
 
-Status Win::touch(const std::string& filename) const {
-  RETURN_NOT_OK(ensure_directory(filename));
+void Win::touch(const URI& uri) const {
+  auto filename = uri.to_path();
+  throw_if_not_ok(ensure_directory(filename));
   HANDLE file_h = CreateFile(
       filename.c_str(),
       GENERIC_WRITE,
@@ -181,13 +176,12 @@ Status Win::touch(const std::string& filename) const {
     auto gle = GetLastError();
     if (gle == ERROR_FILE_EXISTS) {
       // Do not fail if the file already exists.
-      return Status::Ok();
+      return;
     }
-    return LOG_STATUS(Status_IOError(
-        std::string("Failed to create file '") + filename + " (" +
+    throw WindowsException(std::string(
+        "Failed to create file '" + filename + " (" +
         get_last_error_msg(gle, "CreateFile") + ")'"));
   }
-  return Status::Ok();
 }
 
 std::string Win::current_dir() {
@@ -234,8 +228,9 @@ Status Win::recursively_remove_directory(const std::string& path) const {
           goto err;
         }
       } else {
-        ret = remove_file(file_path);
-        if (!ret.ok()) {
+        try {
+          remove_file(URI(file_path));
+        } catch (...) {
           goto err;
         }
       }
@@ -279,12 +274,13 @@ err:
       get_last_error_msg(gle, offender.c_str()))));
 }
 
-Status Win::remove_dir(const std::string& path) const {
-  if (is_dir(path)) {
-    return recursively_remove_directory(path);
+void Win::remove_dir(const URI& uri) const {
+  auto path = uri.to_path();
+  if (is_dir(uri)) {
+    throw_if_not_ok(recursively_remove_directory(path));
   } else {
-    return LOG_STATUS(Status_IOError(std::string(
-        "Failed to delete path '" + path + "'; not a valid path.")));
+    throw WindowsException(
+        "Failed to delete path '" + path + "'; not a valid path.");
   }
 }
 
@@ -301,16 +297,17 @@ bool Win::remove_dir_if_empty(const std::string& path) const {
   return true;
 }
 
-Status Win::remove_file(const std::string& path) const {
+void Win::remove_file(const URI& uri) const {
+  auto path = uri.to_path();
   if (!DeleteFile(path.c_str())) {
-    return LOG_STATUS(Status_IOError(std::string(
+    throw WindowsException(std::string(
         "Failed to delete file '" + path + "' " +
-        get_last_error_msg("DeleteFile"))));
+        get_last_error_msg("DeleteFile")));
   }
-  return Status::Ok();
 }
 
-Status Win::file_size(const std::string& path, uint64_t* size) const {
+uint64_t Win::file_size(const URI& uri) const {
+  auto path = uri.to_path();
   LARGE_INTEGER nbytes;
   HANDLE file_h = CreateFile(
       path.c_str(),
@@ -321,33 +318,38 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status_IOError(std::string(
+    throw WindowsException(std::string(
         "Failed to get file size for '" + path + "' (" +
-        get_last_error_msg("CreateFile") + ")'")));
+        get_last_error_msg("CreateFile") + ")'"));
   }
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(std::string(
+    throw WindowsException(std::string(
         "Failed to get file size for '" + path + "' (" +
-        get_last_error_msg("GetFileSizeEx") + ")'")));
+        get_last_error_msg("GetFileSizeEx") + ")'"));
   }
-  *size = nbytes.QuadPart;
+  uint64_t size = nbytes.QuadPart;
   CloseHandle(file_h);
-  return Status::Ok();
+  return size;
 }
 
-Status Win::init(const Config& config) {
-  config_ = config;
-
-  return Status::Ok();
-}
-
-bool Win::is_dir(const std::string& path) const {
+bool Win::is_dir(const URI& uri) const {
+  auto path = uri.to_path();
   return PathFileExists(path.c_str()) && PathIsDirectory(path.c_str());
 }
 
-bool Win::is_file(const std::string& path) const {
+bool Win::is_file(const URI& uri) const {
+  auto path = uri.to_path();
   return PathFileExists(path.c_str()) && !PathIsDirectory(path.c_str());
+}
+
+void Win::copy_file(const URI&, const URI&) const {
+  throw WindowsException("Copying files on Windows is not yet supported.");
+}
+
+void Win::copy_dir(const URI&, const URI&) const {
+  throw WindowsException(
+      "Copying directories on Windows is not yet supported.");
 }
 
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
@@ -385,7 +387,7 @@ std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
-      if (is_dir(file_path)) {
+      if (is_dir(URI(file_path))) {
         entries.emplace_back(file_path, 0, true);
       } else {
         ULARGE_INTEGER size;
@@ -419,22 +421,32 @@ err:
       get_last_error_msg(gle, offender.c_str()));
 }
 
-Status Win::move_path(
-    const std::string& old_path, const std::string& new_path) const {
+void Win::move_path(const URI& old_uri, const URI& new_uri) const {
+  auto old_path = old_uri.to_path();
+  auto new_path = new_uri.to_path();
   if (MoveFileEx(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
-    return LOG_STATUS(Status_IOError(std::string(
+    throw WindowsException(std::string(
         "Failed to rename '" + old_path + "' to '" + new_path + "'. (" +
-        get_last_error_msg("MoveFileEx") + ")")));
+        get_last_error_msg("MoveFileEx") + ")"));
   }
-  return Status::Ok();
 }
 
-Status Win::read(
-    const std::string& path,
+void Win::move_dir(const URI& old_uri, const URI& new_uri) const {
+  move_path(old_uri, new_uri);
+}
+
+void Win::move_file(const URI& old_uri, const URI& new_uri) const {
+  move_path(old_uri, new_uri);
+}
+
+void Win::read(
+    const URI& uri,
     uint64_t offset,
     void* buffer,
-    uint64_t nbytes) const {
+    uint64_t nbytes,
+    bool) const {
+  auto path = uri.to_path();
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
   HANDLE file_h = CreateFile(
@@ -446,9 +458,9 @@ Status Win::read(
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot read from file '" + path + "'; File opening error (" +
-        get_last_error_msg("CreateFile") + ")"));
+        get_last_error_msg("CreateFile") + ")");
   }
 
   char* byte_buffer = reinterpret_cast<char*>(buffer);
@@ -477,34 +489,37 @@ Status Win::read(
                   std::to_string(nbytes);
       }
 
-      return LOG_STATUS(Status_IOError(fmt::format(
+      throw WindowsException(fmt::format(
           "Cannot read from file '{}'; File read error '{}' offset {} nbytes "
           "{}",
           path,
           err_msg,
           offset,
-          nbytes)));
+          nbytes));
     }
     byte_buffer += num_bytes_read;
     offset += num_bytes_read;
     nbytes -= num_bytes_read;
   } while (nbytes > 0);
   if (CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot read from file '" + path + "'; File closing error " +
-        get_last_error_msg("CloseHandle")));
+        get_last_error_msg("CloseHandle"));
   }
-
-  return Status::Ok();
 }
 
-Status Win::sync(const std::string& path) const {
-  if (!is_file(path)) {
-    return Status::Ok();
+void Win::flush(const URI& uri, bool) {
+  sync(uri);
+}
+
+void Win::sync(const URI& uri) const {
+  if (!is_file(uri)) {
+    return;
   }
 
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
+  auto path = uri.to_path();
   HANDLE file_h = CreateFile(
       path.c_str(),
       GENERIC_WRITE,
@@ -514,31 +529,30 @@ Status Win::sync(const std::string& path) const {
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot sync file '" + path + "'; File opening error " +
-        get_last_error_msg("CreateFile")));
+        get_last_error_msg("CreateFile"));
   }
 
   if (FlushFileBuffers(file_h) == 0) {
     auto gle = GetLastError();
     CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot sync file '" + path + "'; Sync error " +
-        get_last_error_msg(gle, "FlushFileBuffers")));
+        get_last_error_msg(gle, "FlushFileBuffers"));
   }
 
   if (CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot read from file '" + path + "'; File closing error " +
-        get_last_error_msg("CloseHandle")));
+        get_last_error_msg("CloseHandle"));
   }
-
-  return Status::Ok();
 }
 
-Status Win::write(
-    const std::string& path, const void* buffer, uint64_t buffer_size) const {
-  RETURN_NOT_OK(ensure_directory(path));
+void Win::write(
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
+  auto path = uri.to_path();
+  throw_if_not_ok(ensure_directory(path));
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
       path.c_str(),
@@ -549,31 +563,29 @@ Status Win::write(
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot write to file '" + path + "'; File opening error " +
-        get_last_error_msg("CreateFile")));
+        get_last_error_msg("CreateFile"));
   }
   // Get the current file size.
   LARGE_INTEGER file_size_lg_int;
   if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
     auto gle = GetLastError();
     CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
+    throw WindowsException(
         "Cannot write to file '" + path + "'; File size error " +
-        get_last_error_msg(gle, "GetFileSizeEx")));
+        get_last_error_msg(gle, "GetFileSizeEx"));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
   if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
     CloseHandle(file_h);
-    return LOG_STATUS(
-        Status_IOError(std::string("Cannot write to file '") + path));
+    throw WindowsException("Cannot write to file '" + path);
   }
   // Always close the handle.
   if (CloseHandle(file_h) == 0) {
-    return LOG_STATUS(Status_IOError(
-        "Cannot write to file '" + path + "'; File closing error"));
+    throw WindowsException(
+        "Cannot write to file '" + path + "'; File closing error");
   }
-  return Status::Ok();
 }
 
 Status Win::write_at(

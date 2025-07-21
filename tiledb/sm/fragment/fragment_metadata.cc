@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -679,7 +679,7 @@ uint64_t FragmentMetadata::fragment_size() const {
   if (meta_file_size == 0) {
     auto meta_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
-    throw_if_not_ok(resources_->vfs().file_size(meta_uri, &meta_file_size));
+    meta_file_size = resources_->vfs().file_size(meta_uri);
   }
   // Validate that the meta_file_size is not zero, either preloaded or fetched
   // above
@@ -770,8 +770,6 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
         shared_ptr<FragmentMetadata> metadata;
         FragmentID fragment_id{sf.uri_};
         if (fragment_id.array_format_version() <= 2) {
-          bool sparse;
-          throw_if_not_ok(resources.vfs().is_file(coords_uri, &sparse));
           metadata = make_shared<FragmentMetadata>(
               HERE(),
               &resources,
@@ -779,7 +777,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
               sf.uri_,
               sf.timestamp_range_,
               memory_tracker,
-              !sparse);
+              !resources.vfs().is_file(coords_uri));
         } else {
           // Fragment format version > 2
           metadata = make_shared<FragmentMetadata>(
@@ -829,7 +827,7 @@ void FragmentMetadata::load(
   // Load the metadata file size when we are not reading from consolidated
   // buffer
   if (fragment_metadata_tile == nullptr) {
-    throw_if_not_ok(resources_->vfs().file_size(meta_uri, &meta_file_size_));
+    meta_file_size_ = resources_->vfs().file_size(meta_uri);
   }
 
   // Get fragment name version
@@ -2783,13 +2781,11 @@ void FragmentMetadata::write_footer_to_file(shared_ptr<WriterTile> tile) const {
       std::string(constants::fragment_metadata_filename));
 
   uint64_t size = tile->size();
-  throw_if_not_ok(resources_->vfs().write(
-      fragment_metadata_uri, tile->data(), tile->size()));
+  resources_->vfs().write(fragment_metadata_uri, tile->data(), tile->size());
 
   // Write the size in the end if there is at least one var-sized dimension
   if (!array_schema_->domain().all_dims_fixed() || version_ >= 10) {
-    throw_if_not_ok(resources_->vfs().write(
-        fragment_metadata_uri, &size, sizeof(uint64_t)));
+    resources_->vfs().write(fragment_metadata_uri, &size, sizeof(uint64_t));
   }
 }
 
@@ -3469,7 +3465,7 @@ void FragmentMetadata::clean_up() {
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
   throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
-  throw_if_not_ok(resources_->vfs().remove_file(fragment_metadata_uri));
+  resources_->vfs().remove_file(fragment_metadata_uri);
 }
 
 const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
