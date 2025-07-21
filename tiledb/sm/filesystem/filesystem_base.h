@@ -35,6 +35,7 @@
 
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/directory_entry.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 #include "uri.h"
 
 #include <vector>
@@ -150,6 +151,24 @@ class FilesystemBase {
    */
   virtual std::vector<tiledb::common::filesystem::directory_entry>
   ls_with_sizes(const URI& parent) const = 0;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FileFilter on each entry collected and the DirectoryFilter on
+   * common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3 and Azure.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FileFilter to invoke on each object for filtering.
+   * @param d The DirectoryFilter to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to list the objects recursively.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  virtual LsObjects ls_filtered(
+      const URI& parent, FileFilter f, DirectoryFilter d, bool recursive) const;
 
   /**
    * Renames a file.

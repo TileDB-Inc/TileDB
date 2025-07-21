@@ -311,25 +311,20 @@ class GCS : public FilesystemBase {
    * common prefixes for pruning.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param file_filter The FilePredicate to invoke on each object for
+   * @param file_filter The FileFilter to invoke on each object for
    * filtering.
-   * @param directory_filter The DirectoryPredicate to invoke on each common
+   * @param directory_filter The DirectoryFilter to invoke on each common
    * prefix for pruning. This is currently unused, but is kept here for future
    * support.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI
    * and object size.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
-      const URI& uri,
-      F file_filter,
-      [[maybe_unused]] D directory_filter = accept_all_dirs,
-      bool recursive = false) const {
-    // We use the constructor of std::function that accepts an F&& to convert
-    // the generic F to a polymorphic std::function.
-    return ls_filtered_impl(uri, std::move(file_filter), recursive);
-  }
+      const URI& parent,
+      FileFilter file_filter,
+      DirectoryFilter directory_filter,
+      bool recursive) const override;
 
   /**
    *

@@ -350,6 +350,12 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   return entries;
 }
 
+LsObjects VFS::ls_filtered(
+    const URI& parent, FileFilter f, DirectoryFilter d, bool recursive) const {
+  return get_fs(parent).ls_filtered(
+      parent, std::move(f), std::move(d), recursive);
+}
+
 void VFS::move_file(const URI& old_uri, const URI& new_uri) const {
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
