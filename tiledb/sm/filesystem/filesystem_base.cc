@@ -38,6 +38,11 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
+LsObjects FilesystemBase::ls_filtered(
+    const URI& parent, FileFilter f, DirectoryFilter d, bool recursive) const {
+  throw UnsupportedOperation("ls_filtered");
+}
+
 void FilesystemBase::move_file(const URI&, const URI&) const {
   throw UnsupportedOperation("move_file");
 }
