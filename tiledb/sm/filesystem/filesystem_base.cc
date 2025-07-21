@@ -39,7 +39,7 @@ namespace tiledb::sm {
 /* ********************************* */
 
 LsObjects FilesystemBase::ls_filtered(
-    const URI& parent, FileFilter f, DirectoryFilter d, bool recursive) const {
+    const URI&, FileFilter, DirectoryFilter, bool) const {
   throw UnsupportedOperation("ls_filtered");
 }
 

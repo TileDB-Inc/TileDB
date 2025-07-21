@@ -149,24 +149,20 @@ class Azure;
  *      with the iterator returned by the previous request. Batch number can be
  *      tracked by the total number of times we submit a ListBlobs request
  *      within fetch_results().
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-class AzureScanner : public LsScanner<F, D> {
+class AzureScanner : public LsScanner {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
   template <class scanner_type, class T, class Allocator>
   friend class LsScanIterator;
-  using Iterator = LsScanIterator<AzureScanner<F, D>, LsObjects::value_type>;
+  using Iterator = LsScanIterator<AzureScanner, LsObjects::value_type>;
 
   /** Constructor. */
   AzureScanner(
       const Azure& client,
       const URI& prefix,
-      F file_filter,
-      D dir_filter = accept_all_dirs,
+      FileFilter&& file_filter,
+      DirectoryFilter&& dir_filter = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -266,7 +262,6 @@ class AzureScanner : public LsScanner<F, D> {
  * verbiage in compliance with the FilesystemBase class.
  */
 class Azure : public FilesystemBase {
-  template <FilePredicate, DirectoryPredicate>
   friend class AzureScanner;
 
  public:
@@ -413,22 +408,22 @@ class Azure : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * the FileFilter on each entry collected and the DirectoryFilter on
    * common prefixes for pruning.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
+   * @param f The FileFilter to invoke on each object for filtering.
+   * @param d The DirectoryFilter to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
    * @param recursive Whether to recursively list subdirectories.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const {
-    AzureScanner<F, D> azure_scanner(*this, parent, f, d, recursive);
+      FileFilter f,
+      DirectoryFilter d = accept_all_dirs,
+      bool recursive = false) const override {
+    AzureScanner azure_scanner =
+        scanner(parent, std::move(f), std::move(d), recursive);
 
     LsObjects objects;
     for (auto object : azure_scanner) {
@@ -450,14 +445,14 @@ class Azure : public FilesystemBase {
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed AzureScanner object.
    */
-  template <FilePredicate F, DirectoryPredicate D>
-  AzureScanner<F, D> scanner(
+  AzureScanner scanner(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
+      FileFilter&& f,
+      DirectoryFilter&& d = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000) const {
-    return AzureScanner<F, D>(*this, parent, f, d, recursive, max_keys);
+    return AzureScanner(
+        *this, parent, std::move(f), std::move(d), recursive, max_keys);
   }
 
   /**
@@ -840,15 +835,15 @@ class Azure : public FilesystemBase {
   static std::string remove_trailing_slash(const std::string& path);
 };
 
-template <FilePredicate F, DirectoryPredicate D>
-AzureScanner<F, D>::AzureScanner(
+inline AzureScanner::AzureScanner(
     const Azure& client,
     const URI& prefix,
-    F file_filter,
-    D dir_filter,
+    FileFilter&& file_filter,
+    DirectoryFilter&& dir_filter,
     bool recursive,
     int max_keys)
-    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    : LsScanner(
+          prefix, std::move(file_filter), std::move(dir_filter), recursive)
     , client_(client)
     , max_keys_(max_keys)
     , has_fetched_(false) {
@@ -856,16 +851,13 @@ AzureScanner<F, D>::AzureScanner(
     throw AzureException("URI is not an Azure URI: " + prefix.to_string());
   }
 
-  auto [container_name, blob_path] =
+  std::tie(container_name_, blob_path_) =
       Azure::parse_azure_uri(prefix.add_trailing_slash());
-  container_name_ = container_name;
-  blob_path_ = blob_path;
   fetch_results();
   next(begin_);
 }
 
-template <FilePredicate F, DirectoryPredicate D>
-void AzureScanner<F, D>::next(typename Iterator::pointer& ptr) {
+inline void AzureScanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
     ptr = fetch_results();
   }
@@ -884,9 +876,7 @@ void AzureScanner<F, D>::next(typename Iterator::pointer& ptr) {
   }
 }
 
-template <FilePredicate F, DirectoryPredicate D>
-typename AzureScanner<F, D>::Iterator::pointer
-AzureScanner<F, D>::fetch_results() {
+inline AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
   if (!more_to_fetch()) {
     begin_ = end_ = typename Iterator::pointer();
     return end_;

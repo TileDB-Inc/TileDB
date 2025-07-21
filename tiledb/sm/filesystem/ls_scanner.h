@@ -259,19 +259,18 @@ class LsScanIterator {
  * the given file and directory predicates. This should be used as a common
  * base class for future filesystem scanner implementations, similar to
  * S3Scanner.
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D>
 class LsScanner {
  public:
   /** Constructor. */
   LsScanner(
-      const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
+      const URI& prefix,
+      FileFilter&& file_filter,
+      DirectoryFilter&& dir_filter,
+      bool recursive = false)
       : prefix_(prefix)
-      , file_filter_(file_filter)
-      , dir_filter_(dir_filter)
+      , file_filter_(std::move(file_filter))
+      , dir_filter_(std::move(dir_filter))
       , is_recursive_(recursive) {
   }
 
@@ -279,9 +278,9 @@ class LsScanner {
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;
   /** File predicate used to filter file or object results. */
-  const F file_filter_;
+  const FileFilter file_filter_;
   /** Directory predicate used to prune directory or prefix results. */
-  const D dir_filter_;
+  const DirectoryFilter dir_filter_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
 };
