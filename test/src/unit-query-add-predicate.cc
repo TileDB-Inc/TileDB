@@ -289,14 +289,15 @@ void QueryAddPredicateFx::write_array_dense(const std::string& path) {
   s.add_range<uint64_t>(1, 1, 4);
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(s);
 
-  templates::Fragment<
+  using DenseFragment = templates::Fragment<
       std::optional<int32_t>,
       std::vector<char>,
-      std::optional<int32_t>>
-      cells = {.atts_ = INPUT.atts_};
+      std::optional<int32_t>>;
+
+  DenseFragment cells = {.atts_ = INPUT.atts_};
 
   auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
-  templates::query::set_fields<Asserter>(
+  templates::query::set_fields<Asserter, DenseFragment>(
       ctx_.ptr().get(),
       query.ptr().get(),
       field_sizes,

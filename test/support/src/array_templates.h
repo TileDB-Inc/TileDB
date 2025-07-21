@@ -1442,24 +1442,28 @@ void set_fields(
       std::decay_t<decltype(field_cursors)>,
       std::tuple_size_v<decltype(fragment.dimensions())>>::value(field_cursors);
 
-  [&]<typename... Ts>(std::tuple<Ts...> fields) {
-    query_applicator<Asserter, Ts...>::set(
-        ctx,
-        query,
-        split_sizes.first,
-        fields,
-        dimension_name,
-        split_cursors.first);
-  }(fragment.dimensions());
-  [&]<typename... Ts>(std::tuple<Ts...> fields) {
-    query_applicator<Asserter, Ts...>::set(
-        ctx,
-        query,
-        split_sizes.second,
-        fields,
-        attribute_name,
-        split_cursors.second);
-  }(fragment.attributes());
+  if constexpr (!std::is_same_v<decltype(fragment.dimensions()), std::tuple<>>) {
+    [&]<typename... Ts>(std::tuple<Ts...> fields) {
+      query_applicator<Asserter, Ts...>::set(
+          ctx,
+          query,
+          split_sizes.first,
+          fields,
+          dimension_name,
+          split_cursors.first);
+    }(fragment.dimensions());
+  }
+  if constexpr (!std::is_same_v<decltype(fragment.attributes()), std::tuple<>>) {
+    [&]<typename... Ts>(std::tuple<Ts...> fields) {
+      query_applicator<Asserter, Ts...>::set(
+          ctx,
+          query,
+          split_sizes.second,
+          fields,
+          attribute_name,
+          split_cursors.second);
+    }(fragment.attributes());
+  }
 }
 
 /**
