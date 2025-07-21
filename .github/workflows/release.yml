@@ -58,7 +58,7 @@ jobs:
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux_2_28_x86_64
           - platform: linux-aarch64
-            os: linux-arm64-ubuntu24
+            os: ubuntu-24.04-arm
             triplet: arm64-linux-release
             manylinux: quay.io/pypa/manylinux_2_28_aarch64
           - platform: macos-x86_64
