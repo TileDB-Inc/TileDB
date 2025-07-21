@@ -48,6 +48,13 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
+// this API only works if rust is enabled
+#ifdef HAVE_RUST
+static constexpr bool isAddPredicateEnabled = true;
+#else
+static constexpr bool isAddPredicateEnabled = false;
+#endif
+
 using namespace tiledb;
 using namespace tiledb::test;
 
@@ -356,8 +363,34 @@ F QueryAddPredicateFx::query_array(
 
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
+    "Query add predicate TILEDB_RUST=OFF",
+    "[capi][query][add_predicate]") {
+  if (isAddPredicateEnabled) {
+    SKIP("Test for build configuration TILEDB_RUST=OFF only");
+  }
+
+  const std::string array_name =
+      vfs_test_setup_.array_uri("test_query_add_predicate_TILEDB_RUST_OFF");
+
+  create_array(array_name, TILEDB_SPARSE);
+  write_array(array_name);
+
+  const auto match = Catch::Matchers::ContainsSubstring(
+      "Cannot add query predicate: feature requires build "
+      "configuration '-DTILEDB_RUST=ON'");
+  REQUIRE_THROWS_WITH(
+      query_array(array_name, TILEDB_GLOBAL_ORDER, {"a IS NULL", "row > col"}),
+      match);
+}
+
+TEST_CASE_METHOD(
+    QueryAddPredicateFx,
     "Query add predicate errors",
     "[capi][query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_errors");
 
@@ -454,6 +487,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate to in progress query",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_in_progress");
 
@@ -492,6 +529,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate dense array",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_dense");
 
@@ -510,6 +551,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate sparse unsupported query order",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_sparse_unsupported");
 
@@ -553,6 +598,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate sparse global order",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_sparse_global_order");
 
@@ -678,6 +727,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate sparse unordered with dups",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name = vfs_test_setup_.array_uri(
       "test_query_add_predicate_sparse_unordered_with_dups");
 
@@ -798,6 +851,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate evolved schema",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_evolution");
 
@@ -859,6 +916,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate with query condition",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const auto query_order = TILEDB_GLOBAL_ORDER;
 
   const std::string array_name = vfs_test_setup_.array_uri(
@@ -943,6 +1004,10 @@ TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate field name escaping",
     "[query][add_predicate]") {
+  if (!isAddPredicateEnabled) {
+    SKIP("tiledb_query_add_predicate requires -DTILEDB_RUST=ON");
+  }
+
   const std::string array_name =
       vfs_test_setup_.array_uri("test_query_add_predicate_field_name_escape");
 
