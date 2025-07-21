@@ -70,7 +70,7 @@ typedef void* HANDLE;
 /**
  * This class implements Windows filesystem functions.
  */
-class Win : FilesystemBase, LocalFilesystem {
+class Win : public FilesystemBase, LocalFilesystem {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
