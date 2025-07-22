@@ -75,6 +75,9 @@ class FilesystemBase {
 
   virtual ~FilesystemBase() = default;
 
+  /** Checks to see if 2 FilesystemBases have the same underlying type. */
+  bool operator==(const FilesystemBase& fs) const;
+
   /**
    * Checks if the filesystem supports the given URI.
    *
@@ -84,7 +87,7 @@ class FilesystemBase {
    * @param uri The URI to check.
    * @return `true` if `uri` is supported on the filesystem, `false` otherwise.
    */
-  virtual bool supports_uri(const URI& uri) const;
+  virtual bool supports_uri(const URI& uri) const = 0;
 
   /**
    * Creates a directory.
@@ -186,6 +189,13 @@ class FilesystemBase {
    * @param new_uri The new URI.
    */
   virtual void copy_dir(const URI& old_uri, const URI& new_uri) const;
+
+  /**
+   * Whether or not to use the read-ahead cache.
+   *
+   * Defaults to `true` for object-store, `false` for local filesystems.
+   */
+  virtual bool use_read_ahead_cache() const;
 
   /**
    * Reads from a file.

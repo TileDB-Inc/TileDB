@@ -38,8 +38,8 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
-bool FilesystemBase::supports_uri(const URI& uri) const {
-  throw UnsupportedURI(uri.to_string());
+bool FilesystemBase::operator==(const FilesystemBase& fs) const {
+  return typeid(this) == typeid(fs);
 }
 
 void FilesystemBase::move_file(const URI&, const URI&) const {
@@ -56,6 +56,10 @@ void FilesystemBase::copy_file(const URI&, const URI&) const {
 
 void FilesystemBase::copy_dir(const URI&, const URI&) const {
   throw UnsupportedOperation("copy_dir");
+}
+
+bool FilesystemBase::use_read_ahead_cache() const {
+  return true;
 }
 
 void FilesystemBase::sync(const URI&) const {

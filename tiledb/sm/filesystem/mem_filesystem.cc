@@ -334,6 +334,10 @@ MemFilesystem::MemFilesystem()
 MemFilesystem::~MemFilesystem() {
 }
 
+bool MemFilesystem::supports_uri(const URI& uri) const {
+  return uri.is_memfs();
+}
+
 void MemFilesystem::create_dir(const URI& uri) const {
   create_dir_internal(uri.to_path());
 }
@@ -377,7 +381,7 @@ Status MemFilesystem::ls(
     const std::string& path, std::vector<std::string>* const paths) const {
   iassert(paths);
 
-  for (auto& fs : ls_with_sizes(URI("mem://" + path))) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 

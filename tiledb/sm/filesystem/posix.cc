@@ -226,9 +226,6 @@ uint64_t Posix::file_size(const URI& uri) const {
 }
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
-  if (this->is_file(new_path)) {
-    remove_file(new_path);
-  }
   auto new_uri_path = new_path.to_path();
   throw_if_not_ok(ensure_directory(new_uri_path));
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {

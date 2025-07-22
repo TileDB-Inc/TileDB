@@ -181,17 +181,17 @@ class GCS : public FilesystemBase {
    * @param uri The URI to check.
    * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
    */
-  bool supports_uri(const URI& uri) const;
+  bool supports_uri(const URI& uri) const override;
 
   /**
    * Creates a bucket.
    *
    * @param uri The uri of the bucket to be created.
    */
-  void create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const override;
 
   /** Removes the contents of a GCS bucket. */
-  void empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const override;
 
   /**
    * Check if a bucket is empty.
@@ -199,7 +199,7 @@ class GCS : public FilesystemBase {
    * @param bucket The name of the bucket.
    * @return `true` if the bucket is empty, `false` otherwise.
    */
-  bool is_empty_bucket(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const override;
 
   /**
    * Check if a bucket exists.
@@ -207,7 +207,7 @@ class GCS : public FilesystemBase {
    * @param bucket The name of the bucket.
    * @return `true` if `uri` is a bucket, `false` otherwise.
    */
-  bool is_bucket(const URI& uri) const;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Check if 'uri' is an object on GCS.
@@ -215,7 +215,7 @@ class GCS : public FilesystemBase {
    * @param uri URI of the object.
    * @return `true` if `uri` is an obkect on GCS, `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -234,21 +234,21 @@ class GCS : public FilesystemBase {
    * @param uri The URI to check.
    * @return`true` if the above mentioned condition holds, `false` otherwise.
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Deletes a bucket.
    *
    * @param uri The URI of the bucket to be deleted.
    */
-  void remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const override;
 
   /**
    * Deletes an object with a given URI.
    *
    * @param uri The URI of the object to be deleted.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -274,7 +274,7 @@ class GCS : public FilesystemBase {
    *
    * @param uri The prefix uri of the objects to be deleted.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -351,7 +351,7 @@ class GCS : public FilesystemBase {
    * @return A list of directory_entry objects.
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri) const;
+      const URI& uri) const override;
 
   /**
    * Copies the directory at 'old_uri' to `new_uri`.
@@ -359,7 +359,7 @@ class GCS : public FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) const;
+  void copy_dir(const URI&, const URI&) const override;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -367,7 +367,7 @@ class GCS : public FilesystemBase {
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames an object.
@@ -375,7 +375,7 @@ class GCS : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -386,14 +386,14 @@ class GCS : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Creates an empty object.
    *
    * @param uri The URI of the object to be created.
    */
-  void touch(const URI& uri) const;
+  void touch(const URI& uri) const override;
 
   /**
    * Writes the input buffer to an GCS object. Note that this is essentially
@@ -408,7 +408,7 @@ class GCS : public FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t length,
-      bool remote_global_order_write);
+      bool remote_global_order_write) override;
 
   /**
    * Reads from a file.
@@ -424,7 +424,7 @@ class GCS : public FilesystemBase {
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      uint64_t read_ahead_nbytes = 0);
+      uint64_t read_ahead_nbytes = 0) override;
 
   /**
    * Returns the size of the input object with a given URI in bytes.
@@ -432,7 +432,7 @@ class GCS : public FilesystemBase {
    * @param uri The URI of the object.
    * @return The size of the object.
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Flushes an object to GCS, finalizing the upload.
@@ -440,7 +440,7 @@ class GCS : public FilesystemBase {
    * @param uri The URI of the object to be flushed.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool finalize);
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Creates a GCS credentials object.
@@ -458,7 +458,7 @@ class GCS : public FilesystemBase {
    *
    * @param uri The directory's URI.
    */
-  void create_dir(const URI&) const {
+  void create_dir(const URI&) const override {
     // No-op. Stub function for other filesystems.
   }
 

@@ -191,6 +191,11 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    */
   void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
+  /** Whether or not to use the read-ahead cache. */
+  bool use_read_ahead_cache() const override {
+    return false;
+  }
+
   /**
    * Reads from a file.
    *

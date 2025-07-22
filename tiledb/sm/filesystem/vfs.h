@@ -403,6 +403,14 @@ class VFS : FilesystemBase,
   const FilesystemBase& get_fs(const URI& uri) const;
 
   /**
+   * Returns the filesystem which corresponds to the given URI.
+   *
+   * @param uri The URI which may correspond to a filesystem.
+   * @return The filesystem on which `uri` is stored.
+   */
+  FilesystemBase& get_fs(const URI uri);
+
+  /**
    * Returns the absolute path of the input string (mainly useful for
    * posix URI's).
    *
@@ -418,18 +426,29 @@ class VFS : FilesystemBase,
   Config config() const;
 
   /**
+   * Checks if the filesystem supports the given URI.
+   *
+   * - s3.supports_uri(s3://test) will return true.
+   * - posix.supports_uri(s3://test) will return false.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on the filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
+
+  /**
    * Creates a directory.
    *
    * @param uri The URI of the directory.
    */
-  void create_dir(const URI& uri) const;
+  void create_dir(const URI& uri) const override;
 
   /**
    * Creates an empty file.
    *
    * @param uri The URI of the file.
    */
-  void touch(const URI& uri) const;
+  void touch(const URI& uri) const override;
 
   /**
    * Cancels all background or queued tasks.
@@ -441,7 +460,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The name of the bucket to be created.
    */
-  void create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const override;
 
   /**
    * Returns the size of the files in the input directory.
@@ -461,21 +480,21 @@ class VFS : FilesystemBase,
    *
    * @param uri The name of the bucket to be deleted.
    */
-  void remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const override;
 
   /**
    * Deletes the contents of an object store bucket.
    *
    * @param uri The name of the bucket to be emptied.
    */
-  void empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const override;
 
   /**
    * Removes a given directory (recursive)
    *
    * @param uri The uri of the directory to be removed.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Removes a given empty directory. No exceptions are raised if the directory
@@ -500,7 +519,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The URI of the file.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Deletes files in parallel from the given vector of files.
@@ -525,7 +544,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the file.
    * @return The file size.
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Checks if a directory exists.
@@ -537,7 +556,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the directory.
    * @return `true` if the directory exists and `false` otherwise.
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if a file exists.
@@ -545,7 +564,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the file.
    * @return `true` if the file exists and `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    * Checks if an object store bucket exists.
@@ -553,7 +572,7 @@ class VFS : FilesystemBase,
    * @param uri The name of the object store bucket.
    * @return `true` if the bucket exists and `false` otherwise.
    */
-  bool is_bucket(const URI& uri) const;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Checks if an object-store bucket is empty.
@@ -561,7 +580,7 @@ class VFS : FilesystemBase,
    * @param uri The name of the object store bucket.
    * @return `true` if the bucket is empty and `false` otherwise.
    */
-  bool is_empty_bucket(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const override;
 
   /**
    * Retrieves all the URIs that have the first input as parent.
@@ -578,7 +597,7 @@ class VFS : FilesystemBase,
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
@@ -666,7 +685,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory.
@@ -674,7 +693,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies a file.
@@ -682,7 +701,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies directory.
@@ -690,7 +709,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const;
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Reads from a file.
@@ -707,7 +726,7 @@ class VFS : FilesystemBase,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      [[maybe_unused]] uint64_t read_ahead_nbytes = 0);
+      [[maybe_unused]] uint64_t read_ahead_nbytes = 0) override;
 
   /**
    * Reads the specified number of bytes from a file.
@@ -734,7 +753,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The URI of the file.
    */
-  void sync(const URI& uri) const;
+  void sync(const URI& uri) const override;
 
   /**
    * Opens a file in a given mode.
@@ -770,7 +789,7 @@ class VFS : FilesystemBase,
    * @param finalize For s3 objects only. If `true`, flushes as a result of a
    * remote global order write `finalize()` call.
    */
-  void flush(const URI& uri, [[maybe_unused]] bool finalize = false);
+  void flush(const URI& uri, [[maybe_unused]] bool finalize = false) override;
 
   /**
    * Closes a file, flushing its contents to persistent storage.
@@ -798,7 +817,7 @@ class VFS : FilesystemBase,
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write = false);
+      bool remote_global_order_write = false) override;
 
   /**
    * Used in serialization to share the multipart upload state

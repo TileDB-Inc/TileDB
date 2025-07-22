@@ -301,17 +301,17 @@ class Azure : public FilesystemBase {
    * @param uri The URI to check.
    * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
    */
-  bool supports_uri(const URI& uri) const;
+  bool supports_uri(const URI& uri) const override;
 
   /**
    * Creates a container.
    *
    * @param container The name of the container to be created.
    */
-  void create_bucket(const URI& container) const;
+  void create_bucket(const URI& container) const override;
 
   /** Removes the contents of an Azure container. */
-  void empty_bucket(const URI& container) const;
+  void empty_bucket(const URI& container) const override;
 
   /**
    * Flushes a blob to Azure, finalizing the upload.
@@ -319,7 +319,7 @@ class Azure : public FilesystemBase {
    * @param uri The URI of the blob to be flushed.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool finalize);
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Check if a container is empty.
@@ -327,7 +327,7 @@ class Azure : public FilesystemBase {
    * @param container The name of the container.
    * @return `true` if the container is empty, `false` otherwise.
    */
-  bool is_empty_bucket(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const override;
 
   /**
    * Check if a container exists.
@@ -335,7 +335,7 @@ class Azure : public FilesystemBase {
    * @param container The name of the container.
    * @return `true` if `uri` is a container, `false` otherwise.
    */
-  bool is_bucket(const URI& uri) const;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -354,7 +354,7 @@ class Azure : public FilesystemBase {
    * @param uri The URI to check.
    * @return `true` if the above mentioned condition holds, `false` otherwise.
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if the given URI is an existing Azure blob.
@@ -362,7 +362,7 @@ class Azure : public FilesystemBase {
    * @param uri The URI of the object to be checked.
    * @return `true` if `uri` is an existing blob, `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -398,7 +398,7 @@ class Azure : public FilesystemBase {
    * @return All entries that are contained in the prefix URI.
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri) const;
+      const URI& uri) const override;
 
   /**
    * Lists objects and object information that start with `uri`.
@@ -465,7 +465,7 @@ class Azure : public FilesystemBase {
    *
    * @param uri The directory's URI.
    */
-  void create_dir(const URI&) const {
+  void create_dir(const URI&) const override {
     // No-op. Stub function for other filesystems.
   }
 
@@ -475,7 +475,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) const;
+  void copy_dir(const URI&, const URI&) const override;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -483,7 +483,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames an object.
@@ -491,7 +491,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -502,7 +502,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Returns the size of the input blob with a given URI in bytes.
@@ -510,7 +510,7 @@ class Azure : public FilesystemBase {
    * @param uri The URI of the blob.
    * @return The size of the input blob, in bytes
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Reads from a file.
@@ -526,21 +526,21 @@ class Azure : public FilesystemBase {
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      uint64_t read_ahead_nbytes = 0);
+      uint64_t read_ahead_nbytes = 0) override;
 
   /**
    * Deletes a container.
    *
    * @param uri The URI of the container to be deleted.
    */
-  void remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const override;
 
   /**
    * Deletes an blob with a given URI.
    *
    * @param uri The URI of the blob to be deleted.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -566,14 +566,14 @@ class Azure : public FilesystemBase {
    *
    * @param uri The prefix uri of the objects to be deleted.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Creates an empty blob.
    *
    * @param uri The URI of the blob to be created.
    */
-  void touch(const URI& uri) const;
+  void touch(const URI& uri) const override;
 
   /**
    * Writes the input buffer to an Azure object. Note that this is essentially
@@ -588,7 +588,7 @@ class Azure : public FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t length,
-      bool remote_global_order_write);
+      bool remote_global_order_write) override;
 
   /**
    * Initializes the Azure blob service client and returns a reference to it.

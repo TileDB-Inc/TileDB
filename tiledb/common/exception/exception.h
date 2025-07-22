@@ -200,6 +200,8 @@ inline Status ok_if_not_throw(F&& f, Args&&... args)
   try {
     std::invoke(f, std::forward<Args>(args)...);
     return Status::Ok();
+  } catch (StatusException& e) {
+    return e.extract_status();
   } catch (std::exception& e) {
     return Status_Error(e.what());
   }

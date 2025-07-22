@@ -768,7 +768,6 @@ void read_file_header(
   const tiledb::sm::URI uri_obj = tiledb::sm::URI(uri);
   throw_if_not_ok(vfs.open_file(uri_obj, tiledb::sm::VFSMode::VFS_READ));
   throw_if_not_ok(vfs.read_exactly(uri_obj, 0, header.data(), header.size()));
-  throw_if_not_ok(vfs.close_file(uri_obj));
 }
 
 std::pair<std::string, std::string> strip_file_extension(const char* file_uri) {

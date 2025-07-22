@@ -133,6 +133,11 @@ const FilesystemBase& VFS::get_fs(const URI& uri) const {
   throw UnsupportedURI(uri.to_string());
 }
 
+FilesystemBase& VFS::get_fs(const URI uri) {
+  return const_cast<FilesystemBase&>(
+      static_cast<const VFS*>(this)->get_fs(uri));
+}
+
 std::string VFS::abs_path(std::string_view path) {
   // workaround for older clang (llvm 3.5) compilers (issue #828)
   std::string path_copy(path);
@@ -332,11 +337,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 
   std::vector<directory_entry> entries;
   auto& fs = get_fs(parent);
-  if (typeid(fs) == typeid(MemFilesystem)) {
-    entries = fs.ls_with_sizes(URI("mem://" + parent.to_path()));
-  } else {
-    entries = fs.ls_with_sizes(parent);
-  }
+  entries = fs.ls_with_sizes(parent);
 
   parallel_sort(
       compute_tp_,
@@ -352,7 +353,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 void VFS::move_file(const URI& old_uri, const URI& new_uri) const {
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
-  if (typeid(old_fs) == typeid(new_fs)) {
+  if (&old_fs == &new_fs) {
     old_fs.move_file(old_uri, new_uri);
   } else {
     throw UnsupportedOperation("move_file");
@@ -363,7 +364,7 @@ void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
-  if (typeid(old_fs) == typeid(new_fs)) {
+  if (&old_fs == &new_fs) {
     old_fs.move_dir(old_uri, new_uri);
   } else {
     throw UnsupportedOperation("move_dir");
@@ -374,7 +375,7 @@ void VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
-  if (typeid(old_fs) == typeid(new_fs)) {
+  if (&old_fs == &new_fs) {
     old_fs.copy_file(old_uri, new_uri);
   } else {
     throw UnsupportedOperation("copy_file");
@@ -385,7 +386,7 @@ void VFS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
-  if (typeid(old_fs) == typeid(new_fs)) {
+  if (&old_fs == &new_fs) {
     old_fs.copy_dir(old_uri, new_uri);
   } else {
     throw UnsupportedOperation("copy_dir");
@@ -475,11 +476,10 @@ Status VFS::read_impl(
   auto instrument = make_log_duration_instrument(uri, "read");
   stats_->add_counter("read_ops_num", 1);
   log_read(uri, offset, nbytes);
-  FilesystemBase& fs = const_cast<FilesystemBase&>(get_fs(uri));
+  FilesystemBase& fs = get_fs(uri);
 
   // Do not read-ahead on local filesystems, or if disabled by the caller.
-  if (typeid(fs) == typeid(LocalFS) || typeid(fs) == typeid(MemFilesystem) ||
-      !use_read_ahead) {
+  if (!(fs.use_read_ahead_cache() && use_read_ahead)) {
     *length_read = fs.read(uri, offset, buffer, nbytes, 0);
     return Status::Ok();
   }
@@ -535,6 +535,10 @@ Status VFS::read_impl(
   RETURN_NOT_OK(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
 
   return Status::Ok();
+}
+
+bool VFS::supports_uri(const URI& uri) const {
+  return get_fs(uri).supports_uri(uri);
 }
 
 bool VFS::supports_fs(Filesystem fs) const {
@@ -606,7 +610,7 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
 
 void VFS::flush(const URI& uri, bool finalize) {
   auto instrument = make_log_duration_instrument(uri, "flush");
-  const_cast<FilesystemBase&>(get_fs(uri)).flush(uri, finalize);
+  get_fs(uri).flush(uri, finalize);
 }
 
 Status VFS::close_file(const URI& uri) {
@@ -622,9 +626,7 @@ void VFS::write(
   auto instrument = make_log_duration_instrument(uri, "write");
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
-
-  const_cast<FilesystemBase&>(get_fs(uri))
-      .write(uri, buffer, buffer_size, remote_global_order_write);
+  get_fs(uri).write(uri, buffer, buffer_size, remote_global_order_write);
 }
 
 std::pair<Status, std::optional<VFS::MultiPartUploadState>>

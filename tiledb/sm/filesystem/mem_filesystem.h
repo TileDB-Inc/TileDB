@@ -102,6 +102,14 @@ class MemFilesystem : public FilesystemBase {
   /* ********************************* */
 
   /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
+
+  /**
    * Creates a new directory.
    *
    * @param uri The URI of the directory to be created.
@@ -176,6 +184,11 @@ class MemFilesystem : public FilesystemBase {
    * @param new_uri The new uri.
    */
   void move_file(const URI& old_uri, const URI& new_uri) const override;
+
+  /** Whether or not to use the read-ahead cache. */
+  bool use_read_ahead_cache() const override {
+    return false;
+  }
 
   /**
    * Reads from a file.
