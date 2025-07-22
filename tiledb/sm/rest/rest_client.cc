@@ -104,7 +104,7 @@ std::shared_ptr<RestClient> RestClientFactory::make(
     Logger& logger,
     shared_ptr<MemoryTracker>&& tracker) {
   if (factory_override_ == nullptr) {
-    return tdb::make_shared<RestClient>(HERE(), RestClient(config));
+    return tdb::make_shared<RestClient>(HERE(), config);
   } else {
     return factory_override_(
         parent_stats, config, compute_tp, logger, std::move(tracker));
