@@ -496,46 +496,7 @@ class S3Scanner : public LsScanner {
    * @sa LsScanIterator::operator++()
    * @sa S3Scanner::next(typename Iterator::pointer&)
    */
-  typename Iterator::pointer fetch_results() {
-    // If this is our first request, GetIsTruncated() will be false.
-    if (more_to_fetch()) {
-      // If results are truncated on a subsequent request, we set the next
-      // continuation token before resubmitting our request.
-      Aws::String next_marker =
-          list_objects_outcome_.GetResult().GetNextContinuationToken();
-      if (next_marker.empty()) {
-        throw S3Exception(
-            "Failed to retrieve next continuation token for ListObjectsV2 "
-            "request.");
-      }
-      list_objects_request_.SetContinuationToken(std::move(next_marker));
-    } else if (list_objects_outcome_.IsSuccess()) {
-      // If we have previously submitted a successful request and there are no
-      // more results, we've reached the end of the scan.
-      begin_ = end_ = typename Iterator::pointer();
-      return end_;
-    }
-
-    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
-    if (!list_objects_outcome_.IsSuccess()) {
-      throw S3Exception(
-          std::string("Error while listing with prefix '") +
-          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter() + "'" + outcome_error_message(list_objects_outcome_));
-    }
-    // Update pointers to the newly fetched results.
-    begin_ = list_objects_outcome_.GetResult().GetContents().begin();
-    end_ = list_objects_outcome_.GetResult().GetContents().end();
-
-    if (list_objects_outcome_.GetResult().GetContents().empty()) {
-      // If the request returned no results, we've reached the end of the scan.
-      // We hit this case when the number of objects in the bucket is a multiple
-      // of the current max_keys.
-      return end_;
-    }
-
-    return begin_;
-  }
+  typename Iterator::pointer fetch_results();
 
   /** Pointer to the S3 client initialized by VFS. */
   shared_ptr<TileDBS3Client> client_;
