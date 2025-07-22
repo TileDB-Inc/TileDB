@@ -1239,11 +1239,7 @@ Status GCS::flush_object_direct(const URI& uri) {
 }
 
 uint64_t GCS::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    uint64_t read_ahead_nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   throw_if_not_ok(init_client());
 
   if (!uri.is_gcs()) {
@@ -1257,8 +1253,7 @@ uint64_t GCS::read(
   google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
       bucket_name,
       object_path,
-      google::cloud::storage::ReadRange(
-          offset, offset + nbytes + read_ahead_nbytes));
+      google::cloud::storage::ReadRange(offset, offset + nbytes));
 
   if (!stream.status().ok()) {
     throw GCSException(
@@ -1266,15 +1261,9 @@ uint64_t GCS::read(
         stream.status().message() + ")");
   }
 
-  stream.read(static_cast<char*>(buffer), nbytes + read_ahead_nbytes);
+  stream.read(static_cast<char*>(buffer), nbytes);
   uint64_t length_returned = stream.gcount();
-
   stream.Close();
-
-  if (length_returned < nbytes) {
-    throw GCSException("Read operation read unexpected number of bytes.");
-  }
-
   return length_returned;
 }
 

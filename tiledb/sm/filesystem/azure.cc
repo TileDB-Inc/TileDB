@@ -631,11 +631,7 @@ uint64_t Azure::file_size(const URI& uri) const {
 }
 
 uint64_t Azure::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    uint64_t read_ahead_nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   const auto& c = client();
 
   if (!uri.is_azure()) {
@@ -643,11 +639,10 @@ uint64_t Azure::read(
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  size_t total_length = nbytes + read_ahead_nbytes;
 
   ::Azure::Storage::Blobs::DownloadBlobOptions options;
   options.Range = ::Azure::Core::Http::HttpRange();
-  options.Range.Value().Length = static_cast<int64_t>(total_length);
+  options.Range.Value().Length = static_cast<int64_t>(nbytes);
   options.Range.Value().Offset = static_cast<int64_t>(offset);
 
   ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
@@ -661,14 +656,7 @@ uint64_t Azure::read(
         "Read blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
-  uint64_t length_returned = result.BodyStream->ReadToCount(
-      static_cast<uint8_t*>(buffer), total_length);
-
-  if (length_returned < nbytes) {
-    throw AzureException("Read operation read unexpected number of bytes.");
-  }
-
-  return length_returned;
+  return result.BodyStream->ReadToCount(static_cast<uint8_t*>(buffer), nbytes);
 }
 
 void Azure::remove_bucket(const URI& uri) const {

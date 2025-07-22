@@ -417,14 +417,9 @@ class GCS : public FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param read_ahead_nbytes The number of bytes to read ahead.
    */
   uint64_t read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      uint64_t read_ahead_nbytes = 0) override;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Returns the size of the input object with a given URI in bytes.

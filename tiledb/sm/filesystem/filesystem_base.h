@@ -75,9 +75,6 @@ class FilesystemBase {
 
   virtual ~FilesystemBase() = default;
 
-  /** Checks to see if 2 FilesystemBases have the same underlying type. */
-  bool operator==(const FilesystemBase& fs) const;
-
   /**
    * Checks if the filesystem supports the given URI.
    *
@@ -204,14 +201,9 @@ class FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param read_ahead_nbytes The number of bytes to read ahead.
    */
   virtual uint64_t read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      uint64_t read_ahead_nbytes = 0) = 0;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) = 0;
 
   /**
    * Flushes an object store file.

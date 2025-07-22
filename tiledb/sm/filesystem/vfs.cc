@@ -411,7 +411,7 @@ Status VFS::read_exactly(
 }
 
 uint64_t VFS::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes, uint64_t) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   stats_->add_counter("read_byte_num", nbytes);
 
   // Ensure that each thread is responsible for at least min_parallel_size
@@ -480,7 +480,7 @@ Status VFS::read_impl(
 
   // Do not read-ahead on local filesystems, or if disabled by the caller.
   if (!(fs.use_read_ahead_cache() && use_read_ahead)) {
-    *length_read = fs.read(uri, offset, buffer, nbytes, 0);
+    *length_read = fs.read(uri, offset, buffer, nbytes);
     return Status::Ok();
   }
 
@@ -494,7 +494,7 @@ Status VFS::read_impl(
   // 3. It saves us a copy. We must make a copy of the buffer at
   //    some point (one for the user, one for the cache).
   if (nbytes >= vfs_params_.read_ahead_size_) {
-    *length_read = fs.read(uri, offset, buffer, nbytes, 0);
+    *length_read = fs.read(uri, offset, buffer, nbytes);
     return Status::Ok();
   }
 
@@ -520,7 +520,7 @@ Status VFS::read_impl(
   const uint64_t ra_nbytes = vfs_params_.read_ahead_size_ - nbytes;
 
   // Read into `ra_buffer`.
-  *length_read = fs.read(uri, offset, ra_buffer.data(), nbytes, ra_nbytes);
+  *length_read = fs.read(uri, offset, ra_buffer.data(), nbytes + ra_nbytes);
 
   // Copy the requested read range back into the caller's output `buffer`.
   iassert(

@@ -279,7 +279,7 @@ void Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t Posix::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes, uint64_t) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   // Checks
   auto path = uri.to_path();
   uint64_t file_size = this->file_size(URI(path));

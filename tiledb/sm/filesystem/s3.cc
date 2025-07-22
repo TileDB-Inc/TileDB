@@ -478,11 +478,7 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t S3::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    uint64_t read_ahead_nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
@@ -495,14 +491,11 @@ uint64_t S3::read(
       .WithKey(aws_uri.GetPath());
   get_object_request.SetRange(Aws::String(
       "bytes=" + std::to_string(offset) + "-" +
-      std::to_string(offset + nbytes + read_ahead_nbytes - 1)));
-  get_object_request.SetResponseStreamFactory(
-      [buffer, nbytes, read_ahead_nbytes]() {
-        return Aws::New<PreallocatedIOStream>(
-            constants::s3_allocation_tag.c_str(),
-            buffer,
-            nbytes + read_ahead_nbytes);
-      });
+      std::to_string(offset + nbytes - 1)));
+  get_object_request.SetResponseStreamFactory([buffer, nbytes]() {
+    return Aws::New<PreallocatedIOStream>(
+        constants::s3_allocation_tag.c_str(), buffer, nbytes);
+  });
 
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     get_object_request.SetRequestPayer(request_payer_);
@@ -514,15 +507,8 @@ uint64_t S3::read(
         outcome_error_message(get_object_outcome)));
   }
 
-  uint64_t length_returned =
-      static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
-  if (length_returned < nbytes) {
-    throw S3Exception(std::string(
-        std::string("Read operation returned different size of bytes ") +
-        std::to_string(length_returned) + " vs " + std::to_string(nbytes)));
-  }
-
-  return length_returned;
+  return static_cast<uint64_t>(
+      get_object_outcome.GetResult().GetContentLength());
 }
 
 void S3::remove_bucket(const URI& bucket) const {
@@ -901,15 +887,19 @@ void S3::finalize_and_flush_object(const URI& uri) {
     std::vector<std::byte> merged(sum_sizes);
     throw_if_not_ok(parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-          uint64_t length_read;
-          RETURN_NOT_OK(ok_if_not_throw([&]() {
-            length_read = read(
-                URI(intermediate_chunks[i].uri),
-                0,
-                merged.data() + offsets[i],
-                intermediate_chunks[i].size,
-                0);
-          }));
+          uint64_t nbytes = intermediate_chunks[i].size;
+          uint64_t length_read = read(
+              URI(intermediate_chunks[i].uri),
+              0,
+              merged.data() + offsets[i],
+              nbytes);
+          if (length_read < nbytes) {
+            return Status_S3Error(
+                "The read did not return the correct number of bytes. "
+                "Expected: " +
+                std::to_string(nbytes) +
+                " Actual: " + std::to_string(length_read));
+          }
           return Status::Ok();
         }));
 
@@ -1255,15 +1245,19 @@ void S3::global_order_write(
   std::vector<std::byte> merged(sum_sizes);
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        uint64_t length_read;
-        RETURN_NOT_OK(ok_if_not_throw([&]() {
-          length_read = read(
-              URI(intermediate_chunks[i].uri),
-              0,
-              merged.data() + offsets[i],
-              intermediate_chunks[i].size,
-              0);
-        }));
+        uint64_t nbytes = intermediate_chunks[i].size;
+        uint64_t length_read = read(
+            URI(intermediate_chunks[i].uri),
+            0,
+            merged.data() + offsets[i],
+            nbytes);
+        if (length_read < nbytes) {
+          return Status_S3Error(
+              "The read did not return the correct number of bytes. "
+              "Expected: " +
+              std::to_string(nbytes) +
+              " Actual: " + std::to_string(length_read));
+        }
         return Status::Ok();
       }));
   std::memcpy(merged.data() + offsets.back(), buffer, length);

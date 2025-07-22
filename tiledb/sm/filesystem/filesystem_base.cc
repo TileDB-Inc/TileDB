@@ -38,10 +38,6 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
-bool FilesystemBase::operator==(const FilesystemBase& fs) const {
-  return typeid(this) == typeid(fs);
-}
-
 void FilesystemBase::move_file(const URI&, const URI&) const {
   throw UnsupportedOperation("move_file");
 }

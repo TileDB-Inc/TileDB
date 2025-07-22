@@ -718,15 +718,9 @@ class VFS : FilesystemBase,
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param read_ahead_nbytes The number of bytes to read ahead on object store.
-   * Not intended for use by user. Calculated internally for object store reads.
    */
   uint64_t read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      [[maybe_unused]] uint64_t read_ahead_nbytes = 0) override;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Reads the specified number of bytes from a file.
