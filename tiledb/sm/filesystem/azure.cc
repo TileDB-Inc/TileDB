@@ -273,6 +273,10 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   return *client_;
 }
 
+bool Azure::supports_uri(const URI& uri) const {
+  return uri.is_azure();
+}
+
 void Azure::create_bucket(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {
@@ -626,13 +630,8 @@ uint64_t Azure::file_size(const URI& uri) const {
   }
 }
 
-Status Azure::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
+uint64_t Azure::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   const auto& c = client();
 
   if (!uri.is_azure()) {
@@ -640,11 +639,10 @@ Status Azure::read_impl(
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  size_t total_length = length + read_ahead_length;
 
   ::Azure::Storage::Blobs::DownloadBlobOptions options;
   options.Range = ::Azure::Core::Http::HttpRange();
-  options.Range.Value().Length = static_cast<int64_t>(total_length);
+  options.Range.Value().Length = static_cast<int64_t>(nbytes);
   options.Range.Value().Offset = static_cast<int64_t>(offset);
 
   ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
@@ -658,14 +656,7 @@ Status Azure::read_impl(
         "Read blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
-  *length_returned = result.BodyStream->ReadToCount(
-      static_cast<uint8_t*>(buffer), total_length);
-
-  if (*length_returned < length) {
-    throw AzureException("Read operation read unexpected number of bytes.");
-  }
-
-  return Status::Ok();
+  return result.BodyStream->ReadToCount(static_cast<uint8_t*>(buffer), nbytes);
 }
 
 void Azure::remove_bucket(const URI& uri) const {

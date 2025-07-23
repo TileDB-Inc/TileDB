@@ -68,6 +68,10 @@ class URI;
  */
 class Posix : public FilesystemBase, public LocalFilesystem {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /** Default constructor. */
   Posix()
       : Posix(Config()) {
@@ -78,6 +82,18 @@ class Posix : public FilesystemBase, public LocalFilesystem {
 
   /** Destructor. */
   ~Posix() override = default;
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
+  /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
 
   /**
    * Creates a new directory.
@@ -175,21 +191,21 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    */
   void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
+  /** Whether or not to use the read-ahead cache. */
+  bool use_read_ahead_cache() const override {
+    return false;
+  }
+
   /**
-   * Reads data from a file into a buffer.
+   * Reads from a file.
    *
-   * @param path The name of the file.
-   * @param offset The offset in the file from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param nbytes The size of the data to be read from the file.
-   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
    */
-  void read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead) const override;
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Flushes a file or directory.
