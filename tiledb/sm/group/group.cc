@@ -601,7 +601,7 @@ void Group::vacuum_metadata(
 
   if (group_uri.is_tiledb()) {
     throw_if_not_ok(
-        resources.rest_client()->post_vacuum_to_rest(group_uri, config));
+        resources.rest_client()->post_group_vacuum_to_rest(group_uri, config));
     return;
   }
 

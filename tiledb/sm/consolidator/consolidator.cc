@@ -315,7 +315,7 @@ void Consolidator::array_vacuum(
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
-        resources.rest_client()->post_vacuum_to_rest(array_uri, config));
+        resources.rest_client()->post_array_vacuum_to_rest(array_uri, config));
     return;
   }
 

@@ -1612,7 +1612,7 @@ Status RestClientRemote::post_group_consolidation_to_rest(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-Status RestClientRemote::post_vacuum_to_rest(
+Status RestClientRemote::post_array_vacuum_to_rest(
     const URI& uri, const Config& config) {
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
@@ -1629,6 +1629,32 @@ Status RestClientRemote::post_vacuum_to_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url =
       redirect_uri(cache_key) + "/v1/arrays/" +
+      curlc.url_escape_namespace(rest_uri.server_namespace) + "/" +
+      curlc.url_escape(rest_uri.server_path) + "/vacuum";
+
+  // Get the data
+  Buffer returned_data;
+  return curlc.post_data(
+      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
+}
+
+Status RestClientRemote::post_group_vacuum_to_rest(
+    const URI& uri, const Config& config) {
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
+  RETURN_NOT_OK(serialization::array_vacuum_request_serialize(
+      config, serialization_type_, buff));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  URI::RESTURIComponents rest_uri;
+  RETURN_NOT_OK(uri.get_rest_components(rest_legacy(), &rest_uri));
+  const std::string cache_key =
+      rest_uri.server_namespace + ":" + rest_uri.server_path;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url =
+      redirect_uri(cache_key) + "/v2/groups/" +
       curlc.url_escape_namespace(rest_uri.server_namespace) + "/" +
       curlc.url_escape(rest_uri.server_path) + "/vacuum";
 

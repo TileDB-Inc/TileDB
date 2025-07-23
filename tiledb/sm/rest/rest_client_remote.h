@@ -486,7 +486,18 @@ class RestClientRemote : public RestClient {
    * @param config config
    * @return
    */
-  Status post_vacuum_to_rest(const URI& uri, const Config& config) override;
+  Status post_array_vacuum_to_rest(
+      const URI& uri, const Config& config) override;
+
+  /**
+   * Post group vacuum request to the REST server.
+   *
+   * @param uri group URI
+   * @param config config
+   * @return
+   */
+  Status post_group_vacuum_to_rest(
+      const URI& uri, const Config& config) override;
 
   /**
    * Get consolidation plan from the REST server via POST request.
