@@ -466,7 +466,17 @@ class RestClientRemote : public RestClient {
    * @param config config
    * @return
    */
-  Status post_consolidation_to_rest(
+  Status post_array_consolidation_to_rest(
+      const URI& uri, const Config& config) override;
+
+  /**
+   * Post group consolidation request to the REST server.
+   *
+   * @param uri Group URI
+   * @param config config
+   * @return
+   */
+  Status post_group_consolidation_to_rest(
       const URI& uri, const Config& config) override;
 
   /**
