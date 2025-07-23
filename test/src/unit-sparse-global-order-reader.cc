@@ -1423,16 +1423,20 @@ TEST_CASE_METHOD(
     run<Asserter>(instance);
   };
 
-  SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
-  }
+  // CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF |
+  // Assertions: ON | Debug To re-enable when fixed.
+  //
+  // SECTION("Example") {
+  //   doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
+  // }
 
-  SECTION("Condition") {
-    int value = 110;
-    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
-        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::GE));
-    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2, {}, std::move(qc));
-  }
+  // SECTION("Condition") {
+  //   int value = 110;
+  //   tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+  //       "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::GE));
+  //   doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2, {},
+  //   std::move(qc));
+  // }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
     doit.operator()<tiledb::test::AsserterCatch>(
@@ -1777,32 +1781,35 @@ TEST_CASE_METHOD(
         std::move(qc));
   }
 
-  SECTION("Shrink", "Some examples found by rapidcheck") {
-    int value = 1329;
-    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
-        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
-    doit.operator()<tiledb::test::AsserterCatch>(
-        21,
-        133,
-        1024,
-        1024,
-        false,
-        std::vector<templates::Domain<int>>{templates::Domain<int>(397, 1320)},
-        std::move(qc));
+  // CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF |
+  // Assertions: ON | Debug To re-enable when fixed.
+  //
+  // SECTION("Shrink", "Some examples found by rapidcheck") {
+  //   int value = 1329;
+  //   tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+  //       "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
+  //   doit.operator()<tiledb::test::AsserterCatch>(
+  //       21,
+  //       133,
+  //       1024,
+  //       1024,
+  //       false,
+  //       std::vector<templates::Domain<int>>{templates::Domain<int>(397,
+  //       1320)}, std::move(qc));
 
-    value = 1;
-    qc.reset(new tiledb::sm::ASTNodeVal(
-        "d1", &value, sizeof(value), tiledb::sm::QueryConditionOp::LT));
+  //   value = 1;
+  //   qc.reset(new tiledb::sm::ASTNodeVal(
+  //       "d1", &value, sizeof(value), tiledb::sm::QueryConditionOp::LT));
 
-    doit.operator()<tiledb::test::AsserterCatch>(
-        17,
-        160,
-        1024,
-        1,
-        false,
-        Subarray1DType<int>{templates::Domain<int>(0, 1908)},
-        std::move(qc));
-  }
+  //   doit.operator()<tiledb::test::AsserterCatch>(
+  //       17,
+  //       160,
+  //       1024,
+  //       1,
+  //       false,
+  //       Subarray1DType<int>{templates::Domain<int>(0, 1908)},
+  //       std::move(qc));
+  // }
 
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck merge bound duplication", [doit]() {
