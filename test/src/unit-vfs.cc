@@ -33,6 +33,9 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif
 #ifdef HAVE_AZURE
 #include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
