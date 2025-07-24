@@ -470,7 +470,7 @@ class S3Scanner : public LsScanner {
   void advance(typename Iterator::pointer& ptr) {
     ptr++;
     if (ptr == end_) {
-      if (more_to_fetch()) {
+      if (more_to_fetch() || !collected_prefixes_.empty()) {
         // Fetch results and reset the iterator.
         ptr = fetch_results();
       } else {
@@ -507,6 +507,17 @@ class S3Scanner : public LsScanner {
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
   /** The current request outcome being scanned. */
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+
+  /** Collect up to max_keys prefixes in this set before filtering. */
+  std::vector<Iterator::value_type> collected_prefixes_;
+  // TODO: std::unordered_set<Iterator::value_type> collected_prefixes_;
+  // use extract() to move elements into a vector when filtering results.
+
+  /**
+   * The result type contained by Iterator.
+   * Used for selecting which filter predicate to apply.
+   */
+  enum ResultType { OBJECT, PREFIX } result_type_ = OBJECT;
 };
 
 /**
@@ -847,7 +858,7 @@ class S3 : public FilesystemBase {
     prefix = prefix.substr(0, prefix.find('/', 5));
 
     LsObjects objects;
-    for (auto object : s3_scanner) {
+    for (const auto& object : s3_scanner) {
       objects.emplace_back(
           prefix + "/" + std::string(object.GetKey()), object.GetSize());
     }

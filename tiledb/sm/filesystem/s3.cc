@@ -2092,7 +2092,8 @@ S3Scanner::S3Scanner(
     int max_keys)
     : LsScanner(
           prefix, std::move(file_filter), std::move(dir_filter), recursive)
-    , client_(client) {
+    , client_(client)
+    , result_type_(OBJECT) {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -2113,11 +2114,27 @@ S3Scanner::S3Scanner(
   }
   fetch_results();
   next(begin_);
+
+  // This case is hit when all files are rejected by the file_filter.
+  if (begin_ == end_ && !collected_prefixes_.empty() && !more_to_fetch()) {
+    result_type_ = PREFIX;
+    end_ = collected_prefixes_.end();
+    begin_ = collected_prefixes_.begin();
+    next(begin_);
+  }
 }
 
 typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
   // If this is our first request, GetIsTruncated() will be false.
-  if (more_to_fetch()) {
+  if (collected_prefixes_.size() >=
+          static_cast<size_t>(list_objects_request_.GetMaxKeys()) ||
+      (!more_to_fetch() && !collected_prefixes_.empty())) {
+    // Filter prefixes if we have collected the maximum amount or have no more
+    // results to fetch from S3.
+    result_type_ = PREFIX;
+    end_ = collected_prefixes_.end();
+    return begin_ = collected_prefixes_.begin();
+  } else if (more_to_fetch()) {
     // If results are truncated on a subsequent request, we set the next
     // continuation token before resubmitting our request.
     Aws::String next_marker =
@@ -2134,6 +2151,7 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
     begin_ = end_ = typename Iterator::pointer();
     return end_;
   }
+  result_type_ = OBJECT;
 
   list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
   if (!list_objects_outcome_.IsSuccess()) {
@@ -2142,11 +2160,18 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
         this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
         delimiter() + "'" + outcome_error_message(list_objects_outcome_));
   }
+
   // Update pointers to the newly fetched results.
   begin_ = list_objects_outcome_.GetResult().GetContents().begin();
   end_ = list_objects_outcome_.GetResult().GetContents().end();
 
   if (list_objects_outcome_.GetResult().GetContents().empty()) {
+    if (!collected_prefixes_.empty()) {
+      result_type_ = PREFIX;
+      end_ = collected_prefixes_.end();
+      return begin_ = collected_prefixes_.begin();
+    }
+
     // If the request returned no results, we've reached the end of the scan.
     // We hit this case when the number of objects in the bucket is a multiple
     // of the current max_keys.
@@ -2158,6 +2183,9 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
 
 void S3Scanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
+    if (result_type_ == PREFIX) {
+      collected_prefixes_.clear();
+    }
     ptr = fetch_results();
   }
 
@@ -2168,12 +2196,45 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
                        std::string(list_objects_request_.GetBucket()) +
                        S3::add_front_slash(std::string(object.GetKey()));
 
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(path, size)) {
-      // Iterator is at the next object within results accepted by the filters.
+    // Store each unique prefix while scanning S3 objects.
+    if (result_type_ == OBJECT) {
+      // The object key does not contain s3:// prefix or the bucket name.
+      auto prefix = object.GetKey();
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != Aws::String::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        auto f = std::find_if(
+            collected_prefixes_.begin(),
+            collected_prefixes_.end(),
+            [&prefix](const Iterator::value_type& a) -> bool {
+              return a.GetKey() == prefix;
+            });
+
+        // TODO: Use an unordered_set. The above will contain duplicates (or
+        // filtering dupes is slow compared to set)
+        //      if (!collected_prefixes_.contains(prefix) &&
+        //          !collected_prefixes_.emplace(prefix).second) {
+        //        throw S3Exception("Failed to emplace prefix: '" + prefix +
+        //        "'");
+        //      }
+
+        // Stop checking this path if we hit a duplicate prefix.
+        if (f == collected_prefixes_.end()) {
+          collected_prefixes_.push_back(object.WithKey(prefix).WithSize(0));
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Advance until we reach a result accepted by a filter predicate.
+    if (result_type_ == OBJECT && this->file_filter_(path, size)) {
+      return;
+    } else if (result_type_ == PREFIX && this->dir_filter_(path)) {
       return;
     } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
       advance(ptr);
     }
   }
