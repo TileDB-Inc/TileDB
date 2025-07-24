@@ -841,6 +841,36 @@ void FragmentMetadata::load(
 }
 
 void FragmentMetadata::store(const EncryptionKey& encryption_key) {
+  // integrity checks
+  if (dense_) {
+    const uint64_t dense_tile_num = tile_num();
+
+    for (const auto& tile_offsets : loaded_metadata_ptr_->tile_offsets()) {
+      iassert(tile_offsets.size() == dense_tile_num);
+    }
+    for (const auto& tile_var_offsets :
+         loaded_metadata_ptr_->tile_var_offsets()) {
+      iassert(tile_var_offsets.size() == dense_tile_num);
+    }
+    for (const auto& tile_var_sizes : loaded_metadata_ptr_->tile_var_sizes()) {
+      iassert(tile_var_sizes.size() == dense_tile_num);
+    }
+    for (const auto& tile_validity_offsets :
+         loaded_metadata_ptr_->tile_validity_offsets()) {
+      iassert(tile_validity_offsets.size() == dense_tile_num);
+    }
+    for (const auto& tile_null_counts :
+         loaded_metadata_ptr_->tile_null_counts()) {
+      if (!tile_null_counts.empty()) {
+        iassert(tile_null_counts.size() == dense_tile_num);
+      }
+    }
+
+    // what about min, max, sum?
+    // requires iteration in stride with schema fields to get cell size
+    // probably a good idea, ask about it in code review
+  }
+
   auto timer_se = resources_->stats().start_timer("write_store_frag_meta");
 
   // Make sure the data fits in the current domain before we commit to disk.
@@ -1194,6 +1224,11 @@ void FragmentMetadata::store_v15_or_higher(
 }
 
 void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
+  if (dense_) {
+    const uint64_t dense_tile_num = tile_num();
+    iassert(num_tiles <= dense_tile_num);
+  }
+
   for (auto& it : idx_map_) {
     auto i = it.second;
     iassert(num_tiles >= loaded_metadata_ptr_->tile_offsets()[i].size());
