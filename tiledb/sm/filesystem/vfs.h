@@ -65,10 +65,6 @@
 #include "tiledb/sm/filesystem/gcs.h"
 #endif  // HAVE_GCS
 
-#ifdef HAVE_S3
-#include "tiledb/sm/filesystem/s3.h"
-#endif  // HAVE_S3
-
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -291,24 +287,29 @@ class GCS_within_VFS {
 
 /** The S3 filesystem. */
 #ifdef HAVE_S3
+
+class S3;
+
 class S3_within_VFS {
   /** Private member variable */
-  S3 s3_;
+  tdb_unique_ptr<S3> s3_;
 
  protected:
   template <typename... Args>
   S3_within_VFS(Args&&... args)
-      : s3_(std::forward<Args>(args)...) {
+      : s3_(tdb_unique_ptr<S3>(tdb_new(S3, std::forward<Args>(args)...))) {
   }
+
+  ~S3_within_VFS();
 
   /** Protected accessor for the S3 object. */
   inline S3& s3() {
-    return s3_;
+    return *s3_;
   }
 
   /** Protected accessor for the const S3 object. */
   inline const S3& s3() const {
-    return s3_;
+    return *s3_;
   }
 };
 #else
@@ -599,63 +600,11 @@ class VFS : FilesystemBase,
    */
   std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
-  /**
-   * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
-   *
-   * Currently this API is only supported for local files, S3 and Azure.
-   *
-   * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
-   * @param recursive Whether to list the objects recursively.
-   * @return Vector of results with each entry being a pair of the string URI
-   *    and object size.
-   */
-  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
   LsObjects ls_filtered(
       const URI& parent,
-      [[maybe_unused]] F f,
-      [[maybe_unused]] D d,
-      bool recursive) const {
-    LsObjects results;
-    try {
-      if (parent.is_file()) {
-        results = local_.ls_filtered(parent, f, d, recursive);
-      } else if (parent.is_s3()) {
-#ifdef HAVE_S3
-        results = s3().ls_filtered(parent, f, d, recursive);
-#else
-        throw filesystem::VFSException("TileDB was built without S3 support");
-#endif
-      } else if (parent.is_gcs()) {
-#ifdef HAVE_GCS
-        results = gcs().ls_filtered(parent, f, d, recursive);
-#else
-        throw filesystem::VFSException("TileDB was built without GCS support");
-#endif
-      } else if (parent.is_azure()) {
-#ifdef HAVE_AZURE
-        results = azure().ls_filtered(parent, f, d, recursive);
-#else
-        throw filesystem::VFSException(
-            "TileDB was built without Azure support");
-#endif
-      } else {
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
-      }
-    } catch (LsStopTraversal& e) {
-      // Do nothing, callback signaled to stop traversal.
-    } catch (...) {
-      // Rethrow exception thrown by the callback.
-      throw;
-    }
-    return results;
-  }
+      FileFilter f,
+      DirectoryFilter d,
+      bool recursive) const override;
 
   /**
    * Recursively lists objects and object information that start with `prefix`,
@@ -673,10 +622,8 @@ class VFS : FilesystemBase,
    */
   template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
   LsObjects ls_recursive(
-      const URI& parent,
-      [[maybe_unused]] F f,
-      [[maybe_unused]] D d = accept_all_dirs) const {
-    return ls_filtered(parent, f, d, true);
+      const URI& parent, F&& f, D&& d = accept_all_dirs) const {
+    return ls_filtered(parent, std::move(f), std::move(d), true);
   }
 
   /**

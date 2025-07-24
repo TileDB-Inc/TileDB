@@ -37,7 +37,6 @@
 #include "tiledb/sm/filesystem/uri.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <functional>
 #include <stdexcept>
 
@@ -260,19 +259,18 @@ class LsScanIterator {
  * the given file and directory predicates. This should be used as a common
  * base class for future filesystem scanner implementations, similar to
  * S3Scanner.
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D>
 class LsScanner {
  public:
   /** Constructor. */
   LsScanner(
-      const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
+      const URI& prefix,
+      FileFilter&& file_filter,
+      DirectoryFilter&& dir_filter,
+      bool recursive = false)
       : prefix_(prefix)
-      , file_filter_(file_filter)
-      , dir_filter_(dir_filter)
+      , file_filter_(std::move(file_filter))
+      , dir_filter_(std::move(dir_filter))
       , is_recursive_(recursive) {
   }
 
@@ -280,9 +278,9 @@ class LsScanner {
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;
   /** File predicate used to filter file or object results. */
-  const F file_filter_;
+  const FileFilter file_filter_;
   /** Directory predicate used to prune directory or prefix results. */
-  const D dir_filter_;
+  const DirectoryFilter dir_filter_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
 };
@@ -333,58 +331,6 @@ class CallbackWrapperCAPI {
   /** User data for callback */
   void* data_;
 };
-
-/**
- * Implements the `ls_filtered` function for `std::filesystem` which can be used
- * for Posix and Win32
- */
-template <FilePredicate F, DirectoryPredicate D>
-LsObjects std_filesystem_ls_filtered(
-    const URI& parent, F file_filter, D directory_filter, bool recursive) {
-  /*
-   * The input URI was useful to the top-level VFS to identify this is a
-   * regular filesystem path, but we don't need the "file://" qualifier
-   * anymore and can reason with unqualified strings for the rest of the
-   * function.
-   */
-  const auto parentstr = parent.to_path();
-
-  LsObjects qualifyingPaths;
-
-  // awkward way of iterating, avoids bug in OSX
-  auto begin = std::filesystem::recursive_directory_iterator(parentstr);
-  auto end = std::filesystem::recursive_directory_iterator();
-
-  for (auto iter = begin; iter != end; ++iter) {
-    auto& entry = *iter;
-    const auto abspath = entry.path().string();
-    const auto absuri = URI(abspath);
-    if (entry.is_directory()) {
-      if (file_filter(absuri, 0) || directory_filter(absuri)) {
-        qualifyingPaths.push_back(
-            std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
-        if (!recursive) {
-          iter.disable_recursion_pending();
-        }
-      } else {
-        /* do not descend into directories which don't qualify */
-        iter.disable_recursion_pending();
-      }
-    } else {
-      /*
-       * A leaf of the filesystem
-       * (or symbolic link - split to a separate case if we want to descend into
-       * them)
-       */
-      if (file_filter(absuri, entry.file_size())) {
-        qualifyingPaths.push_back(
-            std::make_pair(absuri.to_string(), entry.file_size()));
-      }
-    }
-  }
-
-  return qualifyingPaths;
-}
 
 }  // namespace tiledb::sm
 

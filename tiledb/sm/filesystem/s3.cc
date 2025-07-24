@@ -2083,6 +2083,102 @@ URI S3::generate_chunk_uri(
   return buffering_dir.join_path(chunk_name);
 }
 
+S3Scanner::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    FileFilter&& file_filter,
+    DirectoryFilter&& dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(
+          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    , client_(client) {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
+  // If this is our first request, GetIsTruncated() will be false.
+  if (more_to_fetch()) {
+    // If results are truncated on a subsequent request, we set the next
+    // continuation token before resubmitting our request.
+    Aws::String next_marker =
+        list_objects_outcome_.GetResult().GetNextContinuationToken();
+    if (next_marker.empty()) {
+      throw S3Exception(
+          "Failed to retrieve next continuation token for ListObjectsV2 "
+          "request.");
+    }
+    list_objects_request_.SetContinuationToken(std::move(next_marker));
+  } else if (list_objects_outcome_.IsSuccess()) {
+    // If we have previously submitted a successful request and there are no
+    // more results, we've reached the end of the scan.
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+
+  list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+  if (!list_objects_outcome_.IsSuccess()) {
+    throw S3Exception(
+        std::string("Error while listing with prefix '") +
+        this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+        delimiter() + "'" + outcome_error_message(list_objects_outcome_));
+  }
+  // Update pointers to the newly fetched results.
+  begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+  end_ = list_objects_outcome_.GetResult().GetContents().end();
+
+  if (list_objects_outcome_.GetResult().GetContents().empty()) {
+    // If the request returned no results, we've reached the end of the scan.
+    // We hit this case when the number of objects in the bucket is a multiple
+    // of the current max_keys.
+    return end_;
+  }
+
+  return begin_;
+}
+
+void S3Scanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto object = *ptr;
+    uint64_t size = object.GetSize();
+    std::string path = "s3://" +
+                       std::string(list_objects_request_.GetBucket()) +
+                       S3::add_front_slash(std::string(object.GetKey()));
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(path, size)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
+}
+
 }  // namespace tiledb::sm
 
 #endif
