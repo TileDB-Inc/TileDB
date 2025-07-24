@@ -997,7 +997,27 @@ class VFSTest : public VFSTestBase {
 /** Test object for tiledb::sm::S3 functionality. */
 class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
  public:
-  explicit S3Test(const std::vector<size_t>& test_tree);
+  explicit S3Test(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "s3://")
+      , S3_within_VFS(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
+#ifdef HAVE_S3
+    s3().create_bucket(temp_dir_);
+    for (size_t i = 1; i <= test_tree_.size(); i++) {
+      sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+      // VFS::create_dir is a no-op for S3; Just create objects.
+      expected_results().emplace_back(path.to_string(), 0);
+      for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+        auto object_uri = path.join_path("test_file_" + std::to_string(j));
+        s3().touch(object_uri);
+        std::string data(j * 10, 'a');
+        s3().write(object_uri, data.data(), data.size());
+        s3().flush(object_uri);
+        expected_results().emplace_back(object_uri.to_string(), data.size());
+      }
+    }
+    std::sort(expected_results().begin(), expected_results().end());
+#endif
+  }
 
 #ifdef HAVE_S3
   /** Expose protected accessor from S3_within_VFS. */

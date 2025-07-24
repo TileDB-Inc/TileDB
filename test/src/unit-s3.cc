@@ -362,7 +362,11 @@ TEST_CASE(
 
     // Filter expected results to apply file_filter.
     std::erase_if(expected, [&file_filter](const auto& a) {
-      return !file_filter(a.first, a.second);
+      // TODO: Use trailing slash as indicator of prefix instead of size 0
+      if (a.second > 0) {
+        return !file_filter(a.first, a.second);
+      }
+      return !accept_all_dirs(a.first);
     });
 
     auto scan = s3_test.get_s3().scanner(
@@ -370,13 +374,20 @@ TEST_CASE(
     std::vector results_vector(scan.begin(), scan.end());
 
     CHECK(results_vector.size() == expected.size());
-    for (size_t i = 0; i < expected.size(); i++) {
-      auto s3_object = results_vector[i];
-      CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
-      auto full_uri =
-          s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
-      CHECK(full_uri == expected[i].first);
-      CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
+    for (const auto & s3_object : results_vector) {
+      if (s3_object.GetSize() > 0) {
+        CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
+      } else {
+        // TODO: Test with various directory filters
+        CHECK(accept_all_dirs(s3_object.GetKey()));
+      }
+      auto uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
+      CHECK_THAT(
+          expected,
+          Catch::Matchers::Contains(
+              std::make_pair(
+                  uri,
+                  static_cast<size_t>(s3_object.GetSize()))));
     }
   }
 }
@@ -425,7 +436,7 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
   auto expected = s3_test.expected_results();
   CHECK(results_vector.size() == expected.size());
   for (size_t i = 0; i < expected.size(); i++) {
-    auto s3_object = results_vector[i];
+    const auto& s3_object = results_vector[i];
     auto full_uri =
         s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
     CHECK(full_uri == expected[i].first);
