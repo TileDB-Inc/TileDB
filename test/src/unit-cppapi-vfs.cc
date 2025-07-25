@@ -514,7 +514,7 @@ using ls_recursive_test_types = std::tuple<
     tiledb::test::GCSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "CPP API: VFS ls_recursive filter",
-    "[cppapi][vfs][ls-recursive]",
+    "[cppapi][vfs][ls_recursive]",
     ls_recursive_test_types) {
   using namespace tiledb::test;
   TestType test({10, 100, 0});
@@ -565,8 +565,11 @@ TEMPLATE_LIST_TEST_CASE(
   // Test collecting results with LsInclude predicate.
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
       ctx, vfs, test.temp_dir_.to_string(), include);
-  std::erase_if(expected_results, [&include](const auto& object) {
-    return !include(object.first, object.second);
+  std::erase_if(expected_results, [&](const auto& object) {
+    if (object.second > 0) {
+      return !include(object.first, object.second);
+    }
+    return !tiledb::sm::accept_all_dirs(object.first);
   });
   std::sort(results.begin(), results.end());
   CHECK(results.size() == expected_results.size());
@@ -580,7 +583,7 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(expected_results == ls_objects);
 }
 
-TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls-recursive]") {
+TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
   using namespace tiledb::test;
   S3Test s3_test({10, 50, 15});
   if (!s3_test.is_supported()) {
@@ -610,7 +613,7 @@ TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls-recursive]") {
   CHECK(ls_objects == expected_results);
 }
 
-TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls-recursive]") {
+TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls_recursive]") {
   using namespace tiledb::test;
   S3Test s3_test({0});
   if (!s3_test.is_supported()) {
@@ -653,7 +656,7 @@ TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls-recursive]") {
 
 TEST_CASE(
     "CPP API: CallbackWrapperCPP construction validation",
-    "[ls-recursive][callback][wrapper]") {
+    "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
   auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
   SECTION("Null callback") {
@@ -666,7 +669,7 @@ TEST_CASE(
 
 TEST_CASE(
     "CPP API: CallbackWrapperCPP operator() validation",
-    "[ls-recursive][callback][wrapper]") {
+    "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
   auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
     if (object_size > 100) {

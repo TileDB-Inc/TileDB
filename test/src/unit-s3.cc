@@ -439,8 +439,11 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
     const auto& s3_object = results_vector[i];
     auto full_uri =
         s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
-    CHECK(full_uri == expected[i].first);
-    CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
+    CHECK_THAT(
+        expected,
+        Catch::Matchers::Contains(
+            std::make_pair(
+                full_uri, static_cast<size_t>(s3_object.GetSize()))));
   }
 }
 
