@@ -158,11 +158,6 @@ void CSparseUnorderedWithDupsFx::update_config() {
   REQUIRE(error == nullptr);
 
   REQUIRE(
-      tiledb_config_set(config, "config.logging_level", "5", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
       tiledb_config_set(
           config,
           "sm.query.sparse_unordered_with_dups.reader",
@@ -1021,11 +1016,6 @@ TEST_CASE_METHOD(
   tiledb_config_t* config;
   error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(config, "config.logging_level", "5", &error) ==
-      TILEDB_OK);
   REQUIRE(error == nullptr);
 
   REQUIRE(
