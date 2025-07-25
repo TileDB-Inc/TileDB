@@ -207,6 +207,21 @@ uint64_t SparseIndexReaderBase::get_coord_tiles_size(
 
 Status SparseIndexReaderBase::load_initial_data() {
   if (initial_data_loaded_) {
+    // Set a limit to the array memory.
+    if (!array_memory_tracker_->set_budget(
+            memory_budget_.total_budget() *
+            memory_budget_.ratio_array_data())) {
+      throw SparseIndexReaderBaseException(
+          "Cannot set array memory budget (" +
+          std::to_string(
+              memory_budget_.total_budget() *
+              memory_budget_.ratio_array_data()) +
+          ") because it is smaller than the current memory usage (" +
+          std::to_string(array_memory_tracker_->get_memory_usage()) + ").");
+    }
+
+    logger_->debug("Initial data already loaded");
+
     return Status::Ok();
   }
 
