@@ -486,6 +486,27 @@ class S3Scanner : public LsScanner {
   }
 
   /**
+   * Builds a prefix vector matching the expected Iterator type for filtering,
+   * and initializes begin_ and end_ iterators to scan the common prefixes.
+   *
+   * When collected_prefixes_ is empty and there are no results to fetch from S3
+   * the scan is complete.
+   *
+   * @returns Iterator to the beginning of the prefix vector.
+   */
+  typename Iterator::pointer& build_prefix_vector() {
+    result_type_ = PREFIX;
+    common_prefixes_.resize(collected_prefixes_.size());
+    for (auto& object : common_prefixes_) {
+      auto next = collected_prefixes_.begin();
+      object.SetKey(collected_prefixes_.extract(next).value());
+      object.SetSize(0);
+    }
+    end_ = common_prefixes_.end();
+    return begin_ = common_prefixes_.begin();
+  }
+
+  /**
    * Fetch the next batch of results from S3. This also handles setting the
    * continuation token for the next request, if the results were truncated.
    *
@@ -509,9 +530,10 @@ class S3Scanner : public LsScanner {
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
 
   /** Collect up to max_keys prefixes in this set before filtering. */
-  std::vector<Iterator::value_type> collected_prefixes_;
-  // TODO: std::unordered_set<Iterator::value_type> collected_prefixes_;
-  // use extract() to move elements into a vector when filtering results.
+  std::unordered_set<std::string> collected_prefixes_;
+
+  /** Move prefixes to this vector usable with Iterator type for filtering. */
+  std::vector<Iterator::value_type> common_prefixes_;
 
   /**
    * The result type contained by Iterator.

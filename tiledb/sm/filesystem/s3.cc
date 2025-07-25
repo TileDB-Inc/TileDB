@@ -2117,10 +2117,7 @@ S3Scanner::S3Scanner(
 
   // This case is hit when all files are rejected by the file_filter.
   if (begin_ == end_ && !collected_prefixes_.empty() && !more_to_fetch()) {
-    result_type_ = PREFIX;
-    end_ = collected_prefixes_.end();
-    begin_ = collected_prefixes_.begin();
-    next(begin_);
+    next(build_prefix_vector());
   }
 }
 
@@ -2131,9 +2128,7 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
       (!more_to_fetch() && !collected_prefixes_.empty())) {
     // Filter prefixes if we have collected the maximum amount or have no more
     // results to fetch from S3.
-    result_type_ = PREFIX;
-    end_ = collected_prefixes_.end();
-    return begin_ = collected_prefixes_.begin();
+    return build_prefix_vector();
   } else if (more_to_fetch()) {
     // If results are truncated on a subsequent request, we set the next
     // continuation token before resubmitting our request.
@@ -2167,9 +2162,7 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
 
   if (list_objects_outcome_.GetResult().GetContents().empty()) {
     if (!collected_prefixes_.empty()) {
-      result_type_ = PREFIX;
-      end_ = collected_prefixes_.end();
-      return begin_ = collected_prefixes_.begin();
+      return build_prefix_vector();
     }
 
     // If the request returned no results, we've reached the end of the scan.
@@ -2184,7 +2177,7 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
 void S3Scanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
     if (result_type_ == PREFIX) {
-      collected_prefixes_.clear();
+      common_prefixes_.clear();
     }
     ptr = fetch_results();
   }
@@ -2192,9 +2185,10 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
-    std::string path = "s3://" +
-                       std::string(list_objects_request_.GetBucket()) +
-                       S3::add_front_slash(std::string(object.GetKey()));
+    std::string bucket =
+        "s3://" + std::string(list_objects_request_.GetBucket());
+    std::string path =
+        bucket + S3::add_front_slash(std::string(object.GetKey()));
 
     // Store each unique prefix while scanning S3 objects.
     if (result_type_ == OBJECT) {
@@ -2205,26 +2199,15 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
       for (auto pos = prefix.rfind('/'); pos != Aws::String::npos;
            pos = prefix.rfind('/')) {
         prefix = prefix.substr(0, pos);
-        auto f = std::find_if(
-            collected_prefixes_.begin(),
-            collected_prefixes_.end(),
-            [&prefix](const Iterator::value_type& a) -> bool {
-              return a.GetKey() == prefix;
-            });
-
-        // TODO: Use an unordered_set. The above will contain duplicates (or
-        // filtering dupes is slow compared to set)
-        //      if (!collected_prefixes_.contains(prefix) &&
-        //          !collected_prefixes_.emplace(prefix).second) {
-        //        throw S3Exception("Failed to emplace prefix: '" + prefix +
-        //        "'");
-        //      }
-
+        // Do not accept the prefix we are scanning.
         // Stop checking this path if we hit a duplicate prefix.
-        if (f == collected_prefixes_.end()) {
-          collected_prefixes_.push_back(object.WithKey(prefix).WithSize(0));
-        } else {
+        if (bucket + S3::add_front_slash(prefix) == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
           break;
+        } else {
+          if (!collected_prefixes_.emplace(prefix).second) {
+            throw S3Exception("Failed to emplace prefix: '" + prefix + "'");
+          }
         }
       }
     }
