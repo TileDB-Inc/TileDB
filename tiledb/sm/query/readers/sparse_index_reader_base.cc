@@ -209,18 +209,19 @@ Status SparseIndexReaderBase::load_initial_data() {
   if (initial_data_loaded_) {
     // Set a limit to the array memory.
     if (!array_memory_tracker_->set_budget(
-            memory_budget_.total_budget() *
-            memory_budget_.ratio_array_data())) {
+            memory_budget_.array_data_budget())) {
       throw SparseIndexReaderBaseException(
           "Cannot set array memory budget (" +
-          std::to_string(
-              memory_budget_.total_budget() *
-              memory_budget_.ratio_array_data()) +
+          std::to_string(memory_budget_.array_data_budget()) +
           ") because it is smaller than the current memory usage (" +
           std::to_string(array_memory_tracker_->get_memory_usage()) + ").");
     }
 
-    logger_->debug("Initial data already loaded");
+    logger_->debug(
+        "Initial data already loaded. Total budget: {}, Budget for array data: "
+        "{} ",
+        memory_budget_.total_budget(),
+        memory_budget_.array_data_budget());
 
     return Status::Ok();
   }
@@ -341,12 +342,10 @@ Status SparseIndexReaderBase::load_initial_data() {
   per_frag_tile_offsets_usage_ = tile_offset_sizes();
 
   // Set a limit to the array memory.
-  if (!array_memory_tracker_->set_budget(
-          memory_budget_.total_budget() * memory_budget_.ratio_array_data())) {
+  if (!array_memory_tracker_->set_budget(memory_budget_.array_data_budget())) {
     throw SparseIndexReaderBaseException(
         "Cannot set array memory budget (" +
-        std::to_string(
-            memory_budget_.total_budget() * memory_budget_.ratio_array_data()) +
+        std::to_string(memory_budget_.array_data_budget()) +
         ") because it is smaller than the current memory usage (" +
         std::to_string(array_memory_tracker_->get_memory_usage()) + ").");
   }
