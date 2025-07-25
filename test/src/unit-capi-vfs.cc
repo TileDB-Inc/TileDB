@@ -433,76 +433,72 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
           tiledb_vfs_remove_bucket(x.ctx, x.vfs, bucket2.c_str()));
     }
 
-    // Check copy (not yet supported for MemFS or Windows)
-    if constexpr (!tiledb::platform::is_os_windows) {
-      if (!tiledb::sm::URI::is_memfs(path)) {
-        auto dir = path + "dir/";
-        auto file = dir + "file";
-        int is_file = 0;
-        require_tiledb_ok(tiledb_vfs_create_dir(x.ctx, x.vfs, dir.c_str()));
-        require_tiledb_ok(tiledb_vfs_touch(x.ctx, x.vfs, file.c_str()));
-        int is_dir = 0;
-        require_tiledb_ok(
-            tiledb_vfs_is_dir(x.ctx, x.vfs, dir.c_str(), &is_dir));
-        REQUIRE(is_dir);
-        require_tiledb_ok(
-            tiledb_vfs_is_file(x.ctx, x.vfs, file.c_str(), &is_file));
-        REQUIRE(is_file);
+    // Check copy (not yet supported for MemFS)
+    if (!tiledb::sm::URI::is_memfs(path)) {
+      auto dir = path + "dir/";
+      auto file = dir + "file";
+      int is_file = 0;
+      require_tiledb_ok(tiledb_vfs_create_dir(x.ctx, x.vfs, dir.c_str()));
+      require_tiledb_ok(tiledb_vfs_touch(x.ctx, x.vfs, file.c_str()));
+      int is_dir = 0;
+      require_tiledb_ok(tiledb_vfs_is_dir(x.ctx, x.vfs, dir.c_str(), &is_dir));
+      REQUIRE(is_dir);
+      require_tiledb_ok(
+          tiledb_vfs_is_file(x.ctx, x.vfs, file.c_str(), &is_file));
+      REQUIRE(is_file);
 
-        // Copy file
-        auto file2 = dir + "file2";
-        require_tiledb_ok(
-            tiledb_vfs_copy_file(x.ctx, x.vfs, file.c_str(), file2.c_str()));
-        require_tiledb_ok(
-            tiledb_vfs_is_file(x.ctx, x.vfs, file.c_str(), &is_file));
-        REQUIRE(is_file);
-        require_tiledb_ok(
-            tiledb_vfs_is_file(x.ctx, x.vfs, file2.c_str(), &is_file));
-        REQUIRE(is_file);
+      // Copy file
+      auto file2 = dir + "file2";
+      require_tiledb_ok(
+          tiledb_vfs_copy_file(x.ctx, x.vfs, file.c_str(), file2.c_str()));
+      require_tiledb_ok(
+          tiledb_vfs_is_file(x.ctx, x.vfs, file.c_str(), &is_file));
+      REQUIRE(is_file);
+      require_tiledb_ok(
+          tiledb_vfs_is_file(x.ctx, x.vfs, file2.c_str(), &is_file));
+      REQUIRE(is_file);
 
-        // Copy directory
-        auto dir2 = path + "dir2/";
-        file2 = dir2 + "file2";
+      // Copy directory
+      auto dir2 = path + "dir2/";
+      file2 = dir2 + "file2";
+      require_tiledb_ok(
+          tiledb_vfs_copy_dir(x.ctx, x.vfs, dir.c_str(), dir2.c_str()));
+      require_tiledb_ok(tiledb_vfs_is_dir(x.ctx, x.vfs, dir2.c_str(), &is_dir));
+      REQUIRE(is_dir);
+      require_tiledb_ok(
+          tiledb_vfs_is_file(x.ctx, x.vfs, file2.c_str(), &is_file));
+      REQUIRE(is_file);
+
+      // Copy from one bucket to another (only for S3)
+      if (backend_is_s3) {
+        std::string bucket2 = "s3://tiledb-" + random_label() + "/";
+        std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
+
+        // Remove and recreate bucket if already exists
+        int is_bucket = 0;
         require_tiledb_ok(
-            tiledb_vfs_copy_dir(x.ctx, x.vfs, dir.c_str(), dir2.c_str()));
-        require_tiledb_ok(
-            tiledb_vfs_is_dir(x.ctx, x.vfs, dir2.c_str(), &is_dir));
-        REQUIRE(is_dir);
-        require_tiledb_ok(
-            tiledb_vfs_is_file(x.ctx, x.vfs, file2.c_str(), &is_file));
-        REQUIRE(is_file);
-
-        // Copy from one bucket to another (only for S3)
-        if (backend_is_s3) {
-          std::string bucket2 = "s3://tiledb-" + random_label() + "/";
-          std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
-
-          // Remove and recreate bucket if already exists
-          int is_bucket = 0;
-          require_tiledb_ok(
-              tiledb_vfs_is_bucket(x.ctx, x.vfs, bucket2.c_str(), &is_bucket));
-          if (is_bucket) {
-            require_tiledb_ok(
-                tiledb_vfs_remove_bucket(x.ctx, x.vfs, bucket2.c_str()));
-          }
-          require_tiledb_ok(
-              tiledb_vfs_create_bucket(x.ctx, x.vfs, bucket2.c_str()));
-
-          // Copy bucket
-          require_tiledb_ok(
-              tiledb_vfs_copy_dir(x.ctx, x.vfs, dir2.c_str(), subdir3.c_str()));
-          require_tiledb_ok(
-              tiledb_vfs_is_dir(x.ctx, x.vfs, subdir3.c_str(), &is_dir));
-          REQUIRE(is_dir);
-          file2 = subdir3 + "file";
-          require_tiledb_ok(
-              tiledb_vfs_is_file(x.ctx, x.vfs, file2.c_str(), &is_file));
-          REQUIRE(is_file);
-
-          // Remove bucket
+            tiledb_vfs_is_bucket(x.ctx, x.vfs, bucket2.c_str(), &is_bucket));
+        if (is_bucket) {
           require_tiledb_ok(
               tiledb_vfs_remove_bucket(x.ctx, x.vfs, bucket2.c_str()));
         }
+        require_tiledb_ok(
+            tiledb_vfs_create_bucket(x.ctx, x.vfs, bucket2.c_str()));
+
+        // Copy bucket
+        require_tiledb_ok(
+            tiledb_vfs_copy_dir(x.ctx, x.vfs, dir2.c_str(), subdir3.c_str()));
+        require_tiledb_ok(
+            tiledb_vfs_is_dir(x.ctx, x.vfs, subdir3.c_str(), &is_dir));
+        REQUIRE(is_dir);
+        file2 = subdir3 + "file";
+        require_tiledb_ok(
+            tiledb_vfs_is_file(x.ctx, x.vfs, file2.c_str(), &is_file));
+        REQUIRE(is_file);
+
+        // Remove bucket
+        require_tiledb_ok(
+            tiledb_vfs_remove_bucket(x.ctx, x.vfs, bucket2.c_str()));
       }
     }
 

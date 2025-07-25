@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 #ifndef TILEDB_COMMON_EXCEPTION_H
 #define TILEDB_COMMON_EXCEPTION_H
 
+#include <functional>
 #include <stdexcept>
 #include "tiledb/common/common-std.h"
 #include "tiledb/common/status.h"
@@ -47,9 +48,11 @@ class StatusException : public std::exception {
   friend void throw_if_not_ok(const Status&);
 
   /**
-   * Vicinity where exception originated
+   * Vicinity where exception originated.
+   *
+   * This is expected to be a statically allocated constant string.
    */
-  std::string origin_;
+  std::string_view origin_;
 
   /**
    * Specific error message
@@ -87,7 +90,7 @@ class StatusException : public std::exception {
    * @param st Status from which to convert
    */
   explicit StatusException(const Status& st, std::nothrow_t) noexcept
-      : StatusException(std::string(st.origin()), st.message()) {
+      : StatusException(st.origin(), st.message()) {
   }
 
   /**
@@ -119,11 +122,11 @@ class StatusException : public std::exception {
    * Ordinary constructor separates origin and error message in order to
    * support subclass constructors.
    *
-   * @param code Legacy status code
+   * @param origin Legacy status code
    * @param what Error message
    * @pre Argument `what` must be a C-style null-terminated string
    */
-  StatusException(const std::string origin, const std::string message)
+  StatusException(const std::string_view origin, const std::string message)
       : origin_(origin)
       , message_(message) {
   }
@@ -159,9 +162,6 @@ class StatusException : public std::exception {
 
   /**
    * Extract a `Status` object from this exception.
-   *
-   * The lifespan of the status must be shorter than that of this exception from
-   * which it is extracted.
    */
   Status extract_status() const {
     return {origin_, message_};
@@ -182,6 +182,27 @@ inline void throw_if_not_ok(const Status& st) {
   if (!st.ok()) {
     // friend declaration allows calling this private constructor
     throw StatusException(st, std::nothrow);
+  }
+}
+
+/**
+ * Wraps the call of a void-returning function to return a status. This is
+ * effectively the inverse of throw_if_not_ok.
+ *
+ * @return Status::Ok if calling f(args) did not throw, a failing Status if it
+ * threw.
+ */
+template <class F, class... Args>
+inline Status ok_if_not_throw(F&& f, Args&&... args)
+  requires(std::is_invocable_r_v<void, F, Args...>)
+{
+  try {
+    std::invoke(f, std::forward<Args>(args)...);
+    return Status::Ok();
+  } catch (StatusException& e) {
+    return e.extract_status();
+  } catch (std::exception& e) {
+    return Status_Error(e.what());
   }
 }
 

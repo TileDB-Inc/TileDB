@@ -273,6 +273,10 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   return *client_;
 }
 
+bool Azure::supports_uri(const URI& uri) const {
+  return uri.is_azure();
+}
+
 void Azure::create_bucket(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {
@@ -626,13 +630,8 @@ uint64_t Azure::file_size(const URI& uri) const {
   }
 }
 
-Status Azure::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
+uint64_t Azure::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   const auto& c = client();
 
   if (!uri.is_azure()) {
@@ -640,11 +639,10 @@ Status Azure::read_impl(
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  size_t total_length = length + read_ahead_length;
 
   ::Azure::Storage::Blobs::DownloadBlobOptions options;
   options.Range = ::Azure::Core::Http::HttpRange();
-  options.Range.Value().Length = static_cast<int64_t>(total_length);
+  options.Range.Value().Length = static_cast<int64_t>(nbytes);
   options.Range.Value().Offset = static_cast<int64_t>(offset);
 
   ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
@@ -658,14 +656,7 @@ Status Azure::read_impl(
         "Read blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
-  *length_returned = result.BodyStream->ReadToCount(
-      static_cast<uint8_t*>(buffer), total_length);
-
-  if (*length_returned < length) {
-    throw AzureException("Read operation read unexpected number of bytes.");
-  }
-
-  return Status::Ok();
+  return result.BodyStream->ReadToCount(static_cast<uint8_t*>(buffer), nbytes);
 }
 
 void Azure::remove_bucket(const URI& uri) const {
@@ -1081,6 +1072,67 @@ std::string Azure::BlockListUploadState::next_block_id() {
   block_ids_.emplace_back(b64_block_id_str);
 
   return b64_block_id_str;
+}
+
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    FileFilter&& file_filter,
+    DirectoryFilter&& dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(
+          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+void AzureScanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto& object = *ptr;
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(object.first, object.second)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
+}
+
+AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
+  if (!more_to_fetch()) {
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+
+  blobs_ = client_.list_blobs_impl(
+      container_name_,
+      blob_path_,
+      this->is_recursive_,
+      max_keys_,
+      continuation_token_);
+  has_fetched_ = true;
+  // Update pointers to the newly fetched results.
+  begin_ = blobs_.begin();
+  end_ = blobs_.end();
+
+  return begin_;
 }
 
 }  // namespace tiledb::sm

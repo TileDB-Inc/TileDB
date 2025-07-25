@@ -35,6 +35,7 @@
 
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/directory_entry.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 #include "uri.h"
 
 #include <vector>
@@ -47,11 +48,25 @@ class IOError : public StatusException {
   }
 };
 
-class UnsupportedOperation : public IOError {
+class FilesystemException : public StatusException {
+ public:
+  explicit FilesystemException(const std::string& message)
+      : StatusException("Filesystem", message) {
+  }
+};
+
+class UnsupportedOperation : public FilesystemException {
  public:
   explicit UnsupportedOperation(const std::string& operation)
-      : IOError(std::string(
+      : FilesystemException(std::string(
             operation + " is not supported on the given filesystem.")) {
+  }
+};
+
+class UnsupportedURI : public FilesystemException {
+ public:
+  explicit UnsupportedURI(const std::string& uri)
+      : FilesystemException("Unsupported URI scheme: " + uri) {
   }
 };
 
@@ -60,6 +75,17 @@ class FilesystemBase {
   FilesystemBase() = default;
 
   virtual ~FilesystemBase() = default;
+
+  /**
+   * Checks if the filesystem supports the given URI.
+   *
+   * - s3.supports_uri(s3://test) will return true.
+   * - posix.supports_uri(s3://test) will return false.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on the filesystem, `false` otherwise.
+   */
+  virtual bool supports_uri(const URI& uri) const = 0;
 
   /**
    * Creates a directory.
@@ -127,13 +153,31 @@ class FilesystemBase {
   ls_with_sizes(const URI& parent) const = 0;
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FileFilter on each entry collected and the DirectoryFilter on
+   * common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3 and Azure.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FileFilter to invoke on each object for filtering.
+   * @param d The DirectoryFilter to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to list the objects recursively.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  virtual LsObjects ls_filtered(
+      const URI& parent, FileFilter f, DirectoryFilter d, bool recursive) const;
+
+  /**
    * Renames a file.
    * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void move_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames a directory.
@@ -142,7 +186,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void move_dir(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void move_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies a file.
@@ -151,7 +195,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void copy_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies directory.
@@ -160,7 +204,14 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const;
+
+  /**
+   * Whether or not to use the read-ahead cache.
+   *
+   * Defaults to `true` for object-store, `false` for local filesystems.
+   */
+  virtual bool use_read_ahead_cache() const;
 
   /**
    * Reads from a file.
@@ -169,14 +220,9 @@ class FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
    */
-  virtual void read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead = true) const = 0;
+  virtual uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) = 0;
 
   /**
    * Flushes an object store file.

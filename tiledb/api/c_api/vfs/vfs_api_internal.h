@@ -153,7 +153,11 @@ struct tiledb_vfs_handle_t
       tiledb_ls_callback_t cb,
       void* data) const {
     tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
-    vfs_.ls_recursive(parent, wrapper);
+    try {
+      vfs_.ls_recursive(parent, wrapper);
+    } catch (const tiledb::sm::LsStopTraversal&) {
+      // Ignore exception
+    }
   }
 };
 

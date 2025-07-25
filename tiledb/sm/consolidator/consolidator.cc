@@ -293,8 +293,8 @@ void Consolidator::write_consolidated_commits_file(
             uri.to_string(), constants::delete_file_suffix)) {
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
-      throw_if_not_ok(
-          resources.vfs().read(uri, 0, &data[file_index], file_sizes[i]));
+      throw_if_not_ok(resources.vfs().read_exactly(
+          uri, 0, &data[file_index], file_sizes[i]));
       file_index += file_sizes[i];
     }
   }

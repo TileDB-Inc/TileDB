@@ -242,6 +242,10 @@ Status GCS::init_client() const {
   return Status::Ok();
 }
 
+bool GCS::supports_uri(const URI& uri) const {
+  return uri.is_gcs();
+}
+
 void GCS::create_bucket(const URI& uri) const {
   throw_if_not_ok(init_client());
 
@@ -513,13 +517,14 @@ std::vector<directory_entry> GCS::ls_with_sizes(const URI& uri) const {
   return ls_with_sizes(uri, "/", -1);
 }
 
-LsObjects GCS::ls_filtered_impl(
-    const URI& uri,
-    std::function<bool(const std::string_view, uint64_t)> file_filter,
+LsObjects GCS::ls_filtered(
+    const URI& parent,
+    FileFilter file_filter,
+    DirectoryFilter,
     bool recursive) const {
   throw_if_not_ok(init_client());
 
-  const URI uri_dir = uri.add_trailing_slash();
+  const URI uri_dir = parent.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
     throw GCSException(
@@ -548,7 +553,7 @@ LsObjects GCS::ls_filtered_impl(
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
-            "List objects failed on: " + uri.to_string() + " (" +
+            "List objects failed on: " + parent.to_string() + " (" +
             object_metadata.status().message() + ")"));
       }
 
@@ -565,7 +570,7 @@ LsObjects GCS::ls_filtered_impl(
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
-            "List objects failed on: " + uri.to_string() + " (" +
+            "List objects failed on: " + parent.to_string() + " (" +
             object_metadata.status().message() + ")"));
       }
 
@@ -1234,14 +1239,9 @@ Status GCS::flush_object_direct(const URI& uri) {
   return wait_for_object_to_propagate(bucket_name, object_path);
 }
 
-Status GCS::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
-  RETURN_NOT_OK(init_client());
+uint64_t GCS::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+  throw_if_not_ok(init_client());
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not an GCS URI: " + uri.to_string());
@@ -1249,13 +1249,12 @@ Status GCS::read_impl(
 
   std::string bucket_name;
   std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  throw_if_not_ok(parse_gcs_uri(uri, &bucket_name, &object_path));
 
   google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
       bucket_name,
       object_path,
-      google::cloud::storage::ReadRange(
-          offset, offset + length + read_ahead_length));
+      google::cloud::storage::ReadRange(offset, offset + nbytes));
 
   if (!stream.status().ok()) {
     throw GCSException(
@@ -1263,16 +1262,10 @@ Status GCS::read_impl(
         stream.status().message() + ")");
   }
 
-  stream.read(static_cast<char*>(buffer), length + read_ahead_length);
-  *length_returned = stream.gcount();
-
+  stream.read(static_cast<char*>(buffer), nbytes);
+  uint64_t length_returned = stream.gcount();
   stream.Close();
-
-  if (*length_returned < length) {
-    throw GCSException("Read operation read unexpected number of bytes.");
-  }
-
-  return Status::Ok();
+  return length_returned;
 }
 
 Status GCS::parse_gcs_uri(

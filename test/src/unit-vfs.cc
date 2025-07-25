@@ -33,6 +33,9 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif
 #ifdef HAVE_AZURE
 #include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
@@ -486,7 +489,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  require_tiledb_ok(vfs.read(largefile, 0, read_buffer, 26));
+  require_tiledb_ok(vfs.read_exactly(largefile, 0, read_buffer, 26));
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -497,7 +500,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   CHECK(allok);
 
   // Read from a different offset
-  require_tiledb_ok(vfs.read(largefile, 11, read_buffer, 26));
+  require_tiledb_ok(vfs.read_exactly(largefile, 11, read_buffer, 26));
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {

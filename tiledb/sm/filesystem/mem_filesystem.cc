@@ -334,6 +334,10 @@ MemFilesystem::MemFilesystem()
 MemFilesystem::~MemFilesystem() {
 }
 
+bool MemFilesystem::supports_uri(const URI& uri) const {
+  return uri.is_memfs();
+}
+
 void MemFilesystem::create_dir(const URI& uri) const {
   create_dir_internal(uri.to_path());
 }
@@ -377,7 +381,7 @@ Status MemFilesystem::ls(
     const std::string& path, std::vector<std::string>* const paths) const {
   iassert(paths);
 
-  for (auto& fs : ls_with_sizes(URI("mem://" + path))) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 
@@ -471,12 +475,8 @@ void MemFilesystem::move_file(const URI& old_uri, const URI& new_uri) const {
   move(old_uri.to_path(), new_uri.to_path());
 }
 
-void MemFilesystem::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    bool) const {
+uint64_t MemFilesystem::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   FSNode* node;
   std::unique_lock<std::mutex> node_lock;
   auto path = uri.to_path();
@@ -487,6 +487,7 @@ void MemFilesystem::read(
   }
 
   throw_if_not_ok(node->read(offset, buffer, nbytes));
+  return nbytes;
 }
 
 void MemFilesystem::remove(const std::string& path, const bool is_dir) const {

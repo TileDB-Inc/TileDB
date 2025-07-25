@@ -338,10 +338,6 @@ TEST_CASE("C API: tiledb_vfs_move_dir argument validation", "[capi][vfs]") {
 }
 
 TEST_CASE("C API: tiledb_vfs_copy_dir argument validation", "[capi][vfs]") {
-  if constexpr (tiledb::platform::is_os_windows) {
-    // This API is not yet supported on Windows.
-    return;
-  }
   ordinary_vfs x;
   SECTION("success") {
     auto rc{tiledb_vfs_copy_dir(x.ctx, x.vfs, TEST_URI, "new_dir")};
@@ -494,10 +490,6 @@ TEST_CASE("C API: tiledb_vfs_move_file argument validation", "[capi][vfs]") {
 }
 
 TEST_CASE("C API: tiledb_vfs_copy_file argument validation", "[capi][vfs]") {
-  if constexpr (tiledb::platform::is_os_windows) {
-    // This API is not yet supported on Windows.
-    return;
-  }
   ordinary_vfs x;
   SECTION("success") {
     auto rc{tiledb_vfs_copy_file(x.ctx, x.vfs, TEST_URI, "new_uri")};
