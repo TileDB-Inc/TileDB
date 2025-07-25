@@ -40,6 +40,21 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+void LocalFilesystem::copy_file(const URI& old_uri, const URI& new_uri) const {
+  std::filesystem::copy_file(
+      old_uri.to_path(),
+      new_uri.to_path(),
+      std::filesystem::copy_options::overwrite_existing);
+}
+
+void LocalFilesystem::copy_dir(const URI& old_uri, const URI& new_uri) const {
+  std::filesystem::copy(
+      old_uri.to_path(),
+      new_uri.to_path(),
+      std::filesystem::copy_options::overwrite_existing |
+          std::filesystem::copy_options::recursive);
+}
+
 Status LocalFilesystem::ensure_directory(const std::string& path) {
   std::filesystem::path p{path};
   if (p.has_parent_path()) {
