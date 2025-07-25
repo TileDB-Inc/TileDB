@@ -944,6 +944,108 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
+    "Sparse unordered with dups reader: increase tile offsets when exceeded",
+    "[sparse-unordered-with-dups][tile-offsets][budget-exceeded][CX-83]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  std::vector<int> coords(200);
+  std::iota(coords.begin(), coords.end(), 1);
+  uint64_t coords_size = coords.size() * sizeof(int);
+
+  std::vector<int> data(200);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+
+  write_1d_fragment(coords.data(), &coords_size, data.data(), &data_size);
+
+  // We should have 100 tiles (tile offset size 800) which will be bigger than
+  // leftover budget.
+  total_budget_ = "3000";
+  ratio_array_data_ = "0.5";
+  partial_tile_offsets_loading_ = "false";
+  update_config();
+
+  // Try to read.
+  int coords_r[200];
+  int data_r[200];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query. First submission with budget that can't fit offsets
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data_r, &data_r_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords_r, &coords_r_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query.
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Check we hit the correct error.
+  tiledb_error_t* error = NULL;
+  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  REQUIRE(rc == TILEDB_OK);
+
+  const char* msg;
+  rc = tiledb_error_message(error, &msg);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::string error_str(msg);
+  REQUIRE(
+      error_str.find("SparseUnorderedWithDupsReader: Cannot load tile offsets, "
+                     "computed size") != std::string::npos);
+
+  // Now increase the budget and try again. This should succeed.
+  auto increased_budget = 10 * std::stoi(total_budget_);
+  tiledb_config_t* config;
+  error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "sm.mem.total_budget",
+          std::to_string(increased_budget).c_str(),
+          &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  // This is needed to simulate the remote server environment where updating
+  // the config of a query that has already been submitted is only allowed.
+  // This is set during deserialization on the remote server.
+  query->query_->set_remote_query();
+
+  rc = tiledb_query_set_config(ctx_, query, config);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: tile offsets partial loading",
     "[sparse-unordered-with-dups][tile-offsets][multiple-iterations]") {
   bool enable_partial_tile_offsets_loading = GENERATE(true, false);
