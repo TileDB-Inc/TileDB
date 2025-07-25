@@ -218,22 +218,6 @@ class Win : public LocalFilesystem {
    */
   void move_file(const URI& old_uri, const URI& new_uri) const override;
 
-  /**
-   * Copies a directory.
-   *
-   * @param old_uri The old URI.
-   * @param new_uri The new URI.
-   */
-  void copy_dir(const URI&, const URI&) const override;
-
-  /**
-   * Copies a file.
-   *
-   * @param old_uri The old URI.
-   * @param new_uri The new URI.
-   */
-  void copy_file(const URI&, const URI&) const override;
-
   /** Whether or not to use the read-ahead cache. */
   bool use_read_ahead_cache() const override {
     return false;
