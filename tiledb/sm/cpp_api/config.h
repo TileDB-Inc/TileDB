@@ -966,11 +966,6 @@ class Config {
    * - `rest.payer_namespace` <br>
    *    The namespace that should be charged for the request. <br>
    *    **Default**: no default set
-   * - `filestore.buffer_size` <br>
-   *    Specifies the size in bytes of the internal buffers used in the
-   *    filestore API. The size should be bigger than the minimum tile size
-   *    filestore currently supports, that is currently 1024bytes. <br>
-   *    **Default**: 100MB
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;

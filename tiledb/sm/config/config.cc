@@ -244,7 +244,6 @@ const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
-const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
     std::make_pair("profile_name", Config::PROFILE_NAME),
@@ -524,7 +523,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.s3.install_sigpipe_handler",
         Config::VFS_S3_INSTALL_SIGPIPE_HANDLER),
-    std::make_pair("filestore.buffer_size", Config::FILESTORE_BUFFER_SIZE),
 };  // namespace tiledb::sm
 
 /* ****************************** */

@@ -786,30 +786,6 @@ extern const std::string mime_tiff_str;
 /** String describing MIME_PDF. */
 extern const std::string mime_pdf_str;
 
-/** The default tile extent used in filestore arrays. */
-extern const uint64_t filestore_default_tile_extent;
-
-/** Name of the single dimension used in filestore arrays. */
-extern const std::string filestore_dimension_name;
-
-/** Name of the single attribute used in filestore arrays. */
-extern const std::string filestore_attribute_name;
-
-/** Name of the metadata key used in filestore arrays for current size. */
-extern const std::string filestore_metadata_size_key;
-
-/** Name of the metadata key used in filestore arrays for mime type. */
-extern const std::string filestore_metadata_mime_type_key;
-
-/** Name of the metadata key used in filestore arrays for mime encoding. */
-extern const std::string filestore_metadata_mime_encoding_key;
-
-/** Name of the metadata key used in filestore arrays for original filename. */
-extern const std::string filestore_metadata_original_filename_key;
-
-/** Name of the metadata key used in filestore arrays for filename extension. */
-extern const std::string filestore_metadata_file_extension_key;
-
 /** The minimum size of an s3 multipart upload intermediate part. */
 extern const uint64_t s3_min_multipart_part_size;
 
