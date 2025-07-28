@@ -307,7 +307,7 @@ class GCS : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * the FileFilter on each entry collected and the DirectoryFilter on
    * common prefixes for pruning.
    *
    * @param parent The parent prefix to list sub-paths.
@@ -700,20 +700,8 @@ class GCS : public FilesystemBase {
   /**
    * Contains the implementation of ls_filtered.
    *
-   * @section Notes
-   *
-   * The use of the non-generic std::function is necessary to keep the
-   * function's implementation in gcs.cc and avoid leaking the Google Cloud
-   * SDK headers, which would cause significant build performance regressions
-   * (see PR 4777). In the public-facing ls_filtered, we still use a generic
-   * callback which we convert.
-   *
-   * This has the consequence that the callback cannot capture variables that
-   * are not copy-constructible. It could be rectified with C++ 23's
-   * std::move_only_function, when it becomes available.
-   *
    * @param uri The parent path to list sub-paths.
-   * @param file_filter The FilePredicate to invoke on each object for
+   * @param file_filter The FileFilter to invoke on each object for
    * filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI

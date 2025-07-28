@@ -438,8 +438,8 @@ class Azure : public FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
+   * @param f The FileFilter to invoke on each object for filtering.
+   * @param d The DirectoryFilter to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
