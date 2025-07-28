@@ -1679,7 +1679,7 @@ void FragmentMetadata::get_footer_offset_and_size(
     URI fragment_metadata_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
     uint64_t size_offset = meta_file_size_ - sizeof(uint64_t);
-    throw_if_not_ok(resources_->vfs().read(
+    throw_if_not_ok(resources_->vfs().read_exactly(
         fragment_metadata_uri, size_offset, size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     resources_->stats().add_counter("read_frag_meta_size", sizeof(uint64_t));
@@ -2758,7 +2758,7 @@ void FragmentMetadata::read_file_footer(
   }
 
   // Read footer
-  throw_if_not_ok(resources_->vfs().read(
+  throw_if_not_ok(resources_->vfs().read_exactly(
       fragment_metadata_uri,
       *footer_offset,
       tile->data_as<uint8_t>(),
