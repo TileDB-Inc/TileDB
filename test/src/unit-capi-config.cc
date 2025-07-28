@@ -226,7 +226,6 @@ void check_save_to_file() {
 #else
   ss << "config.logging_level 0\n";
 #endif
-  ss << "filestore.buffer_size 104857600\n";
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
@@ -604,7 +603,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
-  all_param_values["filestore.buffer_size"] = "104857600";
   all_param_values["profile_dir"] = "";
   all_param_values["profile_name"] = "";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";

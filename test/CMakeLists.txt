@@ -67,7 +67,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-enum_values.cc
   src/unit-capi-enumerations.cc
   src/unit-capi-error.cc
-  src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
   src/unit-capi-fragment_info.cc

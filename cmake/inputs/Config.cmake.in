@@ -19,7 +19,6 @@ if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   find_dependency(spdlog)
   find_dependency(ZLIB)
   find_dependency(zstd)
-  find_dependency(unofficial-libmagic)
   if(NOT WIN32)
     find_dependency(OpenSSL)
   endif()
