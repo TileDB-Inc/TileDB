@@ -164,6 +164,13 @@ class MemoryBudget {
     return tile_upper_memory_limit_;
   }
 
+  /**
+   * @return Portion of the total memory budget dedicated to loading array data.
+   */
+  double array_data_budget() const {
+    return total_budget_ * ratio_array_data_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
