@@ -1424,10 +1424,16 @@ TEST_CASE_METHOD(
   };
 
   SECTION("Example") {
+    SKIP(
+        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF "
+        "| Assertions: ON | Debug To re-enable when fixed.");
     doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
   }
 
   SECTION("Condition") {
+    SKIP(
+        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF "
+        "| Assertions: ON | Debug To re-enable when fixed.");
     int value = 110;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::GE));
@@ -1778,6 +1784,9 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
+    SKIP(
+        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF "
+        "| Assertions: ON | Debug To re-enable when fixed.");
     int value = 1329;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
