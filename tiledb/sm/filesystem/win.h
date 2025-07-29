@@ -195,29 +195,6 @@ class Win : public LocalFilesystem {
       const URI& path) const override;
 
   /**
-   * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
-   *
-   * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
-   * @param recursive Whether to recursively list subdirectories.
-   *
-   * Note: the return type LsObjects does not match the other "ls" methods so as
-   * to match the S3 equivalent API.
-   */
-  template <FilePredicate F, DirectoryPredicate D>
-  LsObjects ls_filtered(
-      const URI& parent,
-      F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const {
-    return std_filesystem_ls_filtered<F, D>(parent, f, d, recursive);
-  }
-
-  /**
    * Move a given filesystem path.
    *
    * @param old_path The old path.
