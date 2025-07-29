@@ -374,7 +374,7 @@ TEST_CASE(
     std::vector results_vector(scan.begin(), scan.end());
 
     CHECK(results_vector.size() == expected.size());
-    for (const auto & s3_object : results_vector) {
+    for (const auto& s3_object : results_vector) {
       if (s3_object.GetSize() > 0) {
         CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
       } else {
@@ -385,9 +385,7 @@ TEST_CASE(
       CHECK_THAT(
           expected,
           Catch::Matchers::Contains(
-              std::make_pair(
-                  uri,
-                  static_cast<size_t>(s3_object.GetSize()))));
+              std::make_pair(uri, static_cast<size_t>(s3_object.GetSize()))));
     }
   }
 }
@@ -441,9 +439,8 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
         s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
     CHECK_THAT(
         expected,
-        Catch::Matchers::Contains(
-            std::make_pair(
-                full_uri, static_cast<size_t>(s3_object.GetSize()))));
+        Catch::Matchers::Contains(std::make_pair(
+            full_uri, static_cast<size_t>(s3_object.GetSize()))));
   }
 }
 

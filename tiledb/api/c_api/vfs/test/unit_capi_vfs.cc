@@ -720,10 +720,11 @@ TEST_CASE("C API: tiledb_vfs_ls_recursive argument validation", "[capi][vfs]") {
 
 TEST_CASE(
     "C API: VFS recursive ls unsupported backends",
-    "[capi][vfs][ls-recursive]") {
+    "[capi][vfs][ls_recursive]") {
   ordinary_vfs vfs;
   int ls_data;
   auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
+  auto dir_cb = [](const char*, size_t, void*) { return 0; };
   // Recursive ls is currently only supported for S3.
   tiledb::sm::URI uri{GENERATE(
       "file:///path/", "mem:///path/", "azure://path/", "gcs://path/")};
@@ -735,19 +736,64 @@ TEST_CASE(
     CHECK(
         tiledb_vfs_ls_recursive(vfs.ctx, vfs.vfs, uri.c_str(), cb, &ls_data) ==
         TILEDB_ERR);
+    CHECK(
+        tiledb_vfs_ls_recursive_v2(
+            vfs.ctx, vfs.vfs, uri.c_str(), cb, dir_cb, &ls_data) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_vfs_ls_recursive_v2 argument validation",
+    "[capi][vfs][ls_recursive_v2]") {
+  /*
+   * No "success" sections here; too much overhead to set up.
+   */
+  ordinary_vfs x;
+  int32_t data;
+  auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
+  auto dir_cb = [](const char*, size_t, void*) { return 0; };
+  SECTION("null context") {
+    auto rc{tiledb_vfs_ls_recursive_v2(
+        nullptr, x.vfs, TEST_URI, cb, dir_cb, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null vfs") {
+    auto rc{tiledb_vfs_ls_recursive_v2(
+        x.ctx, nullptr, TEST_URI, cb, dir_cb, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null uri") {
+    auto rc{
+        tiledb_vfs_ls_recursive_v2(x.ctx, x.vfs, nullptr, cb, dir_cb, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null file callback") {
+    auto rc{tiledb_vfs_ls_recursive_v2(
+        x.ctx, x.vfs, TEST_URI, nullptr, dir_cb, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null directory callback") {
+    auto rc{
+        tiledb_vfs_ls_recursive_v2(x.ctx, x.vfs, TEST_URI, cb, nullptr, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null data ptr") {
+    auto rc{tiledb_vfs_ls_recursive_v2(
+        x.ctx, x.vfs, TEST_URI, cb, dir_cb, nullptr)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
 }
 
 TEST_CASE(
     "C API: CallbackWrapperCAPI operator() validation",
-    "[ls-recursive][callback][wrapper]") {
-  tiledb::sm::LsCallback cb = [](const char* path,
-                                 size_t path_len,
-                                 uint64_t object_size,
-                                 void* data) -> int32_t {
+    "[ls_recursive][callback][wrapper]") {
+  tiledb::sm::LsFileCallback cb = [](const char* path,
+                                     size_t path_len,
+                                     uint64_t object_size,
+                                     void* data) -> int32_t {
     if (object_size > 100) {
       // Throw if object size is greater than 100 bytes.
-      throw std::runtime_error("Throwing callback");
+      throw std::runtime_error("Throwing file callback");
     } else if (!std::string(path, path_len).ends_with(".txt")) {
       // Reject non-txt files.
       return 0;
@@ -756,25 +802,52 @@ TEST_CASE(
     ls_data->push_back({{path, path_len}, object_size});
     return 1;
   };
-
+  tiledb::sm::LsDirCallback dir_cb =
+      [](const char* path, size_t path_len, void* data) {
+        std::string_view dir{path, path_len};
+        if (dir == "throw") {
+          throw std::runtime_error("Throwing directory callback");
+        } else if (dir == "bad/dir/") {
+          return 0;
+        }
+        auto* ls_data = static_cast<tiledb::sm::LsObjects*>(data);
+        ls_data->push_back({{path, path_len}, 0});
+        return 1;
+      };
   tiledb::sm::LsObjects data{};
-  tiledb::sm::CallbackWrapperCAPI wrapper(cb, static_cast<void*>(&data));
+  tiledb::sm::CallbackWrapperCAPI wrapper(
+      cb, dir_cb, static_cast<void*>(&data));
 
-  SECTION("Callback return 1 signals to continue traversal") {
-    CHECK(wrapper("file.txt", 10) == 1);
-    CHECK(data.size() == 1);
+  SECTION("LsFileCallback") {
+    SECTION("Callback return 1 signals to continue traversal") {
+      CHECK(wrapper("file.txt", 10) == 1);
+      CHECK(data.size() == 1);
+    }
+    SECTION("Callback return 0 signals to stop traversal") {
+      CHECK_THROWS_AS(wrapper("some/dir/", 0), tiledb::sm::LsStopTraversal);
+    }
+    SECTION("Callback exception is propagated") {
+      CHECK_THROWS_WITH(wrapper("path", 101), "Throwing file callback");
+    }
   }
-  SECTION("Callback return 0 signals to stop traversal") {
-    CHECK_THROWS_AS(wrapper("some/dir/", 0) == 0, tiledb::sm::LsStopTraversal);
-  }
-  SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
+
+  SECTION("LsDirCallback") {
+    SECTION("Callback return 1 signals to continue traversal") {
+      CHECK(wrapper("good/dir/") == 1);
+      CHECK(data.size() == 1);
+    }
+    SECTION("Callback return 0 signals to stop traversal") {
+      CHECK_THROWS_AS(wrapper("bad/dir/"), tiledb::sm::LsStopTraversal);
+    }
+    SECTION("Callback exception is propagated") {
+      CHECK_THROWS_WITH(wrapper("throw"), "Throwing directory callback");
+    }
   }
 }
 
 TEST_CASE(
     "C API: CallbackWrapperCAPI construction validation",
-    "[ls-recursive][callback][wrapper]") {
+    "[ls_recursive][callback][wrapper]") {
   using tiledb::sm::CallbackWrapperCAPI;
   tiledb::sm::LsObjects data;
   auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t { return 1; };
