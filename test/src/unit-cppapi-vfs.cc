@@ -507,6 +507,7 @@ TEST_CASE(
   }
 }
 
+// TODO: LocalFsTest fails
 using ls_recursive_test_types = std::tuple<
     tiledb::test::LocalFsTest,
     tiledb::test::S3Test,
@@ -529,47 +530,56 @@ TEMPLATE_LIST_TEST_CASE(
 
   tiledb::VFSExperimental::LsObjects ls_objects;
   // Predicate filter to apply to ls_recursive.
-  tiledb::VFSExperimental::LsInclude include;
+  tiledb::VFSExperimental::LsIncludeFile include_file;
+  tiledb::VFSExperimental::LsIncludeDir include_dir = [&](std::string_view) {
+    return true;
+  };
   // Callback to populate ls_objects vector using a filter.
-  tiledb::VFSExperimental::LsCallback cb = [&](std::string_view path,
-                                               uint64_t size) {
-    if (include(path, size)) {
+  tiledb::VFSExperimental::LsFileCallback file_cb = [&](std::string_view path,
+                                                        uint64_t size) {
+    if (include_file(path, size)) {
       ls_objects.emplace_back(path, size);
+    }
+    return true;
+  };
+  tiledb::VFSExperimental::LsDirCallback dir_cb = [&](std::string_view path) {
+    if (include_dir(path)) {
+      ls_objects.emplace_back(path, 0);
     }
     return true;
   };
 
   SECTION("Default filter (include all)") {
-    include = [](std::string_view, uint64_t) { return true; };
+    include_file = [](std::string_view, uint64_t) { return true; };
   }
   SECTION("Custom filter (include none)") {
-    include = [](std::string_view, uint64_t) { return false; };
+    include_file = [](std::string_view, uint64_t) { return false; };
   }
 
   SECTION("Custom filter (search for test_file_50)") {
-    include = [](std::string_view object_name, uint64_t) {
+    include_file = [](std::string_view object_name, uint64_t) {
       return object_name.find("test_file_50") != std::string::npos;
     };
   }
   SECTION("Custom filter (search for test_file_1*)") {
-    include = [](std::string_view object_name, uint64_t) {
+    include_file = [](std::string_view object_name, uint64_t) {
       return object_name.find("test_file_1") != std::string::npos;
     };
   }
   SECTION("Custom filter (reject files over 50 bytes)") {
-    include = []([[maybe_unused]] std::string_view entry, uint64_t size) {
+    include_file = []([[maybe_unused]] std::string_view entry, uint64_t size) {
       return size <= 50;
     };
   }
 
   // Test collecting results with LsInclude predicate.
+  auto include_dirs = [](std::string_view) { return true; };
+
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
-      ctx, vfs, test.temp_dir_.to_string(), include);
+      ctx, vfs, test.temp_dir_.to_string(), include_file, include_dirs);
   std::erase_if(expected_results, [&](const auto& object) {
-    if (object.second > 0) {
-      return !include(object.first, object.second);
-    }
-    return !tiledb::sm::accept_all_dirs(object.first);
+    // Leave all directories within the expected_results set.
+    return object.second != 0 && !include_file(object.first, object.second);
   });
   std::sort(results.begin(), results.end());
   CHECK(results.size() == expected_results.size());
@@ -577,10 +587,10 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Test collecting results with LsCallback, writing data into ls_objects.
   tiledb::VFSExperimental::ls_recursive(
-      ctx, vfs, test.temp_dir_.to_string(), cb);
+      ctx, vfs, test.temp_dir_.to_string(), file_cb, dir_cb);
   std::sort(ls_objects.begin(), ls_objects.end());
   CHECK(ls_objects.size() == expected_results.size());
-  CHECK(expected_results == ls_objects);
+  CHECK_THAT(expected_results, Catch::Matchers::UnorderedEquals(ls_objects));
 }
 
 TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
@@ -590,6 +600,7 @@ TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
     return;
   }
   auto expected_results = s3_test.expected_results();
+  std::erase_if(expected_results, [](const auto& a) { return a.second == 0; });
 
   vfs_config cfg;
   tiledb::Context ctx(tiledb::Config(&cfg.config));
@@ -624,9 +635,13 @@ TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls_recursive]") {
   tiledb::Context ctx(tiledb::Config(&cfg.config));
   tiledb::VFS vfs(ctx);
 
-  tiledb::VFSExperimental::LsInclude filter = [](std::string_view,
-                                                 uint64_t) -> bool {
-    throw std::runtime_error("Throwing filter");
+  tiledb::VFSExperimental::LsIncludeFile filter = [](std::string_view,
+                                                     uint64_t) -> bool {
+    throw std::runtime_error("Throwing file filter");
+  };
+  tiledb::VFSExperimental::LsIncludeDir dir_filter =
+      [](std::string_view) -> bool {
+    throw std::runtime_error("Throwing directory filter");
   };
   auto path = s3_test.temp_dir_.to_string();
 
@@ -637,20 +652,43 @@ TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls_recursive]") {
     CHECK_NOTHROW(
         tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter));
   }
-  SECTION("Throwing filter with N objects should throw") {
+  SECTION("Throwing file filter with N objects should throw") {
     vfs.touch(s3_test.temp_dir_.join_path("test_file").to_string());
     CHECK_THROWS_AS(
-        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
+        tiledb::VFSExperimental::ls_recursive_filter(
+            ctx, vfs, path, filter, dir_filter),
         std::runtime_error);
     CHECK_THROWS_WITH(
-        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
-        Catch::Matchers::ContainsSubstring("Throwing filter"));
+        tiledb::VFSExperimental::ls_recursive_filter(
+            ctx, vfs, path, filter, dir_filter),
+        Catch::Matchers::ContainsSubstring("Throwing file filter"));
     CHECK_THROWS_AS(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
+        tiledb::VFSExperimental::ls_recursive(
+            ctx, vfs, path, filter, dir_filter),
         std::runtime_error);
     CHECK_THROWS_WITH(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
-        Catch::Matchers::ContainsSubstring("Throwing filter"));
+        tiledb::VFSExperimental::ls_recursive(
+            ctx, vfs, path, filter, dir_filter),
+        Catch::Matchers::ContainsSubstring("Throwing file filter"));
+  }
+  SECTION("Throwing directory filter with N objects should throw") {
+    vfs.touch(s3_test.temp_dir_.join_path("prefix/test_file").to_string());
+    CHECK_THROWS_AS(
+        tiledb::VFSExperimental::ls_recursive_filter(
+            ctx, vfs, path, tiledb::sm::accept_all_files, dir_filter),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        tiledb::VFSExperimental::ls_recursive_filter(
+            ctx, vfs, path, tiledb::sm::accept_all_files, dir_filter),
+        Catch::Matchers::ContainsSubstring("Throwing directory filter"));
+    CHECK_THROWS_AS(
+        tiledb::VFSExperimental::ls_recursive(
+            ctx, vfs, path, tiledb::sm::accept_all_files, dir_filter),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        tiledb::VFSExperimental::ls_recursive(
+            ctx, vfs, path, tiledb::sm::accept_all_files, dir_filter),
+        Catch::Matchers::ContainsSubstring("Throwing directory filter"));
   }
 }
 
@@ -658,12 +696,17 @@ TEST_CASE(
     "CPP API: CallbackWrapperCPP construction validation",
     "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
-  auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
-  SECTION("Null callback") {
+  auto file_cb = [&](std::string_view, uint64_t) -> bool { return true; };
+  auto dir_cb = [&](std::string_view) -> bool { return true; };
+  SECTION("Null file callback") {
     CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(nullptr));
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(nullptr, dir_cb));
   }
-  SECTION("Valid callback") {
-    CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(cb));
+  SECTION("Null dir callback") {
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(file_cb, nullptr));
+  }
+  SECTION("Valid callbacks") {
+    CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(file_cb, dir_cb));
   }
 }
 
@@ -671,10 +714,10 @@ TEST_CASE(
     "CPP API: CallbackWrapperCPP operator() validation",
     "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
-  auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
+  auto file_cb = [&](std::string_view path, uint64_t object_size) -> bool {
     if (object_size > 100) {
       // Throw if object size is greater than 100 bytes.
-      throw std::runtime_error("Throwing callback");
+      throw std::runtime_error("Throwing file callback");
     } else if (!path.ends_with(".txt")) {
       // Reject non-txt files.
       return false;
@@ -682,17 +725,43 @@ TEST_CASE(
     data.emplace_back(path, object_size);
     return true;
   };
-  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
 
-  SECTION("Callback return true accepts object") {
-    CHECK(wrapper("file.txt", 10) == true);
-    CHECK(data.size() == 1);
+  auto dir_cb = [&](std::string_view path) -> bool {
+    if (path == "bad/dir/") {
+      return false;
+    } else if (path == "throw") {
+      throw std::runtime_error("Throwing directory callback");
+    }
+    data.emplace_back(path, 0);
+    return true;
+  };
+  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(file_cb, dir_cb);
+
+  SECTION("Files") {
+    SECTION("Callback return true accepts object") {
+      CHECK(wrapper("file.txt", 10) == true);
+      CHECK(data.size() == 1);
+    }
+    SECTION("Callback return false rejects object") {
+      CHECK(wrapper("some/dir/", 0) == false);
+      CHECK(data.empty());
+    }
+    SECTION("Callback exception is propagated") {
+      CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing file callback");
+    }
   }
-  SECTION("Callback return false rejects object") {
-    CHECK(wrapper("some/dir/", 0) == false);
-    CHECK(data.empty());
-  }
-  SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
+
+  SECTION("Directories") {
+    SECTION("Callback return true accepts object") {
+      CHECK(wrapper("good/dir/") == true);
+      CHECK(data.size() == 1);
+    }
+    SECTION("Callback return false rejects object") {
+      CHECK(wrapper("bad/dir/") == false);
+      CHECK(data.empty());
+    }
+    SECTION("Callback exception is propagated") {
+      CHECK_THROWS_WITH(wrapper("throw") == 0, "Throwing directory callback");
+    }
   }
 }

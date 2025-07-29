@@ -621,8 +621,7 @@ class VFS : FilesystemBase,
    *    and object size.
    */
   template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  LsObjects ls_recursive(
-      const URI& parent, F&& f, D&& d = accept_all_dirs) const {
+  LsObjects ls_recursive(const URI& parent, F f, D d = accept_all_dirs) const {
     return ls_filtered(parent, std::move(f), std::move(d), true);
   }
 

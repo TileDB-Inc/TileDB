@@ -150,11 +150,24 @@ struct tiledb_vfs_handle_t
 
   void ls_recursive(
       const tiledb::sm::URI& parent,
-      tiledb_ls_callback_t cb,
+      tiledb_ls_file_callback_t file_cb,
       void* data) const {
-    tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
+    tiledb::sm::CallbackWrapperCAPI wrapper(file_cb, data);
     try {
       vfs_.ls_recursive(parent, wrapper);
+    } catch (const tiledb::sm::LsStopTraversal&) {
+      // Ignore exception
+    }
+  }
+
+  void ls_recursive_v2(
+      const tiledb::sm::URI& parent,
+      tiledb_ls_file_callback_t file_cb,
+      tiledb_ls_dir_callback_t dir_cb,
+      void* data) const {
+    tiledb::sm::CallbackWrapperCAPI wrapper(file_cb, dir_cb, data);
+    try {
+      vfs_.ls_recursive(parent, wrapper, wrapper);
     } catch (const tiledb::sm::LsStopTraversal&) {
       // Ignore exception
     }

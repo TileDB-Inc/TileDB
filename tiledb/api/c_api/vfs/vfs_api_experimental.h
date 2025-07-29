@@ -49,8 +49,19 @@ extern "C" {
  * @param object_size The size of the object at the current path.
  * @param data Data passed to the callback used to store collected results.
  */
-typedef int32_t (*tiledb_ls_callback_t)(
+typedef int32_t (*tiledb_ls_file_callback_t)(
     const char* path, size_t path_len, uint64_t object_size, void* data);
+
+/**
+ * Typedef for ls_recursive callback function invoked on each directory
+ * collected.
+ *
+ * @param path The path of a visited directory for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param data Data passed to the callback used to store collected results.
+ */
+typedef int32_t (*tiledb_ls_dir_callback_t)(
+    const char* path, size_t path_len, void* data);
 
 /**
  * Visits the children of `path` recursively, invoking the callback for each
@@ -93,7 +104,15 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    tiledb_ls_callback_t callback,
+    tiledb_ls_file_callback_t file_callback,
+    void* data) TILEDB_NOEXCEPT;
+
+TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    tiledb_ls_file_callback_t file_callback,
+    tiledb_ls_dir_callback_t dir_callback,
     void* data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
