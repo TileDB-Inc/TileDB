@@ -407,18 +407,14 @@ class TileDBS3Client : public Aws::S3::S3Client {
  *      with the iterator returned by the previous request. Batch number can be
  *      tracked by the total number of times we submit a ListObjectsV2 request
  *      within fetch_results().
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-class S3Scanner : public LsScanner<F, D> {
+class S3Scanner : public LsScanner {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
   template <class scanner_type, class T, class Allocator>
   friend class LsScanIterator;
   using Iterator = LsScanIterator<
-      S3Scanner<F, D>,
+      S3Scanner,
       Aws::S3::Model::Object,
       Aws::Allocator<Aws::S3::Model::Object>>;
 
@@ -426,8 +422,8 @@ class S3Scanner : public LsScanner<F, D> {
   S3Scanner(
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
-      F file_filter,
-      D dir_filter = accept_all_dirs,
+      FileFilter&& file_filter,
+      DirectoryFilter&& dir_filter = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -500,46 +496,7 @@ class S3Scanner : public LsScanner<F, D> {
    * @sa LsScanIterator::operator++()
    * @sa S3Scanner::next(typename Iterator::pointer&)
    */
-  typename Iterator::pointer fetch_results() {
-    // If this is our first request, GetIsTruncated() will be false.
-    if (more_to_fetch()) {
-      // If results are truncated on a subsequent request, we set the next
-      // continuation token before resubmitting our request.
-      Aws::String next_marker =
-          list_objects_outcome_.GetResult().GetNextContinuationToken();
-      if (next_marker.empty()) {
-        throw S3Exception(
-            "Failed to retrieve next continuation token for ListObjectsV2 "
-            "request.");
-      }
-      list_objects_request_.SetContinuationToken(std::move(next_marker));
-    } else if (list_objects_outcome_.IsSuccess()) {
-      // If we have previously submitted a successful request and there are no
-      // more results, we've reached the end of the scan.
-      begin_ = end_ = typename Iterator::pointer();
-      return end_;
-    }
-
-    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
-    if (!list_objects_outcome_.IsSuccess()) {
-      throw S3Exception(
-          std::string("Error while listing with prefix '") +
-          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter() + "'" + outcome_error_message(list_objects_outcome_));
-    }
-    // Update pointers to the newly fetched results.
-    begin_ = list_objects_outcome_.GetResult().GetContents().begin();
-    end_ = list_objects_outcome_.GetResult().GetContents().end();
-
-    if (list_objects_outcome_.GetResult().GetContents().empty()) {
-      // If the request returned no results, we've reached the end of the scan.
-      // We hit this case when the number of objects in the bucket is a multiple
-      // of the current max_keys.
-      return end_;
-    }
-
-    return begin_;
-  }
+  typename Iterator::pointer fetch_results();
 
   /** Pointer to the S3 client initialized by VFS. */
   shared_ptr<TileDBS3Client> client_;
@@ -561,7 +518,7 @@ class S3Scanner : public LsScanner<F, D> {
  * All internal methods have been renamed to use the "file" verbiage in
  * compliance with the FilesystemBase class.
  */
-class S3 : FilesystemBase {
+class S3 : public FilesystemBase {
  private:
   /** Forward declaration */
   struct MultiPartUploadState;
@@ -868,23 +825,23 @@ class S3 : FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * the FileFilter on each entry collected and the DirectoryFilter on
    * common prefixes for pruning.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
+   * @param f The FileFilter to invoke on each object for filtering.
+   * @param d The DirectoryFilter to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
    * @param recursive Whether to recursively list subdirectories.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const {
+      FileFilter f,
+      DirectoryFilter d = accept_all_dirs,
+      bool recursive = false) const override {
     throw_if_not_ok(init_client());
-    S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+    S3Scanner s3_scanner =
+        scanner(parent, std::move(f), std::move(d), recursive);
     // Prepend each object key with the bucket URI.
     auto prefix = parent.to_string();
     prefix = prefix.substr(0, prefix.find('/', 5));
@@ -903,22 +860,22 @@ class S3 : FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
+   * @param f The FileFilter to invoke on each object for filtering.
+   * @param d The DirectoryFilter to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed S3Scanner object.
    */
-  template <FilePredicate F, DirectoryPredicate D>
-  S3Scanner<F, D> scanner(
+  S3Scanner scanner(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
+      FileFilter f,
+      DirectoryFilter d = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000) const {
     throw_if_not_ok(init_client());
-    return S3Scanner<F, D>(client_, parent, f, d, recursive, max_keys);
+    return S3Scanner(
+        client_, parent, std::move(f), std::move(d), recursive, max_keys);
   }
 
   /**
@@ -1576,62 +1533,6 @@ class S3 : FilesystemBase {
   URI generate_chunk_uri(
       const URI& attribute_uri, const std::string& chunk_name);
 };
-
-template <FilePredicate F, DirectoryPredicate D>
-S3Scanner<F, D>::S3Scanner(
-    const shared_ptr<TileDBS3Client>& client,
-    const URI& prefix,
-    F file_filter,
-    D dir_filter,
-    bool recursive,
-    int max_keys)
-    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
-    , client_(client) {
-  const auto prefix_dir = prefix.add_trailing_slash();
-  auto prefix_str = prefix_dir.to_string();
-  Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
-
-  list_objects_request_.SetBucket(aws_uri.GetAuthority());
-  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
-  // Empty delimiter returns recursive results from S3.
-  list_objects_request_.SetDelimiter(delimiter());
-  // The default max_keys for ListObjects is 1000.
-  list_objects_request_.SetMaxKeys(max_keys);
-
-  if (client_->requester_pays()) {
-    list_objects_request_.SetRequestPayer(
-        Aws::S3::Model::RequestPayer::requester);
-  }
-  fetch_results();
-  next(begin_);
-}
-
-template <FilePredicate F, DirectoryPredicate D>
-void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
-  if (ptr == end_) {
-    ptr = fetch_results();
-  }
-
-  while (ptr != end_) {
-    auto object = *ptr;
-    uint64_t size = object.GetSize();
-    std::string path = "s3://" +
-                       std::string(list_objects_request_.GetBucket()) +
-                       S3::add_front_slash(std::string(object.GetKey()));
-
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(path, size)) {
-      // Iterator is at the next object within results accepted by the filters.
-      return;
-    } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
-      advance(ptr);
-    }
-  }
-}
 
 }  // namespace tiledb::sm
 

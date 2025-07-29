@@ -517,13 +517,14 @@ std::vector<directory_entry> GCS::ls_with_sizes(const URI& uri) const {
   return ls_with_sizes(uri, "/", -1);
 }
 
-LsObjects GCS::ls_filtered_impl(
-    const URI& uri,
-    std::function<bool(const std::string_view, uint64_t)> file_filter,
+LsObjects GCS::ls_filtered(
+    const URI& parent,
+    FileFilter file_filter,
+    DirectoryFilter,
     bool recursive) const {
   throw_if_not_ok(init_client());
 
-  const URI uri_dir = uri.add_trailing_slash();
+  const URI uri_dir = parent.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
     throw GCSException(
@@ -552,7 +553,7 @@ LsObjects GCS::ls_filtered_impl(
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
-            "List objects failed on: " + uri.to_string() + " (" +
+            "List objects failed on: " + parent.to_string() + " (" +
             object_metadata.status().message() + ")"));
       }
 
@@ -569,7 +570,7 @@ LsObjects GCS::ls_filtered_impl(
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
-            "List objects failed on: " + uri.to_string() + " (" +
+            "List objects failed on: " + parent.to_string() + " (" +
             object_metadata.status().message() + ")"));
       }
 

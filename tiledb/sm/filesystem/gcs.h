@@ -307,29 +307,24 @@ class GCS : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * the FileFilter on each entry collected and the DirectoryFilter on
    * common prefixes for pruning.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param file_filter The FilePredicate to invoke on each object for
+   * @param file_filter The FileFilter to invoke on each object for
    * filtering.
-   * @param directory_filter The DirectoryPredicate to invoke on each common
+   * @param directory_filter The DirectoryFilter to invoke on each common
    * prefix for pruning. This is currently unused, but is kept here for future
    * support.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI
    * and object size.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
-      const URI& uri,
-      F file_filter,
-      [[maybe_unused]] D directory_filter = accept_all_dirs,
-      bool recursive = false) const {
-    // We use the constructor of std::function that accepts an F&& to convert
-    // the generic F to a polymorphic std::function.
-    return ls_filtered_impl(uri, std::move(file_filter), recursive);
-  }
+      const URI& parent,
+      FileFilter file_filter,
+      DirectoryFilter directory_filter,
+      bool recursive) const override;
 
   /**
    *
@@ -705,20 +700,8 @@ class GCS : public FilesystemBase {
   /**
    * Contains the implementation of ls_filtered.
    *
-   * @section Notes
-   *
-   * The use of the non-generic std::function is necessary to keep the
-   * function's implementation in gcs.cc and avoid leaking the Google Cloud
-   * SDK headers, which would cause significant build performance regressions
-   * (see PR 4777). In the public-facing ls_filtered, we still use a generic
-   * callback which we convert.
-   *
-   * This has the consequence that the callback cannot capture variables that
-   * are not copy-constructible. It could be rectified with C++ 23's
-   * std::move_only_function, when it becomes available.
-   *
    * @param uri The parent path to list sub-paths.
-   * @param file_filter The FilePredicate to invoke on each object for
+   * @param file_filter The FileFilter to invoke on each object for
    * filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI
