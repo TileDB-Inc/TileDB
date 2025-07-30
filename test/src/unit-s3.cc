@@ -371,9 +371,7 @@ TEST_CASE(
 
     CHECK(results_vector.size() == expected.size());
     for (const auto& s3_object : results_vector) {
-      if (s3_object.GetSize() > 0) {
-        CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
-      }
+      CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
       auto uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
       CHECK_THAT(
           expected,
