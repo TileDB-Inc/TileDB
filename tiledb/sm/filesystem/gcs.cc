@@ -547,6 +547,8 @@ LsObjects GCS::ls_filtered(
   if (recursive) {
     auto it = client_->ListObjects(
         bucket_name, google::cloud::storage::Prefix(std::move(object_path)));
+
+    std::unordered_set<std::string> collected_prefixes;
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
@@ -555,10 +557,37 @@ LsObjects GCS::ls_filtered(
       }
 
       auto entry = to_directory_entry(*object_metadata);
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      auto entry_prefix = entry.first;
+      for (auto pos = entry_prefix.rfind('/'); pos != std::string::npos;
+           pos = entry_prefix.rfind('/')) {
+        entry_prefix = entry_prefix.substr(0, pos);
+        // Do not accept the prefix we are scanning.
+        if (entry_prefix == parent.to_string() ||
+            collected_prefixes.contains(entry_prefix)) {
+          break;
+        } else {
+          if (!collected_prefixes.emplace(entry_prefix).second) {
+            throw GCSException(
+                "Failed to emplace prefix: '" + entry_prefix + "'");
+          }
+        }
+      }
+
       if (result_filter(entry.first, entry.second)) {
         result.emplace_back(std::move(entry));
       }
     }
+
+    // Insert the collected prefixes into the results
+    for (auto& p : collected_prefixes) {
+      if (result_filter(p, 0)) {
+        result.emplace_back(std::move(p), 0);
+      }
+    }
+    collected_prefixes.clear();
+
   } else {
     auto it = client_->ListObjectsAndPrefixes(
         bucket_name,
