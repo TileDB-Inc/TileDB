@@ -423,7 +423,6 @@ class S3Scanner : public LsScanner {
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
       FileFilter&& file_filter,
-      DirectoryFilter&& dir_filter = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -868,13 +867,9 @@ class S3 : public FilesystemBase {
    * @param recursive Whether to recursively list subdirectories.
    */
   LsObjects ls_filtered(
-      const URI& parent,
-      FileFilter f,
-      DirectoryFilter d = accept_all_dirs,
-      bool recursive = false) const override {
+      const URI& parent, FileFilter f, bool recursive = false) const override {
     throw_if_not_ok(init_client());
-    S3Scanner s3_scanner =
-        scanner(parent, std::move(f), std::move(d), recursive);
+    S3Scanner s3_scanner = scanner(parent, std::move(f), recursive);
     // Prepend each object key with the bucket URI.
     auto prefix = parent.to_string();
     prefix = prefix.substr(0, prefix.find('/', 5));
@@ -903,12 +898,10 @@ class S3 : public FilesystemBase {
   S3Scanner scanner(
       const URI& parent,
       FileFilter f,
-      DirectoryFilter d = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000) const {
     throw_if_not_ok(init_client());
-    return S3Scanner(
-        client_, parent, std::move(f), std::move(d), recursive, max_keys);
+    return S3Scanner(client_, parent, std::move(f), recursive, max_keys);
   }
 
   /**

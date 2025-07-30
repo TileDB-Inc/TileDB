@@ -601,10 +601,7 @@ class VFS : FilesystemBase,
   std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   LsObjects ls_filtered(
-      const URI& parent,
-      FileFilter f,
-      DirectoryFilter d,
-      bool recursive) const override;
+      const URI& parent, FileFilter f, bool recursive) const override;
 
   /**
    * Recursively lists objects and object information that start with `prefix`,
@@ -620,10 +617,9 @@ class VFS : FilesystemBase,
    * @return Vector of results with each entry being a pair of the string URI
    *    and object size.
    */
-  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  LsObjects ls_recursive(
-      const URI& parent, F&& f, D&& d = accept_all_dirs) const {
-    return ls_filtered(parent, std::move(f), std::move(d), true);
+  template <FilePredicate F>
+  LsObjects ls_recursive(const URI& parent, F&& f) const {
+    return ls_filtered(parent, std::move(f), true);
   }
 
   /**

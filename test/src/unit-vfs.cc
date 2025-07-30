@@ -651,8 +651,7 @@ TEMPLATE_LIST_TEST_CASE(
       << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    auto ls_objects = fs.vfs_.ls_filtered(
-        path, accept_all_files, accept_all_dirs, recursive);
+    auto ls_objects = fs.vfs_.ls_filtered(path, accept_all_files, recursive);
 
     auto expected = fs.expected_results();
     if (!recursive) {
@@ -698,26 +697,10 @@ TEST_CASE(
     throw std::logic_error("Throwing FileFilter");
   };
   SECTION("Throwing FileFilter with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, file_filter));
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter));
   }
 
-  auto dir_filter = [](const std::string_view&) -> bool {
-    throw std::logic_error("Throwing DirectoryFilter");
-  };
-  SECTION("Throwing DirectoryFilter with 0 objects should not throw") {
-    // Create an object at root of the bucket; dir_filter shouldn't be called.
-    REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, accept_all_files, dir_filter));
-  }
-
-  SECTION("Throwing filters with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, file_filter, dir_filter));
-  }
-
-  SECTION("Throwing FileFilter with N objects should throw") {
+  SECTION("Throwing filter with N objects should throw") {
     REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     CHECK_THROWS_AS(
         vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
@@ -727,27 +710,15 @@ TEST_CASE(
         Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
   }
 
-  SECTION("Throwing DirectoryFilter with N objects should throw") {
+  SECTION("Throwing filter with N objects should throw") {
+    REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     REQUIRE_NOTHROW(
         vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("prefix/file")));
     CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(
-            vfs_test.temp_dir_, accept_all_files, dir_filter),
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
         std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(
-            vfs_test.temp_dir_, accept_all_files, dir_filter),
-        Catch::Matchers::ContainsSubstring("Throwing DirectoryFilter"));
-  }
-
-  SECTION("Throwing filters with N objects should throw") {
-    REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
-    REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("prefix/file")));
-    CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter, dir_filter),
-        std::logic_error);
-    CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter, dir_filter),
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
         Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
   }
 }
