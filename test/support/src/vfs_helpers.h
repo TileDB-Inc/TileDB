@@ -1045,8 +1045,10 @@ class AzureTest : public VFSTestBase {
 /** Stub test object for tiledb::sm::GCS functionality. */
 class GCSTest : public VFSTestBase {
  public:
-  explicit GCSTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "gcs://") {
+  explicit GCSTest(
+      const std::vector<size_t>& test_tree,
+      const std::string& protocol = "gcs://")
+      : VFSTestBase(test_tree, protocol) {
 #ifdef HAVE_GCS
     vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
@@ -1067,10 +1069,10 @@ class GCSTest : public VFSTestBase {
 };
 
 /** Stub test object for tiledb::sm::GS functionality. */
-class GSTest : public VFSTestBase {
+class GSTest : public GCSTest {
  public:
   explicit GSTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "gs://") {
+      : GCSTest(test_tree, "gs://") {
   }
 };
 

@@ -49,6 +49,10 @@ class LocalFilesystem : public FilesystemBase {
       [[maybe_unused]] DirectoryFilter directory_filter,
       bool recursive) const override;
 
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+
  protected:
   /**
    * Creates the containing directories of a path if they do not exist.
