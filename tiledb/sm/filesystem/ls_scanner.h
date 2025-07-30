@@ -61,6 +61,9 @@ concept FilePredicate = std::predicate<F, const std::string_view, uint64_t>;
  *
  * The predicate returns true if items inside the directory should be traversed,
  * and false otherwise.
+ *
+ * Directory pruning is currently supported only in local filesystem, and not
+ * exposed in the user-facing C API.
  */
 template <class D>
 concept DirectoryPredicate = std::predicate<D, const std::string_view>;
@@ -108,10 +111,7 @@ using DirectoryFilter = std::function<bool(const std::string_view&)>;
  * @return 1 if the callback should continue to the next object, 0 to stop
  *      traversal, or -1 if an error occurred.
  */
-using LsFileCallback =
-    std::function<int32_t(const char*, size_t, uint64_t, void*)>;
-
-using LsDirCallback = std::function<int32_t(const char*, size_t, void*)>;
+using LsCallback = std::function<int32_t(const char*, size_t, uint64_t, void*)>;
 
 /** Type defintion for objects returned from ls_recursive. */
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
@@ -294,90 +294,42 @@ class CallbackWrapperCAPI {
   CallbackWrapperCAPI() = delete;
 
   /** Constructor */
-  CallbackWrapperCAPI(LsFileCallback file_cb, void* data)
-      : file_cb_(std::move(file_cb))
-      , data_(data)
-      , include_dirs_(false) {
-    if (file_cb_ == nullptr) {
-      throw LsScanException(
-          "ls_recursive file callback function cannot be null");
-    } else if (data_ == nullptr) {
-      throw LsScanException("ls_recursive data cannot be null");
-    }
-  }
-
-  /** Constructor */
-  CallbackWrapperCAPI(LsFileCallback file_cb, LsDirCallback dir_cb, void* data)
-      : file_cb_(std::move(file_cb))
-      , dir_cb_(std::move(dir_cb))
-      , data_(data)
-      , include_dirs_(true) {
-    if (file_cb_ == nullptr) {
-      throw LsScanException(
-          "ls_recursive file callback function cannot be null");
-    } else if (dir_cb_ == nullptr) {
-      throw LsScanException("ls_recursive dir callback cannot be null");
+  CallbackWrapperCAPI(LsCallback cb, void* data)
+      : cb_(std::move(cb))
+      , data_(data) {
+    if (cb_ == nullptr) {
+      throw LsScanException("ls_recursive callback function cannot be null");
     } else if (data_ == nullptr) {
       throw LsScanException("ls_recursive data cannot be null");
     }
   }
 
   /**
+   * Operator to wrap the FilePredicate used in the C++ API.
    * This will throw a LsStopTraversal exception if the user callback returns 0,
    * and will throw a LsScanException if the user callback returns -1.
-   */
-  int check_stop_traversal(int code) const {
-    if (code == 0) {
-      // Throw an exception to stop traversal, which will be caught by the C++
-      // internal ls_recursive implementation to stop traversal.
-      throw LsStopTraversal();
-    } else if (code == -1) {
-      throw LsScanException("Error in user callback");
-    }
-    return code;
-  }
-
-  /**
-   * Operator to wrap the FileFilter used in the C++ API.
-   * This will throw a LsStopTraversal exception if the user callback returns 0,
-   * and will throw a LsScanException if the user callback returns -1.
-   *
-   * This definition of operator() is required to satisfy FilePredicate concept.
    *
    * @param path The path of the object.
    * @param size The size of the object in bytes.
    * @return True if the object should be included, False otherwise.
    */
   bool operator()(std::string_view path, const uint64_t size) const {
-    return check_stop_traversal(
-        file_cb_(path.data(), path.size(), size, data_));
-  }
-
-  /**
-   * Operator to wrap the FileFilter used in the C++ API.
-   * This will throw a LsStopTraversal exception if the user callback returns 0,
-   * and will throw a LsScanException if the user callback returns -1.
-   *
-   * This definition of operator() is required to satisfy DirectoryPredicate
-   * concept.
-   *
-   * @param path The path of the object.
-   * @param size The size of the object in bytes.
-   * @return True if the object should be included, False otherwise.
-   */
-  bool operator()(std::string_view path) const {
-    return check_stop_traversal(dir_cb_(path.data(), path.size(), data_));
+    int ret = cb_(path.data(), path.size(), size, data_);
+    if (ret == 0) {
+      // Throw an exception to stop traversal, which will be caught by the C++
+      // internal ls_recursive implementation to stop traversal.
+      throw LsStopTraversal();
+    } else if (ret == -1) {
+      throw LsScanException("Error in user callback");
+    }
+    return ret;
   }
 
  private:
   /** CAPI callback as function object */
-  LsFileCallback file_cb_;
-  LsDirCallback dir_cb_;
-
+  LsCallback cb_;
   /** User data for callback */
   void* data_;
-
-  bool include_dirs_;
 };
 
 }  // namespace tiledb::sm
