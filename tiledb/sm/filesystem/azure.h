@@ -208,7 +208,7 @@ class AzureScanner : public LsScanner {
   void advance(typename Iterator::pointer& ptr) {
     ptr++;
     if (ptr == end_) {
-      if (more_to_fetch()) {
+      if (more_to_fetch() || !collected_prefixes_.empty()) {
         // Fetch results and reset the iterator.
         ptr = fetch_results();
       } else {
@@ -216,6 +216,27 @@ class AzureScanner : public LsScanner {
         end_ = ptr = typename Iterator::pointer();
       }
     }
+  }
+
+  /**
+   * Builds a prefix vector matching the expected Iterator type for filtering,
+   * and initializes begin_ and end_ iterators to scan the common prefixes.
+   *
+   * When collected_prefixes_ is empty and there are no results to fetch from
+   * Azure the scan is complete.
+   *
+   * @returns Iterator to the beginning of the prefix vector.
+   */
+  typename Iterator::pointer& build_prefix_vector() {
+    result_type_ = PREFIX;
+    common_prefixes_.resize(collected_prefixes_.size());
+    for (auto& object : common_prefixes_) {
+      auto next = collected_prefixes_.begin();
+      object.first = collected_prefixes_.extract(next).value();
+      object.second = 0;
+    }
+    end_ = common_prefixes_.end();
+    return begin_ = common_prefixes_.begin();
   }
 
   /**
@@ -251,6 +272,17 @@ class AzureScanner : public LsScanner {
    */
   std::optional<std::string> continuation_token_;
   LsObjects blobs_;
+
+  /** Collect up to max_keys prefixes in this set before filtering. */
+  std::unordered_set<std::string> collected_prefixes_;
+
+  /** Move prefixes to this vector usable with Iterator type for filtering. */
+  std::vector<Iterator::value_type> common_prefixes_;
+
+  /**
+   * The result type contained by Iterator.
+   */
+  enum ResultType { OBJECT, PREFIX } result_type_ = OBJECT;
 };
 
 /**
@@ -417,8 +449,7 @@ class Azure : public FilesystemBase {
       const URI& parent,
       ResultFilter f,
       bool recursive = false) const override {
-    AzureScanner azure_scanner =
-        scanner(parent, std::move(f), std::move(d), recursive);
+    AzureScanner azure_scanner = scanner(parent, std::move(f), recursive);
 
     LsObjects objects;
     for (auto object : azure_scanner) {
@@ -443,8 +474,7 @@ class Azure : public FilesystemBase {
       ResultFilter&& f,
       bool recursive = false,
       int max_keys = 1000) const {
-    return AzureScanner(
-        *this, parent, std::move(f), std::move(d), recursive, max_keys);
+    return AzureScanner(*this, parent, std::move(f), recursive, max_keys);
   }
 
   /**

@@ -1028,6 +1028,10 @@ class AzureTest : public VFSTestBase {
     for (size_t i = 1; i <= test_tree_.size(); i++) {
       sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
       // VFS::create_dir is a no-op for Azure; Just create objects.
+      if (test_tree_[i - 1] > 0) {
+        // Do not include an empty prefix in expected results.
+        expected_results().emplace_back(path.to_string(), 0);
+      }
       for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
         auto object_uri = path.join_path("test_file_" + std::to_string(j));
         vfs_.touch(object_uri);

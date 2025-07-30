@@ -245,6 +245,10 @@ class LsScanner {
       , is_recursive_(recursive) {
   }
 
+  static bool accept_all(const std::string_view&, uint64_t) {
+    return true;
+  }
+
  protected:
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;
