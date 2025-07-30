@@ -2087,11 +2087,9 @@ S3Scanner::S3Scanner(
     const shared_ptr<TileDBS3Client>& client,
     const URI& prefix,
     FileFilter&& file_filter,
-    DirectoryFilter&& dir_filter,
     bool recursive,
     int max_keys)
-    : LsScanner(
-          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    : LsScanner(prefix, std::move(file_filter), recursive)
     , client_(client)
     , result_type_(OBJECT) {
   const auto prefix_dir = prefix.add_trailing_slash();
@@ -2213,9 +2211,7 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
     }
 
     // Advance until we reach a result accepted by a filter predicate.
-    if (result_type_ == OBJECT && this->file_filter_(path, size)) {
-      return;
-    } else if (result_type_ == PREFIX && this->dir_filter_(path)) {
+    if (this->file_filter_(path, size)) {
       return;
     } else {
       advance(ptr);

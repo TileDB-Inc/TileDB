@@ -720,7 +720,7 @@ TEST_CASE("C API: tiledb_vfs_ls_recursive argument validation", "[capi][vfs]") {
 
 TEST_CASE(
     "C API: VFS recursive ls unsupported backends",
-    "[capi][vfs][ls-recursive]") {
+    "[capi][vfs][ls_recursive]") {
   ordinary_vfs vfs;
   int ls_data;
   auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
@@ -740,7 +740,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C API: CallbackWrapperCAPI operator() validation",
-    "[ls-recursive][callback][wrapper]") {
+    "[ls_recursive][callback][wrapper]") {
   tiledb::sm::LsCallback cb = [](const char* path,
                                  size_t path_len,
                                  uint64_t object_size,
@@ -774,7 +774,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C API: CallbackWrapperCAPI construction validation",
-    "[ls-recursive][callback][wrapper]") {
+    "[ls_recursive][callback][wrapper]") {
   using tiledb::sm::CallbackWrapperCAPI;
   tiledb::sm::LsObjects data;
   auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t { return 1; };

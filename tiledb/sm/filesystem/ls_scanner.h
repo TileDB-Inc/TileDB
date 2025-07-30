@@ -95,12 +95,6 @@ using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
   return true;
 }
 
-using DirectoryFilter = std::function<bool(const std::string_view&)>;
-/** Static DirectoryFilter used as default argument. */
-[[maybe_unused]] static bool accept_all_dirs(const std::string_view&) {
-  return true;
-}
-
 /**
  * Typedef for ls C API callback as std::function for passing to C++
  *
@@ -263,14 +257,9 @@ class LsScanIterator {
 class LsScanner {
  public:
   /** Constructor. */
-  LsScanner(
-      const URI& prefix,
-      FileFilter&& file_filter,
-      DirectoryFilter&& dir_filter,
-      bool recursive = false)
+  LsScanner(const URI& prefix, FileFilter&& file_filter, bool recursive = false)
       : prefix_(prefix)
       , file_filter_(std::move(file_filter))
-      , dir_filter_(std::move(dir_filter))
       , is_recursive_(recursive) {
   }
 
@@ -279,8 +268,6 @@ class LsScanner {
   const URI prefix_;
   /** File predicate used to filter file or object results. */
   const FileFilter file_filter_;
-  /** Directory predicate used to prune directory or prefix results. */
-  const DirectoryFilter dir_filter_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
 };

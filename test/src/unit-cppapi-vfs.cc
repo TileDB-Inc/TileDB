@@ -566,10 +566,7 @@ TEMPLATE_LIST_TEST_CASE(
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
       ctx, vfs, test.temp_dir_.to_string(), include);
   std::erase_if(expected_results, [&](const auto& object) {
-    if (object.second > 0) {
-      return !include(object.first, object.second);
-    }
-    return !tiledb::sm::accept_all_dirs(object.first);
+    return !include(object.first, object.second);
   });
   std::sort(results.begin(), results.end());
   CHECK(results.size() == expected_results.size());
@@ -608,6 +605,7 @@ TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
   };
   tiledb::VFSExperimental::ls_recursive(
       ctx, vfs, s3_test.temp_dir_.to_string(), cb);
+  std::erase_if(expected_results, [](const auto& a) { return a.second == 0; });
   expected_results.resize(cb_count);
   CHECK(ls_objects.size() == cb_count);
   CHECK(ls_objects == expected_results);

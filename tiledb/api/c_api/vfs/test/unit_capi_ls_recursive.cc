@@ -43,7 +43,7 @@ using namespace tiledb::test;
 using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
 
 TEMPLATE_LIST_TEST_CASE(
-    "C API: ls_recursive callback", "[vfs][ls-recursive]", TestBackends) {
+    "C API: ls_recursive callback", "[vfs][ls_recursive]", TestBackends) {
   using tiledb::sm::LsObjects;
   TestType test({10, 50});
   if (!test.is_supported()) {
@@ -81,6 +81,7 @@ TEMPLATE_LIST_TEST_CASE(
       // Stop traversal after we collect 10 results.
       return ls_data->size() != 10;
     };
+    std::erase_if(expected, [](const auto& a) { return a.second == 0; });
     expected.resize(10);
   }
 
@@ -93,7 +94,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEMPLATE_LIST_TEST_CASE(
     "C API: ls_recursive throwing callback",
-    "[vfs][ls-recursive]",
+    "[vfs][ls_recursive]",
     TestBackends) {
   using tiledb::sm::LsObjects;
   TestType test({10, 50});

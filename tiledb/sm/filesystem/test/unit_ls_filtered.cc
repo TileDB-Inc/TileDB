@@ -230,9 +230,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
 
   SECTION("Empty directory") {
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
     CHECK(ls.empty());
   }
 
@@ -243,9 +241,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
     testpaths[3].touch();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
     REQUIRE(ls.size() == 4);
     CHECK(testpaths[0].matches(ls[0]));
     CHECK(testpaths[1].matches(ls[1]));
@@ -258,9 +254,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
     d1.mkdir();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
 
     CHECK(ls.size() == 1);
     if (ls.size() >= 1) {
@@ -277,9 +271,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
     testpaths[3].touch();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
     CHECK(ls.size() == 5);
     if (ls.size() >= 1) {
       CHECK(testpaths[0].matches(ls[0]));
@@ -305,9 +297,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
     d1sub1.mkdir();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
 
     CHECK(ls.size() == 2);
     if (ls.size() >= 1) {
@@ -331,9 +321,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
     testpaths[7].touch();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
 
     CHECK(ls.size() == 5);
     if (ls.size() >= 1) {
@@ -368,9 +356,7 @@ TEST_CASE("VFS: ls_recursive unfiltered", "[vfs][ls_recursive]") {
     }
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_all_files,
-        tiledb::sm::accept_all_dirs));
+        vfs_test.temp_dir_, tiledb::sm::accept_all_files));
     CHECK(ls.size() == testpaths.size() + 4);
 
     if (ls.size() >= 1) {
@@ -460,8 +446,7 @@ TEST_CASE("VFS: ls_recursive file filter", "[vfs][ls_recursive]") {
       return (path.find("log1.txt") != std::string::npos);
     };
 
-    auto ls = vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, log_is_1, tiledb::sm::accept_all_dirs);
+    auto ls = vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, log_is_1);
 
     /* directories appear in the result set, we aren't interested in those,
      * and the callback doesn't (yet?) have a way to descend into a directory
@@ -478,182 +463,183 @@ TEST_CASE("VFS: ls_recursive file filter", "[vfs][ls_recursive]") {
   }
 }
 
-TEST_CASE("VFS: ls_recursive directory filter", "[vfs][ls_recursive]") {
-  std::string prefix = GENERATE("file://");
-  prefix += std::filesystem::current_path().string() + "/ls_recursive_test/";
-
-  VFSTest vfs_test({0}, prefix);
-  const auto mkst = vfs_test.mkdir();
-  REQUIRE(mkst.ok());
-
-  std::vector<TestPath> testpaths = {
-      TestPath(vfs_test, "year=2021/month=8/day=27/log1.txt", 30),
-      TestPath(vfs_test, "year=2021/month=8/day=27/log2.txt", 31),
-      TestPath(vfs_test, "year=2021/month=8/day=28/log1.txt", 40),
-      TestPath(vfs_test, "year=2021/month=8/day=28/log2.txt", 41),
-      TestPath(vfs_test, "year=2021/month=9/day=28/log1.txt", 50),
-      TestPath(vfs_test, "year=2021/month=9/day=28/log2.txt", 51),
-      TestPath(vfs_test, "year=2021/month=9/day=29/log1.txt", 60),
-      TestPath(vfs_test, "year=2021/month=9/day=29/log2.txt", 61),
-      TestPath(vfs_test, "year=2022/month=8/day=27/log1.txt", 70),
-      TestPath(vfs_test, "year=2022/month=8/day=27/log2.txt", 71),
-      TestPath(vfs_test, "year=2022/month=8/day=28/log1.txt", 80),
-      TestPath(vfs_test, "year=2022/month=8/day=28/log2.txt", 81),
-      TestPath(vfs_test, "year=2022/month=9/day=28/log1.txt", 90),
-      TestPath(vfs_test, "year=2022/month=9/day=28/log2.txt", 91),
-      TestPath(vfs_test, "year=2022/month=9/day=29/log1.txt", 20),
-      TestPath(vfs_test, "year=2022/month=9/day=29/log2.txt", 21),
-  };
-
-  /* create all files and dirs */
-  for (auto& testpath : testpaths) {
-    testpath.touch(true);
-  }
-
-  SECTION("Directory predicate returning true is filtered from results") {
-    auto month_is_august = [](std::string_view dirname) -> bool {
-      if (dirname.find("month") == std::string::npos) {
-        /* haven't descended far enough yet */
-        return true;
-      } else if (dirname.find("month=8") == std::string::npos) {
-        /* not august */
-        return false;
-      } else {
-        return true;
-      }
-    };
-
-    auto ls = vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_only_regular_files,
-        month_is_august);
-
-    /* directories appear in the result set, we aren't interested in those,
-     * and the callback doesn't (yet?) have a way to descend into a directory
-     * without also including it in the result set */
-    std::erase_if(ls, [](const auto& obj) { return obj.second == 0; });
-
-    CHECK(ls.size() == testpaths.size() / 2);
-
-    ls = sort_by_name(ls); /* ensure order matches the testpaths order */
-
-    CHECK(ls.size() == 8);
-    if (ls.size() >= 1) {
-      testpaths[0].matches(ls[0]);
-    }
-    if (ls.size() >= 2) {
-      testpaths[1].matches(ls[1]);
-    }
-    if (ls.size() >= 3) {
-      testpaths[2].matches(ls[2]);
-    }
-    if (ls.size() >= 4) {
-      testpaths[3].matches(ls[3]);
-    }
-    if (ls.size() >= 5) {
-      testpaths[8].matches(ls[4]);
-    }
-    if (ls.size() >= 6) {
-      testpaths[9].matches(ls[5]);
-    }
-    if (ls.size() >= 7) {
-      testpaths[10].matches(ls[6]);
-    }
-    if (ls.size() >= 8) {
-      testpaths[11].matches(ls[7]);
-    }
-  }
-
-  /* note: this should be true for POSIX but is not for S3 without hierarchical
-   * list API */
-  SECTION(
-      "Directory predicate returning true does not descend into directory") {
-    /*
-     * In the test data we only find "day=29" beneath "month=9",
-     * so the `ls` should throw with this directory filter if and only if
-     * we descend into directories with "month=9".
-     */
-    std::string monthstr = "month=9";
-    auto throw_if_day_is_29 = [&monthstr](std::string_view dirname) -> bool {
-      if (dirname.find("month") == std::string::npos) {
-        /* haven't descended far enough yet */
-        return true;
-      } else if (dirname.find(monthstr) == std::string::npos) {
-        /* not august */
-        return false;
-      } else if (dirname.find("day=29") == std::string::npos) {
-        /* not the 29th */
-        return true;
-      } else {
-        /* it is the 29th, throw */
-        throw std::logic_error("Throwing FileFilter: day=29");
-      }
-    };
-
-    CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(
-            vfs_test.temp_dir_,
-            tiledb::sm::accept_only_regular_files,
-            throw_if_day_is_29),
-        std::logic_error);
-    CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(
-            vfs_test.temp_dir_,
-            tiledb::sm::accept_only_regular_files,
-            throw_if_day_is_29),
-        Catch::Matchers::ContainsSubstring("Throwing FileFilter: day=29"));
-
-    monthstr = "month=8";
-
-    /* now the result should be the same as the first section */
-    auto ls = vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_,
-        tiledb::sm::accept_only_regular_files,
-        throw_if_day_is_29);
-
-    /* directories appear in the result set, we aren't interested in those,
-     * and the callback doesn't (yet?) have a way to descend into a directory
-     * without also including it in the result set */
-    std::erase_if(ls, [](const auto& obj) { return obj.second == 0; });
-
-    CHECK(ls.size() == testpaths.size() / 2);
-
-    ls = sort_by_name(ls); /* ensure order matches the testpaths order */
-
-    CHECK(ls.size() == 8);
-    if (ls.size() >= 1) {
-      testpaths[0].matches(ls[0]);
-    }
-    if (ls.size() >= 2) {
-      testpaths[1].matches(ls[1]);
-    }
-    if (ls.size() >= 3) {
-      testpaths[2].matches(ls[2]);
-    }
-    if (ls.size() >= 4) {
-      testpaths[3].matches(ls[3]);
-    }
-    if (ls.size() >= 5) {
-      testpaths[8].matches(ls[4]);
-    }
-    if (ls.size() >= 6) {
-      testpaths[9].matches(ls[5]);
-    }
-    if (ls.size() >= 7) {
-      testpaths[10].matches(ls[6]);
-    }
-    if (ls.size() >= 8) {
-      testpaths[11].matches(ls[7]);
-    }
-  }
-
-  /*
-   * Note that since we throw in the previous section, this check
-   * demonstrates that all directories are closed whether or not we return
-   * from ls_recursive normally
-   */
-  REQUIRE(vfs_test.check_open_files());
-}
+// TEST_CASE("VFS: ls_recursive directory filter", "[vfs][ls_recursive]") {
+//   std::string prefix = GENERATE("file://");
+//   prefix += std::filesystem::current_path().string() + "/ls_recursive_test/";
+//
+//   VFSTest vfs_test({0}, prefix);
+//   const auto mkst = vfs_test.mkdir();
+//   REQUIRE(mkst.ok());
+//
+//   std::vector<TestPath> testpaths = {
+//       TestPath(vfs_test, "year=2021/month=8/day=27/log1.txt", 30),
+//       TestPath(vfs_test, "year=2021/month=8/day=27/log2.txt", 31),
+//       TestPath(vfs_test, "year=2021/month=8/day=28/log1.txt", 40),
+//       TestPath(vfs_test, "year=2021/month=8/day=28/log2.txt", 41),
+//       TestPath(vfs_test, "year=2021/month=9/day=28/log1.txt", 50),
+//       TestPath(vfs_test, "year=2021/month=9/day=28/log2.txt", 51),
+//       TestPath(vfs_test, "year=2021/month=9/day=29/log1.txt", 60),
+//       TestPath(vfs_test, "year=2021/month=9/day=29/log2.txt", 61),
+//       TestPath(vfs_test, "year=2022/month=8/day=27/log1.txt", 70),
+//       TestPath(vfs_test, "year=2022/month=8/day=27/log2.txt", 71),
+//       TestPath(vfs_test, "year=2022/month=8/day=28/log1.txt", 80),
+//       TestPath(vfs_test, "year=2022/month=8/day=28/log2.txt", 81),
+//       TestPath(vfs_test, "year=2022/month=9/day=28/log1.txt", 90),
+//       TestPath(vfs_test, "year=2022/month=9/day=28/log2.txt", 91),
+//       TestPath(vfs_test, "year=2022/month=9/day=29/log1.txt", 20),
+//       TestPath(vfs_test, "year=2022/month=9/day=29/log2.txt", 21),
+//   };
+//
+//   /* create all files and dirs */
+//   for (auto& testpath : testpaths) {
+//     testpath.touch(true);
+//   }
+//
+//   SECTION("Directory predicate returning true is filtered from results") {
+//     auto month_is_august = [](std::string_view dirname) -> bool {
+//       if (dirname.find("month") == std::string::npos) {
+//         /* haven't descended far enough yet */
+//         return true;
+//       } else if (dirname.find("month=8") == std::string::npos) {
+//         /* not august */
+//         return false;
+//       } else {
+//         return true;
+//       }
+//     };
+//
+//     auto ls = vfs_test.vfs_.ls_recursive(
+//         vfs_test.temp_dir_,
+//         tiledb::sm::accept_only_regular_files,
+//         month_is_august);
+//
+//     /* directories appear in the result set, we aren't interested in those,
+//      * and the callback doesn't (yet?) have a way to descend into a directory
+//      * without also including it in the result set */
+//     std::erase_if(ls, [](const auto& obj) { return obj.second == 0; });
+//
+//     CHECK(ls.size() == testpaths.size() / 2);
+//
+//     ls = sort_by_name(ls); /* ensure order matches the testpaths order */
+//
+//     CHECK(ls.size() == 8);
+//     if (ls.size() >= 1) {
+//       testpaths[0].matches(ls[0]);
+//     }
+//     if (ls.size() >= 2) {
+//       testpaths[1].matches(ls[1]);
+//     }
+//     if (ls.size() >= 3) {
+//       testpaths[2].matches(ls[2]);
+//     }
+//     if (ls.size() >= 4) {
+//       testpaths[3].matches(ls[3]);
+//     }
+//     if (ls.size() >= 5) {
+//       testpaths[8].matches(ls[4]);
+//     }
+//     if (ls.size() >= 6) {
+//       testpaths[9].matches(ls[5]);
+//     }
+//     if (ls.size() >= 7) {
+//       testpaths[10].matches(ls[6]);
+//     }
+//     if (ls.size() >= 8) {
+//       testpaths[11].matches(ls[7]);
+//     }
+//   }
+//
+//   /* note: this should be true for POSIX but is not for S3 without
+//   hierarchical
+//    * list API */
+//   SECTION(
+//       "Directory predicate returning true does not descend into directory") {
+//     /*
+//      * In the test data we only find "day=29" beneath "month=9",
+//      * so the `ls` should throw with this directory filter if and only if
+//      * we descend into directories with "month=9".
+//      */
+//     std::string monthstr = "month=9";
+//     auto throw_if_day_is_29 = [&monthstr](std::string_view dirname) -> bool {
+//       if (dirname.find("month") == std::string::npos) {
+//         /* haven't descended far enough yet */
+//         return true;
+//       } else if (dirname.find(monthstr) == std::string::npos) {
+//         /* not august */
+//         return false;
+//       } else if (dirname.find("day=29") == std::string::npos) {
+//         /* not the 29th */
+//         return true;
+//       } else {
+//         /* it is the 29th, throw */
+//         throw std::logic_error("Throwing FileFilter: day=29");
+//       }
+//     };
+//
+//     CHECK_THROWS_AS(
+//         vfs_test.vfs_.ls_recursive(
+//             vfs_test.temp_dir_,
+//             tiledb::sm::accept_only_regular_files,
+//             throw_if_day_is_29),
+//         std::logic_error);
+//     CHECK_THROWS_WITH(
+//         vfs_test.vfs_.ls_recursive(
+//             vfs_test.temp_dir_,
+//             tiledb::sm::accept_only_regular_files,
+//             throw_if_day_is_29),
+//         Catch::Matchers::ContainsSubstring("Throwing FileFilter: day=29"));
+//
+//     monthstr = "month=8";
+//
+//     /* now the result should be the same as the first section */
+//     auto ls = vfs_test.vfs_.ls_recursive(
+//         vfs_test.temp_dir_,
+//         tiledb::sm::accept_only_regular_files,
+//         throw_if_day_is_29);
+//
+//     /* directories appear in the result set, we aren't interested in those,
+//      * and the callback doesn't (yet?) have a way to descend into a directory
+//      * without also including it in the result set */
+//     std::erase_if(ls, [](const auto& obj) { return obj.second == 0; });
+//
+//     CHECK(ls.size() == testpaths.size() / 2);
+//
+//     ls = sort_by_name(ls); /* ensure order matches the testpaths order */
+//
+//     CHECK(ls.size() == 8);
+//     if (ls.size() >= 1) {
+//       testpaths[0].matches(ls[0]);
+//     }
+//     if (ls.size() >= 2) {
+//       testpaths[1].matches(ls[1]);
+//     }
+//     if (ls.size() >= 3) {
+//       testpaths[2].matches(ls[2]);
+//     }
+//     if (ls.size() >= 4) {
+//       testpaths[3].matches(ls[3]);
+//     }
+//     if (ls.size() >= 5) {
+//       testpaths[8].matches(ls[4]);
+//     }
+//     if (ls.size() >= 6) {
+//       testpaths[9].matches(ls[5]);
+//     }
+//     if (ls.size() >= 7) {
+//       testpaths[10].matches(ls[6]);
+//     }
+//     if (ls.size() >= 8) {
+//       testpaths[11].matches(ls[7]);
+//     }
+//   }
+//
+//   /*
+//    * Note that since we throw in the previous section, this check
+//    * demonstrates that all directories are closed whether or not we return
+//    * from ls_recursive normally
+//    */
+//   REQUIRE(vfs_test.check_open_files());
+// }
 
 TEST_CASE("VFS: Throwing FileFilter ls_recursive", "[vfs][ls_recursive]") {
   std::string prefix = GENERATE("file://");
@@ -667,8 +653,8 @@ TEST_CASE("VFS: Throwing FileFilter ls_recursive", "[vfs][ls_recursive]") {
     throw std::logic_error("Throwing FileFilter");
   };
   SECTION("Throwing FileFilter with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, always_throw_filter, tiledb::sm::accept_all_dirs));
+    CHECK_NOTHROW(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, always_throw_filter));
   }
   SECTION(
       "Throwing FileFilter will not throw if ls_recursive only visits "

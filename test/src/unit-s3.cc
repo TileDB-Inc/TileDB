@@ -362,32 +362,23 @@ TEST_CASE(
 
     // Filter expected results to apply file_filter.
     std::erase_if(expected, [&file_filter](const auto& a) {
-      // TODO: Use trailing slash as indicator of prefix instead of size 0
-      if (a.second > 0) {
-        return !file_filter(a.first, a.second);
-      }
-      return !accept_all_dirs(a.first);
+      return !file_filter(a.first, a.second);
     });
 
     auto scan = s3_test.get_s3().scanner(
-        s3_test.temp_dir_, file_filter, accept_all_dirs, recursive, max_keys);
+        s3_test.temp_dir_, file_filter, recursive, max_keys);
     std::vector results_vector(scan.begin(), scan.end());
 
     CHECK(results_vector.size() == expected.size());
-    for (const auto & s3_object : results_vector) {
+    for (const auto& s3_object : results_vector) {
       if (s3_object.GetSize() > 0) {
         CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
-      } else {
-        // TODO: Test with various directory filters
-        CHECK(accept_all_dirs(s3_object.GetKey()));
       }
       auto uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
       CHECK_THAT(
           expected,
           Catch::Matchers::Contains(
-              std::make_pair(
-                  uri,
-                  static_cast<size_t>(s3_object.GetSize()))));
+              std::make_pair(uri, static_cast<size_t>(s3_object.GetSize()))));
     }
   }
 }
@@ -400,11 +391,7 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
   std::vector<Aws::S3::Model::Object> results_vector;
   DYNAMIC_SECTION("Testing with " << max_keys << " max keys from S3") {
     auto scan = s3_test.get_s3().scanner(
-        s3_test.temp_dir_,
-        VFSTest::accept_all_files,
-        accept_all_dirs,
-        recursive,
-        max_keys);
+        s3_test.temp_dir_, VFSTest::accept_all_files, recursive, max_keys);
 
     SECTION("for loop") {
       SECTION("range based for") {
@@ -441,9 +428,8 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
         s3_test.temp_dir_.to_string() + "/" + std::string(s3_object.GetKey());
     CHECK_THAT(
         expected,
-        Catch::Matchers::Contains(
-            std::make_pair(
-                full_uri, static_cast<size_t>(s3_object.GetSize()))));
+        Catch::Matchers::Contains(std::make_pair(
+            full_uri, static_cast<size_t>(s3_object.GetSize()))));
   }
 }
 

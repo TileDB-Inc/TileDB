@@ -44,10 +44,7 @@ namespace tiledb::sm {
 class LocalFilesystem : public FilesystemBase {
  public:
   LsObjects ls_filtered(
-      const URI& parent,
-      FileFilter file_filter,
-      [[maybe_unused]] DirectoryFilter directory_filter,
-      bool recursive) const override;
+      const URI& parent, FileFilter file_filter, bool recursive) const override;
 
   void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
