@@ -536,7 +536,6 @@ class S3Scanner : public LsScanner {
 
   /**
    * The result type contained by Iterator.
-   * Used for selecting which filter predicate to apply.
    */
   enum ResultType { OBJECT, PREFIX } result_type_ = OBJECT;
 };

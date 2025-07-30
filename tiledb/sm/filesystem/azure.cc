@@ -1092,17 +1092,45 @@ AzureScanner::AzureScanner(
       Azure::parse_azure_uri(prefix.add_trailing_slash());
   fetch_results();
   next(begin_);
+
+  // This case is hit when all files are rejected by the result_filter.
+  if (begin_ == end_ && !collected_prefixes_.empty() && !more_to_fetch()) {
+    next(build_prefix_vector());
+  }
 }
 
 void AzureScanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
+    if (result_type_ == PREFIX) {
+      common_prefixes_.clear();
+    }
     ptr = fetch_results();
   }
 
   while (ptr != end_) {
     auto& object = *ptr;
 
-    // TODO: Add support for directory pruning.
+    // Store each unique prefix while scanning S3 objects.
+    if (result_type_ == OBJECT) {
+      // The object key contains the azure:// prefix and the bucket name.
+      auto prefix = object.first;
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != std::string::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        // Do not accept the prefix we are scanning.
+        if (prefix == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
+          break;
+        } else {
+          if (!collected_prefixes_.emplace(prefix).second) {
+            throw AzureException("Failed to emplace prefix: '" + prefix + "'");
+          }
+        }
+      }
+    }
+
     if (this->result_filter_(object.first, object.second)) {
       // Iterator is at the next object within results accepted by the filters.
       return;
@@ -1115,7 +1143,10 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
 }
 
 AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
-  if (!more_to_fetch()) {
+  if (collected_prefixes_.size() >= static_cast<size_t>(max_keys_) ||
+      (!more_to_fetch() && !collected_prefixes_.empty())) {
+    return build_prefix_vector();
+  } else if (!more_to_fetch()) {
     begin_ = end_ = typename Iterator::pointer();
     return end_;
   }
