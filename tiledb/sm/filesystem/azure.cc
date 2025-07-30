@@ -1080,8 +1080,7 @@ AzureScanner::AzureScanner(
     ResultFilter&& result_filter,
     bool recursive,
     int max_keys)
-    : LsScanner(
-          prefix, std::move(result_filter), recursive)
+    : LsScanner(prefix, std::move(result_filter), recursive)
     , client_(client)
     , max_keys_(max_keys)
     , has_fetched_(false) {
