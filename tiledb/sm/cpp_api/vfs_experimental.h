@@ -58,8 +58,7 @@ class VFSExperimental {
    * @param object_size The size of the object at the current path.
    * @return True if the walk should continue, else false.
    */
-  using LsFileCallback = std::function<bool(std::string_view, uint64_t)>;
-  using LsDirCallback = std::function<bool(std::string_view)>;
+  using LsCallback = std::function<bool(std::string_view, uint64_t)>;
 
   /**
    * Typedef for ls inclusion predicate function used to check if a single
@@ -73,8 +72,7 @@ class VFSExperimental {
    * @param object_size The size of the object at the current path.
    * @return True if the result should be included, else false.
    */
-  using LsIncludeFile = std::function<bool(std::string_view, uint64_t)>;
-  using LsIncludeDir = std::function<bool(std::string_view)>;
+  using LsInclude = std::function<bool(std::string_view, uint64_t)>;
 
   /**
    * Default typedef for objects collected by recursive ls, storing a vector of
@@ -91,54 +89,26 @@ class VFSExperimental {
     CallbackWrapperCPP() = delete;
 
     /** Constructor */
-    explicit CallbackWrapperCPP(LsFileCallback file_cb)
-        : file_cb_(std::move(file_cb))
-        , include_dirs_(false) {
-      if (file_cb_ == nullptr) {
-        throw std::logic_error(
-            "ls_recursive files callback function cannot be null");
-      }
-    }
-
-    /** Constructor */
-    CallbackWrapperCPP(LsFileCallback file_cb, LsDirCallback dir_cb)
-        : file_cb_(std::move(file_cb))
-        , dir_cb_(std::move(dir_cb))
-        , include_dirs_(true) {
-      if (file_cb_ == nullptr) {
-        throw std::logic_error(
-            "ls_recursive files callback function cannot be null");
-      } else if (dir_cb_ == nullptr) {
-        throw std::logic_error(
-            "ls_recursive directory callback function cannot be null");
+    CallbackWrapperCPP(LsCallback cb)
+        : cb_(cb) {
+      if (cb_ == nullptr) {
+        throw std::logic_error("ls_recursive callback function cannot be null");
       }
     }
 
     /**
-     * Operator to wrap the FileFilter used in the C++ API.
+     * Operator to wrap the FilePredicate used in the C++ API.
      *
      * @param path The path of the object.
      * @param size The size of the object in bytes.
      * @return True if the object should be included, False otherwise.
      */
     bool operator()(std::string_view path, uint64_t size) {
-      return file_cb_(path, size);
-    }
-
-    /**
-     * Operator to wrap the DirectoryFilter used in the C++ API.
-     *
-     * @param path The path of the object.
-     * @return True if the directory should be included, False otherwise.
-     */
-    bool operator()(std::string_view path) {
-      return dir_cb_(path);
+      return cb_(path, size);
     }
 
    private:
-    LsFileCallback file_cb_;
-    LsDirCallback dir_cb_;
-    bool include_dirs_;
+    LsCallback cb_;
   };
 
   /* ********************************* */
@@ -175,26 +145,14 @@ class VFSExperimental {
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
-      LsFileCallback file_cb,
-      std::optional<LsDirCallback> dir_cb = std::nullopt) {
-    if (dir_cb.has_value()) {
-      CallbackWrapperCPP wrapper(std::move(file_cb), dir_cb.value());
-      ctx.handle_error(tiledb_vfs_ls_recursive_v2(
-          ctx.ptr().get(),
-          vfs.ptr().get(),
-          uri.c_str(),
-          ls_callback_file_wrapper,
-          ls_callback_dir_wrapper,
-          &wrapper));
-    } else {
-      CallbackWrapperCPP wrapper(std::move(file_cb));
-      ctx.handle_error(tiledb_vfs_ls_recursive(
-          ctx.ptr().get(),
-          vfs.ptr().get(),
-          uri.c_str(),
-          ls_callback_file_wrapper,
-          &wrapper));
-    }
+      LsCallback cb) {
+    CallbackWrapperCPP wrapper(cb);
+    ctx.handle_error(tiledb_vfs_ls_recursive(
+        ctx.ptr().get(),
+        vfs.ptr().get(),
+        uri.c_str(),
+        ls_callback_wrapper,
+        &wrapper));
   }
 
   /**
@@ -230,26 +188,22 @@ class VFSExperimental {
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
-      std::optional<LsIncludeFile> include_file = std::nullopt,
-      std::optional<LsIncludeDir> include_dir = std::nullopt) {
+      std::optional<LsInclude> include = std::nullopt) {
     LsObjects ls_objects;
-    // If either of the filters do not have a value, accept all entries.
-    ls_recursive(
-        ctx,
-        vfs,
-        uri,
-        [&](std::string_view path, uint64_t size) {
-          if (!include_file.has_value() || include_file.value()(path, size)) {
-            ls_objects.emplace_back(path, size);
-          }
-          return true;
-        },
-        [&](std::string_view path) {
-          if (!include_dir.has_value() || include_dir.value()(path)) {
-            ls_objects.emplace_back(path, 0);
-          }
-          return true;
-        });
+    if (include.has_value()) {
+      auto include_cb = include.value();
+      ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
+        if (include_cb(path, size)) {
+          ls_objects.emplace_back(path, size);
+        }
+        return true;
+      });
+    } else {
+      ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
+        ls_objects.emplace_back(path, size);
+        return true;
+      });
+    }
     return ls_objects;
   }
 
@@ -269,26 +223,10 @@ class VFSExperimental {
    *      traversal.
    * @sa tiledb_ls_callback_t
    */
-  static int32_t ls_callback_file_wrapper(
+  static int32_t ls_callback_wrapper(
       const char* path, size_t path_len, uint64_t object_size, void* data) {
     CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
     return (*cb)({path, path_len}, object_size);
-  }
-
-  /**
-   * Callback function for invoking the C++ ls_recursive callback via C API.
-   *
-   * @param path The path of a visited directory for the relative filesystem.
-   * @param path_len The length of the path.
-   * @param data Data passed to the callback used to store collected results.
-   * @return 1 if the callback should continue to the next object, or 0 to stop
-   *      traversal.
-   * @sa tiledb_ls_callback_t
-   */
-  static int32_t ls_callback_dir_wrapper(
-      const char* path, size_t path_len, void* data) {
-    CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
-    return (*cb)({path, path_len});
   }
 };
 }  // namespace tiledb

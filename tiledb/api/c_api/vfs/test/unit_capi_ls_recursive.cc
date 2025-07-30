@@ -43,7 +43,7 @@ using namespace tiledb::test;
 using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
 
 TEMPLATE_LIST_TEST_CASE(
-    "C API: ls_recursive callback", "[vfs][ls_recursive]", TestBackends) {
+    "C API: ls_recursive callback", "[vfs][ls-recursive]", TestBackends) {
   using tiledb::sm::LsObjects;
   TestType test({10, 50});
   if (!test.is_supported()) {
@@ -58,18 +58,12 @@ TEMPLATE_LIST_TEST_CASE(
   tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
 
   LsObjects data;
-  tiledb_ls_file_callback_t cb = [](const char* path,
-                                    size_t path_len,
-                                    uint64_t object_size,
-                                    void* data) -> int32_t {
+  tiledb_ls_callback_t cb = [](const char* path,
+                               size_t path_len,
+                               uint64_t object_size,
+                               void* data) -> int32_t {
     auto* ls_data = static_cast<LsObjects*>(data);
     ls_data->push_back({{path, path_len}, object_size});
-    return 1;
-  };
-  tiledb_ls_dir_callback_t dir_cb =
-      [](const char* path, size_t path_len, void* data) -> int32_t {
-    auto* ls_data = static_cast<LsObjects*>(data);
-    ls_data->push_back({{path, path_len}, 0});
     return 1;
   };
 
@@ -87,26 +81,26 @@ TEMPLATE_LIST_TEST_CASE(
       // Stop traversal after we collect 10 results.
       return ls_data->size() != 10;
     };
-    std::erase_if(expected, [](const auto& a) { return a.second == 0; });
     expected.resize(10);
   }
 
   CHECK(
-      tiledb_vfs_ls_recursive_v2(
-          ctx, vfs, test.temp_dir_.c_str(), cb, dir_cb, &data) == TILEDB_OK);
+      tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
+      TILEDB_OK);
   CHECK(data.size() == expected.size());
   CHECK(data == expected);
 }
 
 TEMPLATE_LIST_TEST_CASE(
     "C API: ls_recursive throwing callback",
-    "[vfs][ls_recursive]",
+    "[vfs][ls-recursive]",
     TestBackends) {
   using tiledb::sm::LsObjects;
   TestType test({10, 50});
   if (!test.is_supported()) {
     return;
   }
+  auto expected = test.expected_results();
 
   vfs_config vfs_config;
   tiledb_ctx_t* ctx;
@@ -115,18 +109,13 @@ TEMPLATE_LIST_TEST_CASE(
   tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
 
   LsObjects data;
-  tiledb_ls_file_callback_t cb =
+  tiledb_ls_callback_t cb =
       [](const char*, size_t, uint64_t, void*) -> int32_t {
-    throw std::runtime_error("Throwing file callback");
-  };
-
-  // TODO: Test SECTION
-  tiledb_ls_dir_callback_t dir_cb = [](const char*, size_t, void*) -> int32_t {
-    throw std::runtime_error("Throwing directory callback");
+    throw std::runtime_error("Throwing callback");
   };
 
   CHECK(
-      tiledb_vfs_ls_recursive_v2(
-          ctx, vfs, test.temp_dir_.c_str(), cb, dir_cb, &data) == TILEDB_ERR);
+      tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
+      TILEDB_ERR);
   CHECK(data.empty());
 }

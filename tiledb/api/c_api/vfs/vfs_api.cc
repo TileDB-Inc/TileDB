@@ -300,39 +300,17 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
 capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
-    tiledb_ls_file_callback_t file_callback,
+    tiledb_ls_callback_t callback,
     void* data) {
   ensure_vfs_is_valid(vfs);
   if (path == nullptr) {
     throw CAPIStatusException("Invalid TileDB object: VFS passed a null path.");
-  } else if (file_callback == nullptr) {
+  } else if (callback == nullptr) {
     throw CAPIStatusException(
-        "Invalid TileDB object: File callback function is null.");
+        "Invalid TileDB object: Callback function is null.");
   }
   ensure_output_pointer_is_valid(data);
-  vfs->ls_recursive(tiledb::sm::URI(path), file_callback, data);
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_vfs_ls_recursive_v2(
-    tiledb_vfs_t* vfs,
-    const char* path,
-    tiledb_ls_file_callback_t file_callback,
-    tiledb_ls_dir_callback_t dir_callback,
-    void* data) {
-  ensure_vfs_is_valid(vfs);
-  if (path == nullptr) {
-    throw CAPIStatusException("Invalid TileDB object: VFS passed a null path.");
-  } else if (file_callback == nullptr) {
-    throw CAPIStatusException(
-        "Invalid TileDB object: File callback function is null.");
-  } else if (dir_callback == nullptr) {
-    throw CAPIStatusException(
-        "Invalid TileDB object: Directory callback function is null.");
-  }
-  ensure_output_pointer_is_valid(data);
-  vfs->ls_recursive_v2(
-      tiledb::sm::URI(path), file_callback, dir_callback, data);
+  vfs->ls_recursive(tiledb::sm::URI(path), callback, data);
   return TILEDB_OK;
 }
 
@@ -575,20 +553,8 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    tiledb_ls_file_callback_t file_callback,
+    tiledb_ls_callback_t callback,
     void* data) {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
-      ctx, vfs, path, file_callback, data);
-}
-
-CAPI_INTERFACE(
-    vfs_ls_recursive_v2,
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* path,
-    tiledb_ls_file_callback_t file_callback,
-    tiledb_ls_dir_callback_t dir_callback,
-    void* data) {
-  return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive_v2>(
-      ctx, vfs, path, file_callback, dir_callback, data);
+      ctx, vfs, path, callback, data);
 }
