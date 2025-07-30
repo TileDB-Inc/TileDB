@@ -634,8 +634,7 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 }
 
 // Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
-// TODO: LocalFsTest currently fails. Fix and re-enable.
-using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
+using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: Test internal ls_filtered recursion argument",
     "[vfs][ls_filtered][recursion]",

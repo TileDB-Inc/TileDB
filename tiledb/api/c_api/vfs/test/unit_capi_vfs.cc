@@ -765,10 +765,10 @@ TEST_CASE(
     CHECK(data.size() == 1);
   }
   SECTION("Callback return 0 signals to stop traversal") {
-    CHECK_THROWS_AS(wrapper("some/dir/", 0) == 0, tiledb::sm::LsStopTraversal);
+    CHECK_THROWS_AS(wrapper("some/dir/", 0), tiledb::sm::LsStopTraversal);
   }
   SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
+    CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
   }
 }
 
