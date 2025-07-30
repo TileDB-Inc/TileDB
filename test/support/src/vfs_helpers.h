@@ -963,7 +963,7 @@ class VFSTestBase {
    */
   static tiledb::sm::Config create_test_config();
 
-  /** FilePredicate for passing to ls_filtered that accepts all files. */
+  /** FilterPredicate for passing to ls_filtered that accepts all files. */
   static bool accept_all_files(const std::string_view&, uint64_t) {
     return true;
   }

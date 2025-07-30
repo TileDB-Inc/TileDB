@@ -1077,12 +1077,11 @@ std::string Azure::BlockListUploadState::next_block_id() {
 AzureScanner::AzureScanner(
     const Azure& client,
     const URI& prefix,
-    FileFilter&& file_filter,
-    DirectoryFilter&& dir_filter,
+    ResultFilter&& result_filter,
     bool recursive,
     int max_keys)
     : LsScanner(
-          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+          prefix, std::move(result_filter), recursive)
     , client_(client)
     , max_keys_(max_keys)
     , has_fetched_(false) {
@@ -1105,11 +1104,12 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
     auto& object = *ptr;
 
     // TODO: Add support for directory pruning.
-    if (this->file_filter_(object.first, object.second)) {
+    if (this->result_filter_(object.first, object.second)) {
       // Iterator is at the next object within results accepted by the filters.
       return;
     } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
+      // Object was rejected by the FilterPredicate, do not include it in
+      // results.
       advance(ptr);
     }
   }

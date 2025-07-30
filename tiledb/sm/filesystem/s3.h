@@ -422,7 +422,7 @@ class S3Scanner : public LsScanner {
   S3Scanner(
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
-      FileFilter&& file_filter,
+      ResultFilter&& result_filter,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -857,17 +857,16 @@ class S3 : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FileFilter on each entry collected and the DirectoryFilter on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FileFilter to invoke on each object for filtering.
-   * @param d The DirectoryFilter to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    */
   LsObjects ls_filtered(
-      const URI& parent, FileFilter f, bool recursive = false) const override {
+      const URI& parent,
+      ResultFilter f,
+      bool recursive = false) const override {
     throw_if_not_ok(init_client());
     S3Scanner s3_scanner = scanner(parent, std::move(f), recursive);
     // Prepend each object key with the bucket URI.
@@ -888,16 +887,14 @@ class S3 : public FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FileFilter to invoke on each object for filtering.
-   * @param d The DirectoryFilter to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed S3Scanner object.
    */
   S3Scanner scanner(
       const URI& parent,
-      FileFilter f,
+      ResultFilter f,
       bool recursive = false,
       int max_keys = 1000) const {
     throw_if_not_ok(init_client());

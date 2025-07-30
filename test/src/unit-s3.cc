@@ -330,20 +330,20 @@ TEST_CASE(
   int max_keys = GENERATE(1000, 10, 7);
 
   DYNAMIC_SECTION("Testing with " << max_keys << " max keys from S3") {
-    FileFilter file_filter;
+    ResultFilter result_filter;
     auto expected = s3_test.expected_results();
 
     SECTION("Accept all objects") {
-      file_filter = [](const std::string_view&, uint64_t) { return true; };
+      result_filter = [](const std::string_view&, uint64_t) { return true; };
       std::sort(expected.begin(), expected.end());
     }
 
     SECTION("Reject all objects") {
-      file_filter = [](const std::string_view&, uint64_t) { return false; };
+      result_filter = [](const std::string_view&, uint64_t) { return false; };
     }
 
     SECTION("Filter objects including 'test_file_1' in key") {
-      file_filter = [](const std::string_view& path, uint64_t) {
+      result_filter = [](const std::string_view& path, uint64_t) {
         if (path.find("test_file_1") != std::string::npos) {
           return true;
         }
@@ -352,7 +352,7 @@ TEST_CASE(
     }
 
     SECTION("Scan for a single object") {
-      file_filter = [](const std::string_view& path, uint64_t) {
+      result_filter = [](const std::string_view& path, uint64_t) {
         if (path.find("test_file_50") != std::string::npos) {
           return true;
         }
@@ -360,18 +360,18 @@ TEST_CASE(
       };
     }
 
-    // Filter expected results to apply file_filter.
-    std::erase_if(expected, [&file_filter](const auto& a) {
-      return !file_filter(a.first, a.second);
+    // Filter expected results to apply result_filter.
+    std::erase_if(expected, [&result_filter](const auto& a) {
+      return !result_filter(a.first, a.second);
     });
 
     auto scan = s3_test.get_s3().scanner(
-        s3_test.temp_dir_, file_filter, recursive, max_keys);
+        s3_test.temp_dir_, result_filter, recursive, max_keys);
     std::vector results_vector(scan.begin(), scan.end());
 
     CHECK(results_vector.size() == expected.size());
     for (const auto& s3_object : results_vector) {
-      CHECK(file_filter(s3_object.GetKey(), s3_object.GetSize()));
+      CHECK(result_filter(s3_object.GetKey(), s3_object.GetSize()));
       auto uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
       CHECK_THAT(
           expected,

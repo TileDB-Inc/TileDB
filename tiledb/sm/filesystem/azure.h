@@ -161,8 +161,7 @@ class AzureScanner : public LsScanner {
   AzureScanner(
       const Azure& client,
       const URI& prefix,
-      FileFilter&& file_filter,
-      DirectoryFilter&& dir_filter = accept_all_dirs,
+      ResultFilter&& result_filter,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -408,19 +407,15 @@ class Azure : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FileFilter on each entry collected and the DirectoryFilter on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FileFilter to invoke on each object for filtering.
-   * @param d The DirectoryFilter to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    */
   LsObjects ls_filtered(
       const URI& parent,
-      FileFilter f,
-      DirectoryFilter d = accept_all_dirs,
+      ResultFilter f,
       bool recursive = false) const override {
     AzureScanner azure_scanner =
         scanner(parent, std::move(f), std::move(d), recursive);
@@ -438,17 +433,14 @@ class Azure : public FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FileFilter to invoke on each object for filtering.
-   * @param d The DirectoryFilter to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed AzureScanner object.
    */
   AzureScanner scanner(
       const URI& parent,
-      FileFilter&& f,
-      DirectoryFilter&& d = accept_all_dirs,
+      ResultFilter&& f,
       bool recursive = false,
       int max_keys = 1000) const {
     return AzureScanner(

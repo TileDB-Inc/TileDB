@@ -51,22 +51,7 @@
  * and false otherwise.
  */
 template <class F>
-concept FilePredicate = std::predicate<F, const std::string_view, uint64_t>;
-
-/**
- * Recursion predicate for directories collected by ls.
- *
- * The predicate accepts:
- * - A string_view of the path to the directory.
- *
- * The predicate returns true if items inside the directory should be traversed,
- * and false otherwise.
- *
- * Directory pruning is currently supported only in local filesystem, and not
- * exposed in the user-facing C API.
- */
-template <class D>
-concept DirectoryPredicate = std::predicate<D, const std::string_view>;
+concept FilterPredicate = std::predicate<F, const std::string_view, uint64_t>;
 
 namespace tiledb::sm {
 class LsScanException : public StatusException {
@@ -89,11 +74,7 @@ class LsStopTraversal : public LsScanException {
   }
 };
 
-using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
-[[maybe_unused]] static bool accept_all_files(
-    const std::string_view&, uint64_t) {
-  return true;
-}
+using ResultFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
 /**
  * Typedef for ls C API callback as std::function for passing to C++
@@ -257,17 +238,18 @@ class LsScanIterator {
 class LsScanner {
  public:
   /** Constructor. */
-  LsScanner(const URI& prefix, FileFilter&& file_filter, bool recursive = false)
+  LsScanner(
+      const URI& prefix, ResultFilter&& result_filter, bool recursive = false)
       : prefix_(prefix)
-      , file_filter_(std::move(file_filter))
+      , result_filter_(std::move(result_filter))
       , is_recursive_(recursive) {
   }
 
  protected:
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;
-  /** File predicate used to filter file or object results. */
-  const FileFilter file_filter_;
+  /** Predicate used to filter results. */
+  const ResultFilter result_filter_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
 };
@@ -292,7 +274,7 @@ class CallbackWrapperCAPI {
   }
 
   /**
-   * Operator to wrap the FilePredicate used in the C++ API.
+   * Operator to wrap the FilterPredicate used in the C++ API.
    * This will throw a LsStopTraversal exception if the user callback returns 0,
    * and will throw a LsScanException if the user callback returns -1.
    *

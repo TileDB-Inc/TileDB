@@ -651,7 +651,7 @@ TEMPLATE_LIST_TEST_CASE(
       << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    auto ls_objects = fs.vfs_.ls_filtered(path, accept_all_files, recursive);
+    auto ls_objects = fs.vfs_.ls_filtered(path, VFSTestBase::accept_all_files, recursive);
 
     auto expected = fs.expected_results();
     if (!recursive) {
@@ -684,9 +684,7 @@ TEST_CASE(
   }
 }
 
-TEST_CASE(
-    "VFS: Throwing filters for ls_recursive",
-    "[vfs][ls_recursive][file-filter]") {
+TEST_CASE("VFS: Throwing filters for ls_recursive", "[vfs][ls_recursive]") {
   std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
   VFSTest vfs_test({0}, prefix);
   if (!vfs_test.is_supported()) {

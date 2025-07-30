@@ -601,23 +601,20 @@ class VFS : FilesystemBase,
   std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   LsObjects ls_filtered(
-      const URI& parent, FileFilter f, bool recursive) const override;
+      const URI& parent, ResultFilter f, bool recursive) const override;
 
   /**
    * Recursively lists objects and object information that start with `prefix`,
-   * invoking the FilePredicate on each entry collected and the
-   * DirectoryPredicate on common prefixes for pruning.
+   * invoking the FilterPredicate on each entry collected.
    *
    * Currently this API is only supported for local files, S3, Azure and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The FilterPredicate to invoke on each object for filtering.
    * @return Vector of results with each entry being a pair of the string URI
    *    and object size.
    */
-  template <FilePredicate F>
+  template <FilterPredicate F>
   LsObjects ls_recursive(const URI& parent, F&& f) const {
     return ls_filtered(parent, std::move(f), true);
   }
