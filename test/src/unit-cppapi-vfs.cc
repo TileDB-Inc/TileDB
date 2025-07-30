@@ -565,7 +565,7 @@ TEMPLATE_LIST_TEST_CASE(
   // Test collecting results with LsInclude predicate.
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
       ctx, vfs, test.temp_dir_.to_string(), include);
-  std::erase_if(expected_results, [&](const auto& object) {
+  std::erase_if(expected_results, [&include](const auto& object) {
     return !include(object.first, object.second);
   });
   std::sort(results.begin(), results.end());

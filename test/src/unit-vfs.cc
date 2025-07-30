@@ -686,28 +686,28 @@ TEST_CASE(
 
 TEST_CASE(
     "VFS: Throwing filters for ls_recursive",
-    "[vfs][ls_recursive][file-filter][directory-filter]") {
+    "[vfs][ls_recursive][file-filter]") {
   std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
   VFSTest vfs_test({0}, prefix);
   if (!vfs_test.is_supported()) {
     return;
   }
 
-  auto file_filter = [](const std::string_view&, uint64_t) -> bool {
-    throw std::logic_error("Throwing FileFilter");
+  auto filter = [](const std::string_view&, uint64_t) -> bool {
+    throw std::logic_error("Throwing filter");
   };
-  SECTION("Throwing FileFilter with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter));
+  SECTION("Throwing filter with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter));
   }
 
   SECTION("Throwing filter with N objects should throw") {
     REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
         std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
-        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
   }
 
   SECTION("Throwing filter with N objects should throw") {
@@ -715,11 +715,11 @@ TEST_CASE(
     REQUIRE_NOTHROW(
         vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("prefix/file")));
     CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
         std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
-        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
   }
 }
 
