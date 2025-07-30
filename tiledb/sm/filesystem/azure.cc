@@ -1092,11 +1092,6 @@ AzureScanner::AzureScanner(
       Azure::parse_azure_uri(prefix.add_trailing_slash());
   fetch_results();
   next(begin_);
-
-  // This case is hit when all files are rejected by the result_filter.
-  if (begin_ == end_ && !collected_prefixes_.empty() && !more_to_fetch()) {
-    next(build_prefix_vector());
-  }
 }
 
 void AzureScanner::next(typename Iterator::pointer& ptr) {
@@ -1110,7 +1105,7 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
   while (ptr != end_) {
     auto& object = *ptr;
 
-    // Store each unique prefix while scanning S3 objects.
+    // Store each unique prefix while scanning objects.
     if (result_type_ == OBJECT) {
       // The object key contains the azure:// prefix and the bucket name.
       auto prefix = object.first;

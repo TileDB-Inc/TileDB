@@ -2112,11 +2112,6 @@ S3Scanner::S3Scanner(
   }
   fetch_results();
   next(begin_);
-
-  // This case is hit when all files are rejected by the result_filter.
-  if (begin_ == end_ && !collected_prefixes_.empty() && !more_to_fetch()) {
-    next(build_prefix_vector());
-  }
 }
 
 typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
