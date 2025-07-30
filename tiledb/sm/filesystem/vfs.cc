@@ -359,7 +359,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 }
 
 LsObjects VFS::ls_filtered(
-    const URI& parent, FileFilter f, bool recursive) const {
+    const URI& parent, ResultFilter f, bool recursive) const {
   return get_fs(parent).ls_filtered(parent, std::move(f), recursive);
 }
 

@@ -518,10 +518,7 @@ std::vector<directory_entry> GCS::ls_with_sizes(const URI& uri) const {
 }
 
 LsObjects GCS::ls_filtered(
-    const URI& parent,
-    FileFilter file_filter,
-    DirectoryFilter,
-    bool recursive) const {
+    const URI& parent, ResultFilter result_filter, bool recursive) const {
   throw_if_not_ok(init_client());
 
   const URI uri_dir = parent.add_trailing_slash();
@@ -558,7 +555,7 @@ LsObjects GCS::ls_filtered(
       }
 
       auto entry = to_directory_entry(*object_metadata);
-      if (file_filter(entry.first, entry.second)) {
+      if (result_filter(entry.first, entry.second)) {
         result.emplace_back(std::move(entry));
       }
     }
@@ -586,7 +583,7 @@ LsObjects GCS::ls_filtered(
                 absl::get<std::string>(*object_metadata),
             0};
       }
-      if (file_filter(entry.first, entry.second)) {
+      if (result_filter(entry.first, entry.second)) {
         result.push_back(std::move(entry));
       }
     }

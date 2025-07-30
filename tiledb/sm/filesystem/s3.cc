@@ -2086,10 +2086,10 @@ URI S3::generate_chunk_uri(
 S3Scanner::S3Scanner(
     const shared_ptr<TileDBS3Client>& client,
     const URI& prefix,
-    FileFilter&& file_filter,
+    ResultFilter&& result_filter,
     bool recursive,
     int max_keys)
-    : LsScanner(prefix, std::move(file_filter), recursive)
+    : LsScanner(prefix, std::move(result_filter), recursive)
     , client_(client)
     , result_type_(OBJECT) {
   const auto prefix_dir = prefix.add_trailing_slash();
@@ -2113,7 +2113,7 @@ S3Scanner::S3Scanner(
   fetch_results();
   next(begin_);
 
-  // This case is hit when all files are rejected by the file_filter.
+  // This case is hit when all files are rejected by the result_filter.
   if (begin_ == end_ && !collected_prefixes_.empty() && !more_to_fetch()) {
     next(build_prefix_vector());
   }
@@ -2211,7 +2211,7 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
     }
 
     // Advance until we reach a result accepted by a filter predicate.
-    if (this->file_filter_(path, size)) {
+    if (this->result_filter_(path, size)) {
       return;
     } else {
       advance(ptr);

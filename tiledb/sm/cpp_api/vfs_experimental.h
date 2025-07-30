@@ -82,7 +82,7 @@ class VFSExperimental {
    */
   using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
-  /** Class to wrap C++ FilePredicate for passing to the C API. */
+  /** Class to wrap C++ FilterPredicate for passing to the C API. */
   class CallbackWrapperCPP {
    public:
     /** Default constructor is deleted */
@@ -97,7 +97,7 @@ class VFSExperimental {
     }
 
     /**
-     * Operator to wrap the FilePredicate used in the C++ API.
+     * Operator to wrap the FilterPredicate used in the C++ API.
      *
      * @param path The path of the object.
      * @param size The size of the object in bytes.
