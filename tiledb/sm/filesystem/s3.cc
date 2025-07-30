@@ -2175,11 +2175,10 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
     ptr = fetch_results();
   }
 
+  std::string bucket = "s3://" + std::string(list_objects_request_.GetBucket());
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
-    std::string bucket =
-        "s3://" + std::string(list_objects_request_.GetBucket());
     std::string path =
         bucket + S3::add_front_slash(std::string(object.GetKey()));
 
@@ -2193,7 +2192,7 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
            pos = prefix.rfind('/')) {
         prefix = prefix.substr(0, pos);
         // Do not accept the prefix we are scanning.
-        if (bucket + S3::add_front_slash(prefix) == prefix_.to_string() ||
+        if (path == prefix_.to_string() ||
             collected_prefixes_.contains(prefix)) {
           break;
         } else {

@@ -517,7 +517,8 @@ TEMPLATE_LIST_TEST_CASE(
     "[cppapi][vfs][ls_recursive]",
     ls_recursive_test_types) {
   using namespace tiledb::test;
-  TestType test({10, 100, 0});
+  std::vector<size_t> test_tree = {10, 100, 0};
+  TestType test(test_tree);
   if (!test.is_supported()) {
     return;
   }
@@ -557,9 +558,10 @@ TEMPLATE_LIST_TEST_CASE(
     };
   }
   SECTION("Custom filter (reject files over 50 bytes)") {
-    include = []([[maybe_unused]] std::string_view entry, uint64_t size) {
-      return size <= 50;
-    };
+    include = [](std::string_view, uint64_t size) { return size <= 50; };
+  }
+  SECTION("Custom filter (accept only directories)") {
+    include = [](std::string_view, uint64_t size) { return size == 0; };
   }
 
   // Test collecting results with LsInclude predicate.
@@ -578,6 +580,25 @@ TEMPLATE_LIST_TEST_CASE(
   std::sort(ls_objects.begin(), ls_objects.end());
   CHECK(ls_objects.size() == expected_results.size());
   CHECK(expected_results == ls_objects);
+
+  // Test filtering LocalFS and object storage returns same number of results.
+  if (!test.temp_dir_.is_file()) {
+    tiledb::test::LocalFsTest local(test_tree);
+    auto local_results = tiledb::VFSExperimental::ls_recursive_filter(
+        ctx, vfs, test.temp_dir_.to_string(), include);
+    tiledb::VFSExperimental::LsObjects local_objects;
+    CHECK(expected_results.size() == local_results.size());
+
+    auto local_cb = [&](const std::string_view& path, uint64_t size) {
+      if (include(path, size)) {
+        local_objects.emplace_back(path, size);
+      }
+      return true;
+    };
+    tiledb::VFSExperimental::ls_recursive(
+        ctx, vfs, test.temp_dir_.to_string(), local_cb);
+    CHECK(expected_results.size() == local_objects.size());
+  }
 }
 
 TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
@@ -691,6 +712,6 @@ TEST_CASE(
     CHECK(data.empty());
   }
   SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
+    CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
   }
 }

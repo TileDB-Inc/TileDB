@@ -101,7 +101,6 @@ TEMPLATE_LIST_TEST_CASE(
   if (!test.is_supported()) {
     return;
   }
-  auto expected = test.expected_results();
 
   vfs_config vfs_config;
   tiledb_ctx_t* ctx;
