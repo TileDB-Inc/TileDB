@@ -259,6 +259,7 @@ class LsScanner {
   static bool accept_all_dirs(const std::string_view&, uint64_t size) {
     return size == 0;
   }
+
  protected:
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;

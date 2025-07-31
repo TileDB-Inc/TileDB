@@ -651,14 +651,14 @@ TEMPLATE_LIST_TEST_CASE(
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
     auto ls_objects =
-        fs.vfs_.ls_filtered(path, VFSTestBase::accept_all_files, recursive);
+        fs.vfs_.ls_filtered(path, tiledb::sm::LsScanner::accept_all, recursive);
 
     auto expected = fs.expected_results();
     if (!recursive) {
       // If non-recursive all objects in the first directory should be
       // returned, including the subdir_1/ prefix.
       std::erase_if(expected, [](const auto& p) {
-        return p.first.find("subdir_1/test_file") == std::string::npos;
+        return p.first.find("subdir_1") == std::string::npos;
       });
     }
 
@@ -680,7 +680,7 @@ TEST_CASE(
 
   DYNAMIC_SECTION(backend << " supported backend should not throw") {
     CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, VFSTestBase::accept_all_files));
+        vfs_test.temp_dir_, tiledb::sm::LsScanner::accept_all));
   }
 }
 
