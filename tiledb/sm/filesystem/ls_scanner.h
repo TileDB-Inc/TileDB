@@ -245,10 +245,20 @@ class LsScanner {
       , is_recursive_(recursive) {
   }
 
+  /** Accept all files and directories from ls_recursive. */
   static bool accept_all(const std::string_view&, uint64_t) {
     return true;
   }
 
+  /** Accept only files from ls_recursive, returning no directories. */
+  static bool accept_all_files(const std::string_view&, uint64_t size) {
+    return size > 0;
+  }
+
+  /** Accept only directories from ls_recursive, returning no files. */
+  static bool accept_all_dirs(const std::string_view&, uint64_t size) {
+    return size == 0;
+  }
  protected:
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;

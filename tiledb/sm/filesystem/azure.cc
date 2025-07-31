@@ -1145,6 +1145,7 @@ AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
     begin_ = end_ = typename Iterator::pointer();
     return end_;
   }
+  result_type_ = OBJECT;
 
   blobs_ = client_.list_blobs_impl(
       container_name_,
