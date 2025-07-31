@@ -48,7 +48,11 @@
 using namespace tiledb::common;
 
 namespace tiledb::oxidize::arrow::schema {
-struct ArrowSchema;
+struct ArrowArraySchema;
+enum class WhichSchema : uint8_t;
+}  // namespace tiledb::oxidize::arrow::schema
+namespace tiledb::oxidize::datafusion::logical_expr {
+struct LogicalExpr;
 }
 namespace tiledb::oxidize::datafusion::physical_expr {
 struct PhysicalExpr;
@@ -150,6 +154,13 @@ class QueryCondition {
       const std::string& condition_marker,
       tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
+#ifdef HAVE_RUST
+  /** Constructor from a datafusion expression tree */
+  QueryCondition(
+      const ArraySchema& array_schema,
+      rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr);
+#endif
+
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
 
@@ -202,14 +213,27 @@ class QueryCondition {
    * If desired and possible, rewrite the query condition to use Datafusion to
    * evaluate.
    *
-   * Note that this is basically for testing, this isn't expected to be a
-   * production feature - we will have other entry points for Datafusion which
-   * make more sense. Datafusion evaluation appears to be slightly slower, which
-   * makes some sense since we must create arrow and datafusion data structures.
+   * This is principally used for testing, but may also be called from
+   * production if a query has both a query condition and a datafusion predicate
+   * added.
+   *
+   * @param array_schema
+   * @param which The manner of interpreting the array_schema into Arrow
    *
    * @return true if a rewrite occurred, false otherwise
    */
-  bool rewrite_to_datafusion(const ArraySchema& array_schema);
+  bool rewrite_to_datafusion(
+      const ArraySchema& array_schema,
+      tiledb::oxidize::arrow::schema::WhichSchema which);
+
+  /**
+   * @return an equivalent representation of this condition's expression tree as
+   * a Datafusion logical expression
+   */
+  rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
+  as_datafusion(
+      const ArraySchema& array_schema,
+      tiledb::oxidize::arrow::schema::WhichSchema which);
 #endif
 
   /**
@@ -405,7 +429,8 @@ class QueryCondition {
 #ifdef HAVE_RUST
   /** Datafusion expression evaluation */
   struct Datafusion {
-    using BoxSchema = ::rust::Box<tiledb::oxidize::arrow::schema::ArrowSchema>;
+    using BoxSchema =
+        ::rust::Box<tiledb::oxidize::arrow::schema::ArrowArraySchema>;
     using BoxExpr =
         ::rust::Box<tiledb::oxidize::datafusion::physical_expr::PhysicalExpr>;
     BoxSchema schema_;
@@ -415,6 +440,12 @@ class QueryCondition {
         : schema_(std::move(schema))
         , expr_(std::move(expr)) {
     }
+
+    Datafusion(
+        const ArraySchema& array_schema,
+        tiledb::oxidize::arrow::schema::WhichSchema which,
+        rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&&
+            expr);
 
     template <typename BitmapType>
     void apply(

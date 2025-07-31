@@ -869,7 +869,7 @@ struct VFSTestSetup {
     }
   }
 
-  Context ctx() {
+  Context ctx() const {
     return Context(ctx_c, false);
   }
 
