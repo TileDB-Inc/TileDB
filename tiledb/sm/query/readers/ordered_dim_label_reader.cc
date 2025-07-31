@@ -146,7 +146,7 @@ void OrderedDimLabelReader::refresh_config() {
 }
 
 Status OrderedDimLabelReader::dowork() {
-  auto timer_se = stats_->start_timer("dowork");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
 
   get_dim_attr_stats();
   reset_buffer_sizes();
@@ -264,7 +264,8 @@ void OrderedDimLabelReader::label_read() {
 
 template <typename IndexType>
 void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
-  auto timer_se = stats_->start_timer("compute_array_tile_indexes_for_ranges");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_array_tile_indexes_for_ranges");
 
   // Save the minimum/maximum tile indexes (in the full domain) to be used
   // later.
@@ -307,7 +308,8 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
 }
 
 void OrderedDimLabelReader::load_label_min_max_values() {
-  auto timer_se = stats_->start_timer("load_label_min_max_values");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("load_label_min_max_values");
   const auto encryption_key = array_->encryption_key();
 
   // Load min/max data for all fragments.
@@ -474,7 +476,7 @@ bool OrderedDimLabelReader::tile_overwritten(
 
 template <typename IndexType>
 uint64_t OrderedDimLabelReader::create_result_tiles() {
-  auto timer_se = stats_->start_timer("create_result_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("create_result_tiles");
 
   uint64_t max_range = 0;
   uint64_t total_mem_used = 0;
@@ -713,7 +715,8 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
 template <typename IndexType>
 void OrderedDimLabelReader::compute_and_copy_range_indexes(
     uint64_t buffer_offset, uint64_t r) {
-  auto timer_se = stats_->start_timer("compute_and_copy_range_indexes");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_and_copy_range_indexes");
 
   auto dest = static_cast<IndexType*>(buffers_[index_dim_->name()].buffer_) +
               (buffer_offset + r) * 2;

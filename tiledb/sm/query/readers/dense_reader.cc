@@ -149,7 +149,7 @@ Status DenseReader::complete_read_loop() {
 }
 
 Status DenseReader::dowork() {
-  auto timer_se = stats_->start_timer("dowork");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
   if (condition_.has_value()) {
@@ -246,7 +246,8 @@ Status DenseReader::dense_read() {
   stats_->add_counter("num_tiles", tile_coords.size());
   std::vector<uint64_t> tiles_cell_num(tile_coords.size());
   {
-    auto timer_se = stats_->start_timer("compute_tiles_cell_num");
+    [[maybe_unused]] auto timer_se =
+        stats_->start_timer("compute_tiles_cell_num");
     auto status = parallel_for(
         &resources_.compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
           tiles_cell_num[t] =
@@ -595,7 +596,7 @@ Status DenseReader::dense_read() {
 }
 
 void DenseReader::init_read_state() {
-  auto timer_se = stats_->start_timer("init_state");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("init_state");
 
   // Check subarray.
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
@@ -1032,7 +1033,7 @@ Status DenseReader::apply_query_condition(
     shared_ptr<IterationTileData<DimType>> iteration_tile_data,
     const uint64_t num_range_threads,
     std::vector<uint8_t>& qc_result) {
-  auto timer_se = stats_->start_timer("apply_query_condition");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("apply_query_condition");
   auto& result_space_tiles = iteration_tile_data->result_space_tiles();
 
   if (condition_.has_value()) {
@@ -1250,7 +1251,7 @@ Status DenseReader::copy_attribute(
     shared_ptr<IterationTileData<DimType>> iteration_tile_data,
     const std::vector<uint8_t>& qc_result,
     const uint64_t num_range_threads) {
-  auto timer_se = stats_->start_timer("copy_attribute");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_attribute");
 
   // For easy reference
   auto& result_space_tiles = iteration_tile_data->result_space_tiles();
@@ -1271,7 +1272,7 @@ Status DenseReader::copy_attribute(
 
     // Process offsets.
     {
-      auto timer_se = stats_->start_timer("copy_offset_tiles");
+      [[maybe_unused]] auto timer_se = stats_->start_timer("copy_offset_tiles");
       auto status = parallel_for_2d(
           &resources_.compute_tp(),
           iteration_tile_data->t_start(),
@@ -1304,7 +1305,7 @@ Status DenseReader::copy_attribute(
 
     {
       // We have the cell lengths in the users buffer, convert to offsets.
-      auto timer_se = stats_->start_timer("fix_offset_tiles");
+      [[maybe_unused]] auto timer_se = stats_->start_timer("fix_offset_tiles");
       const bool nullable = array_schema_.is_nullable(name);
       fix_offsets_buffer<OffType>(
           name,
@@ -1331,7 +1332,7 @@ Status DenseReader::copy_attribute(
     }
 
     {
-      auto timer_se = stats_->start_timer("copy_var_tiles");
+      [[maybe_unused]] auto timer_se = stats_->start_timer("copy_var_tiles");
       // Process var data in parallel.
       auto status = parallel_for_2d(
           &resources_.compute_tp(),
@@ -1373,7 +1374,7 @@ Status DenseReader::copy_attribute(
     }
 
     {
-      auto timer_se = stats_->start_timer("copy_fixed_tiles");
+      [[maybe_unused]] auto timer_se = stats_->start_timer("copy_fixed_tiles");
       // Process values in parallel.
       auto status = parallel_for_2d(
           &resources_.compute_tp(),
@@ -1466,7 +1467,7 @@ Status DenseReader::process_aggregates(
     shared_ptr<IterationTileData<DimType>> iteration_tile_data,
     const std::vector<uint8_t>& qc_result,
     const uint64_t num_range_threads) {
-  auto timer_se = stats_->start_timer("process_aggregates");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("process_aggregates");
 
   // For easy reference
   auto& result_space_tiles = iteration_tile_data->result_space_tiles();
@@ -2209,7 +2210,7 @@ Status DenseReader::add_extra_offset() {
 template <class T>
 void DenseReader::fill_dense_coords(
     const Subarray& subarray, const optional<std::vector<uint8_t>> qc_results) {
-  auto timer_se = stats_->start_timer("fill_dense_coords");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("fill_dense_coords");
 
   // Count the number of cells.
   auto cell_num = subarray.cell_num();

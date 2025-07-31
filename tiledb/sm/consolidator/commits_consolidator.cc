@@ -62,7 +62,7 @@ Status CommitsConsolidator::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_commits");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_commits");
 
   check_array_uri(array_name);
 

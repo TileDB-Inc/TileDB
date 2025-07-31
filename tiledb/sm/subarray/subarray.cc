@@ -1528,7 +1528,8 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 
 template <class T>
 void Subarray::compute_tile_coords() {
-  auto timer_se = stats_->start_timer("read_compute_tile_coords");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_compute_tile_coords");
   if (array_->array_schema_latest().tile_order() == Layout::ROW_MAJOR) {
     compute_tile_coords_row<T>();
   } else {
@@ -1713,7 +1714,7 @@ void Subarray::sort_and_merge_ranges(ThreadPool* const compute_tp) {
     return;
 
   // Sort and conditionally merge ranges
-  auto timer = stats_->start_timer("sort_and_merge_ranges");
+  [[maybe_unused]] auto timer = stats_->start_timer("sort_and_merge_ranges");
   throw_if_not_ok(parallel_for(
       compute_tp,
       0,
@@ -1835,7 +1836,8 @@ void Subarray::compute_range_offsets() {
 
 void Subarray::compute_est_result_size(
     const Config* config, ThreadPool* compute_tp) {
-  auto timer_se = stats_->start_timer("read_compute_est_result_size");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_compute_est_result_size");
   if (est_result_size_computed_) {
     return;
   }
@@ -2208,7 +2210,8 @@ void Subarray::precompute_tile_overlap(
     const Config* config,
     ThreadPool* compute_tp,
     bool override_memory_constraint) {
-  auto timer_se = stats_->start_timer("read_compute_tile_overlap");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_compute_tile_overlap");
 
   // If the `tile_overlap_` has already been precomputed and contains
   // the given range, re-use it with new range.
@@ -2294,7 +2297,8 @@ void Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* compute_tp,
     const std::vector<FragIdx>& frag_tile_idx,
     ITileRange* tile_ranges) {
-  auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_compute_simple_tile_overlap");
 
   // For easy reference.
   const auto meta = array_->fragment_metadata();
@@ -2610,7 +2614,8 @@ void Subarray::get_expanded_coordinates(
 }
 
 void Subarray::load_relevant_fragment_rtrees(ThreadPool* compute_tp) const {
-  auto timer_se = stats_->start_timer("read_load_relevant_rtrees");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_load_relevant_rtrees");
 
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
@@ -2628,7 +2633,8 @@ void Subarray::compute_relevant_fragment_tile_overlap(
     ThreadPool* compute_tp,
     SubarrayTileOverlap* tile_overlap,
     ComputeRelevantTileOverlapCtx* fn_ctx) {
-  auto timer_se = stats_->start_timer("read_compute_relevant_tile_overlap");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_compute_relevant_tile_overlap");
 
   const auto range_num = tile_overlap->range_num();
   fn_ctx->range_idx_offset_ = fn_ctx->range_idx_offset_ + fn_ctx->range_len_;

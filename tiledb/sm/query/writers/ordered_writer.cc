@@ -105,7 +105,7 @@ OrderedWriter::~OrderedWriter() {
 Status OrderedWriter::dowork() {
   get_dim_attr_stats();
 
-  auto timer_se = stats_->start_timer("dowork");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
 
   check_attr_order();
 
@@ -131,7 +131,7 @@ Status OrderedWriter::dowork() {
 }
 
 Status OrderedWriter::finalize() {
-  auto timer_se = stats_->start_timer("finalize");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("finalize");
 
   return Status::Ok();
 }
@@ -175,7 +175,7 @@ Status OrderedWriter::ordered_write() {
 
 template <class T>
 Status OrderedWriter::ordered_write() {
-  auto timer_se = stats_->start_timer("ordered_write");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
   auto frag_meta = this->create_fragment_metadata();
@@ -293,7 +293,8 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
-  auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("prepare_filter_and_write_tiles");
 
   // For easy reference
   const auto type = array_schema_.type(name);
@@ -334,7 +335,8 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     }
 
     {
-      auto timer_se = stats_->start_timer("prepare_and_filter_tiles");
+      [[maybe_unused]] auto timer_se =
+          stats_->start_timer("prepare_and_filter_tiles");
       auto st = parallel_for(
           &resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
             // Prepare and filter tiles

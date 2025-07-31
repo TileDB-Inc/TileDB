@@ -95,7 +95,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
     const URI& schema_uri,
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) {
-  auto timer_se =
+  [[maybe_unused]] auto timer_se =
       resources.stats().start_timer("sm_load_array_schema_from_uri");
 
   auto tile = GenericTileIO::load(
@@ -111,7 +111,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
 shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
-  auto timer_se =
+  [[maybe_unused]] auto timer_se =
       resources_.get().stats().start_timer("sm_load_array_schema_latest");
 
   if (uri_.is_invalid()) {
@@ -154,7 +154,7 @@ std::unordered_map<std::string, shared_ptr<ArraySchema>>
 ArrayDirectory::load_all_array_schemas(
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
-  auto timer_se =
+  [[maybe_unused]] auto timer_se =
       resources_.get().stats().start_timer("sm_load_all_array_schemas");
 
   if (uri_.is_invalid()) {
@@ -630,7 +630,7 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
 
 std::vector<URI> ArrayDirectory::list_root_dir_uris() {
   // List the array directory URIs
-  auto timer_se = stats_->start_timer("list_root_uris");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("list_root_uris");
   return ls(uri_);
 }
 
@@ -648,7 +648,7 @@ ArrayDirectory::load_root_dir_uris_v1_v11(
 
 std::vector<URI> ArrayDirectory::list_commits_dir_uris() {
   // List the commits folder array directory URIs
-  auto timer_se = stats_->start_timer("list_commit_uris");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("list_commit_uris");
   return ls(uri_.join_path(constants::array_commits_dir_name));
 }
 
@@ -712,7 +712,8 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
 std::vector<URI>
 ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
-  auto timer_se = stats_->start_timer("list_fragment_meta_uris");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("list_fragment_meta_uris");
   return ls(uri_.join_path(constants::array_fragment_meta_dir_name));
 }
 
@@ -722,7 +723,8 @@ tuple<
     optional<std::unordered_set<std::string>>>
 ArrayDirectory::load_consolidated_commit_uris(
     const std::vector<URI>& commits_dir_uris) {
-  auto timer_se = stats_->start_timer("load_consolidated_commit_uris");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("load_consolidated_commit_uris");
   // Load the commit URIs to ignore. This is done in serial for now as it can be
   // optimized by vacuuming.
   std::unordered_set<std::string> ignore_set;
@@ -841,7 +843,8 @@ void ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
   {
-    auto timer_se = stats_->start_timer("list_array_meta_uris");
+    [[maybe_unused]] auto timer_se =
+        stats_->start_timer("list_array_meta_uris");
     array_meta_dir_uris =
         ls(uri_.join_path(constants::array_metadata_dir_name));
   }
@@ -866,7 +869,8 @@ void ArrayDirectory::load_array_schema_uris() {
   // Load the URIs from the array schema directory
   std::vector<URI> array_schema_dir_uris;
   {
-    auto timer_se = stats_->start_timer("list_array_schema_uris");
+    [[maybe_unused]] auto timer_se =
+        stats_->start_timer("list_array_schema_uris");
     array_schema_dir_uris =
         ls(uri_.join_path(constants::array_schema_dir_name));
   }
@@ -1325,7 +1329,8 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
     const std::string& enumeration_path,
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
-  auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
+  [[maybe_unused]] auto timer_se =
+      resources_.get().stats().start_timer("sm_load_enumeration");
 
   auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
                       .join_path(constants::array_enumerations_dir_name)

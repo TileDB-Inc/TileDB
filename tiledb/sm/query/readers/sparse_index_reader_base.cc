@@ -226,7 +226,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     return Status::Ok();
   }
 
-  auto timer_se = stats_->start_timer("load_initial_data");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.set_done_adding_result_tiles(false);
 
   // For easy reference.
@@ -414,7 +414,8 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
     const std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("read_and_unfilter_coords");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_and_unfilter_coords");
 
   if (include_coords_) {
     // Read and unfilter zipped coordinate tiles. Note that
@@ -462,7 +463,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
 template <class BitmapType>
 void SparseIndexReaderBase::compute_tile_bitmaps(
     std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("compute_tile_bitmaps");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("compute_tile_bitmaps");
 
   // For easy reference.
   const auto& domain{array_schema_.domain()};
@@ -568,7 +569,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 
           // Compute the bitmap for the cells.
           {
-            auto timer_compute_results_count_sparse =
+            [[maybe_unused]] auto timer_compute_results_count_sparse =
                 stats_->start_timer("compute_results_count_sparse");
             throw_if_not_ok(rt->compute_results_count_sparse(
                 dim_idx,
@@ -608,7 +609,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 template <class ResultTileType, class BitmapType>
 void SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("apply_query_condition");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("apply_query_condition");
 
   if (condition_.has_value() || !delete_and_update_conditions_.empty() ||
       use_timestamps_) {
@@ -737,7 +738,8 @@ std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
     uint64_t* buffer_idx,
     std::vector<ResultTile*>& result_tiles,
     bool agg_only) {
-  auto timer_se = stats_->start_timer("read_and_unfilter_attributes");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("read_and_unfilter_attributes");
   const uint64_t memory_budget = available_memory();
 
   std::vector<ReaderBase::NameToLoad> names_to_read;
