@@ -156,7 +156,7 @@ bool ReaderBase::skip_field(
 /* ****************************** */
 
 std::vector<uint64_t> ReaderBase::tile_offset_sizes() {
-  auto timer_se = stats_->start_timer("tile_offset_sizes");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("tile_offset_sizes");
 
   // For easy reference.
   std::vector<uint64_t> ret(fragment_metadata_.size());
@@ -506,7 +506,7 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
 void ReaderBase::load_tile_offsets(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
-  auto timer_se = stats_->start_timer("load_tile_offsets");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
   throw_if_not_ok(parallel_for(
@@ -537,7 +537,7 @@ void ReaderBase::load_tile_offsets(
 void ReaderBase::load_tile_var_sizes(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
-  auto timer_se = stats_->start_timer("load_tile_var_sizes");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
 
   throw_if_not_ok(parallel_for(
@@ -572,7 +572,7 @@ void ReaderBase::load_tile_var_sizes(
 void ReaderBase::load_tile_metadata(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
-  auto timer_se = stats_->start_timer("load_tile_metadata");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("load_tile_metadata");
   const auto encryption_key = array_->encryption_key();
 
   throw_if_not_ok(parallel_for(
@@ -612,7 +612,8 @@ void ReaderBase::load_tile_metadata(
 }
 
 void ReaderBase::load_processed_conditions() {
-  auto timer_se = stats_->start_timer("load_processed_conditions");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
 
   // Load all fragments in parallel.
@@ -675,21 +676,21 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
 std::list<FilteredData> ReaderBase::read_attribute_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  auto timer_se = stats_->start_timer("read_attribute_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
 std::list<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  auto timer_se = stats_->start_timer("read_coordinate_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
 std::list<FilteredData> ReaderBase::read_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  auto timer_se = stats_->start_timer("read_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("read_tiles");
   std::list<FilteredData> filtered_data;
 
   // Shortcut for empty tile vec.
@@ -909,7 +910,7 @@ Status ReaderBase::unfilter_tiles(
   const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
                                                          "unfilter_coord_tiles";
 
-  const auto timer_se = stats_->start_timer(stat_type);
+  [[maybe_unused]] const auto timer_se = stats_->start_timer(stat_type);
   auto var_size = array_schema_.var_size(name);
   auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
@@ -1344,7 +1345,8 @@ void ReaderBase::validate_attribute_order(
     Range& array_non_empty_domain,
     std::vector<const void*>& non_empty_domains,
     std::vector<uint64_t>& frag_first_array_tile_idx) {
-  auto timer_se = stats_->start_timer("validate_attribute_order");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("validate_attribute_order");
 
   auto g = [&](auto T) {
     if constexpr (std::is_same_v<decltype(T), char>) {

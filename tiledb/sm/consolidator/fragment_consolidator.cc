@@ -73,7 +73,7 @@ void FragmentConsolidationWorkspace::resize_buffers(
     const ArraySchema& array_schema,
     std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
     uint64_t total_buffers_budget) {
-  auto timer_se = stats->start_timer("resize_buffers");
+  [[maybe_unused]] auto timer_se = stats->start_timer("resize_buffers");
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
@@ -207,7 +207,7 @@ Status FragmentConsolidator::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_frags");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_frags");
 
   check_array_uri(array_name);
 
@@ -320,7 +320,7 @@ Status FragmentConsolidator::consolidate_fragments(
     const void* encryption_key,
     uint32_t key_length,
     const std::vector<std::string>& fragment_uris) {
-  auto timer_se = stats_->start_timer("consolidate_frags");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
   auto array_for_reads{make_shared<Array>(HERE(), resources_, URI(array_name))};
@@ -583,7 +583,7 @@ Status FragmentConsolidator::consolidate_internal(
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri,
     FragmentConsolidationWorkspace& cw) {
-  auto timer_se = stats_->start_timer("consolidate_internal");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
 
@@ -686,7 +686,8 @@ Status FragmentConsolidator::consolidate_internal(
 
 void FragmentConsolidator::copy_array(
     Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw) {
-  auto timer_se = stats_->start_timer("consolidate_copy_array");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
   // The Reader will reset the query buffer sizes to the original
@@ -725,7 +726,8 @@ Status FragmentConsolidator::create_queries(
     URI* new_fragment_uri,
     uint64_t read_memory_budget,
     uint64_t write_memory_budget) {
-  auto timer_se = stats_->start_timer("consolidate_create_queries");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("consolidate_create_queries");
 
   const auto dense = array_for_reads->array_schema_latest().dense();
 
@@ -805,7 +807,8 @@ Status FragmentConsolidator::compute_next_to_consolidate(
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {
-  auto timer_se = stats_->start_timer("consolidate_compute_next");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("consolidate_compute_next");
 
   // Preparation
   auto sparse = !array_schema.dense();

@@ -752,7 +752,8 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     const std::vector<TimestampedURI>& fragments_to_load,
     const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
-  auto timer_se = resources.stats().start_timer("sm_load_fragment_metadata");
+  [[maybe_unused]] auto timer_se =
+      resources.stats().start_timer("sm_load_fragment_metadata");
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
@@ -841,7 +842,8 @@ void FragmentMetadata::load(
 }
 
 void FragmentMetadata::store(const EncryptionKey& encryption_key) {
-  auto timer_se = resources_->stats().start_timer("write_store_frag_meta");
+  [[maybe_unused]] auto timer_se =
+      resources_->stats().start_timer("write_store_frag_meta");
 
   // Make sure the data fits in the current domain before we commit to disk.
   auto cd = array_schema_->get_current_domain();

@@ -111,7 +111,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::refresh_config() {
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
-  auto timer_se = stats_->start_timer("dowork");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
 
   // Make sure user didn't request delete timestamps.
@@ -410,7 +410,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
 template <class BitmapType>
 std::list<UnorderedWithDupsResultTile<BitmapType>>
 SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
-  auto timer_se = stats_->start_timer("create_result_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("create_result_tiles");
 
   ResultTilesList result_tiles;
 
@@ -751,7 +751,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
     std::vector<const void*>& var_data) {
-  auto timer_se = stats_->start_timer("copy_offsets_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_offsets_tiles");
 
   // For easy reference.
   auto buffer = (OffType*)query_buffer.buffer_;
@@ -857,7 +857,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
     std::vector<const void*>& var_data) {
-  auto timer_se = stats_->start_timer("copy_var_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_var_tiles");
 
   // For easy reference.
   auto offsets_buffer = (OffType*)query_buffer.buffer_;
@@ -1156,7 +1156,7 @@ void SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
     const uint64_t src_min_pos,
     const uint64_t src_max_pos,
     uint8_t* buffer) {
-  auto timer_se = stats_->start_timer("copy_timestamps_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_timestamps_tiles");
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(constants::timestamps);
   Tile* t = nullptr;
@@ -1229,7 +1229,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer) {
-  auto timer_se = stats_->start_timer("copy_fixed_data_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_fixed_data_tiles");
 
   // For easy reference.
   auto buffer = (uint8_t*)query_buffer.buffer_;
@@ -1384,7 +1384,8 @@ tuple<bool, std::vector<uint64_t>>
 SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
     const std::vector<std::string>& names,
     std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("resize_fixed_results_to_copy");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("resize_fixed_results_to_copy");
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
@@ -1529,7 +1530,8 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     const uint64_t first_tile_min_pos,
     std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer) {
-  auto timer_se = stats->start_timer("switch_sizes_to_offsets");
+  [[maybe_unused]] auto timer_se =
+      stats->start_timer("switch_sizes_to_offsets");
 
   auto new_var_buffer_size = *query_buffer.buffer_var_size_;
   auto new_result_tiles_size = result_tiles.size();
@@ -1601,7 +1603,7 @@ template <class BitmapType>
 template <class OffType>
 bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
     std::vector<std::string>& names, std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("process_tiles");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("process_tiles");
 
   // Vector for storing the cell offsets of each tiles into the user buffers.
   // This also stores the last offset to facilitate calculations later on.

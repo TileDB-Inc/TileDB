@@ -292,7 +292,8 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer = resources_.stats().start_timer("array_open_without_fragments");
+  [[maybe_unused]] auto timer =
+      resources_.stats().start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -347,7 +348,7 @@ Status Array::open_without_fragments(
       }
     } else {
       {
-        auto timer_se = resources_.stats().start_timer(
+        [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
             "array_open_without_fragments_load_directory");
         set_array_directory(ArrayDirectory(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ));
@@ -369,7 +370,8 @@ Status Array::open_without_fragments(
 
 void Array::load_fragments(
     const std::vector<TimestampedURI>& fragments_to_load) {
-  auto timer_se = resources_.stats().start_timer("sm_array_load_fragments");
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
@@ -404,7 +406,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer = resources_.stats().start_timer(
+  [[maybe_unused]] auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
@@ -517,7 +519,7 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       {
-        auto timer_se =
+        [[maybe_unused]] auto timer_se =
             resources_.stats().start_timer("array_open_read_load_directory");
         set_array_directory(ArrayDirectory(
             resources_,
@@ -534,7 +536,7 @@ Status Array::open(
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       {
-        auto timer_se =
+        [[maybe_unused]] auto timer_se =
             resources_.stats().start_timer("array_open_write_load_directory");
         set_array_directory(ArrayDirectory(
             resources_,
@@ -554,7 +556,7 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
-        auto timer_se = resources_.stats().start_timer(
+        [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
             "array_open_delete_or_update_load_directory");
         set_array_directory(ArrayDirectory(
             resources_,
@@ -1055,7 +1057,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  auto timer = resources_.stats().start_timer("array_reopen");
+  [[maybe_unused]] auto timer = resources_.stats().start_timer("array_reopen");
   // Check the array was opened already in READ mode.
   if (!is_open_) {
     return LOG_STATUS(
@@ -1112,7 +1114,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   // Reload the array directory in READ mode (reopen only supports reads).
   try {
     {
-      auto timer_se = resources_.stats().start_timer("array_reopen_directory");
+      [[maybe_unused]] auto timer_se =
+          resources_.stats().start_timer("array_reopen_directory");
       set_array_directory(ArrayDirectory(
           resources_,
           array_uri_,
@@ -1753,7 +1756,7 @@ tuple<
     std::unordered_map<std::string, shared_ptr<ArraySchema>>,
     std::vector<shared_ptr<FragmentMetadata>>>
 Array::open_for_reads() {
-  auto timer_se = resources_.stats().start_timer(
+  [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
   auto result = FragmentInfo::load_array_schemas_and_fragment_metadata(
       resources_, array_directory(), memory_tracker(), *encryption_key());
@@ -1768,7 +1771,7 @@ tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_reads_without_fragments() {
-  auto timer_se = resources_.stats().start_timer(
+  [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
@@ -1785,7 +1788,7 @@ tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_writes() {
-  auto timer_se =
+  [[maybe_unused]] auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
   // Checks
   if (!resources_.vfs().supports_uri_scheme(array_uri_)) {
@@ -1814,7 +1817,8 @@ void Array::do_load_metadata() {
     throw ArrayException(
         "Cannot load metadata; array directory is not loaded.");
   }
-  auto timer_se = resources_.stats().start_timer("sm_load_array_metadata");
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("sm_load_array_metadata");
 
   // Determine which array metadata to load
   const auto& array_metadata_to_load = array_directory().array_meta_uris();

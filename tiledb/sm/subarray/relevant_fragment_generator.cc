@@ -95,7 +95,8 @@ bool RelevantFragmentGenerator::update_range_coords(
 
 RelevantFragments RelevantFragmentGenerator::compute_relevant_fragments(
     ThreadPool* const compute_tp) {
-  auto timer_se = stats_->start_timer("compute_relevant_frags");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_relevant_frags");
   auto dim_num = array_->array_schema_latest().dim_num();
   auto fragment_num = array_->fragment_metadata().size();
   const auto meta = array_->fragment_metadata();

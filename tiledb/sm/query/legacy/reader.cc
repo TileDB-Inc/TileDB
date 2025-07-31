@@ -243,7 +243,7 @@ uint64_t Reader::get_timestamp(const ResultCoords& rc) const {
 }
 
 Status Reader::dowork() {
-  auto timer_se = stats_->start_timer("dowork");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
   if (condition_.has_value()) {
@@ -435,7 +435,7 @@ Status Reader::apply_query_condition(
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
-  auto timer_se =
+  [[maybe_unused]] auto timer_se =
       stats_->start_timer("compute_sparse_result_cell_slabs_sparse");
 
   // Trivial case
@@ -553,7 +553,8 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     IndexedList<ResultTile>& result_tiles,
     std::vector<std::vector<ResultCoords>>& range_result_coords) {
-  auto timer_se = stats_->start_timer("compute_range_result_coords");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_range_result_coords");
 
   auto range_num = subarray.range_num();
   range_result_coords.resize(range_num);
@@ -697,7 +698,8 @@ Status Reader::compute_range_result_coords(
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>& range_result_coords,
     std::vector<ResultCoords>& result_coords) {
-  auto timer_se = stats_->start_timer("compute_subarray_coords");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_subarray_coords");
   // The input 'result_coords' is already sorted. Save the current size
   // before inserting new elements.
   const size_t result_coords_size = result_coords.size();
@@ -746,7 +748,8 @@ Status Reader::compute_sparse_result_tiles(
     IndexedList<ResultTile>& result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
-  auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_sparse_result_tiles");
 
   // For easy reference
   auto& partitioner = read_state_.partitioner_;
@@ -816,7 +819,7 @@ Status Reader::compute_sparse_result_tiles(
 Status Reader::copy_coordinates(
     const std::vector<ResultTile*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) {
-  auto timer_se = stats_->start_timer("copy_coordinates");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_coordinates");
 
   if (result_cell_slabs.empty() && result_tiles.empty()) {
     zero_out_buffer_sizes();
@@ -884,7 +887,7 @@ Status Reader::copy_attribute_values(
     std::vector<ResultTile*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs,
     Subarray& subarray) {
-  auto timer_se = stats_->start_timer("copy_attr_values");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_attr_values");
 
   if (result_cell_slabs.empty() && result_tiles.empty()) {
     zero_out_buffer_sizes();
@@ -930,7 +933,7 @@ Status Reader::copy_fixed_cells(
     std::vector<size_t>* fixed_cs_partitions) {
   auto stat_type = (array_schema_.is_attr(name)) ? "copy_fixed_attr_values" :
                                                    "copy_fixed_coords";
-  auto timer_se = stats_->start_timer(stat_type);
+  [[maybe_unused]] auto timer_se = stats_->start_timer(stat_type);
 
   if (result_cell_slabs.empty()) {
     zero_out_buffer_sizes();
@@ -1121,7 +1124,7 @@ Status Reader::copy_var_cells(
     size_t total_cs_length) {
   auto stat_type = (array_schema_.is_attr(name)) ? "copy_var_attr_values" :
                                                    "copy_var_coords";
-  auto timer_se = stats_->start_timer(stat_type);
+  [[maybe_unused]] auto timer_se = stats_->start_timer(stat_type);
 
   if (result_cell_slabs.empty()) {
     zero_out_buffer_sizes();
@@ -1556,7 +1559,8 @@ Status Reader::compute_result_cell_slabs(
     std::vector<ResultCoords>& result_coords,
     std::vector<ResultTile*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
-  auto timer_se = stats_->start_timer("compute_sparse_result_cell_slabs_dense");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("compute_sparse_result_cell_slabs_dense");
 
   auto layout = subarray.layout();
 
@@ -1667,7 +1671,7 @@ Status Reader::compute_result_cell_slabs_global(
 Status Reader::compute_result_coords(
     IndexedList<ResultTile>& result_tiles,
     std::vector<ResultCoords>& result_coords) {
-  auto timer_se = stats_->start_timer("compute_result_coords");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("compute_result_coords");
 
   // Get overlapping tile indexes
   typedef std::pair<unsigned, uint64_t> FragTileTuple;
@@ -1896,7 +1900,7 @@ bool Reader::has_separate_coords() const {
 }
 
 void Reader::init_read_state() {
-  auto timer_se = stats_->start_timer("init_state");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("init_state");
 
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
@@ -2001,7 +2005,7 @@ Status Reader::sort_result_coords(
     std::vector<ResultCoords>::iterator iter_end,
     size_t coords_num,
     Layout layout) const {
-  auto timer_se = stats_->start_timer("sort_result_coords");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("sort_result_coords");
   auto& domain{array_schema_.domain()};
 
   iassert(
@@ -2159,7 +2163,8 @@ void Reader::get_result_tile_stats(
 Status Reader::calculate_hilbert_values(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
-  auto timer_se = stats_->start_timer("calculate_hilbert_values");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("calculate_hilbert_values");
   auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
@@ -2188,7 +2193,8 @@ Status Reader::calculate_hilbert_values(
 Status Reader::reorganize_result_coords(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
-  auto timer_se = stats_->start_timer("reorganize_result_coords");
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("reorganize_result_coords");
   auto coords_num = hilbert_values->size();
   size_t i_src, i_dst;
   ResultCoords pending;
@@ -2235,7 +2241,7 @@ bool Reader::belong_to_single_fragment(
 template <class T>
 tuple<Status, optional<bool>> Reader::fill_dense_coords(
     const Subarray& subarray) {
-  auto timer_se = stats_->start_timer("fill_dense_coords");
+  [[maybe_unused]] auto timer_se = stats_->start_timer("fill_dense_coords");
 
   // Reading coordinates with a query condition is currently unsupported.
   // Query conditions mutate the result cell slabs to filter attributes.
