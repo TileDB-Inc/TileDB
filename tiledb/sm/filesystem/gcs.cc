@@ -629,7 +629,7 @@ void GCS::move_file(const URI& old_uri, const URI& new_uri) const {
 
 void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   throw_if_not_ok(init_client());
-  auto paths = ls_filtered(old_uri, LsScanner::accept_all, true);
+  auto paths = ls_filtered(old_uri, LsScanner::accept_all_files, true);
   for (auto& path : paths) {
     std::string path_str = std::get<0>(path);
     std::string filename = path_str.substr(old_uri.to_string().length());

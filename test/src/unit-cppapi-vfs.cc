@@ -541,7 +541,7 @@ TEMPLATE_LIST_TEST_CASE(
   };
 
   SECTION("Default filter (include all)") {
-    include = [](std::string_view, uint64_t) { return true; };
+    include = tiledb::sm::LsScanner::accept_all;
   }
   SECTION("Custom filter (include none)") {
     include = [](std::string_view, uint64_t) { return false; };
@@ -561,7 +561,10 @@ TEMPLATE_LIST_TEST_CASE(
     include = [](std::string_view, uint64_t size) { return size <= 50; };
   }
   SECTION("Custom filter (accept only directories)") {
-    include = [](std::string_view, uint64_t size) { return size == 0; };
+    include = tiledb::sm::LsScanner::accept_all_dirs;
+  }
+  SECTION("Custom filter (accept only files)") {
+    include = tiledb::sm::LsScanner::accept_all_files;
   }
 
   // Test collecting results with LsInclude predicate.
