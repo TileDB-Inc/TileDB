@@ -62,8 +62,7 @@ LsObjects LocalFilesystem::ls_filtered(
     const auto absuri = URI(abspath);
     if (entry.is_directory()) {
       if (result_filter(absuri, 0)) {
-        qualifyingPaths.push_back(
-            std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
+        qualifyingPaths.emplace_back(tiledb::sm::URI(abspath).to_string(), 0);
       }
       if (!recursive) {
         iter.disable_recursion_pending();
@@ -75,8 +74,7 @@ LsObjects LocalFilesystem::ls_filtered(
        * them)
        */
       if (result_filter(absuri, entry.file_size())) {
-        qualifyingPaths.push_back(
-            std::make_pair(absuri.to_string(), entry.file_size()));
+        qualifyingPaths.emplace_back(absuri.to_string(), entry.file_size());
       }
     }
   }

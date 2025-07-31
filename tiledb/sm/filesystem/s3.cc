@@ -2192,7 +2192,7 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
            pos = prefix.rfind('/')) {
         prefix = prefix.substr(0, pos);
         // Do not accept the prefix we are scanning.
-        if (path == prefix_.to_string() ||
+        if (bucket + S3::add_front_slash(prefix) == prefix_.to_string() ||
             collected_prefixes_.contains(prefix)) {
           break;
         } else {

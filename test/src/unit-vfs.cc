@@ -656,9 +656,9 @@ TEMPLATE_LIST_TEST_CASE(
     auto expected = fs.expected_results();
     if (!recursive) {
       // If non-recursive all objects in the first directory should be
-      // returned, including the subdir_1/ prefix.
+      // returned, excluding the subdir_1/ prefix.
       std::erase_if(expected, [](const auto& p) {
-        return p.first.find("subdir_1") == std::string::npos;
+        return p.first.find("subdir_1/test_file") == std::string::npos;
       });
     }
 
