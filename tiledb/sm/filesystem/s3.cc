@@ -2114,11 +2114,21 @@ S3Scanner::S3Scanner(
   next(begin_);
 }
 
+S3Scanner::Iterator::pointer& S3Scanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.SetKey(collected_prefixes_.extract(next).value());
+    object.SetSize(0);
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
 typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
   // If this is our first request, GetIsTruncated() will be false.
-  if (collected_prefixes_.size() >=
-          static_cast<size_t>(list_objects_request_.GetMaxKeys()) ||
-      (!more_to_fetch() && !collected_prefixes_.empty())) {
+  if (!more_to_fetch() && !collected_prefixes_.empty()) {
     // Filter prefixes if we have collected the maximum amount or have no more
     // results to fetch from S3.
     return build_prefix_vector();
@@ -2169,9 +2179,6 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
 
 void S3Scanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
-    if (result_type_ == PREFIX) {
-      common_prefixes_.clear();
-    }
     ptr = fetch_results();
   }
 
@@ -2179,32 +2186,30 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
+    // The object key does not contain s3:// prefix or the bucket name.
     std::string path =
         bucket + S3::add_front_slash(std::string(object.GetKey()));
 
     // Store each unique prefix while scanning S3 objects.
     if (result_type_ == OBJECT) {
-      // The object key does not contain s3:// prefix or the bucket name.
-      auto prefix = object.GetKey();
-
+      std::string prefix = path;
       // Drop last part of the path until we reach the end, or hit a duplicate.
       for (auto pos = prefix.rfind('/'); pos != Aws::String::npos;
            pos = prefix.rfind('/')) {
         prefix = prefix.substr(0, pos);
         // Do not accept the prefix we are scanning.
-        if (bucket + S3::add_front_slash(prefix) == prefix_.to_string() ||
+        if (prefix == prefix_.to_string() ||
             collected_prefixes_.contains(prefix)) {
           break;
-        } else {
-          if (!collected_prefixes_.emplace(prefix).second) {
-            throw S3Exception("Failed to emplace prefix: '" + prefix + "'");
-          }
+        } else if (this->result_filter_(prefix, 0)) {
+          collected_prefixes_.emplace(prefix, 0);
         }
       }
     }
 
     // Advance until we reach a result accepted by a filter predicate.
-    if (this->result_filter_(path, size)) {
+    // Prefix results have already been filtered by the predicate.
+    if (result_type_ == PREFIX || this->result_filter_(path, size)) {
       return;
     } else {
       advance(ptr);

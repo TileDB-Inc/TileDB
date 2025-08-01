@@ -1096,9 +1096,6 @@ AzureScanner::AzureScanner(
 
 void AzureScanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
-    if (result_type_ == PREFIX) {
-      common_prefixes_.clear();
-    }
     ptr = fetch_results();
   }
 
@@ -1118,15 +1115,15 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
         if (prefix == prefix_.to_string() ||
             collected_prefixes_.contains(prefix)) {
           break;
-        } else {
-          if (!collected_prefixes_.emplace(prefix).second) {
-            throw AzureException("Failed to emplace prefix: '" + prefix + "'");
-          }
+        } else if (this->result_filter_(prefix, 0)) {
+          collected_prefixes_.emplace(prefix, 0);
         }
       }
     }
 
-    if (this->result_filter_(object.first, object.second)) {
+    // Prefix results have already been filtered by the predicate.
+    if (result_type_ == PREFIX ||
+        this->result_filter_(object.first, object.second)) {
       // Iterator is at the next object within results accepted by the filters.
       return;
     } else {
@@ -1137,9 +1134,20 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
   }
 }
 
+AzureScanner::Iterator::pointer& AzureScanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.first = collected_prefixes_.extract(next).value();
+    object.second = 0;
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
 AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
-  if (collected_prefixes_.size() >= static_cast<size_t>(max_keys_) ||
-      (!more_to_fetch() && !collected_prefixes_.empty())) {
+  if (!more_to_fetch() && !collected_prefixes_.empty()) {
     return build_prefix_vector();
   } else if (!more_to_fetch()) {
     begin_ = end_ = typename Iterator::pointer();

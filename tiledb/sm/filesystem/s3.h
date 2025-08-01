@@ -493,17 +493,7 @@ class S3Scanner : public LsScanner {
    *
    * @returns Iterator to the beginning of the prefix vector.
    */
-  typename Iterator::pointer& build_prefix_vector() {
-    result_type_ = PREFIX;
-    common_prefixes_.resize(collected_prefixes_.size());
-    for (auto& object : common_prefixes_) {
-      auto next = collected_prefixes_.begin();
-      object.SetKey(collected_prefixes_.extract(next).value());
-      object.SetSize(0);
-    }
-    end_ = common_prefixes_.end();
-    return begin_ = common_prefixes_.begin();
-  }
+  typename Iterator::pointer& build_prefix_vector();
 
   /**
    * Fetch the next batch of results from S3. This also handles setting the

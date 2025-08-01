@@ -567,11 +567,8 @@ LsObjects GCS::ls_filtered(
         if (entry_prefix == parent.to_string() ||
             collected_prefixes.contains(entry_prefix)) {
           break;
-        } else {
-          if (!collected_prefixes.emplace(entry_prefix).second) {
-            throw GCSException(
-                "Failed to emplace prefix: '" + entry_prefix + "'");
-          }
+        } else if (result_filter(entry_prefix, 0)) {
+          collected_prefixes.emplace(entry_prefix, 0);
         }
       }
 
@@ -580,13 +577,10 @@ LsObjects GCS::ls_filtered(
       }
     }
 
-    // Insert the collected prefixes into the results
+    // Insert the collected prefixes into the results.
     for (auto& p : collected_prefixes) {
-      if (result_filter(p, 0)) {
-        result.emplace_back(std::move(p), 0);
-      }
+      result.emplace_back(std::move(p), 0);
     }
-    collected_prefixes.clear();
 
   } else {
     auto it = client_->ListObjectsAndPrefixes(
