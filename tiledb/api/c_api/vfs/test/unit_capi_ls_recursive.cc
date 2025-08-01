@@ -81,7 +81,6 @@ TEMPLATE_LIST_TEST_CASE(
       // Stop traversal after we collect 10 results.
       return ls_data->size() != 10;
     };
-    std::erase_if(expected, [](const auto& a) { return a.second == 0; });
     expected.resize(10);
   }
 

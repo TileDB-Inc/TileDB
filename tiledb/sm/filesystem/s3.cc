@@ -2192,16 +2192,17 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
 
     // Store each unique prefix while scanning S3 objects.
     if (result_type_ == OBJECT) {
-      std::string prefix = path;
+      std::string prefix = object.GetKey();
       // Drop last part of the path until we reach the end, or hit a duplicate.
       for (auto pos = prefix.rfind('/'); pos != Aws::String::npos;
            pos = prefix.rfind('/')) {
         prefix = prefix.substr(0, pos);
+        auto full_uri = bucket + S3::add_front_slash(prefix);
         // Do not accept the prefix we are scanning.
-        if (prefix == prefix_.to_string() ||
+        if (full_uri == prefix_.to_string() ||
             collected_prefixes_.contains(prefix)) {
           break;
-        } else if (this->result_filter_(prefix, 0)) {
+        } else if (this->result_filter_(full_uri, 0)) {
           collected_prefixes_.emplace(prefix, 0);
         }
       }
