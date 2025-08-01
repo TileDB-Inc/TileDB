@@ -39,11 +39,3 @@ commence(unit_test misc)
         unit_parse_argument.cc
     )
 conclude(unit_test)
-
-commence(unit_test mgc_dict)
-    this_target_object_libraries(mgc_dict)
-    this_target_compile_definitions(TILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
-    this_target_sources(
-        unit_mgc_dict.cc
-    )
-conclude(unit_test)
