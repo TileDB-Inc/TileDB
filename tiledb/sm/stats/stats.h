@@ -121,44 +121,46 @@ class Stats {
    * Value constructor.
    *
    * @param prefix The stat name prefix.
+   * @param enabled_stats True if stats are enabled, false otherwise.
    */
-  Stats(const std::string& prefix);
+  Stats(const std::string& prefix, bool enabled_stats = true);
 
   /**
    * Value constructor.
    *
    * @param prefix The stat name prefix.
    * @param data Initial data to populate the Stats object with.
+   * @param enabled_stats True if stats are enabled, false otherwise.
    */
-  Stats(const std::string& prefix, const StatsData& data);
+  Stats(
+      const std::string& prefix,
+      const StatsData& data,
+      bool enabled_stats = true);
 
   /** Destructor. */
   ~Stats() = default;
 
-/* ****************************** */
-/*              API               */
-/* ****************************** */
+  /* ****************************** */
+  /*              API               */
+  /* ****************************** */
 
-/**
- * Create a timer sentry object that's reported under this `Stats` object.
- *
- * The time begins during the execution of this function; more precisely, it
- * begins with the construction of the returned instrument object. The timer
- * ends when that object is destroyed.
- *
- * The return value of this function must be assigned to a variable in order to
- * have any practical effect. If it were to exist only as a temporary, such as
- * if casting the return value to `void`, the timer would end before the next
- * statement began. The resulting datum would have a value very near to zero and
- * would measure only the duration of the temporary object.
- *
- * @param stat The name under which the duration is to be reported
- */
-#ifdef TILEDB_STATS
-  [[nodiscard]] DurationInstrument<Stats> start_timer(const std::string& stat);
-#else
-  [[nodiscard]] int start_timer(const std::string& stat);
-#endif
+  /**
+   * Create a timer sentry object that's reported under this `Stats` object.
+   *
+   * The time begins during the execution of this function; more precisely, it
+   * begins with the construction of the returned instrument object. The timer
+   * ends when that object is destroyed.
+   *
+   * The return value of this function must be assigned to a variable in order
+   * to have any practical effect. If it were to exist only as a temporary, such
+   * as if casting the return value to `void`, the timer would end before the
+   * next statement began. The resulting datum would have a value very near to
+   * zero and would measure only the duration of the temporary object.
+   *
+   * @param stat The name under which the duration is to be reported
+   */
+  [[nodiscard]] std::optional<DurationInstrument<Stats>> start_timer(
+      const std::string& stat);
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);

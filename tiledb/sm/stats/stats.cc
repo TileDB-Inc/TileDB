@@ -45,12 +45,13 @@ namespace tiledb::sm::stats {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Stats::Stats(const std::string& prefix)
-    : Stats(prefix, StatsData{}) {
+Stats::Stats(const std::string& prefix, bool enabled_stats)
+    : Stats(prefix, StatsData{}, enabled_stats) {
 }
 
-Stats::Stats(const std::string& prefix, const StatsData& data)
-    : enabled_(true)
+Stats::Stats(
+    const std::string& prefix, const StatsData& data, bool enabled_stats)
+    : enabled_(enabled_stats)
     , prefix_(prefix + ".")
     , parent_(nullptr) {
   this->populate_with_data(data);
@@ -240,7 +241,11 @@ std::optional<double> Stats::find_timer(const std::string& stat) const {
   return std::nullopt;
 }
 
-DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
+std::optional<DurationInstrument<Stats>> Stats::start_timer(
+    const std::string& stat) {
+  if (!enabled_) {
+    return std::nullopt;
+  }
   return DurationInstrument<Stats>(*this, stat);
 }
 
@@ -284,8 +289,9 @@ void Stats::report_duration(
 void Stats::add_counter(const std::string&, uint64_t) {
 }
 
-int Stats::start_timer(const std::string&) {
-  return 0;
+std::optional<DurationInstrument<Stats>> Stats::start_timer(
+    const std::string& stat) {
+  return std::nullopt;
 }
 
 void Stats::report_duration(
@@ -303,6 +309,17 @@ Stats* Stats::create_child(const std::string& prefix) {
 }
 
 Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
+  if (!enabled_) {
+    // If stats are not enabled, return the same instance that was called.
+    // NOTE: Given the current architecture of Stats, this is a low-hanging
+    // fruit solution. The issue is that this function is called in classes
+    // like Query, and the returned pointer is later used to access other
+    // methods—meaning a valid (non-null) pointer is expected. In any case,
+    // since no new allocation is made, this behaves as expected when stats
+    // are disabled.
+    return this;
+  }
+
   std::unique_lock<std::mutex> lck(mtx_);
   children_.emplace_back(prefix_ + prefix, data);
   Stats* const child = &children_.back();
