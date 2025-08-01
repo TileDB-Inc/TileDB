@@ -629,7 +629,6 @@ TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
   };
   tiledb::VFSExperimental::ls_recursive(
       ctx, vfs, s3_test.temp_dir_.to_string(), cb);
-  std::erase_if(expected_results, [](const auto& a) { return a.second == 0; });
   expected_results.resize(cb_count);
   CHECK(ls_objects.size() == cb_count);
   CHECK(ls_objects == expected_results);
