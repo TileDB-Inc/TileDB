@@ -59,6 +59,7 @@ class VFSExperimental {
    * @return True if the walk should continue, else false.
    */
   using LsCallback = std::function<bool(std::string_view, uint64_t)>;
+  using LsCallbackV2 = std::function<bool(std::string_view, uint64_t, bool)>;
 
   /**
    * Typedef for ls inclusion predicate function used to check if a single
@@ -73,6 +74,7 @@ class VFSExperimental {
    * @return True if the result should be included, else false.
    */
   using LsInclude = std::function<bool(std::string_view, uint64_t)>;
+  using LsIncludeV2 = std::function<bool(std::string_view, uint64_t, bool)>;
 
   /**
    * Default typedef for objects collected by recursive ls, storing a vector of
@@ -96,6 +98,14 @@ class VFSExperimental {
       }
     }
 
+    CallbackWrapperCPP(LsCallbackV2 cb)
+        : cb_v2_(cb) {
+      if (cb_v2_ == nullptr) {
+        throw std::logic_error(
+            "ls_recursive_v2 callback function cannot be null");
+      }
+    }
+
     /**
      * Operator to wrap the FilterPredicate used in the C++ API.
      *
@@ -107,8 +117,20 @@ class VFSExperimental {
       return cb_(path, size);
     }
 
+    /**
+     * Operator to wrap the FilterPredicateV2 used in the C++ API.
+     *
+     * @param path The path of the object.
+     * @param size The size of the object in bytes.
+     * @return True if the object should be included, False otherwise.
+     */
+    bool operator()(std::string_view path, uint64_t size, bool is_dir) {
+      return cb_v2_(path, size, is_dir);
+    }
+
    private:
     LsCallback cb_;
+    LsCallbackV2 cb_v2_;
   };
 
   /* ********************************* */
@@ -155,6 +177,19 @@ class VFSExperimental {
         &wrapper));
   }
 
+  static void ls_recursive_v2(
+      const Context& ctx,
+      const VFS& vfs,
+      const std::string& uri,
+      LsCallbackV2 cb) {
+    CallbackWrapperCPP wrapper(cb);
+    ctx.handle_error(tiledb_vfs_ls_recursive_v2(
+        ctx.ptr().get(),
+        vfs.ptr().get(),
+        uri.c_str(),
+        ls_callback_wrapper_v2,
+        &wrapper));
+  }
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
    * on each entry gathered. The callback should return true if the entry should
@@ -207,6 +242,34 @@ class VFSExperimental {
     return ls_objects;
   }
 
+  static LsObjects ls_recursive_filter_v2(
+      const Context& ctx,
+      const VFS& vfs,
+      const std::string& uri,
+      std::optional<LsIncludeV2> include = std::nullopt) {
+    LsObjects ls_objects;
+    if (include.has_value()) {
+      auto include_cb = include.value();
+      ls_recursive_v2(
+          ctx,
+          vfs,
+          uri,
+          [&](std::string_view path, uint64_t size, bool is_dir) {
+            if (include_cb(path, size, is_dir)) {
+              ls_objects.emplace_back(path, size);
+            }
+            return true;
+          });
+    } else {
+      ls_recursive_v2(
+          ctx, vfs, uri, [&](std::string_view path, uint64_t size, bool) {
+            ls_objects.emplace_back(path, size);
+            return true;
+          });
+    }
+    return ls_objects;
+  }
+
  private:
   /* ********************************* */
   /*       PRIVATE STATIC METHODS      */
@@ -227,6 +290,16 @@ class VFSExperimental {
       const char* path, size_t path_len, uint64_t object_size, void* data) {
     CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
     return (*cb)({path, path_len}, object_size);
+  }
+
+  static int32_t ls_callback_wrapper_v2(
+      const char* path,
+      size_t path_len,
+      uint64_t object_size,
+      uint8_t is_dir,
+      void* data) {
+    CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
+    return (*cb)({path, path_len}, object_size, is_dir);
   }
 };
 }  // namespace tiledb

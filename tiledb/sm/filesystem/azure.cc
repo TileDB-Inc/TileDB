@@ -1094,6 +1094,26 @@ AzureScanner::AzureScanner(
   next(begin_);
 }
 
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    ResultFilterV2&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
 void AzureScanner::next(typename Iterator::pointer& ptr) {
   if (ptr == end_) {
     ptr = fetch_results();
@@ -1103,7 +1123,7 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
     auto& object = *ptr;
 
     // Store each unique prefix while scanning objects.
-    if (result_type_ == OBJECT) {
+    if (result_filter_v2_ && result_type_ == OBJECT) {
       // The object key contains the azure:// prefix and the bucket name.
       auto prefix = object.first;
 
@@ -1115,16 +1135,19 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
         if (prefix == prefix_.to_string() ||
             collected_prefixes_.contains(prefix)) {
           break;
-        } else if (this->result_filter_(prefix, 0)) {
+        } else if (result_filter_v2_(prefix, 0, true)) {
           collected_prefixes_.emplace(prefix, 0);
         }
       }
     }
 
     // Prefix results have already been filtered by the predicate.
-    if (result_type_ == PREFIX ||
-        this->result_filter_(object.first, object.second)) {
-      // Iterator is at the next object within results accepted by the filters.
+    if (result_filter_ && result_filter_(object.first, object.second)) {
+      return;
+    } else if (
+        result_filter_v2_ &&
+        (result_type_ == PREFIX ||
+         result_filter_v2_(object.first, object.second, false))) {
       return;
     } else {
       // Object was rejected by the FilterPredicate, do not include it in
@@ -1147,7 +1170,7 @@ AzureScanner::Iterator::pointer& AzureScanner::build_prefix_vector() {
 }
 
 AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
-  if (!more_to_fetch() && !collected_prefixes_.empty()) {
+  if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
     return build_prefix_vector();
   } else if (!more_to_fetch()) {
     begin_ = end_ = typename Iterator::pointer();

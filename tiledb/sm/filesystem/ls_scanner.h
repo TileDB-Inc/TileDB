@@ -53,6 +53,10 @@
 template <class F>
 concept FilterPredicate = std::predicate<F, const std::string_view, uint64_t>;
 
+template <class F>
+concept FilterPredicateV2 =
+    std::predicate<F, const std::string_view, uint64_t, uint8_t>;
+
 namespace tiledb::sm {
 class LsScanException : public StatusException {
  public:
@@ -76,6 +80,9 @@ class LsStopTraversal : public LsScanException {
 
 using ResultFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
+using ResultFilterV2 =
+    std::function<bool(const std::string_view&, uint64_t, uint8_t)>;
+
 /**
  * Typedef for ls C API callback as std::function for passing to C++
  *
@@ -87,6 +94,9 @@ using ResultFilter = std::function<bool(const std::string_view&, uint64_t)>;
  *      traversal, or -1 if an error occurred.
  */
 using LsCallback = std::function<int32_t(const char*, size_t, uint64_t, void*)>;
+
+using LsCallbackV2 =
+    std::function<int32_t(const char*, size_t, uint64_t, uint8_t, void*)>;
 
 /** Type defintion for objects returned from ls_recursive. */
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
@@ -245,19 +255,27 @@ class LsScanner {
       , is_recursive_(recursive) {
   }
 
+  LsScanner(
+      const URI& prefix, ResultFilterV2&& result_filter, bool recursive = false)
+      : prefix_(prefix)
+      , result_filter_v2_(std::move(result_filter))
+      , is_recursive_(recursive)
+      , result_type_(OBJECT) {
+  }
+
   /** Accept all files and directories from ls_recursive. */
   static bool accept_all(const std::string_view&, uint64_t) {
     return true;
   }
 
-  /** Accept only files from ls_recursive, returning no directories. */
-  static bool accept_all_files(const std::string_view&, uint64_t size) {
-    return size > 0;
+  /** Accept only files from ls_recursive_v2, returning no directories. */
+  static bool accept_all_files(const std::string_view&, uint64_t, bool is_dir) {
+    return !is_dir;
   }
 
-  /** Accept only directories from ls_recursive, returning no files. */
-  static bool accept_all_dirs(const std::string_view&, uint64_t size) {
-    return size == 0;
+  /** Accept only directories from ls_recursive_v2, returning no files. */
+  static bool accept_all_dirs(const std::string_view&, uint64_t, bool is_dir) {
+    return is_dir;
   }
 
  protected:
@@ -265,8 +283,16 @@ class LsScanner {
   const URI prefix_;
   /** Predicate used to filter results. */
   const ResultFilter result_filter_;
+  /** Predicate used to filter results. */
+  const ResultFilterV2 result_filter_v2_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
+
+  /** Collect up to max_keys prefixes in this set before filtering. */
+  std::unordered_set<std::string> collected_prefixes_;
+
+  /** The result type contained by the Iterator used in ls_recursive_v2. */
+  enum ResultType { OBJECT, PREFIX } result_type_;
 };
 
 /**
@@ -285,6 +311,16 @@ class CallbackWrapperCAPI {
       throw LsScanException("ls_recursive callback function cannot be null");
     } else if (data_ == nullptr) {
       throw LsScanException("ls_recursive data cannot be null");
+    }
+  }
+
+  CallbackWrapperCAPI(LsCallbackV2 cb, void* data)
+      : cb_v2_(std::move(cb))
+      , data_(data) {
+    if (cb_v2_ == nullptr) {
+      throw LsScanException("ls_recursive_v2 callback function cannot be null");
+    } else if (data_ == nullptr) {
+      throw LsScanException("ls_recursive_v2 data cannot be null");
     }
   }
 
@@ -309,9 +345,33 @@ class CallbackWrapperCAPI {
     return ret;
   }
 
+  /**
+   * Operator to wrap the FilterPredicate used in the C++ API.
+   * This will throw a LsStopTraversal exception if the user callback returns 0,
+   * and will throw a LsScanException if the user callback returns -1.
+   *
+   * @param path The path of the object.
+   * @param size The size of the object in bytes.
+   * @return True if the object should be included, False otherwise.
+   */
+  bool operator()(
+      std::string_view path, const uint64_t size, const uint8_t is_dir) const {
+    int ret = cb_v2_(path.data(), path.size(), size, is_dir, data_);
+    if (ret == 0) {
+      // Throw an exception to stop traversal, which will be caught by the C++
+      // internal ls_recursive implementation to stop traversal.
+      throw LsStopTraversal();
+    } else if (ret == -1) {
+      throw LsScanException("Error in user callback");
+    }
+    return ret;
+  }
+
  private:
   /** CAPI callback as function object */
   LsCallback cb_;
+  /** CAPI callback for ls_recursive including directories and prefixes. */
+  LsCallbackV2 cb_v2_;
   /** User data for callback */
   void* data_;
 };

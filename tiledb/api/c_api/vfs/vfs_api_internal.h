@@ -159,6 +159,18 @@ struct tiledb_vfs_handle_t
       // Ignore exception
     }
   }
+
+  void ls_recursive_v2(
+      const tiledb::sm::URI& parent,
+      tiledb_ls_callback_v2_t cb,
+      void* data) const {
+    tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
+    try {
+      vfs_.ls_recursive_v2(parent, wrapper);
+    } catch (const tiledb::sm::LsStopTraversal&) {
+      // Ignore exception
+    }
+  }
 };
 
 /** Handle `struct` for API VFS file handle objects. */

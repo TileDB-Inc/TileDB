@@ -42,6 +42,11 @@ LsObjects FilesystemBase::ls_filtered(const URI&, ResultFilter, bool) const {
   throw UnsupportedOperation("ls_filtered");
 }
 
+LsObjects FilesystemBase::ls_filtered_v2(
+    const URI&, ResultFilterV2, bool) const {
+  throw UnsupportedOperation("ls_filtered");
+}
+
 void FilesystemBase::move_file(const URI&, const URI&) const {
   throw UnsupportedOperation("move_file");
 }

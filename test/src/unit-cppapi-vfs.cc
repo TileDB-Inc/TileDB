@@ -560,18 +560,12 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("Custom filter (reject files over 50 bytes)") {
     include = [](std::string_view, uint64_t size) { return size <= 50; };
   }
-  SECTION("Custom filter (accept only directories)") {
-    include = tiledb::sm::LsScanner::accept_all_dirs;
-  }
-  SECTION("Custom filter (accept only files)") {
-    include = tiledb::sm::LsScanner::accept_all_files;
-  }
 
   // Test collecting results with LsInclude predicate.
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
       ctx, vfs, test.temp_dir_.to_string(), include);
   std::erase_if(expected_results, [&include](const auto& object) {
-    return !include(object.first, object.second);
+    return object.second == 0 || !include(object.first, object.second);
   });
   std::sort(results.begin(), results.end());
   CHECK(results.size() == expected_results.size());
@@ -599,6 +593,99 @@ TEMPLATE_LIST_TEST_CASE(
       return true;
     };
     tiledb::VFSExperimental::ls_recursive(
+        ctx, vfs, test.temp_dir_.to_string(), local_cb);
+    CHECK(expected_results.size() == local_objects.size());
+  }
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "CPP API: VFS ls_recursive_v2 filter",
+    "[cppapi][vfs][ls_recursive_v2]",
+    ls_recursive_test_types) {
+  using namespace tiledb::test;
+  std::vector<size_t> test_tree = {10, 100, 0};
+  TestType test(test_tree);
+  if (!test.is_supported()) {
+    return;
+  }
+  auto expected_results = test.expected_results();
+
+  vfs_config cfg;
+  tiledb::Context ctx(tiledb::Config(&cfg.config));
+  tiledb::VFS vfs(ctx);
+
+  tiledb::VFSExperimental::LsObjects ls_objects;
+  // Predicate filter to apply to ls_recursive.
+  tiledb::VFSExperimental::LsIncludeV2 include;
+  // Callback to populate ls_objects vector using a filter.
+  tiledb::VFSExperimental::LsCallbackV2 cb =
+      [&](std::string_view path, uint64_t size, bool is_dir) {
+        if (include(path, size, is_dir)) {
+          ls_objects.emplace_back(path, size);
+        }
+        return true;
+      };
+
+  SECTION("Default filter (include all)") {
+    include = [](std::string_view, uint64_t, bool) { return true; };
+  }
+  SECTION("Custom filter (include none)") {
+    include = [](std::string_view, uint64_t, bool) { return false; };
+  }
+
+  SECTION("Custom filter (search for test_file_50)") {
+    include = [](std::string_view object_name, uint64_t, bool) {
+      return object_name.find("test_file_50") != std::string::npos;
+    };
+  }
+  SECTION("Custom filter (search for test_file_1*)") {
+    include = [](std::string_view object_name, uint64_t, bool) {
+      return object_name.find("test_file_1") != std::string::npos;
+    };
+  }
+  SECTION("Custom filter (reject files over 50 bytes)") {
+    include = [](std::string_view, uint64_t size, bool) { return size <= 50; };
+  }
+  SECTION("Custom filter (accept only directories)") {
+    include = tiledb::sm::LsScanner::accept_all_dirs;
+  }
+  SECTION("Custom filter (accept only files)") {
+    include = tiledb::sm::LsScanner::accept_all_files;
+  }
+
+  // Test collecting results with LsInclude predicate.
+  auto results = tiledb::VFSExperimental::ls_recursive_filter_v2(
+      ctx, vfs, test.temp_dir_.to_string(), include);
+  std::erase_if(expected_results, [&include](const auto& object) {
+    return !include(object.first, object.second, object.second == 0);
+  });
+  std::sort(results.begin(), results.end());
+  CHECK(results.size() == expected_results.size());
+  CHECK(expected_results == results);
+
+  // Test collecting results with LsCallback, writing data into ls_objects.
+  tiledb::VFSExperimental::ls_recursive_v2(
+      ctx, vfs, test.temp_dir_.to_string(), cb);
+  std::sort(ls_objects.begin(), ls_objects.end());
+  CHECK(ls_objects.size() == expected_results.size());
+  CHECK(expected_results == ls_objects);
+
+  // Test filtering LocalFS and object storage returns same number of results.
+  if (!test.temp_dir_.is_file()) {
+    tiledb::test::LocalFsTest local(test_tree);
+    auto local_results = tiledb::VFSExperimental::ls_recursive_filter_v2(
+        ctx, vfs, test.temp_dir_.to_string(), include);
+    tiledb::VFSExperimental::LsObjects local_objects;
+    CHECK(expected_results.size() == local_results.size());
+
+    auto local_cb =
+        [&](const std::string_view& path, uint64_t size, bool is_dir) {
+          if (include(path, size, is_dir)) {
+            local_objects.emplace_back(path, size);
+          }
+          return true;
+        };
+    tiledb::VFSExperimental::ls_recursive_v2(
         ctx, vfs, test.temp_dir_.to_string(), local_cb);
     CHECK(expected_results.size() == local_objects.size());
   }
@@ -679,11 +766,22 @@ TEST_CASE(
     "CPP API: CallbackWrapperCPP construction validation",
     "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
-  auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
-  SECTION("Null callback") {
-    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(nullptr));
+  SECTION("Null LsCallback") {
+    CHECK_THROWS(
+        tiledb::VFSExperimental::CallbackWrapperCPP(
+            (tiledb::VFSExperimental::LsCallback) nullptr));
+  }
+  SECTION("Null LsCallbackV2") {
+    CHECK_THROWS(
+        tiledb::VFSExperimental::CallbackWrapperCPP(
+            (tiledb::VFSExperimental::LsCallbackV2) nullptr));
   }
   SECTION("Valid callback") {
+    auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
+    CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(cb));
+  }
+  SECTION("Valid callback V2") {
+    auto cb = [&](std::string_view, uint64_t, bool) -> bool { return true; };
     CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(cb));
   }
 }
