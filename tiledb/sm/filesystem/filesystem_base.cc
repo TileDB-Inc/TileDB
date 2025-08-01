@@ -38,8 +38,12 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
-LsObjects FilesystemBase::ls_filtered(
-    const URI&, FileFilter, DirectoryFilter, bool) const {
+LsObjects FilesystemBase::ls_filtered(const URI&, ResultFilter, bool) const {
+  throw UnsupportedOperation("ls_filtered");
+}
+
+LsObjects FilesystemBase::ls_filtered_v2(
+    const URI&, ResultFilterV2, bool) const {
   throw UnsupportedOperation("ls_filtered");
 }
 

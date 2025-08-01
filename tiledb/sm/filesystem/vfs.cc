@@ -359,9 +359,13 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 }
 
 LsObjects VFS::ls_filtered(
-    const URI& parent, FileFilter f, DirectoryFilter d, bool recursive) const {
-  return get_fs(parent).ls_filtered(
-      parent, std::move(f), std::move(d), recursive);
+    const URI& parent, ResultFilter f, bool recursive) const {
+  return get_fs(parent).ls_filtered(parent, std::move(f), recursive);
+}
+
+LsObjects VFS::ls_filtered_v2(
+    const URI& parent, ResultFilterV2 f, bool recursive) const {
+  return get_fs(parent).ls_filtered_v2(parent, std::move(f), recursive);
 }
 
 void VFS::move_file(const URI& old_uri, const URI& new_uri) const {
