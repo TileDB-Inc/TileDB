@@ -168,6 +168,21 @@ class FilesystemBase {
       const URI& parent, ResultFilter f, bool recursive) const;
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilter on each entry collected.
+   *
+   * Currently this API is only supported for local files, S3 and Azure.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param recursive Whether to list the objects recursively.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  virtual LsObjects ls_filtered_v2(
+      const URI& parent, ResultFilterV2 f, bool recursive) const;
+
+  /**
    * Renames a file.
    * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
    *

@@ -52,6 +52,13 @@ extern "C" {
 typedef int32_t (*tiledb_ls_callback_t)(
     const char* path, size_t path_len, uint64_t object_size, void* data);
 
+typedef int32_t (*tiledb_ls_callback_v2_t)(
+    const char* path,
+    size_t path_len,
+    uint64_t object_size,
+    uint8_t is_dir,
+    void* data);
+
 /**
  * Visits the children of `path` recursively, invoking the callback for each
  * entry. The callback should return 1 to continue traversal, 0 to stop, or -1
@@ -94,6 +101,13 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
     tiledb_ls_callback_t callback,
+    void* data) TILEDB_NOEXCEPT;
+
+TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    tiledb_ls_callback_v2_t callback,
     void* data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus

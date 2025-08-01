@@ -165,6 +165,14 @@ class AzureScanner : public LsScanner {
       bool recursive = false,
       int max_keys = 1000);
 
+  /** Constructor. */
+  AzureScanner(
+      const Azure& client,
+      const URI& prefix,
+      ResultFilterV2&& result_filter,
+      bool recursive = false,
+      int max_keys = 1000);
+
   /**
    * Returns true if there are more results to fetch from Azure.
    */
@@ -263,16 +271,8 @@ class AzureScanner : public LsScanner {
   std::optional<std::string> continuation_token_;
   LsObjects blobs_;
 
-  /** Collect up to max_keys prefixes in this set before filtering. */
-  std::unordered_set<std::string> collected_prefixes_;
-
   /** Move prefixes to this vector usable with Iterator type for filtering. */
   std::vector<Iterator::value_type> common_prefixes_;
-
-  /**
-   * The result type contained by Iterator.
-   */
-  enum ResultType { OBJECT, PREFIX } result_type_ = OBJECT;
 };
 
 /**
@@ -449,6 +449,27 @@ class Azure : public FilesystemBase {
   }
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilter on each entry collected.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 f,
+      bool recursive = false) const override {
+    AzureScanner azure_scanner = scanner_v2(parent, std::move(f), recursive);
+
+    LsObjects objects;
+    for (auto object : azure_scanner) {
+      objects.push_back(std::move(object));
+    }
+    return objects;
+  }
+
+  /**
    * Constructs a scanner for listing Azure objects. The scanner can be used to
    * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
    * or STL constructors supporting initialization via input iterators.
@@ -462,6 +483,25 @@ class Azure : public FilesystemBase {
   AzureScanner scanner(
       const URI& parent,
       ResultFilter&& f,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    return AzureScanner(*this, parent, std::move(f), recursive, max_keys);
+  }
+
+  /**
+   * Constructs a scanner for listing Azure objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed AzureScanner object.
+   */
+  AzureScanner scanner_v2(
+      const URI& parent,
+      ResultFilterV2&& f,
       bool recursive = false,
       int max_keys = 1000) const {
     return AzureScanner(*this, parent, std::move(f), recursive, max_keys);

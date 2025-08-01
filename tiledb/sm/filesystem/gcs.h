@@ -322,6 +322,22 @@ class GCS : public FilesystemBase {
       bool recursive) const override;
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilter on each entry collected.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilter to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 result_filter,
+      bool recursive) const override;
+
+  /**
    *
    * Lists objects and object information that start with `prefix`.
    *
