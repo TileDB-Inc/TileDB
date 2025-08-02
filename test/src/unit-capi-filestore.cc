@@ -54,9 +54,6 @@ struct FileFx {
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  std::string compression_file_path_;
-  uint32_t expected_nfilters_;
-
   // Functions
   FileFx();
   ~FileFx();
@@ -124,7 +121,7 @@ void FileFx::check_metadata_correctness(
           &dtype,
           &num,
           &value) == TILEDB_OK);
-  CHECK(memcmp(value, "text/plain", num) == 0);
+  CHECK(memcmp(value, "application/octet-stream", num) == 0);
   CHECK(
       tiledb_array_get_metadata(
           ctx_,
@@ -133,7 +130,7 @@ void FileFx::check_metadata_correctness(
           &dtype,
           &num,
           &value) == TILEDB_OK);
-  CHECK(memcmp(value, "us-ascii", num) == 0);
+  CHECK(memcmp(value, "binary", num) == 0);
   CHECK(
       tiledb_array_get_metadata(
           ctx_,
@@ -222,25 +219,13 @@ TEST_CASE_METHOD(
     "[capi][filestore][schema][compression]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
-  SECTION("- Uncompressed file") {
-    compression_file_path_ = files_dir + "/" + "text.txt";
-    expected_nfilters_ = 1;
-  }
-  SECTION("- Compressed file") {
-    compression_file_path_ = files_dir + "/" + "quickstart_dense.csv.gz";
-    expected_nfilters_ = 0;
-  }
-  SECTION("- Fake gz extension file") {
-    compression_file_path_ = files_dir + "/" + "fake_gz.gz";
-    expected_nfilters_ = 1;
-  }
+  std::string path = files_dir + "/" + "text.txt";
 
   create_temp_dir(temp_dir);
 
   tiledb_array_schema_t* schema;
   REQUIRE(
-      tiledb_filestore_schema_create(
-          ctx_, compression_file_path_.c_str(), &schema) == TILEDB_OK);
+      tiledb_filestore_schema_create(ctx_, path.c_str(), &schema) == TILEDB_OK);
 
   tiledb_attribute_t* attr;
   REQUIRE(
@@ -258,7 +243,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_filter_list_get_nfilters(ctx_, attr_filters, &nfilters) ==
       TILEDB_OK);
-  CHECK(nfilters == expected_nfilters_);
+  CHECK(nfilters == 0);
 
   // Cleanup
   tiledb_filter_list_free(&attr_filters);

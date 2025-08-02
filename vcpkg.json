@@ -2,7 +2,6 @@
     "builtin-baseline": "ea2a964f9303270322cf3f2d51c265ba146c422d",
     "dependencies": [
         "bzip2",
-        "libmagic",
         "lz4",
         {
             "name": "openssl",
@@ -81,12 +80,5 @@
                 "libwebp"
             ]
         }
-    },
-    "overrides": [
-        {
-            "$note": "Remove this when the custom port for libmagic gets removed",
-            "name": "dirent",
-            "version": "1.23.2#3"
-        }
-    ]
+    }
 }
