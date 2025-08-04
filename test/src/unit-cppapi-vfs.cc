@@ -565,7 +565,7 @@ TEMPLATE_LIST_TEST_CASE(
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
       ctx, vfs, test.temp_dir_.to_string(), include);
   std::erase_if(expected_results, [&include](const auto& object) {
-    return object.second == 0 || !include(object.first, object.second);
+    return !include(object.first, object.second);
   });
   std::sort(results.begin(), results.end());
   CHECK(results.size() == expected_results.size());
@@ -608,7 +608,7 @@ TEMPLATE_LIST_TEST_CASE(
   if (!test.is_supported()) {
     return;
   }
-  auto expected_results = test.expected_results();
+  auto expected_results = test.expected_results_v2();
 
   vfs_config cfg;
   tiledb::Context ctx(tiledb::Config(&cfg.config));
@@ -691,13 +691,14 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
+TEST_CASE(
+    "CPP API: Callback stops traversal",
+    "[cppapi][vfs][ls_recursive][ls_recursive_v2]") {
   using namespace tiledb::test;
   S3Test s3_test({10, 50, 15});
   if (!s3_test.is_supported()) {
     return;
   }
-  auto expected_results = s3_test.expected_results();
 
   vfs_config cfg;
   tiledb::Context ctx(tiledb::Config(&cfg.config));
@@ -705,76 +706,115 @@ TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls_recursive]") {
 
   tiledb::VFSExperimental::LsObjects ls_objects;
   size_t cb_count = GENERATE(1, 10, 11, 50);
-  auto cb = [&](std::string_view path, uint64_t size) {
-    // Always emplace to check the callback is not invoked more than `cb_count`.
-    ls_objects.emplace_back(path, size);
-    // Signal to stop traversal when we have seen `cb_count` objects.
-    if (ls_objects.size() == cb_count) {
-      return false;
-    }
-    return true;
-  };
-  tiledb::VFSExperimental::ls_recursive(
-      ctx, vfs, s3_test.temp_dir_.to_string(), cb);
-  expected_results.resize(cb_count);
-  CHECK(ls_objects.size() == cb_count);
-  CHECK(ls_objects == expected_results);
+  DYNAMIC_SECTION("ls_recursive - " << cb_count << " callback count") {
+    auto cb = [&](std::string_view path, uint64_t size) {
+      // Always emplace to check the callback is not invoked more than
+      // `cb_count`.
+      ls_objects.emplace_back(path, size);
+      // Signal to stop traversal when we have seen `cb_count` objects.
+      if (ls_objects.size() == cb_count) {
+        return false;
+      }
+      return true;
+    };
+    tiledb::VFSExperimental::ls_recursive(
+        ctx, vfs, s3_test.temp_dir_.to_string(), cb);
+    auto expected_results = s3_test.expected_results();
+    expected_results.resize(cb_count);
+    CHECK(ls_objects.size() == cb_count);
+    CHECK(ls_objects == expected_results);
+  }
+
+  DYNAMIC_SECTION("ls_recursive_v2 - " << cb_count << " callback count") {
+    auto cb = [&](std::string_view path, uint64_t size, bool) {
+      // Always emplace to check the callback is not invoked more than
+      // `cb_count`.
+      ls_objects.emplace_back(path, size);
+      // Signal to stop traversal when we have seen `cb_count` objects.
+      if (ls_objects.size() == cb_count) {
+        return false;
+      }
+      return true;
+    };
+    tiledb::VFSExperimental::ls_recursive_v2(
+        ctx, vfs, s3_test.temp_dir_.to_string(), cb);
+    auto expected_results = s3_test.expected_results_v2();
+    expected_results.resize(cb_count);
+    CHECK(ls_objects.size() == cb_count);
+    CHECK(ls_objects == expected_results);
+  }
 }
 
-TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls_recursive]") {
-  using namespace tiledb::test;
-  S3Test s3_test({0});
+TEST_CASE(
+    "CPP API: Throwing filter",
+    "[cppapi][vfs][ls_recursive][ls_recursive_v2]") {
+  using namespace tiledb;
+  test::S3Test s3_test({0});
   if (!s3_test.is_supported()) {
     return;
   }
 
-  vfs_config cfg;
-  tiledb::Context ctx(tiledb::Config(&cfg.config));
-  tiledb::VFS vfs(ctx);
+  test::vfs_config cfg;
+  Context ctx(Config(&cfg.config));
+  VFS vfs(ctx);
 
-  tiledb::VFSExperimental::LsInclude filter = [](std::string_view,
-                                                 uint64_t) -> bool {
+  VFSExperimental::LsInclude filter = [](std::string_view, uint64_t) -> bool {
     throw std::runtime_error("Throwing filter");
+  };
+  VFSExperimental::LsIncludeV2 filter_v2 =
+      [](std::string_view, uint64_t, bool) -> bool {
+    throw std::runtime_error("Throwing filter v2");
   };
   auto path = s3_test.temp_dir_.to_string();
 
   // If the test directory is empty the filter should not throw.
   SECTION("Throwing filter with 0 objects should not throw") {
+    CHECK_NOTHROW(VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter));
+    CHECK_NOTHROW(VFSExperimental::ls_recursive(ctx, vfs, path, filter));
     CHECK_NOTHROW(
-        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter));
-    CHECK_NOTHROW(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter));
+        VFSExperimental::ls_recursive_filter_v2(ctx, vfs, path, filter_v2));
+    CHECK_NOTHROW(VFSExperimental::ls_recursive_v2(ctx, vfs, path, filter_v2));
   }
   SECTION("Throwing filter with N objects should throw") {
     vfs.touch(s3_test.temp_dir_.join_path("test_file").to_string());
     CHECK_THROWS_AS(
-        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
+        VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
         std::runtime_error);
     CHECK_THROWS_WITH(
-        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
+        VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
         Catch::Matchers::ContainsSubstring("Throwing filter"));
     CHECK_THROWS_AS(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
+        VFSExperimental::ls_recursive(ctx, vfs, path, filter),
         std::runtime_error);
     CHECK_THROWS_WITH(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
+        VFSExperimental::ls_recursive(ctx, vfs, path, filter),
         Catch::Matchers::ContainsSubstring("Throwing filter"));
+    CHECK_THROWS_AS(
+        VFSExperimental::ls_recursive_filter_v2(ctx, vfs, path, filter_v2),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        VFSExperimental::ls_recursive_filter_v2(ctx, vfs, path, filter_v2),
+        Catch::Matchers::ContainsSubstring("Throwing filter v2"));
+    CHECK_THROWS_AS(
+        VFSExperimental::ls_recursive_v2(ctx, vfs, path, filter_v2),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        VFSExperimental::ls_recursive_v2(ctx, vfs, path, filter_v2),
+        Catch::Matchers::ContainsSubstring("Throwing filter v2"));
   }
 }
 
 TEST_CASE(
     "CPP API: CallbackWrapperCPP construction validation",
-    "[ls_recursive][callback][wrapper]") {
+    "[ls_recursive][ls_recursive_v2][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
   SECTION("Null LsCallback") {
-    CHECK_THROWS(
-        tiledb::VFSExperimental::CallbackWrapperCPP(
-            (tiledb::VFSExperimental::LsCallback) nullptr));
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(
+        (tiledb::VFSExperimental::LsCallback) nullptr));
   }
   SECTION("Null LsCallbackV2") {
-    CHECK_THROWS(
-        tiledb::VFSExperimental::CallbackWrapperCPP(
-            (tiledb::VFSExperimental::LsCallbackV2) nullptr));
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(
+        (tiledb::VFSExperimental::LsCallbackV2) nullptr));
   }
   SECTION("Valid callback") {
     auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
@@ -787,31 +827,57 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "CPP API: CallbackWrapperCPP operator() validation",
+    "CPP API: CallbackWrapperCPP LsCallback operator() validation",
     "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
-  auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
-    if (object_size > 100) {
-      // Throw if object size is greater than 100 bytes.
-      throw std::runtime_error("Throwing callback");
-    } else if (!path.ends_with(".txt")) {
-      // Reject non-txt files.
-      return false;
+    auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
+      if (object_size > 100) {
+        // Throw if object size is greater than 100 bytes.
+        throw std::runtime_error("Throwing callback");
+      } else if (!path.ends_with(".txt")) {
+        // Reject non-txt files.
+        return false;
+      }
+      data.emplace_back(path, object_size);
+      return true;
+    };
+    tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
+    SECTION("Callback return true accepts object") {
+      CHECK(wrapper("file.txt", 10) == true);
+      CHECK(data.size() == 1);
     }
-    data.emplace_back(path, object_size);
-    return true;
-  };
-  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
+    SECTION("Callback return false rejects object") {
+      CHECK(wrapper("some/dir/", 0) == false);
+      CHECK(data.empty());
+    }
+    SECTION("Callback exception is propagated") {
+      CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
+    }
+}
 
-  SECTION("Callback return true accepts object") {
-    CHECK(wrapper("file.txt", 10) == true);
-    CHECK(data.size() == 1);
-  }
-  SECTION("Callback return false rejects object") {
-    CHECK(wrapper("some/dir/", 0) == false);
-    CHECK(data.empty());
-  }
-  SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
-  }
+TEST_CASE(
+    "CPP API: CallbackWrapperCPP LsCallbackV2 operator() validation",
+    "[ls_recursive_v2][callback][wrapper]") {
+  tiledb::VFSExperimental::LsObjects data;
+    auto cb = [&](std::string_view path, uint64_t object_size, bool) -> bool {
+      if (path == "throw") {
+        throw std::runtime_error("Throwing callback v2");
+      } else if (path == "bad/dir") {
+        return false;
+      }
+      data.emplace_back(path, object_size);
+      return true;
+    };
+    tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
+    SECTION("Callback return true accepts object") {
+      CHECK(wrapper("good/dir", 0, true) == true);
+      CHECK(data.size() == 1);
+    }
+    SECTION("Callback return false rejects object") {
+      CHECK(wrapper("bad/dir", 0) == false);
+      CHECK(data.empty());
+    }
+    SECTION("Callback exception is propagated") {
+      CHECK_THROWS_WITH(wrapper("throw", 500, false), "Throwing callback");
+    }
 }

@@ -952,7 +952,24 @@ class VFSTestBase {
     return is_supported_;
   }
 
-  inline LsObjects& expected_results() {
+  /**
+   * Expected results for ls_recursive v1 contains directories for LocalFS only.
+   * Cloud storage tests results will only include objects.
+   */
+  inline LsObjects expected_results() {
+    // ls_recursive v1 returns directories for local FS.
+    auto results_v1 = expected_results_;
+    if (!temp_dir_.is_file()) {
+      std::erase_if(results_v1, [](const auto& a) { return a.second == 0; });
+    }
+    return results_v1;
+  }
+
+  /**
+   * Expected results for ls_recursive_v2 contains directories / prefix results
+   * for LocalFS and all cloud storage backends.
+   */
+  inline LsObjects expected_results_v2() {
     return expected_results_;
   }
 
@@ -969,8 +986,10 @@ class VFSTestBase {
   std::string prefix_;
   tiledb::sm::URI temp_dir_;
 
- private:
+ protected:
   LsObjects expected_results_;
+
+ private:
   bool is_supported_;
 };
 
@@ -1025,7 +1044,7 @@ class AzureTest : public VFSTestBase {
       // VFS::create_dir is a no-op for Azure; Just create objects.
       if (test_tree_[i - 1] > 0) {
         // Do not include an empty prefix in expected results.
-        expected_results().emplace_back(path.to_string(), 0);
+        expected_results_.emplace_back(path.to_string(), 0);
       }
       for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
         auto object_uri = path.join_path("test_file_" + std::to_string(j));
@@ -1033,10 +1052,10 @@ class AzureTest : public VFSTestBase {
         std::string data(j * 10, 'a');
         vfs_.write(object_uri, data.data(), data.size());
         vfs_.close_file(object_uri).ok();
-        expected_results().emplace_back(object_uri.to_string(), data.size());
+        expected_results_.emplace_back(object_uri.to_string(), data.size());
       }
     }
-    std::sort(expected_results().begin(), expected_results().end());
+    std::sort(expected_results_.begin(), expected_results_.end());
 #endif
   }
 };
@@ -1055,7 +1074,7 @@ class GCSTest : public VFSTestBase {
       // VFS::create_dir is a no-op for GCS; Just create objects.
       if (test_tree_[i - 1] > 0) {
         // Do not include an empty prefix in expected results.
-        expected_results().emplace_back(path.to_string(), 0);
+        expected_results_.emplace_back(path.to_string(), 0);
       }
       for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
         auto object_uri = path.join_path("test_file_" + std::to_string(j));
@@ -1063,10 +1082,10 @@ class GCSTest : public VFSTestBase {
         std::string data(j * 10, 'a');
         vfs_.write(object_uri, data.data(), data.size());
         vfs_.close_file(object_uri).ok();
-        expected_results().emplace_back(object_uri.to_string(), data.size());
+        expected_results_.emplace_back(object_uri.to_string(), data.size());
       }
     }
-    std::sort(expected_results().begin(), expected_results().end());
+    std::sort(expected_results_.begin(), expected_results_.end());
 #endif
   }
 };
@@ -1087,5 +1106,14 @@ class MemFsTest : public VFSTestBase {
   }
 };
 }  // namespace tiledb::test
-
+namespace Catch {
+template <>
+struct StringMaker<std::pair<std::string, size_t>> {
+  static std::string convert(const std::pair<std::string, size_t>& value) {
+    std::ostringstream oss;
+    oss << "(" << value.first << ", " << value.second << ")";
+    return oss.str();
+  }
+};
+}  // namespace Catch
 #endif

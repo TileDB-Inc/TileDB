@@ -268,6 +268,11 @@ class LsScanner {
     return true;
   }
 
+  /** Accept all files and directories from ls_recursive_v2. */
+  static bool accept_all_v2(const std::string_view&, uint64_t, bool) {
+    return true;
+  }
+
   /** Accept only files from ls_recursive_v2, returning no directories. */
   static bool accept_all_files(const std::string_view&, uint64_t, bool is_dir) {
     return !is_dir;
