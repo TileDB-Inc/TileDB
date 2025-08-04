@@ -525,6 +525,7 @@ class S3Scanner : public LsScanner {
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
   /** The current request outcome being scanned. */
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+  bool response_contains_prefixes_ = false;
 
   /** Move prefixes to this vector usable with Iterator type for filtering. */
   std::vector<Iterator::value_type> common_prefixes_;

@@ -580,7 +580,8 @@ LsObjects GCS::ls_filtered(
       } else {
         entry = {
             prefix + bucket_name + "/" +
-                absl::get<std::string>(*object_metadata),
+                remove_front_slash(remove_trailing_slash(
+                    absl::get<std::string>(*object_metadata))),
             0};
       }
       if (result_filter(entry.first, entry.second)) {
@@ -669,18 +670,21 @@ LsObjects GCS::ls_filtered_v2(
       }
 
       LsObjects::value_type entry;
-      if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
-              *object_metadata)) {
+      bool is_object =
+          absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
+              *object_metadata);
+      if (is_object) {
         entry = to_directory_entry(
             absl::get<google::cloud::storage::ObjectMetadata>(
                 *object_metadata));
       } else {
         entry = {
             prefix + bucket_name + "/" +
-                absl::get<std::string>(*object_metadata),
+                remove_front_slash(remove_trailing_slash(
+                    absl::get<std::string>(*object_metadata))),
             0};
       }
-      if (result_filter(entry.first, entry.second, false)) {
+      if (result_filter(entry.first, entry.second, !is_object)) {
         result.push_back(std::move(entry));
       }
     }

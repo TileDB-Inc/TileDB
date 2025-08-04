@@ -1123,9 +1123,11 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
     auto& object = *ptr;
 
     // Store each unique prefix while scanning objects.
+    // TODO: is_recursive_&& for here and S3Scanner
     if (result_filter_v2_ && result_type_ == OBJECT) {
       // The object key contains the azure:// prefix and the bucket name.
-      auto prefix = object.first;
+      // Non-recursive request to Azure returns prefixes with a trailing slash.
+      auto prefix = Azure::remove_trailing_slash(object.first);
 
       // Drop last part of the path until we reach the end, or hit a duplicate.
       for (auto pos = prefix.rfind('/'); pos != std::string::npos;
@@ -1141,13 +1143,17 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
       }
     }
 
-    // Prefix results have already been filtered by the predicate.
-    if (result_filter_ && result_filter_(object.first, object.second)) {
+    // For recursive, prefixes have already been filtered by the predicate.
+    // Non-recursive request with a delimiter set will return prefixes as object
+    // with a trailing slash, those prefixes will be filtered here.
+    bool is_prefix = object.first.ends_with("/");
+    auto uri = Azure::remove_trailing_slash(object.first);
+    if (result_filter_ && result_filter_(uri, object.second)) {
       return;
     } else if (
         result_filter_v2_ &&
         (result_type_ == PREFIX ||
-         result_filter_v2_(object.first, object.second, false))) {
+         result_filter_v2_(uri, object.second, is_prefix))) {
       return;
     } else {
       // Object was rejected by the FilterPredicate, do not include it in

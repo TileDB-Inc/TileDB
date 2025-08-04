@@ -442,8 +442,9 @@ class Azure : public FilesystemBase {
     AzureScanner azure_scanner = scanner(parent, std::move(f), recursive);
 
     LsObjects objects;
-    for (auto object : azure_scanner) {
-      objects.push_back(std::move(object));
+    for (const auto& object : azure_scanner) {
+      objects.emplace_back(
+          Azure::remove_trailing_slash(object.first), object.second);
     }
     return objects;
   }
@@ -463,8 +464,9 @@ class Azure : public FilesystemBase {
     AzureScanner azure_scanner = scanner_v2(parent, std::move(f), recursive);
 
     LsObjects objects;
-    for (auto object : azure_scanner) {
-      objects.push_back(std::move(object));
+    for (const auto& object : azure_scanner) {
+      objects.emplace_back(
+          Azure::remove_trailing_slash(object.first), object.second);
     }
     return objects;
   }

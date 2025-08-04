@@ -2156,11 +2156,23 @@ S3Scanner::Iterator::pointer& S3Scanner::build_prefix_vector() {
 }
 
 typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
-  // If this is our first request, GetIsTruncated() will be false.
   if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
-    // Filter prefixes if we have collected the maximum amount or have no more
-    // results to fetch from S3.
+    // Filter prefixes if there are no more results to fetch from S3.
     return build_prefix_vector();
+  } else if (
+      result_filter_v2_ && !is_recursive_ && response_contains_prefixes_) {
+    // If using V2 APIs, collect common prefix results for non-recursive scan.
+    response_contains_prefixes_ = false;
+    const auto& aws_prefixes =
+        list_objects_outcome_.GetResult().GetCommonPrefixes();
+    common_prefixes_.resize(aws_prefixes.size());
+    for (size_t i = 0; i < common_prefixes_.size(); i++) {
+      common_prefixes_[i].SetKey(
+          S3::remove_trailing_slash(aws_prefixes[i].GetPrefix()));
+      common_prefixes_[i].SetSize(0);
+    }
+    end_ = common_prefixes_.end();
+    return begin_ = common_prefixes_.begin();
   } else if (more_to_fetch()) {
     // If results are truncated on a subsequent request, we set the next
     // continuation token before resubmitting our request.
@@ -2187,6 +2199,9 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
         this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
         delimiter() + "'" + outcome_error_message(list_objects_outcome_));
   }
+  response_contains_prefixes_ =
+      !is_recursive_ &&
+      !list_objects_outcome_.GetResult().GetCommonPrefixes().empty();
 
   // Update pointers to the newly fetched results.
   begin_ = list_objects_outcome_.GetResult().GetContents().begin();
