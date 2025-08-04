@@ -873,11 +873,15 @@ class S3 : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the ResultFilter on each entry collected.
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
    * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
    */
   LsObjects ls_filtered_v2(
       const URI& parent,
@@ -923,7 +927,7 @@ class S3 : public FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param f The ResultFilterV2 to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed S3Scanner object.

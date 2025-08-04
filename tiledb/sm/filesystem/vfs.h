@@ -600,9 +600,33 @@ class VFS : FilesystemBase,
    */
   std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilter on each entry collected.
+   *
+   * Both objects and common prefixes will be collected if non-recursive.
+   * For recursive listing cloud backends will not collect prefix results.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   */
   LsObjects ls_filtered(
       const URI& parent, ResultFilter f, bool recursive) const override;
 
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected for all storage backends.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
   LsObjects ls_filtered_v2(
       const URI& parent, ResultFilterV2 f, bool recursive) const override;
 

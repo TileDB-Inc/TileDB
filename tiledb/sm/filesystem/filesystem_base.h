@@ -156,7 +156,7 @@ class FilesystemBase {
    * Lists objects and object information that start with `prefix`, invoking
    * the ResultFilter on each entry collected.
    *
-   * Currently this API is only supported for local files, S3 and Azure.
+   * Currently this API is only supported for local files, S3, Azure, and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
    * @param f The ResultFilter to invoke on each object for filtering.
@@ -171,10 +171,10 @@ class FilesystemBase {
    * Lists objects and object information that start with `prefix`, invoking
    * the ResultFilter on each entry collected.
    *
-   * Currently this API is only supported for local files, S3 and Azure.
+   * Currently this API is only supported for local files, S3, Azure, and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param f The ResultFilterV2 to invoke on each object for filtering.
    * @param recursive Whether to list the objects recursively.
    * @return Vector of results with each entry being a pair of the string URI
    *    and object size.

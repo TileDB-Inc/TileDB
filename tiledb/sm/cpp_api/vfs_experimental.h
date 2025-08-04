@@ -74,6 +74,21 @@ class VFSExperimental {
    * @return True if the result should be included, else false.
    */
   using LsInclude = std::function<bool(std::string_view, uint64_t)>;
+
+  /**
+   * Typedef for ls inclusion predicate function used to check if a single
+   * result should be included in the final results returned from
+   * ls_recursive_v2.
+   *
+   * If the predicate returns True, the result will be included. If False, the
+   * result will not be included. If an error is thrown, the walk will stop and
+   * the error will be propagated.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param object_size The size of the object at the current path.
+   * @param is_dir True if the object is a directory or prefix, else False.
+   * @return True if the result should be included, else false.
+   */
   using LsIncludeV2 = std::function<bool(std::string_view, uint64_t, bool)>;
 
   /**
@@ -92,14 +107,14 @@ class VFSExperimental {
 
     /** Constructor */
     CallbackWrapperCPP(LsCallback cb)
-        : cb_(cb) {
+        : cb_(std::move(cb)) {
       if (cb_ == nullptr) {
         throw std::logic_error("ls_recursive callback function cannot be null");
       }
     }
 
     CallbackWrapperCPP(LsCallbackV2 cb)
-        : cb_v2_(cb) {
+        : cb_v2_(std::move(cb)) {
       if (cb_v2_ == nullptr) {
         throw std::logic_error(
             "ls_recursive_v2 callback function cannot be null");
@@ -145,7 +160,7 @@ class VFSExperimental {
    * If False, the walk will stop. If an error is thrown, the walk will stop and
    * the error will be propagated to the caller using std::throw_with_nested.
    *
-   * Currently only S3 is supported, and the `path` must be a valid S3 URI.
+   * Currently LocalFS, S3, Azure, and GCS are supported.
    *
    * @code{.c}
    * VFSExperimental::LsObjects ls_objects;
@@ -177,6 +192,33 @@ class VFSExperimental {
         &wrapper));
   }
 
+  /**
+   * Recursively lists objects at the input URI, invoking the provided callback
+   * on each entry gathered. The callback is passed the data pointer provided
+   * on each invocation and is responsible for writing the collected results
+   * into this structure. If the callback returns True, the walk will continue.
+   * If False, the walk will stop. If an error is thrown, the walk will stop and
+   * the error will be propagated to the caller using std::throw_with_nested.
+   *
+   * Currently LocalFS, S3, Azure, and GCS are supported.
+   *
+   * @code{.c}
+   * VFSExperimental::LsObjects ls_objects;
+   * VFSExperimental::LsCallbackV2 cb = [&](const std::string_view& path,
+   *                                      uint64_t size,
+   *                                      bool is_dir) {
+   *    ls_objects.emplace_back(path, size);
+   *    return true;  // Continue traversal to next entry.
+   * }
+   *
+   * VFSExperimental::ls_recursive_v2(ctx, vfs, "s3://bucket/foo", cb);
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS instance to use.
+   * @param uri The base URI to list results recursively.
+   * @param cb The callback to invoke on each entry.
+   */
   static void ls_recursive_v2(
       const Context& ctx,
       const VFS& vfs,
@@ -190,6 +232,7 @@ class VFSExperimental {
         ls_callback_wrapper_v2,
         &wrapper));
   }
+
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
    * on each entry gathered. The callback should return true if the entry should
@@ -242,6 +285,36 @@ class VFSExperimental {
     return ls_objects;
   }
 
+  /**
+   * Recursively lists objects at the input URI, invoking the provided callback
+   * on each entry gathered. The callback should return true if the entry should
+   * be included in the results and false otherwise. If no inclusion predicate
+   * is provided, all results are returned.
+   *
+   * Currently only local filesystem, S3, Azure and GCS are supported, and the
+   * `path` must be a valid URI for one of those filesystems.
+   *
+   * @code{.c}
+   * VFSExperimental::LsInclude predicate = [](std::string_view path,
+   *                                           uint64_t object_size,
+   *                                           bool is_dir) {
+   *   return path.find(".txt") != std::string::npos;
+   * }
+   * // Include only files with '.txt' extension using a custom predicate.
+   * auto ret = VFSExperimental::ls_recursive_filter_v2(
+   *    ctx, vfs, "s3://bucket/foo", predicate);
+   *
+   * // Optionally omit the predicate to include all paths collected.
+   * auto all_paths = VFSExperimental::ls_recursive_filter_v2(
+   *    ctx, vfs, "s3://bucket/foo");
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS instance to use.
+   * @param uri The base URI to list results recursively.
+   * @param include Predicate function to check if a result should be included.
+   * @return Vector of pairs for each object path and size.
+   */
   static LsObjects ls_recursive_filter_v2(
       const Context& ctx,
       const VFS& vfs,

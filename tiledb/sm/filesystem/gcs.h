@@ -323,10 +323,11 @@ class GCS : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the ResultFilter on each entry collected.
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param result_filter The ResultFilter to invoke on each object for
+   * @param result_filter The ResultFilterV2 to invoke on each object for
    * filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI

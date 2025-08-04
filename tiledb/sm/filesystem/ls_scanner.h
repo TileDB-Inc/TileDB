@@ -41,7 +41,7 @@
 #include <stdexcept>
 
 /**
- * Inclusion predicate for objects collected by ls.
+ * Inclusion predicate for objects collected by ls_recursive.
  *
  * The predicate accepts:
  * - A string_view of the path to the object.
@@ -53,6 +53,17 @@
 template <class F>
 concept FilterPredicate = std::predicate<F, const std::string_view, uint64_t>;
 
+/**
+ * Inclusion predicate for objects collected by ls_recursive_v2.
+ *
+ * The predicate accepts:
+ * - A string_view of the path to the object.
+ * - The size of the object in bytes.
+ * - Whether or not the current object is a directory / prefix.
+ *
+ * The predicate returns true if the object should be included in the results,
+ * and false otherwise.
+ */
 template <class F>
 concept FilterPredicateV2 =
     std::predicate<F, const std::string_view, uint64_t, uint8_t>;
@@ -78,8 +89,24 @@ class LsStopTraversal : public LsScanException {
   }
 };
 
+/**
+ * Typedef for filter callback invoked on each object collected by ls_recursive.
+ *
+ * @param path The path of the visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @return True if the result should be included, else False.
+ */
 using ResultFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
+/**
+ * Typedef for filter callback invoked on each object collected by
+ * ls_recursive_v2.
+ *
+ * @param path The path of the visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param is_dir Whether or not the current object is a directory / prefix.
+ * @return True if the result should be included, else False.
+ */
 using ResultFilterV2 =
     std::function<bool(const std::string_view&, uint64_t, uint8_t)>;
 
@@ -95,6 +122,17 @@ using ResultFilterV2 =
  */
 using LsCallback = std::function<int32_t(const char*, size_t, uint64_t, void*)>;
 
+/**
+ * Typedef for ls C API callback as std::function for passing to C++
+ *
+ * @param path The path of a visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param object_size The size of the object at the current path.
+ * @param is_dir Whether or not the current object is a directory / prefix.
+ * @param data Data passed to the callback used to store collected results.
+ * @return 1 if the callback should continue to the next object, 0 to stop
+ *      traversal, or -1 if an error occurred.
+ */
 using LsCallbackV2 =
     std::function<int32_t(const char*, size_t, uint64_t, uint8_t, void*)>;
 
