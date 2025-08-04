@@ -524,10 +524,12 @@ if (TILEDB_AZURE)
 
   find_package(azure-identity-cpp CONFIG REQUIRED)
   find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  find_package(azure-storage-files-datalake-cpp CONFIG REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
           INTERFACE
           Azure::azure-identity
           Azure::azure-storage-blobs
+          Azure::azure-storage-files-datalake
           )
 endif()
 
