@@ -37,6 +37,7 @@
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/identity.hpp>
 #include <azure/storage/blobs.hpp>
+#include <azure/storage/files/datalake.hpp>
 
 #include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
@@ -62,6 +63,55 @@ namespace {
  * https://learn.microsoft.com/en-us/azure/storage/blobs/scalability-targets
  */
 constexpr int max_committed_block_num = 50000;
+
+// Copied from
+// https://github.com/Azure/azure-sdk-for-cpp/blob/738d142dae94f908673547693f54ec1f644ace4c/sdk/storage/azure-storage-files-datalake/src/datalake_utilities.cpp#L12-L51
+const static std::string DfsEndPointIdentifier = ".dfs.";
+const static std::string BlobEndPointIdentifier = ".blob.";
+
+Azure::Core::Url GetDfsUrlFromUrl(const Azure::Core::Url& url) {
+  std::string host = url.GetHost();
+  auto pos = host.rfind(BlobEndPointIdentifier);
+  if (pos == std::string::npos) {
+    return url;
+  }
+  host.replace(pos, BlobEndPointIdentifier.size(), DfsEndPointIdentifier);
+  Azure::Core::Url result = url;
+  result.SetHost(host);
+  return result;
+}
+
+std::string GetDfsUrlFromUrl(const std::string& url) {
+  return GetDfsUrlFromUrl(Azure::Core::Url(url)).GetAbsoluteUrl();
+}
+
+template <class Client>
+tdb_unique_ptr<Client> make_service_client(
+    const std::string& endpoint,
+    const tiledb::sm::Azure::ServiceCredentialType& creds,
+    auto&& options) {
+  Client* ptr;
+  switch (creds.index()) {
+    case 0:
+      ptr = tdb_new(Client, endpoint, std::forward<decltype(options)>(options));
+      break;
+    case 1:
+      ptr = tdb_new(
+          Client,
+          endpoint,
+          std::get<1>(creds),
+          std::forward<decltype(options)>(options));
+      break;
+    default:
+      ptr = tdb_new(
+          Client,
+          endpoint,
+          std::get<2>(creds),
+          std::forward<decltype(options)>(options));
+      break;
+  }
+  return tdb_unique_ptr<Client>(ptr);
+}
 }  // namespace
 
 namespace tiledb::sm {
@@ -165,8 +215,8 @@ std::string get_blob_endpoint(
 /*                 API               */
 /* ********************************* */
 
-const ::Azure::Storage::Blobs::BlobServiceClient&
-Azure::AzureClientSingleton::get(const AzureParameters& params) {
+void Azure::AzureClientSingleton::ensure_initialized(
+    const AzureParameters& params) {
   // Initialize logging from the Azure SDK.
   static std::once_flag azure_log_sentinel;
   std::call_once(azure_log_sentinel, []() {
@@ -192,7 +242,7 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
   if (client_) {
-    return *client_;
+    return;
   }
 
   ::Azure::Storage::Blobs::BlobClientOptions options;
@@ -201,76 +251,77 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   options.Retry.MaxRetryDelay = params.max_retry_delay_;
   options.Transport.Transport = create_transport(params.ssl_cfg_);
 
-  // Construct the Azure SDK blob service client.
-  // We pass a shared key if it was specified.
-  if (!params.account_key_.empty()) {
-    // If we don't have an account name, warn and try other authentication
-    // methods.
-    if (params.account_name_.empty()) {
-      LOG_WARN(
-          "Azure storage account name must be set when specifying account key. "
-          "Account key will be ignored.");
-    } else {
-      client_ =
-          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-              ::Azure::Storage::Blobs::BlobServiceClient,
-              params.blob_endpoint_,
-              make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                  HERE(), params.account_name_, params.account_key_),
-              options));
-      return *client_;
+  // Construct the Azure service credential.
+  auto credential = [&]() -> ServiceCredentialType {
+    // We pass a shared key if it was specified.
+    if (!params.account_key_.empty()) {
+      // If we don't have an account name, warn and try other authentication
+      // methods.
+      if (params.account_name_.empty()) {
+        LOG_WARN(
+            "Azure storage account name must be set when specifying account "
+            "key. "
+            "Account key will be ignored.");
+      } else {
+        return make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+            HERE(), params.account_name_, params.account_key_);
+      }
     }
-  }
 
-  // Otherwise, if we did not specify an SAS token
-  // and we are connecting to an HTTPS endpoint,
-  // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
-  if (!params.has_sas_token_ &&
-      utils::parse::starts_with(params.blob_endpoint_, "https://")) {
-    try {
-      ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
-      cred_options.Retry = options.Retry;
-      cred_options.Transport = options.Transport;
-      auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
-          HERE(),
-          std::vector<
-              std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
-              make_shared<::Azure::Identity::EnvironmentCredential>(
-                  HERE(), cred_options),
-              make_shared<::Azure::Identity::AzureCliCredential>(
-                  HERE(), cred_options),
-              make_shared<::Azure::Identity::ManagedIdentityCredential>(
-                  HERE(), cred_options),
-              make_shared<::Azure::Identity::WorkloadIdentityCredential>(
-                  HERE(), cred_options)});
-      // If a token is not available we wouldn't know it until we make a
-      // request and it would be too late. Try getting a token, and if it
-      // fails fall back to anonymous authentication.
-      ::Azure::Core::Credentials::TokenRequestContext tokenContext;
+    // Otherwise, if we did not specify an SAS token
+    // and we are connecting to an HTTPS endpoint,
+    // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
+    if (!params.has_sas_token_ &&
+        utils::parse::starts_with(params.blob_endpoint_, "https://")) {
+      try {
+        ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
+        cred_options.Retry = options.Retry;
+        cred_options.Transport = options.Transport;
+        auto credential =
+            make_shared<::Azure::Identity::ChainedTokenCredential>(
+                HERE(),
+                std::vector<std::shared_ptr<
+                    ::Azure::Core::Credentials::TokenCredential>>{
+                    make_shared<::Azure::Identity::EnvironmentCredential>(
+                        HERE(), cred_options),
+                    make_shared<::Azure::Identity::AzureCliCredential>(
+                        HERE(), cred_options),
+                    make_shared<::Azure::Identity::ManagedIdentityCredential>(
+                        HERE(), cred_options),
+                    make_shared<::Azure::Identity::WorkloadIdentityCredential>(
+                        HERE(), cred_options)});
+        // If a token is not available we wouldn't know it until we make a
+        // request and it would be too late. Try getting a token, and if it
+        // fails fall back to anonymous authentication.
+        ::Azure::Core::Credentials::TokenRequestContext tokenContext;
 
-      // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
-      tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
-      std::ignore = credential->GetToken(tokenContext, {});
-      client_ =
-          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-              ::Azure::Storage::Blobs::BlobServiceClient,
-              params.blob_endpoint_,
-              credential,
-              options));
-      return *client_;
-    } catch (...) {
-      LOG_INFO(
-          "Failed to get Microsoft Entra ID token, falling back to anonymous "
-          "authentication");
+        // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
+        tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
+        std::ignore = credential->GetToken(tokenContext, {});
+        return credential;
+      } catch (...) {
+        LOG_INFO(
+            "Failed to get Microsoft Entra ID token, falling back to anonymous "
+            "authentication");
+      }
     }
+
+    return {};
+  }();
+
+  client_ = make_service_client<BlobServiceClientType>(
+      params.blob_endpoint_, credential, options);
+
+  auto accountInfo = client_->GetAccountInfo();
+
+  if (accountInfo.Value.IsHierarchicalNamespaceEnabled) {
+    ::Azure::Storage::Files::DataLake::DataLakeClientOptions data_lake_options;
+    data_lake_options.Retry = options.Retry;
+    data_lake_options.Transport = options.Transport;
+
+    data_lake_client_ = make_service_client<DataLakeServiceClientType>(
+        GetDfsUrlFromUrl(params.blob_endpoint_), credential, data_lake_options);
   }
-
-  client_ = tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-      ::Azure::Storage::Blobs::BlobServiceClient,
-      params.blob_endpoint_,
-      options));
-
-  return *client_;
 }
 
 bool Azure::supports_uri(const URI& uri) const {
