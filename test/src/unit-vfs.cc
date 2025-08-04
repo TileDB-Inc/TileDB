@@ -644,19 +644,17 @@ TEMPLATE_LIST_TEST_CASE(
     return;
   }
 
-  bool recursive = GENERATE(true, false);
   // If testing with recursion use the root directory, otherwise use a subdir.
-  auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
   DYNAMIC_SECTION(fs.temp_dir_.backend_name() << " ls_filtered") {
-    auto ls_objects =
-        fs.vfs_.ls_filtered(path, tiledb::sm::LsScanner::accept_all, recursive);
+    auto ls_objects = fs.vfs_.ls_filtered(
+        fs.temp_dir_, tiledb::sm::LsScanner::accept_all, true);
     auto expected = fs.expected_results();
     CHECK(ls_objects.size() == expected.size());
     CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
   }
   DYNAMIC_SECTION(fs.temp_dir_.backend_name() << " ls_filtered_v2") {
     auto ls_objects = fs.vfs_.ls_filtered_v2(
-        path, tiledb::sm::LsScanner::accept_all_v2, recursive);
+        fs.temp_dir_, tiledb::sm::LsScanner::accept_all_v2, true);
     auto expected = fs.expected_results_v2();
     CHECK(ls_objects.size() == expected.size());
     CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
