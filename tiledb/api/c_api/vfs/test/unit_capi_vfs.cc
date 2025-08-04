@@ -770,8 +770,8 @@ TEST_CASE(
       "Test ls_recursive_v2 unsupported backend over " << uri.backend_name()) {
     auto cb = [](const char*, size_t, uint64_t, uint8_t, void*) { return 0; };
     CHECK(
-        tiledb_vfs_ls_recursive_v2(vfs.ctx, vfs.vfs, uri.c_str(), cb, &ls_data) ==
-        TILEDB_ERR);
+        tiledb_vfs_ls_recursive_v2(
+            vfs.ctx, vfs.vfs, uri.c_str(), cb, &ls_data) == TILEDB_ERR);
   }
 }
 

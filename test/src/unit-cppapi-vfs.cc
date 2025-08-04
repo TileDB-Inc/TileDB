@@ -830,54 +830,54 @@ TEST_CASE(
     "CPP API: CallbackWrapperCPP LsCallback operator() validation",
     "[ls_recursive][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
-    auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
-      if (object_size > 100) {
-        // Throw if object size is greater than 100 bytes.
-        throw std::runtime_error("Throwing callback");
-      } else if (!path.ends_with(".txt")) {
-        // Reject non-txt files.
-        return false;
-      }
-      data.emplace_back(path, object_size);
-      return true;
-    };
-    tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
-    SECTION("Callback return true accepts object") {
-      CHECK(wrapper("file.txt", 10) == true);
-      CHECK(data.size() == 1);
+  auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
+    if (object_size > 100) {
+      // Throw if object size is greater than 100 bytes.
+      throw std::runtime_error("Throwing callback");
+    } else if (!path.ends_with(".txt")) {
+      // Reject non-txt files.
+      return false;
     }
-    SECTION("Callback return false rejects object") {
-      CHECK(wrapper("some/dir/", 0) == false);
-      CHECK(data.empty());
-    }
-    SECTION("Callback exception is propagated") {
-      CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
-    }
+    data.emplace_back(path, object_size);
+    return true;
+  };
+  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
+  SECTION("Callback return true accepts object") {
+    CHECK(wrapper("file.txt", 10) == true);
+    CHECK(data.size() == 1);
+  }
+  SECTION("Callback return false rejects object") {
+    CHECK(wrapper("some/dir/", 0) == false);
+    CHECK(data.empty());
+  }
+  SECTION("Callback exception is propagated") {
+    CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
+  }
 }
 
 TEST_CASE(
     "CPP API: CallbackWrapperCPP LsCallbackV2 operator() validation",
     "[ls_recursive_v2][callback][wrapper]") {
   tiledb::VFSExperimental::LsObjects data;
-    auto cb = [&](std::string_view path, uint64_t object_size, bool) -> bool {
-      if (path == "throw") {
-        throw std::runtime_error("Throwing callback v2");
-      } else if (path == "bad/dir") {
-        return false;
-      }
-      data.emplace_back(path, object_size);
-      return true;
-    };
-    tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
-    SECTION("Callback return true accepts object") {
-      CHECK(wrapper("good/dir", 0, true) == true);
-      CHECK(data.size() == 1);
+  auto cb = [&](std::string_view path, uint64_t object_size, bool) -> bool {
+    if (path == "throw") {
+      throw std::runtime_error("Throwing callback v2");
+    } else if (path == "bad/dir") {
+      return false;
     }
-    SECTION("Callback return false rejects object") {
-      CHECK(wrapper("bad/dir", 0) == false);
-      CHECK(data.empty());
-    }
-    SECTION("Callback exception is propagated") {
-      CHECK_THROWS_WITH(wrapper("throw", 500, false), "Throwing callback");
-    }
+    data.emplace_back(path, object_size);
+    return true;
+  };
+  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
+  SECTION("Callback return true accepts object") {
+    CHECK(wrapper("good/dir", 0, true) == true);
+    CHECK(data.size() == 1);
+  }
+  SECTION("Callback return false rejects object") {
+    CHECK(wrapper("bad/dir", 0) == false);
+    CHECK(data.empty());
+  }
+  SECTION("Callback exception is propagated") {
+    CHECK_THROWS_WITH(wrapper("throw", 500, false), "Throwing callback");
+  }
 }
