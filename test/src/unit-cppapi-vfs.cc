@@ -874,10 +874,10 @@ TEST_CASE(
     CHECK(data.size() == 1);
   }
   SECTION("Callback return false rejects object") {
-    CHECK(wrapper("bad/dir", 0) == false);
+    CHECK(wrapper("bad/dir", 0, true) == false);
     CHECK(data.empty());
   }
   SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("throw", 500, false), "Throwing callback");
+    CHECK_THROWS_WITH(wrapper("throw", 500, false), "Throwing callback v2");
   }
 }
