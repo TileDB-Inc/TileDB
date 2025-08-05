@@ -275,12 +275,17 @@ TileMetadataGenerator::TileMetadataGenerator(
     const bool var_size,
     const uint64_t cell_size,
     const uint64_t cell_val_num)
-    : var_size_(var_size)
+    : is_dim_(is_dim)
+    , var_size_(var_size)
     , type_(type)
     , min_(nullptr)
     , min_size_(0)
     , max_(nullptr)
     , max_size_(0)
+    , global_order_min_(nullptr)
+    , global_order_min_size_(0)
+    , global_order_max_(nullptr)
+    , global_order_max_size_(0)
     , sum_(sizeof(uint64_t))
     , null_count_(0)
     , cell_size_(cell_size)
@@ -375,7 +380,17 @@ void TileMetadataGenerator::process_cell_slab(
 }
 
 void TileMetadataGenerator::set_tile_metadata(WriterTileTuple& tile) {
-  tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
+  tile.set_metadata(
+      min_,
+      min_size_,
+      max_,
+      max_size_,
+      global_order_min_,
+      global_order_min_size_,
+      global_order_max_,
+      global_order_max_size_,
+      sum_,
+      null_count_);
 }
 
 /* ****************************** */
@@ -499,6 +514,13 @@ void TileMetadataGenerator::process_cell_range(
       min_max<T>(fixed_tile, start, end);
     }
 
+    if (is_dim_) {
+      iassert(end > start);
+      global_order_min_ = &tile.fixed_tile().data_as<T>()[start];
+      global_order_max_ = &tile.fixed_tile().data_as<T>()[end - 1];
+      global_order_min_size_ = global_order_max_size_ = sizeof(T);
+    }
+
     if (has_sum_) {
       Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum(
           fixed_tile, start, end, sum_);
@@ -515,6 +537,23 @@ void TileMetadataGenerator::process_cell_range(
         null_count_ += (uint64_t)is_null;
         validity_value++;
       }
+    }
+
+    if (is_dim_) {
+      /*
+    uint64_t* max_sizes = reinterpret_cast<uint64_t*>(
+        loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
+
+    const uint64_t fixed_offset = tile / sizeof(uint64_t);
+    max_sizes[fixed_offset] =
+        data.var_tile().size() - source_offsets[data.cell_num() - 1];
+    if (data.cell_num() == 1) {
+      min_sizes[fixed_offset] = max_sizes[fixed_offset];
+    } else {
+      min_sizes[fixed_offset] = source_offsets[1] - source_offsets[0];
+    }
+    */
+      throw std::logic_error("TODO");
     }
 
     if (has_sum_) {

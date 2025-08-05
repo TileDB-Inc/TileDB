@@ -1093,6 +1093,10 @@ struct FragmentMetadata {
       # fragment min/max/sum/nullcount offsets
       processedConditionsOffsets @10 :UInt64;
       # processed conditions offsets
+      tileGlobalOrderMinOffsets @11 :List(UInt64);
+      # global order min tile offsets
+      tileGlobalOrderMaxOffsets @12 :List(UInt64);
+      # global order max tile offsets
   }
 
   fileSizes @0 :List(UInt64);
@@ -1184,6 +1188,18 @@ struct FragmentMetadata {
 
   arraySchemaName @29 :Text;
   # array schema name
+
+  tileGlobalOrderMinBuffer @30 :List(List(UInt8));
+  # tile global order min buffers
+
+  tileGlobalOrderMinVarBuffer @31 :List(List(UInt8));
+  # tile global order min buffers for var length dimensions
+
+  tileGlobalOrderMaxBuffer @32 :List(List(UInt8));
+  # tile global order max buffers
+
+  tileGlobalOrderMaxVarBuffer @33 :List(List(UInt8));
+  # tile global order max buffers for var length dimensions
 }
 
 struct MultiPartUploadState {

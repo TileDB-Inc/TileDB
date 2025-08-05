@@ -60,6 +60,8 @@ class LoadedFragmentMetadata {
     std::vector<bool> tile_validity_offsets_;
     std::vector<bool> tile_min_;
     std::vector<bool> tile_max_;
+    std::vector<bool> tile_global_order_min_;
+    std::vector<bool> tile_global_order_max_;
     std::vector<bool> tile_sum_;
     std::vector<bool> tile_null_count_;
     bool fragment_min_max_sum_null_count_ = false;
@@ -330,6 +332,14 @@ class LoadedFragmentMetadata {
    * @param encryption_key The key the array got opened with.
    */
   virtual void load_fragment_min_max_sum_null_count(
+      const EncryptionKey& encryption_key) = 0;
+
+  /**
+   * Loads the tile global order bounds for the fragment.
+   *
+   * @param encrpytion_key The key the array was opened with.
+   */
+  virtual void load_fragment_tile_global_order_bounds(
       const EncryptionKey& encryption_key) = 0;
 
   /**
@@ -830,6 +840,24 @@ class LoadedFragmentMetadata {
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
+
+  /**
+   * Loads the global order minimum values for the given dimension from storage.
+   *
+   * @param encryption_key The encryption key
+   * @param dimension Dimension index
+   */
+  virtual void load_tile_global_order_min_values(
+      const EncryptionKey& encryption_key, unsigned dimension) = 0;
+
+  /**
+   * Loads the global order minimum values for the given dimension from storage.
+   *
+   * @param encryption_key The encryption key
+   * @param dimension Dimension index
+   */
+  virtual void load_tile_global_order_max_values(
+      const EncryptionKey& encryption_key, unsigned dimension) = 0;
 
   /**
    * Loads the sum values for the input attribute idx from storage.

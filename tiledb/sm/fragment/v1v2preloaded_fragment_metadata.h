@@ -106,6 +106,14 @@ class V1V2PreloadedFragmentMetadata : public LoadedFragmentMetadata {
       const EncryptionKey& encryption_key) override;
 
   /**
+   * Loads the tile global order bounds for the fragment.
+   *
+   * @param encrpytion_key The key the array was opened with.
+   */
+  virtual void load_fragment_tile_global_order_bounds(
+      const EncryptionKey& encryption_key) override;
+
+  /**
    * Loads the processed conditions for the fragment. The processed conditions
    * is the list of delete/update conditions that have already been applied for
    * this fragment and don't need to be applied again.
@@ -200,6 +208,30 @@ class V1V2PreloadedFragmentMetadata : public LoadedFragmentMetadata {
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the global order minimum values for the given dimension from storage.
+   *
+   * This is a no-op because this field does not exist in format versions
+   * using this class.
+   *
+   * @param encryption_key The encryption key
+   * @param dimension Dimension index
+   */
+  virtual void load_tile_global_order_min_values(
+      const EncryptionKey& encryption_key, unsigned dimension) override;
+
+  /**
+   * Loads the global order maximum values for the given dimension from storage.
+   *
+   * This is a no-op because this field does not exist in format versions
+   * using this class.
+   *
+   * @param encryption_key The encryption key
+   * @param dimension Dimension index
+   */
+  virtual void load_tile_global_order_max_values(
+      const EncryptionKey& encryption_key, unsigned dimension) override;
 
   /**
    * Loads the sum values for the input attribute idx from storage.

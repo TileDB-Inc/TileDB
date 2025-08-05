@@ -350,40 +350,39 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
 
   const auto dim = array_schema_->domain().get_dimension_index(dim_name);
 
-  if (array_schema_->domain().dimensions()[dim]->var_size()) {
-    const uint64_t* source_offsets = data.offset_tile().data_as<uint64_t>();
+  const auto& tile_min = data.global_order_min();
+  iassert(tile_min.has_value());
 
+  const auto& tile_max = data.global_order_max();
+  iassert(tile_max.has_value());
+
+  if (array_schema_->domain().dimensions()[dim]->var_size()) {
     // NB: for now we set a length, and it will be updated to an offset
     // via `convert_tile_global_order_bounds_sizes_to_offsets`,
     // and then the var data will be written after that
+
     uint64_t* min_sizes = reinterpret_cast<uint64_t*>(
         loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
-    uint64_t* max_sizes = reinterpret_cast<uint64_t*>(
-        loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
+    min_sizes[tile] = tile_min.value().size();
 
-    const uint64_t fixed_offset = tile / sizeof(uint64_t);
-    max_sizes[fixed_offset] =
-        data.var_tile().size() - source_offsets[data.cell_num() - 1];
-    if (data.cell_num() == 1) {
-      min_sizes[fixed_offset] = max_sizes[fixed_offset];
-    } else {
-      min_sizes[fixed_offset] = source_offsets[1] - source_offsets[0];
-    }
+    uint64_t* max_sizes = reinterpret_cast<uint64_t*>(
+        loaded_metadata_ptr_->tile_global_order_max_buffer()[dim].data());
+    max_sizes[tile] = tile_max.value().size();
   } else {
     const uint64_t fixed_size =
         array_schema_->domain().dimensions()[dim]->cell_size();
-    const uint8_t* fixed_data = data.fixed_tile().data_as<uint8_t>();
+    iassert(tile_min.value().size() == fixed_size);
+    iassert(tile_max.value().size() == fixed_size);
 
-    void* min_data =
-        loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data();
-    memcpy(min_data, &fixed_data[0], fixed_size);
+    const uint64_t offset = fixed_size * tile;
 
-    const uint64_t max_start =
-        data.fixed_tile()
-            .data_as<uint8_t>()[fixed_size * (data.cell_num() - 1)];
-    void* max_data =
+    uint8_t* min_data =
         loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data();
-    memcpy(max_data, &fixed_data[max_start], fixed_size);
+    memcpy(&min_data[offset], tile_min.value().data(), fixed_size);
+
+    uint8_t* max_data =
+        loaded_metadata_ptr_->tile_global_order_max_buffer()[dim].data();
+    memcpy(&max_data[offset], tile_max.value().data(), fixed_size);
   }
 }
 
@@ -394,7 +393,11 @@ void FragmentMetadata::set_tile_global_order_bounds_var(
     return;
   }
 
-  iassert(data.cell_num() > 0);
+  const auto& tile_min = data.global_order_min();
+  iassert(tile_min.has_value());
+
+  const auto& tile_max = data.global_order_max();
+  iassert(tile_max.has_value());
 
   const uint64_t* min_sizes = reinterpret_cast<const uint64_t*>(
       loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
@@ -407,18 +410,21 @@ void FragmentMetadata::set_tile_global_order_bounds_var(
   const uint64_t max_var_start = data_offsets[data.cell_num() - 1];
   const uint64_t max_var_size = max_sizes[data.cell_num() - 1];
 
+  iassert(tile_min.value().size() == min_var_size);
+  iassert(tile_max.value().size() == max_var_size);
+
   if (min_var_size) {
     memcpy(
         &loaded_metadata_ptr_
              ->tile_global_order_min_var_buffer()[tile][min_var_start],
-        data.var_tile().data_as<char>(),
+        tile_min.value().data(),
         min_var_size);
   }
   if (max_var_size) {
     memcpy(
         &loaded_metadata_ptr_
              ->tile_global_order_max_var_buffer()[tile][max_var_start],
-        data.var_tile().data_as<char>(),
+        tile_max.value().data(),
         max_var_size);
   }
 }
@@ -1271,7 +1277,8 @@ void FragmentMetadata::store_v15_or_higher(
     offset += nbytes;
   }
 
-  if (version_ >= constants::fragment_metadata_global_order_bounds_version) {
+  if (!array_schema_->dense() &&
+      version_ >= constants::fragment_metadata_global_order_bounds_version) {
     const auto num_dims = array_schema_->dim_num();
     // Store global order mins
     gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
@@ -1285,7 +1292,7 @@ void FragmentMetadata::store_v15_or_higher(
     gt_offsets_.tile_global_order_max_offsets_.resize(num_dims);
     for (unsigned i = 0; i < num_dims; ++i) {
       gt_offsets_.tile_global_order_max_offsets_[i] = offset;
-      store_tile_global_order_mins(i, encryption_key, &nbytes);
+      store_tile_global_order_maxs(i, encryption_key, &nbytes);
       offset += nbytes;
     }
   }
@@ -1361,6 +1368,15 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
       if (array_schema_->is_nullable(it.first))
         loaded_metadata_ptr_->tile_null_counts()[i].resize(num_tiles, 0);
+    }
+
+    // Sparse arrays also store the global order lower/upper bounds
+    if (!array_schema_->dense() && is_dim) {
+      const unsigned dimension = i - array_schema_->dim_num();
+      loaded_metadata_ptr_->tile_global_order_min_buffer()[dimension].resize(
+          num_tiles * cell_size, 0);
+      loaded_metadata_ptr_->tile_global_order_max_buffer()[dimension].resize(
+          num_tiles * cell_size, 0);
     }
   }
 
@@ -2516,6 +2532,19 @@ void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
   gt_offsets_.tile_max_offsets_.resize(num);
   deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
 
+  if (version_ >= constants::fragment_metadata_global_order_bounds_version) {
+    // Load offsets for the tile global order bounds
+    const auto num_dims = array_schema_->dim_num();
+    gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
+    gt_offsets_.tile_global_order_max_offsets_.resize(num_dims);
+    deserializer.read(
+        gt_offsets_.tile_global_order_min_offsets_.data(),
+        num_dims * sizeof(uint64_t));
+    deserializer.read(
+        gt_offsets_.tile_global_order_max_offsets_.data(),
+        num_dims * sizeof(uint64_t));
+  }
+
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
   deserializer.read(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
@@ -2755,6 +2784,17 @@ void FragmentMetadata::write_generic_tile_offsets(
   // Write tile max offsets
   if (version_ >= 11) {
     serializer.write(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
+  }
+
+  if (version_ >= constants::fragment_metadata_global_order_bounds_version) {
+    // Write the tile global order bound offsets
+    const auto num_dims = array_schema_->dim_num();
+    serializer.write(
+        gt_offsets_.tile_global_order_min_offsets_.data(),
+        num_dims * sizeof(uint64_t));
+    serializer.write(
+        gt_offsets_.tile_global_order_max_offsets_.data(),
+        num_dims * sizeof(uint64_t));
   }
 
   // Write tile sum offsets

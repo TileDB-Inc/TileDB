@@ -1060,7 +1060,9 @@ Status WriterBase::write_tiles(
       }
 
       if (array_schema_.is_dim(attr)) {
-        frag_meta->convert_tile_global_order_bounds_sizes_to_offsets(attr);
+        if (array_schema_.var_size(attr)) {
+          frag_meta->convert_tile_global_order_bounds_sizes_to_offsets(attr);
+        }
         for (uint64_t idx = start_tile_idx; idx < end_tile_idx; idx++) {
           frag_meta->set_tile_global_order_bounds_var(
               attr, idx - start_tile_idx, tiles[idx]);

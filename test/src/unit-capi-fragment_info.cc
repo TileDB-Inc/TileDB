@@ -30,6 +30,7 @@
  * Tests the C API functions for manipulating fragment information.
  */
 
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -553,6 +554,22 @@ TEST_CASE(
       ctx, fragment_info, 1, 0, "d", &mbr[0]);
   CHECK(rc == TILEDB_ERR);
 
+  // Get global order lower bound - should fail since it's a dense array
+  {
+    void* dimensions[] = {&mbr[0], &mbr[1]};
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
+  // Get global order upper bound - should fail since it's a dense array
+  {
+    void* dimensions[] = {&mbr[0], &mbr[1]};
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
   // Get version
   uint32_t version;
   rc = tiledb_fragment_info_get_version(ctx, fragment_info, 0, &version);
@@ -731,6 +748,7 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr_num == 1);
+
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 1, &mbr_num);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr_num == 2);
@@ -752,6 +770,108 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       ctx, fragment_info, 1, 1, "d1", &mbr[0]);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr == std::vector<uint64_t>{7, 8});
+
+  // Get global order lower bounds
+  {
+    std::vector<uint64_t> lower_bound(2);
+    void* dimensions[] = {&lower_bound[0], &lower_bound[1]};
+
+    // first fragment - one tile
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 1});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 0, 1, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // second fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 1, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 1});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 1, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{7, 7});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 1, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // third fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 2, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 1});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 2, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 8});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 2, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
+  // Get global order upper bounds
+  {
+    std::vector<uint64_t> upper_bound(2);
+    void* dimensions[] = {&upper_bound[0], &upper_bound[1]};
+
+    // first fragment - one tile
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{2, 2});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 0, 1, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // second fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 1, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{2, 2});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 1, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{8, 8});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 1, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // third fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 2, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{2, 2});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 2, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{7, 7});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 2, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
 
   // Clean up
   tiledb_fragment_info_free(&fragment_info);

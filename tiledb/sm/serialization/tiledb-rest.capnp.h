@@ -1509,7 +1509,7 @@ struct FragmentMetadata {
   struct GenericTileOffsets;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(cde352fc27e7ca61, 4, 23)
+    CAPNP_DECLARE_STRUCT_HEADER(cde352fc27e7ca61, 4, 27)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1526,7 +1526,7 @@ struct FragmentMetadata::GenericTileOffsets {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(89aa8f4e88036b9e, 3, 8)
+    CAPNP_DECLARE_STRUCT_HEADER(89aa8f4e88036b9e, 3, 10)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -13275,6 +13275,30 @@ class FragmentMetadata::Reader {
   inline bool hasArraySchemaName() const;
   inline ::capnp::Text::Reader getArraySchemaName() const;
 
+  inline bool hasTileGlobalOrderMinBuffer() const;
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Reader
+  getTileGlobalOrderMinBuffer() const;
+
+  inline bool hasTileGlobalOrderMinVarBuffer() const;
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Reader
+  getTileGlobalOrderMinVarBuffer() const;
+
+  inline bool hasTileGlobalOrderMaxBuffer() const;
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Reader
+  getTileGlobalOrderMaxBuffer() const;
+
+  inline bool hasTileGlobalOrderMaxVarBuffer() const;
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Reader
+  getTileGlobalOrderMaxVarBuffer() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -13781,6 +13805,110 @@ class FragmentMetadata::Builder {
   inline void adoptArraySchemaName(::capnp::Orphan<::capnp::Text>&& value);
   inline ::capnp::Orphan<::capnp::Text> disownArraySchemaName();
 
+  inline bool hasTileGlobalOrderMinBuffer();
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  getTileGlobalOrderMinBuffer();
+  inline void setTileGlobalOrderMinBuffer(
+      ::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>::Reader value);
+  inline void setTileGlobalOrderMinBuffer(
+      ::kj::ArrayPtr<
+          const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+          value);
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  initTileGlobalOrderMinBuffer(unsigned int size);
+  inline void adoptTileGlobalOrderMinBuffer(
+      ::capnp::Orphan<::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>
+  disownTileGlobalOrderMinBuffer();
+
+  inline bool hasTileGlobalOrderMinVarBuffer();
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  getTileGlobalOrderMinVarBuffer();
+  inline void setTileGlobalOrderMinVarBuffer(
+      ::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>::Reader value);
+  inline void setTileGlobalOrderMinVarBuffer(
+      ::kj::ArrayPtr<
+          const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+          value);
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  initTileGlobalOrderMinVarBuffer(unsigned int size);
+  inline void adoptTileGlobalOrderMinVarBuffer(
+      ::capnp::Orphan<::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>
+  disownTileGlobalOrderMinVarBuffer();
+
+  inline bool hasTileGlobalOrderMaxBuffer();
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  getTileGlobalOrderMaxBuffer();
+  inline void setTileGlobalOrderMaxBuffer(
+      ::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>::Reader value);
+  inline void setTileGlobalOrderMaxBuffer(
+      ::kj::ArrayPtr<
+          const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+          value);
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  initTileGlobalOrderMaxBuffer(unsigned int size);
+  inline void adoptTileGlobalOrderMaxBuffer(
+      ::capnp::Orphan<::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>
+  disownTileGlobalOrderMaxBuffer();
+
+  inline bool hasTileGlobalOrderMaxVarBuffer();
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  getTileGlobalOrderMaxVarBuffer();
+  inline void setTileGlobalOrderMaxVarBuffer(
+      ::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>::Reader value);
+  inline void setTileGlobalOrderMaxVarBuffer(
+      ::kj::ArrayPtr<
+          const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+          value);
+  inline ::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>::Builder
+  initTileGlobalOrderMaxVarBuffer(unsigned int size);
+  inline void adoptTileGlobalOrderMaxVarBuffer(
+      ::capnp::Orphan<::capnp::List<
+          ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+          ::capnp::Kind::LIST>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>
+  disownTileGlobalOrderMaxVarBuffer();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -13872,6 +14000,14 @@ class FragmentMetadata::GenericTileOffsets::Reader {
   inline ::uint64_t getFragmentMinMaxSumNullCountOffset() const;
 
   inline ::uint64_t getProcessedConditionsOffsets() const;
+
+  inline bool hasTileGlobalOrderMinOffsets() const;
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+  getTileGlobalOrderMinOffsets() const;
+
+  inline bool hasTileGlobalOrderMaxOffsets() const;
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+  getTileGlobalOrderMaxOffsets() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -14032,6 +14168,36 @@ class FragmentMetadata::GenericTileOffsets::Builder {
 
   inline ::uint64_t getProcessedConditionsOffsets();
   inline void setProcessedConditionsOffsets(::uint64_t value);
+
+  inline bool hasTileGlobalOrderMinOffsets();
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  getTileGlobalOrderMinOffsets();
+  inline void setTileGlobalOrderMinOffsets(
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setTileGlobalOrderMinOffsets(
+      ::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  initTileGlobalOrderMinOffsets(unsigned int size);
+  inline void adoptTileGlobalOrderMinOffsets(
+      ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+  disownTileGlobalOrderMinOffsets();
+
+  inline bool hasTileGlobalOrderMaxOffsets();
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  getTileGlobalOrderMaxOffsets();
+  inline void setTileGlobalOrderMaxOffsets(
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setTileGlobalOrderMaxOffsets(
+      ::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+  initTileGlobalOrderMaxOffsets(unsigned int size);
+  inline void adoptTileGlobalOrderMaxOffsets(
+      ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+  disownTileGlobalOrderMaxOffsets();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -32463,6 +32629,342 @@ FragmentMetadata::Builder::disownArraySchemaName() {
       _builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS));
 }
 
+inline bool FragmentMetadata::Reader::hasTileGlobalOrderMinBuffer() const {
+  return !_reader.getPointerField(::capnp::bounded<23>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool FragmentMetadata::Builder::hasTileGlobalOrderMinBuffer() {
+  return !_builder.getPointerField(::capnp::bounded<23>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Reader
+FragmentMetadata::Reader::getTileGlobalOrderMinBuffer() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_reader
+                                     .getPointerField(
+                                         ::capnp::bounded<23>() *
+                                         ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::getTileGlobalOrderMinBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_builder
+                                     .getPointerField(
+                                         ::capnp::bounded<23>() *
+                                         ::capnp::POINTERS));
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMinBuffer(
+    ::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<23>() * ::capnp::POINTERS),
+          value);
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMinBuffer(
+    ::kj::ArrayPtr<
+        const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+        value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<23>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::initTileGlobalOrderMinBuffer(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<23>() * ::capnp::POINTERS),
+          size);
+}
+inline void FragmentMetadata::Builder::adoptTileGlobalOrderMinBuffer(
+    ::capnp::Orphan<::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<23>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>>
+FragmentMetadata::Builder::disownTileGlobalOrderMinBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::disown(_builder
+                                        .getPointerField(
+                                            ::capnp::bounded<23>() *
+                                            ::capnp::POINTERS));
+}
+
+inline bool FragmentMetadata::Reader::hasTileGlobalOrderMinVarBuffer() const {
+  return !_reader.getPointerField(::capnp::bounded<24>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool FragmentMetadata::Builder::hasTileGlobalOrderMinVarBuffer() {
+  return !_builder.getPointerField(::capnp::bounded<24>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Reader
+FragmentMetadata::Reader::getTileGlobalOrderMinVarBuffer() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_reader
+                                     .getPointerField(
+                                         ::capnp::bounded<24>() *
+                                         ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::getTileGlobalOrderMinVarBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_builder
+                                     .getPointerField(
+                                         ::capnp::bounded<24>() *
+                                         ::capnp::POINTERS));
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMinVarBuffer(
+    ::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<24>() * ::capnp::POINTERS),
+          value);
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMinVarBuffer(
+    ::kj::ArrayPtr<
+        const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+        value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<24>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::initTileGlobalOrderMinVarBuffer(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<24>() * ::capnp::POINTERS),
+          size);
+}
+inline void FragmentMetadata::Builder::adoptTileGlobalOrderMinVarBuffer(
+    ::capnp::Orphan<::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<24>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>>
+FragmentMetadata::Builder::disownTileGlobalOrderMinVarBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::disown(_builder
+                                        .getPointerField(
+                                            ::capnp::bounded<24>() *
+                                            ::capnp::POINTERS));
+}
+
+inline bool FragmentMetadata::Reader::hasTileGlobalOrderMaxBuffer() const {
+  return !_reader.getPointerField(::capnp::bounded<25>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool FragmentMetadata::Builder::hasTileGlobalOrderMaxBuffer() {
+  return !_builder.getPointerField(::capnp::bounded<25>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Reader
+FragmentMetadata::Reader::getTileGlobalOrderMaxBuffer() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_reader
+                                     .getPointerField(
+                                         ::capnp::bounded<25>() *
+                                         ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::getTileGlobalOrderMaxBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_builder
+                                     .getPointerField(
+                                         ::capnp::bounded<25>() *
+                                         ::capnp::POINTERS));
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMaxBuffer(
+    ::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<25>() * ::capnp::POINTERS),
+          value);
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMaxBuffer(
+    ::kj::ArrayPtr<
+        const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+        value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<25>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::initTileGlobalOrderMaxBuffer(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<25>() * ::capnp::POINTERS),
+          size);
+}
+inline void FragmentMetadata::Builder::adoptTileGlobalOrderMaxBuffer(
+    ::capnp::Orphan<::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<25>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>>
+FragmentMetadata::Builder::disownTileGlobalOrderMaxBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::disown(_builder
+                                        .getPointerField(
+                                            ::capnp::bounded<25>() *
+                                            ::capnp::POINTERS));
+}
+
+inline bool FragmentMetadata::Reader::hasTileGlobalOrderMaxVarBuffer() const {
+  return !_reader.getPointerField(::capnp::bounded<26>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool FragmentMetadata::Builder::hasTileGlobalOrderMaxVarBuffer() {
+  return !_builder.getPointerField(::capnp::bounded<26>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Reader
+FragmentMetadata::Reader::getTileGlobalOrderMaxVarBuffer() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_reader
+                                     .getPointerField(
+                                         ::capnp::bounded<26>() *
+                                         ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::getTileGlobalOrderMaxVarBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::get(_builder
+                                     .getPointerField(
+                                         ::capnp::bounded<26>() *
+                                         ::capnp::POINTERS));
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMaxVarBuffer(
+    ::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<26>() * ::capnp::POINTERS),
+          value);
+}
+inline void FragmentMetadata::Builder::setTileGlobalOrderMaxVarBuffer(
+    ::kj::ArrayPtr<
+        const ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>::Reader>
+        value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<26>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>::Builder
+FragmentMetadata::Builder::initTileGlobalOrderMaxVarBuffer(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<26>() * ::capnp::POINTERS),
+          size);
+}
+inline void FragmentMetadata::Builder::adoptTileGlobalOrderMaxVarBuffer(
+    ::capnp::Orphan<::capnp::List<
+        ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<26>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+    ::capnp::Kind::LIST>>
+FragmentMetadata::Builder::disownTileGlobalOrderMaxVarBuffer() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::uint8_t, ::capnp::Kind::PRIMITIVE>,
+      ::capnp::Kind::LIST>>::disown(_builder
+                                        .getPointerField(
+                                            ::capnp::bounded<26>() *
+                                            ::capnp::POINTERS));
+}
+
 inline ::uint64_t FragmentMetadata::GenericTileOffsets::Reader::getRtree()
     const {
   return _reader.getDataField<::uint64_t>(
@@ -33001,6 +33503,140 @@ FragmentMetadata::GenericTileOffsets::Builder::setProcessedConditionsOffsets(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool
+FragmentMetadata::GenericTileOffsets::Reader::hasTileGlobalOrderMinOffsets()
+    const {
+  return !_reader.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool
+FragmentMetadata::GenericTileOffsets::Builder::hasTileGlobalOrderMinOffsets() {
+  return !_builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+FragmentMetadata::GenericTileOffsets::Reader::getTileGlobalOrderMinOffsets()
+    const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _reader.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+FragmentMetadata::GenericTileOffsets::Builder::getTileGlobalOrderMinOffsets() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+inline void
+FragmentMetadata::GenericTileOffsets::Builder::setTileGlobalOrderMinOffsets(
+    ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          value);
+}
+inline void
+FragmentMetadata::GenericTileOffsets::Builder::setTileGlobalOrderMinOffsets(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+FragmentMetadata::GenericTileOffsets::Builder::initTileGlobalOrderMinOffsets(
+    unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::init(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          size);
+}
+inline void
+FragmentMetadata::GenericTileOffsets::Builder::adoptTileGlobalOrderMinOffsets(
+    ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+FragmentMetadata::GenericTileOffsets::Builder::
+    disownTileGlobalOrderMinOffsets() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+
+inline bool
+FragmentMetadata::GenericTileOffsets::Reader::hasTileGlobalOrderMaxOffsets()
+    const {
+  return !_reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool
+FragmentMetadata::GenericTileOffsets::Builder::hasTileGlobalOrderMaxOffsets() {
+  return !_builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
+FragmentMetadata::GenericTileOffsets::Reader::getTileGlobalOrderMaxOffsets()
+    const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+FragmentMetadata::GenericTileOffsets::Builder::getTileGlobalOrderMaxOffsets() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::get(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+inline void
+FragmentMetadata::GenericTileOffsets::Builder::setTileGlobalOrderMaxOffsets(
+    ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          value);
+}
+inline void
+FragmentMetadata::GenericTileOffsets::Builder::setTileGlobalOrderMaxOffsets(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::set(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Builder
+FragmentMetadata::GenericTileOffsets::Builder::initTileGlobalOrderMaxOffsets(
+    unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::init(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          size);
+}
+inline void
+FragmentMetadata::GenericTileOffsets::Builder::adoptTileGlobalOrderMaxOffsets(
+    ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
+FragmentMetadata::GenericTileOffsets::Builder::
+    disownTileGlobalOrderMaxOffsets() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
 }
 
 inline ::uint64_t MultiPartUploadState::Reader::getPartNumber() const {
