@@ -75,8 +75,9 @@ typedef int32_t (*tiledb_ls_callback_v2_t)(
  * on error. The callback is responsible for writing gathered entries into the
  * `data` buffer, for example using a pointer to a user-defined struct.
  *
- * Currently only local filesystem, S3, Azure and GCS are supported, and the
- * `path` must be a valid URI for one of those filesystems.
+ * Currently LocalFS, S3, Azure, and GCS are supported. Objects and
+ * directories will be collected for LocalFS. Only objects will be collected
+ * for cloud storage backends such as S3, Azure, and GCS.
  *
  * **Example:**
  *
@@ -119,8 +120,12 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
  * on error. The callback is responsible for writing gathered entries into the
  * `data` buffer, for example using a pointer to a user-defined struct.
  *
- * Currently only local filesystem, S3, Azure and GCS are supported, and the
- * `path` must be a valid URI for one of those filesystems.
+ * Currently LocalFS, S3, Azure, and GCS are supported. The results will
+ * include objects and directories for all storage backends.
+ *
+ * The LsCallbackV2 used in this API adds an additional parameter for checking
+ * if the current result is a directory. This can be used by the caller to
+ * include or exclude directories as needed during traversal.
  *
  * **Example:**
  *

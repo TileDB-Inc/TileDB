@@ -221,6 +221,10 @@ class VFSExperimental {
    * Currently LocalFS, S3, Azure, and GCS are supported. The results will
    * include objects and directories for all storage backends.
    *
+   * The LsCallbackV2 used in this API adds an additional parameter for checking
+   * if the current result is a directory. This can be used by the caller to
+   * include or exclude directories as needed during traversal.
+   *
    * @code{.c}
    * VFSExperimental::LsObjects ls_objects;
    * VFSExperimental::LsCallbackV2 cb = [&](const std::string_view& path,
@@ -319,10 +323,14 @@ class VFSExperimental {
    * `path` must be a valid URI for one of those filesystems. The results will
    * include objects and directories for all storage backends.
    *
+   * The LsIncludeV2 inclusion predicate used in this API adds an additional
+   * parameter for checking if the current result is a directory. This can be
+   * used by the caller to include or exclude directories as needed.
+   *
    * @code{.c}
-   * VFSExperimental::LsInclude predicate = [](std::string_view path,
-   *                                           uint64_t object_size,
-   *                                           bool is_dir) {
+   * VFSExperimental::LsIncludeV2 predicate = [](std::string_view path,
+   *                                             uint64_t object_size,
+   *                                             bool is_dir) {
    *   return path.find(".txt") != std::string::npos;
    * }
    * // Include only files with '.txt' extension using a custom predicate.
