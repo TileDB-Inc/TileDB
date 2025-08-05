@@ -41,6 +41,7 @@
 extern "C" {
 #endif
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Typedef for ls_recursive callback function invoked on each object collected.
  *
@@ -51,23 +52,6 @@ extern "C" {
  */
 typedef int32_t (*tiledb_ls_callback_t)(
     const char* path, size_t path_len, uint64_t object_size, void* data);
-
-/**
- * Typedef for ls_recursive_v2 callback function invoked on each object
- * collected.
- *
- * @param path The path of a visited object for the relative filesystem.
- * @param path_len The length of the path.
- * @param object_size The size of the object at the current path.
- * @param is_dir 1 if the current object is a directory, else 0.
- * @param data Data passed to the callback used to store collected results.
- */
-typedef int32_t (*tiledb_ls_callback_v2_t)(
-    const char* path,
-    size_t path_len,
-    uint64_t object_size,
-    uint8_t is_dir,
-    void* data);
 
 /**
  * Visits the children of `path` recursively, invoking the callback for each
@@ -107,12 +91,30 @@ typedef int32_t (*tiledb_ls_callback_v2_t)(
  * @param[in] data Data pointer passed into the callback for storing results.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
     tiledb_ls_callback_t callback,
     void* data) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
+
+/**
+ * Typedef for ls_recursive_v2 callback function invoked on each object
+ * collected.
+ *
+ * @param path The path of a visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param object_size The size of the object at the current path.
+ * @param is_dir 1 if the current object is a directory, else 0.
+ * @param data Data passed to the callback used to store collected results.
+ */
+typedef int32_t (*tiledb_ls_callback_v2_t)(
+    const char* path,
+    size_t path_len,
+    uint64_t object_size,
+    uint8_t is_dir,
+    void* data);
 
 /**
  * Visits the children of `path` recursively, invoking the callback for each

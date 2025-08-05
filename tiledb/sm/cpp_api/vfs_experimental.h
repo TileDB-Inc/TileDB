@@ -166,6 +166,26 @@ class VFSExperimental {
   /*       PUBLIC STATIC METHODS       */
   /* ********************************* */
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
+ private:
+  /**
+   * Callback function for invoking the C++ ls_recursive callback via C API.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param path_len The length of the path.
+   * @param object_size The size of the object at the current path.
+   * @param data Data passed to the callback used to store collected results.
+   * @return 1 if the callback should continue to the next object, or 0 to stop
+   *      traversal.
+   * @sa tiledb_ls_callback_t
+   */
+  TILEDB_DEPRECATED static int32_t ls_callback_wrapper(
+      const char* path, size_t path_len, uint64_t object_size, void* data) {
+    CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
+    return (*cb)({path, path_len}, object_size);
+  }
+
+ public:
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
    * on each entry gathered. The callback is passed the data pointer provided
@@ -195,7 +215,7 @@ class VFSExperimental {
    * @param uri The base URI to list results recursively.
    * @param cb The callback to invoke on each entry.
    */
-  static void ls_recursive(
+  TILEDB_DEPRECATED static void ls_recursive(
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
@@ -208,6 +228,64 @@ class VFSExperimental {
         ls_callback_wrapper,
         &wrapper));
   }
+
+  /**
+   * Recursively lists objects at the input URI, invoking the provided callback
+   * on each entry gathered. The callback should return true if the entry should
+   * be included in the results and false otherwise. If no inclusion predicate
+   * is provided, all results are returned.
+   *
+   * Currently only local filesystem, S3, Azure and GCS are supported, and the
+   * `path` must be a valid URI for one of those filesystems. The results will
+   * include objects and directories for LocalFS.
+   *
+   * Only objects will be collected for cloud storage backends when recursion is
+   * enabled. If recursive if set to false, cloud storage backends will return
+   * common prefix results.
+   *
+   * @code{.c}
+   * VFSExperimental::LsInclude predicate = [](std::string_view path,
+   *                                           uint64_t object_size) {
+   *   return path.find(".txt") != std::string::npos;
+   * }
+   * // Include only files with '.txt' extension using a custom predicate.
+   * auto ret = VFSExperimental::ls_recursive_filter(
+   *    ctx, vfs, "s3://bucket/foo", predicate);
+   *
+   * // Optionally omit the predicate to include all paths collected.
+   * auto all_paths = VFSExperimental::ls_recursive_filter(
+   *    ctx, vfs, "s3://bucket/foo");
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS instance to use.
+   * @param uri The base URI to list results recursively.
+   * @param include Predicate function to check if a result should be included.
+   * @return Vector of pairs for each object path and size.
+   */
+  TILEDB_DEPRECATED static LsObjects ls_recursive_filter(
+      const Context& ctx,
+      const VFS& vfs,
+      const std::string& uri,
+      std::optional<LsInclude> include = std::nullopt) {
+    LsObjects ls_objects;
+    if (include.has_value()) {
+      auto include_cb = include.value();
+      ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
+        if (include_cb(path, size)) {
+          ls_objects.emplace_back(path, size);
+        }
+        return true;
+      });
+    } else {
+      ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
+        ls_objects.emplace_back(path, size);
+        return true;
+      });
+    }
+    return ls_objects;
+  }
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
@@ -254,63 +332,6 @@ class VFSExperimental {
         uri.c_str(),
         ls_callback_wrapper_v2,
         &wrapper));
-  }
-
-  /**
-   * Recursively lists objects at the input URI, invoking the provided callback
-   * on each entry gathered. The callback should return true if the entry should
-   * be included in the results and false otherwise. If no inclusion predicate
-   * is provided, all results are returned.
-   *
-   * Currently only local filesystem, S3, Azure and GCS are supported, and the
-   * `path` must be a valid URI for one of those filesystems. The results will
-   * include objects and directories for LocalFS.
-   *
-   * Only objects will be collected for cloud storage backends when recursion is
-   * enabled. If recursive if set to false, cloud storage backends will return
-   * common prefix results.
-   *
-   * @code{.c}
-   * VFSExperimental::LsInclude predicate = [](std::string_view path,
-   *                                           uint64_t object_size) {
-   *   return path.find(".txt") != std::string::npos;
-   * }
-   * // Include only files with '.txt' extension using a custom predicate.
-   * auto ret = VFSExperimental::ls_recursive_filter(
-   *    ctx, vfs, "s3://bucket/foo", predicate);
-   *
-   * // Optionally omit the predicate to include all paths collected.
-   * auto all_paths = VFSExperimental::ls_recursive_filter(
-   *    ctx, vfs, "s3://bucket/foo");
-   * @endcode
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS instance to use.
-   * @param uri The base URI to list results recursively.
-   * @param include Predicate function to check if a result should be included.
-   * @return Vector of pairs for each object path and size.
-   */
-  static LsObjects ls_recursive_filter(
-      const Context& ctx,
-      const VFS& vfs,
-      const std::string& uri,
-      std::optional<LsInclude> include = std::nullopt) {
-    LsObjects ls_objects;
-    if (include.has_value()) {
-      auto include_cb = include.value();
-      ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
-        if (include_cb(path, size)) {
-          ls_objects.emplace_back(path, size);
-        }
-        return true;
-      });
-    } else {
-      ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
-        ls_objects.emplace_back(path, size);
-        return true;
-      });
-    }
-    return ls_objects;
   }
 
   /**
@@ -380,23 +401,6 @@ class VFSExperimental {
   /* ********************************* */
   /*       PRIVATE STATIC METHODS      */
   /* ********************************* */
-
-  /**
-   * Callback function for invoking the C++ ls_recursive callback via C API.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param path_len The length of the path.
-   * @param object_size The size of the object at the current path.
-   * @param data Data passed to the callback used to store collected results.
-   * @return 1 if the callback should continue to the next object, or 0 to stop
-   *      traversal.
-   * @sa tiledb_ls_callback_t
-   */
-  static int32_t ls_callback_wrapper(
-      const char* path, size_t path_len, uint64_t object_size, void* data) {
-    CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
-    return (*cb)({path, path_len}, object_size);
-  }
 
   /**
    * Callback function for invoking the C++ ls_recursive callback via C API.
