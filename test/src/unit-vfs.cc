@@ -682,10 +682,7 @@ TEMPLATE_LIST_TEST_CASE(
     std::erase_if(expected, [](const auto& p) {
       return p.first.find("subdir_1/test_file") == std::string::npos;
     });
-    // S3 ls_filtered V1 does not return common prefixes if non-recursive.
-    if (!path.is_s3()) {
-      expected.emplace_back(subdir2, 0);
-    }
+    expected.emplace_back(subdir2, 0);
     auto ls_objects =
         fs.vfs_.ls_filtered(path, tiledb::sm::LsScanner::accept_all, false);
     CHECK(ls_objects.size() == expected.size());

@@ -2159,8 +2159,7 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
   if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
     // Filter prefixes if there are no more results to fetch from S3.
     return build_prefix_vector();
-  } else if (
-      result_filter_v2_ && !is_recursive_ && response_contains_prefixes_) {
+  } else if (!is_recursive_ && response_contains_prefixes_) {
     // If using V2 APIs, collect common prefix results for non-recursive scan.
     response_contains_prefixes_ = false;
     const auto& aws_prefixes =
