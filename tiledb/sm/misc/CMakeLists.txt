@@ -26,8 +26,6 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-find_package(LibMagic MODULE REQUIRED)
-
 #
 # `cancelable_tasks` object library
 #
@@ -41,33 +39,6 @@ conclude(object_library)
 #
 commence(object_library constants)
     this_target_sources(constants.cc)
-conclude(object_library)
-
-############################################################
-# provide actions/target for preparation of magic.mgc data for embedding/build
-
-#
-# `mgc_dict` object library
-#
-# The file is used as a header but we don't name it .h to avoid it being picked up by IDEs
-set(MGC_GZIPPED_H_OUTPUT_FILE "${PROJECT_BINARY_DIR}/magic_mgc.zst.h_")
-
-add_custom_command(
-  OUTPUT "${MGC_GZIPPED_H_OUTPUT_FILE}"
-  DEPENDS "${libmagic_DICTIONARY}" "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
-  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_H_OUTPUT_FILE}" -P "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
-)
-add_custom_target(gen_mgc_unarch
-  DEPENDS ${MGC_GZIPPED_H_OUTPUT_FILE}
-)
-
-commence(object_library mgc_dict)
-    add_dependencies(mgc_dict gen_mgc_unarch)
-    # change to `this_target_include_directories` when available
-    target_include_directories(mgc_dict PRIVATE "${PROJECT_BINARY_DIR}")
-    this_target_object_libraries(buffer compressors)
-    this_target_link_libraries(libmagic)
-    this_target_sources(mgc_dict.cc)
 conclude(object_library)
 
 #

@@ -98,7 +98,7 @@
 #endif
 
 #ifdef TILEDB_MIME_TYPE_ENUM
-    /** Unspecified MIME type*/
+    /** Deprecated, equivalent to application/octet-stream*/
     TILEDB_MIME_TYPE_ENUM(MIME_AUTODETECT) = 0,
     /** image/tiff*/
     TILEDB_MIME_TYPE_ENUM(MIME_TIFF) = 1,
