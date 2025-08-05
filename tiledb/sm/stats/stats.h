@@ -154,12 +154,9 @@ class Stats {
    *
    * @param stat The name under which the duration is to be reported
    */
-#ifdef TILEDB_STATS
-  [[nodiscard]] DurationInstrument<Stats> start_timer(const std::string& stat);
-#else
-  [[maybe_unused]] DurationInstrument<Stats> start_timer(
-      const std::string& stat);
-#endif
+  [[nodiscard]] DurationInstrument<Stats> start_timer(const std::string& stat) {
+    return DurationInstrument<Stats>(*this, stat);
+  }
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);

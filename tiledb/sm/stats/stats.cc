@@ -173,10 +173,6 @@ std::string Stats::dump(
   return ss.str();
 }
 
-DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
-  return DurationInstrument<Stats>(*this, stat);
-}
-
 #ifdef TILEDB_STATS
 
 void Stats::add_counter(const std::string& stat, uint64_t count) {
