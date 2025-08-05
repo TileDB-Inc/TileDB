@@ -834,7 +834,7 @@ void Group::load_metadata() {
 void Group::load_metadata_from_storage(
     const shared_ptr<GroupDirectory>& group_dir,
     const EncryptionKey& encryption_key) {
-  [auto timer_se =
+  auto timer_se =
       resources_.stats().start_timer("group_load_metadata_from_storage");
 
   // Determine which group metadata to load
@@ -845,16 +845,16 @@ void Group::load_metadata_from_storage(
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
   throw_if_not_ok(
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
-    const auto& uri = group_metadata_to_load[m].uri_;
+        const auto& uri = group_metadata_to_load[m].uri_;
 
-    metadata_tiles[m] = GenericTileIO::load(
-        resources_,
-        uri,
-        0,
-        encryption_key,
-        resources_.ephemeral_memory_tracker());
+        metadata_tiles[m] = GenericTileIO::load(
+            resources_,
+            uri,
+            0,
+            encryption_key,
+            resources_.ephemeral_memory_tracker());
 
-    return Status::Ok();
+        return Status::Ok();
       }));
 
   // Compute array metadata size for the statistics
@@ -870,16 +870,14 @@ void Group::load_metadata_from_storage(
 }
 
 void Group::group_open_for_reads() {
-  [auto timer_se =
-      resources_.stats().start_timer("group_open_for_reads");
+  auto timer_se = resources_.stats().start_timer("group_open_for_reads");
 
   // Load group data
   load_group_details();
 }
 
 void Group::load_group_details() {
-  [auto timer_se =
-      resources_.stats().start_timer("load_group_details");
+  auto timer_se = resources_.stats().start_timer("load_group_details");
   const URI& latest_group_uri = group_directory()->latest_group_details_uri();
   if (latest_group_uri.is_invalid()) {
     return;
@@ -903,8 +901,7 @@ void Group::load_group_details() {
 }
 
 void Group::load_group_from_uri(const URI& uri) {
-  [auto timer_se =
-      resources_.stats().start_timer("load_group_from_uri");
+  auto timer_se = resources_.stats().start_timer("load_group_from_uri");
 
   auto tile = GenericTileIO::load(
       resources_,
@@ -926,8 +923,7 @@ void Group::load_group_from_uri(const URI& uri) {
 }
 
 void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
-  [auto timer_se =
-      resources_.stats().start_timer("load_group_from_all_uris");
+  auto timer_se = resources_.stats().start_timer("load_group_from_all_uris");
 
   std::vector<shared_ptr<Deserializer>> deserializers;
   for (auto& uri : uris) {
@@ -955,8 +951,7 @@ void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
 }
 
 void Group::group_open_for_writes() {
-  [auto timer_se =
-      resources_.stats().start_timer("group_open_for_writes");
+  auto timer_se = resources_.stats().start_timer("group_open_for_writes");
 
   load_group_details();
 }

@@ -1384,8 +1384,7 @@ tuple<bool, std::vector<uint64_t>>
 SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
     const std::vector<std::string>& names,
     std::vector<ResultTile*>& result_tiles) {
-  [auto timer_se =
-      stats_->start_timer("resize_fixed_results_to_copy");
+  auto timer_se = stats_->start_timer("resize_fixed_results_to_copy");
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
@@ -1530,8 +1529,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     const uint64_t first_tile_min_pos,
     std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer) {
-  [auto timer_se =
-      stats->start_timer("switch_sizes_to_offsets");
+  auto timer_se = stats->start_timer("switch_sizes_to_offsets");
 
   auto new_var_buffer_size = *query_buffer.buffer_var_size_;
   auto new_result_tiles_size = result_tiles.size();

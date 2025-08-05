@@ -246,13 +246,12 @@ Status DenseReader::dense_read() {
   stats_->add_counter("num_tiles", tile_coords.size());
   std::vector<uint64_t> tiles_cell_num(tile_coords.size());
   {
-    [auto timer_se =
-        stats_->start_timer("compute_tiles_cell_num");
+    auto timer_se = stats_->start_timer("compute_tiles_cell_num");
     auto status = parallel_for(
         &resources_.compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
-      tiles_cell_num[t] =
-          subarray.tile_cell_num((const DimType*)&tile_coords[t][0]);
-      return Status::Ok();
+          tiles_cell_num[t] =
+              subarray.tile_cell_num((const DimType*)&tile_coords[t][0]);
+          return Status::Ok();
         });
     RETURN_NOT_OK(status);
   }

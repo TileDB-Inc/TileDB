@@ -435,7 +435,7 @@ Status Reader::apply_query_condition(
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
-  [auto timer_se =
+  auto timer_se =
       stats_->start_timer("compute_sparse_result_cell_slabs_sparse");
 
   // Trivial case
@@ -553,8 +553,7 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     IndexedList<ResultTile>& result_tiles,
     std::vector<std::vector<ResultCoords>>& range_result_coords) {
-  [auto timer_se =
-      stats_->start_timer("compute_range_result_coords");
+  auto timer_se = stats_->start_timer("compute_range_result_coords");
 
   auto range_num = subarray.range_num();
   range_result_coords.resize(range_num);
@@ -575,24 +574,28 @@ Status Reader::compute_range_result_coords(
 
   auto status =
       parallel_for(&resources_.compute_tp(), 0, range_num, [&](uint64_t r) {
-    // Compute overlapping coordinates per range
-    throw_if_not_ok(compute_range_result_coords(
-        subarray, r, result_tile_map, result_tiles, range_result_coords[r]));
+        // Compute overlapping coordinates per range
+        throw_if_not_ok(compute_range_result_coords(
+            subarray,
+            r,
+            result_tile_map,
+            result_tiles,
+            range_result_coords[r]));
 
-    // Dedup unless there is a single fragment or array schema allows
-    // duplicates
-    if (!single_fragment[r] && !allows_dups) {
-      throw_if_not_ok(sort_result_coords(
-          range_result_coords[r].begin(),
-          range_result_coords[r].end(),
-          range_result_coords[r].size(),
-          sort_layout));
-      throw_if_cancelled();
-      throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
-      throw_if_cancelled();
-    }
+        // Dedup unless there is a single fragment or array schema allows
+        // duplicates
+        if (!single_fragment[r] && !allows_dups) {
+          throw_if_not_ok(sort_result_coords(
+              range_result_coords[r].begin(),
+              range_result_coords[r].end(),
+              range_result_coords[r].size(),
+              sort_layout));
+          throw_if_cancelled();
+          throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
+          throw_if_cancelled();
+        }
 
-    return Status::Ok();
+        return Status::Ok();
       });
 
   RETURN_NOT_OK(status);
@@ -694,8 +697,7 @@ Status Reader::compute_range_result_coords(
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>& range_result_coords,
     std::vector<ResultCoords>& result_coords) {
-  [auto timer_se =
-      stats_->start_timer("compute_subarray_coords");
+  auto timer_se = stats_->start_timer("compute_subarray_coords");
   // The input 'result_coords' is already sorted. Save the current size
   // before inserting new elements.
   const size_t result_coords_size = result_coords.size();
@@ -744,8 +746,7 @@ Status Reader::compute_sparse_result_tiles(
     IndexedList<ResultTile>& result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
-  [auto timer_se =
-      stats_->start_timer("compute_sparse_result_tiles");
+  auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
 
   // For easy reference
   auto& partitioner = read_state_.partitioner_;
@@ -1555,8 +1556,7 @@ Status Reader::compute_result_cell_slabs(
     std::vector<ResultCoords>& result_coords,
     std::vector<ResultTile*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
-  [auto timer_se =
-      stats_->start_timer("compute_sparse_result_cell_slabs_dense");
+  auto timer_se = stats_->start_timer("compute_sparse_result_cell_slabs_dense");
 
   auto layout = subarray.layout();
 
@@ -2159,8 +2159,7 @@ void Reader::get_result_tile_stats(
 Status Reader::calculate_hilbert_values(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
-  [auto timer_se =
-      stats_->start_timer("calculate_hilbert_values");
+  auto timer_se = stats_->start_timer("calculate_hilbert_values");
   auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
@@ -2170,15 +2169,15 @@ Status Reader::calculate_hilbert_values(
   // Calculate Hilbert values in parallel
   auto status =
       parallel_for(&resources_.compute_tp(), 0, coords_num, [&](uint64_t c) {
-    std::vector<uint64_t> coords(dim_num);
-    for (uint32_t d = 0; d < dim_num; ++d) {
-      auto dim{array_schema_.dimension_ptr(d)};
-      coords[d] = hilbert_order::map_to_uint64(
-          *dim, *(iter_begin + c), d, bits, max_bucket_val);
-    }
-    (*hilbert_values)[c] =
-        std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);
-    return Status::Ok();
+        std::vector<uint64_t> coords(dim_num);
+        for (uint32_t d = 0; d < dim_num; ++d) {
+          auto dim{array_schema_.dimension_ptr(d)};
+          coords[d] = hilbert_order::map_to_uint64(
+              *dim, *(iter_begin + c), d, bits, max_bucket_val);
+        }
+        (*hilbert_values)[c] =
+            std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);
+        return Status::Ok();
       });
 
   RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
@@ -2189,8 +2188,7 @@ Status Reader::calculate_hilbert_values(
 Status Reader::reorganize_result_coords(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
-  [auto timer_se =
-      stats_->start_timer("reorganize_result_coords");
+  auto timer_se = stats_->start_timer("reorganize_result_coords");
   auto coords_num = hilbert_values->size();
   size_t i_src, i_dst;
   ResultCoords pending;

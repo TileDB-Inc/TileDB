@@ -847,7 +847,7 @@ Status Query::process() {
     const auto evaluator = config_.get<std::string>(evaluator_param_name);
     if (evaluator == "datafusion") {
 #ifdef HAVE_RUST
-      [auto timer_se =
+      auto timer_se =
           stats_->start_timer("query_condition_rewrite_to_datafusion");
       condition_->rewrite_to_datafusion(array_schema());
 #else
