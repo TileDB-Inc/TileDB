@@ -630,6 +630,25 @@ void Azure::copy_file(const URI& old_uri, const URI& new_uri) const {
 }
 
 void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
+  auto [_, data_lake_client] = clients();
+
+  if (data_lake_client) {
+    auto [old_container_name, old_blob_path] = parse_azure_uri(old_uri);
+    auto [new_container_name, new_blob_path] = parse_azure_uri(new_uri);
+
+    ::Azure::Storage::Files::DataLake::RenameDirectoryOptions options{
+        .DestinationFileSystem = std::move(new_container_name)};
+    try {
+      data_lake_client->GetFileSystemClient(old_container_name)
+          .RenameDirectory(old_blob_path, new_blob_path, options);
+    } catch (const ::Azure::Storage::StorageException& e) {
+      throw AzureException(
+          "Move directory failed on: " + old_uri.to_string() + "; " +
+          e.Message);
+    }
+    return;
+  }
+
   std::vector<std::string> paths = ls(old_uri, "");
   for (const auto& path : paths) {
     const std::string suffix = path.substr(old_uri.to_string().size());
@@ -639,6 +658,24 @@ void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
+  auto [_, data_lake_client] = clients();
+
+  if (data_lake_client) {
+    auto [old_container_name, old_blob_path] = parse_azure_uri(old_uri);
+    auto [new_container_name, new_blob_path] = parse_azure_uri(new_uri);
+
+    ::Azure::Storage::Files::DataLake::RenameFileOptions options{
+        .DestinationFileSystem = std::move(new_container_name)};
+    try {
+      data_lake_client->GetFileSystemClient(old_container_name)
+          .RenameFile(old_blob_path, new_blob_path, options);
+    } catch (const ::Azure::Storage::StorageException& e) {
+      throw AzureException(
+          "Move file failed on: " + old_uri.to_string() + "; " + e.Message);
+    }
+    return;
+  }
+
   copy_file(old_uri, new_uri);
   remove_file(old_uri);
 }
@@ -732,6 +769,31 @@ void Azure::remove_file(const URI& uri) const {
 }
 
 void Azure::remove_dir(const URI& uri) const {
+  auto [_, data_lake_client] = clients();
+
+  if (data_lake_client) {
+    auto [container_name, blob_path] = parse_azure_uri(uri);
+    bool deleted;
+    std::string error_message = "";
+
+    try {
+      deleted = data_lake_client->GetFileSystemClient(container_name)
+                    .GetDirectoryClient(blob_path)
+                    .DeleteRecursive()
+                    .Value.Deleted;
+    } catch (const ::Azure::Storage::StorageException& e) {
+      deleted = false;
+      error_message = "; " + e.Message;
+    }
+
+    if (!deleted) {
+      throw AzureException(
+          "Remove directory failed on: " + uri.to_string() + error_message);
+    }
+
+    return;
+  }
+
   std::vector<std::string> paths = ls(uri, "");
   throw_if_not_ok(parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
     remove_file(URI(paths[i]));
