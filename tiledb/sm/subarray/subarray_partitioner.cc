@@ -590,7 +590,7 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_split_current_partition");
 
   *unsplittable = false;

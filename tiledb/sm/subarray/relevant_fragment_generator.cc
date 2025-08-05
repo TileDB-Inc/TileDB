@@ -95,7 +95,7 @@ bool RelevantFragmentGenerator::update_range_coords(
 
 RelevantFragments RelevantFragmentGenerator::compute_relevant_fragments(
     ThreadPool* const compute_tp) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("compute_relevant_frags");
   auto dim_num = array_->array_schema_latest().dim_num();
   auto fragment_num = array_->fragment_metadata().size();
@@ -109,32 +109,32 @@ RelevantFragments RelevantFragmentGenerator::compute_relevant_fragments(
       0,
       fragment_num,
       [&](const uint32_t d, const uint64_t f) {
-        if (subarray_.is_default(d)) {
-          return Status::Ok();
-        }
+    if (subarray_.is_default(d)) {
+      return Status::Ok();
+    }
 
-        // We're done when we have already determined fragment `f` to
-        // be relevant for this dimension.
-        if (fragment_bytemaps_[d][f] == 1) {
-          return Status::Ok();
-        }
+    // We're done when we have already determined fragment `f` to
+    // be relevant for this dimension.
+    if (fragment_bytemaps_[d][f] == 1) {
+      return Status::Ok();
+    }
 
-        auto dim{array_->array_schema_latest().dimension_ptr(d)};
+    auto dim{array_->array_schema_latest().dimension_ptr(d)};
 
-        // The fragment `f` is relevant to this dimension's fragment bytemap
-        // if it overlaps with any range between the start and end coordinates
-        // on this dimension.
-        const type::Range& frag_range = meta[f]->non_empty_domain()[d];
-        for (uint64_t r = start_coords_[d]; r <= end_coords_[d]; ++r) {
-          const type::Range& query_range = subarray_.ranges_for_dim(d)[r];
+    // The fragment `f` is relevant to this dimension's fragment bytemap
+    // if it overlaps with any range between the start and end coordinates
+    // on this dimension.
+    const type::Range& frag_range = meta[f]->non_empty_domain()[d];
+    for (uint64_t r = start_coords_[d]; r <= end_coords_[d]; ++r) {
+      const type::Range& query_range = subarray_.ranges_for_dim(d)[r];
 
-          if (dim->overlap(frag_range, query_range)) {
-            fragment_bytemaps_[d][f] = 1;
-            break;
-          }
-        }
+      if (dim->overlap(frag_range, query_range)) {
+        fragment_bytemaps_[d][f] = 1;
+        break;
+      }
+    }
 
-        return Status::Ok();
+    return Status::Ok();
       }));
 
   // Recalculate relevant fragments.

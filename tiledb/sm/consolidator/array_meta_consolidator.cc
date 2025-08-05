@@ -66,7 +66,7 @@ Status ArrayMetaConsolidator::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("consolidate_array_meta");
   check_array_uri(array_name);
 

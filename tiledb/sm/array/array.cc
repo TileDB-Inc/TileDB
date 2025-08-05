@@ -292,8 +292,7 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  [[maybe_unused]] auto timer =
-      resources_.stats().start_timer("array_open_without_fragments");
+  auto timer = resources_.stats().start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -370,7 +369,7 @@ Status Array::open_without_fragments(
 
 void Array::load_fragments(
     const std::vector<TimestampedURI>& fragments_to_load) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_.stats().start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
@@ -519,7 +518,7 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       {
-        [[maybe_unused]] auto timer_se =
+        [auto timer_se =
             resources_.stats().start_timer("array_open_read_load_directory");
         set_array_directory(ArrayDirectory(
             resources_,
@@ -536,7 +535,7 @@ Status Array::open(
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       {
-        [[maybe_unused]] auto timer_se =
+        [auto timer_se =
             resources_.stats().start_timer("array_open_write_load_directory");
         set_array_directory(ArrayDirectory(
             resources_,
@@ -1114,7 +1113,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   // Reload the array directory in READ mode (reopen only supports reads).
   try {
     {
-      [[maybe_unused]] auto timer_se =
+      [auto timer_se =
           resources_.stats().start_timer("array_reopen_directory");
       set_array_directory(ArrayDirectory(
           resources_,
@@ -1788,7 +1787,7 @@ tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_writes() {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
   // Checks
   if (!resources_.vfs().supports_uri_scheme(array_uri_)) {
@@ -1817,7 +1816,7 @@ void Array::do_load_metadata() {
     throw ArrayException(
         "Cannot load metadata; array directory is not loaded.");
   }
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_.stats().start_timer("sm_load_array_metadata");
 
   // Determine which array metadata to load
@@ -1827,12 +1826,12 @@ void Array::do_load_metadata() {
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
   throw_if_not_ok(
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
-        const auto& uri = array_metadata_to_load[m].uri_;
+    const auto& uri = array_metadata_to_load[m].uri_;
 
-        metadata_tiles[m] = GenericTileIO::load(
-            resources_, uri, 0, *encryption_key(), memory_tracker_);
+    metadata_tiles[m] = GenericTileIO::load(
+        resources_, uri, 0, *encryption_key(), memory_tracker_);
 
-        return Status::Ok();
+    return Status::Ok();
       }));
 
   // Compute array metadata size for the statistics

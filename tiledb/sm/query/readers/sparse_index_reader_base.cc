@@ -414,7 +414,7 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
     const std::vector<ResultTile*>& result_tiles) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_and_unfilter_coords");
 
   if (include_coords_) {
@@ -569,7 +569,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 
           // Compute the bitmap for the cells.
           {
-            [[maybe_unused]] auto timer_compute_results_count_sparse =
+            [auto timer_compute_results_count_sparse =
                 stats_->start_timer("compute_results_count_sparse");
             throw_if_not_ok(rt->compute_results_count_sparse(
                 dim_idx,
@@ -738,7 +738,7 @@ std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
     uint64_t* buffer_idx,
     std::vector<ResultTile*>& result_tiles,
     bool agg_only) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_and_unfilter_attributes");
   const uint64_t memory_budget = available_memory();
 

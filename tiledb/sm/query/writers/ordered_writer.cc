@@ -293,7 +293,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("prepare_filter_and_write_tiles");
 
   // For easy reference
@@ -335,30 +335,29 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     }
 
     {
-      [[maybe_unused]] auto timer_se =
+      [auto timer_se =
           stats_->start_timer("prepare_and_filter_tiles");
       auto st = parallel_for(
           &resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
-            // Prepare and filter tiles
-            auto& writer_tile = tile_batches[b][i];
-            throw_if_not_ok(
-                dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
+        // Prepare and filter tiles
+        auto& writer_tile = tile_batches[b][i];
+        throw_if_not_ok(
+            dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
 
-            if (!var) {
-              throw_if_not_ok(filter_tile(
-                  name, &writer_tile.fixed_tile(), nullptr, false, false));
-            } else {
-              auto offset_tile = &writer_tile.offset_tile();
-              throw_if_not_ok(filter_tile(
-                  name, &writer_tile.var_tile(), offset_tile, false, false));
-              throw_if_not_ok(
-                  filter_tile(name, offset_tile, nullptr, true, false));
-            }
-            if (nullable) {
-              throw_if_not_ok(filter_tile(
-                  name, &writer_tile.validity_tile(), nullptr, false, true));
-            }
-            return Status::Ok();
+        if (!var) {
+          throw_if_not_ok(filter_tile(
+              name, &writer_tile.fixed_tile(), nullptr, false, false));
+        } else {
+          auto offset_tile = &writer_tile.offset_tile();
+          throw_if_not_ok(filter_tile(
+              name, &writer_tile.var_tile(), offset_tile, false, false));
+          throw_if_not_ok(filter_tile(name, offset_tile, nullptr, true, false));
+        }
+        if (nullable) {
+          throw_if_not_ok(filter_tile(
+              name, &writer_tile.validity_tile(), nullptr, false, true));
+        }
+        return Status::Ok();
           });
       RETURN_NOT_OK(st);
     }

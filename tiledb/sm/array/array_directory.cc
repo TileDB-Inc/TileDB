@@ -95,7 +95,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
     const URI& schema_uri,
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources.stats().start_timer("sm_load_array_schema_from_uri");
 
   auto tile = GenericTileIO::load(
@@ -111,7 +111,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
 shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_.get().stats().start_timer("sm_load_array_schema_latest");
 
   if (uri_.is_invalid()) {
@@ -154,7 +154,7 @@ std::unordered_map<std::string, shared_ptr<ArraySchema>>
 ArrayDirectory::load_all_array_schemas(
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_.get().stats().start_timer("sm_load_all_array_schemas");
 
   if (uri_.is_invalid()) {
@@ -174,20 +174,20 @@ ArrayDirectory::load_all_array_schemas(
 
   auto status = parallel_for(
       &resources_.get().compute_tp(), 0, schema_num, [&](size_t schema_ith) {
-        auto& schema_uri = schema_uris[schema_ith];
-        try {
-          auto&& array_schema = load_array_schema_from_uri(
-              resources_.get(), schema_uri, encryption_key, memory_tracker);
-          array_schema->set_array_uri(uri_);
-          schema_vector[schema_ith] = array_schema;
-        } catch (std::exception& e) {
-          // TODO: We could throw a nested exception, but converting exceptions
-          // to statuses loses the inner exception messages. We can revisit this
-          // when Status gets removed from this module.
-          throw ArrayDirectoryException(e.what());
-        }
+    auto& schema_uri = schema_uris[schema_ith];
+    try {
+      auto&& array_schema = load_array_schema_from_uri(
+          resources_.get(), schema_uri, encryption_key, memory_tracker);
+      array_schema->set_array_uri(uri_);
+      schema_vector[schema_ith] = array_schema;
+    } catch (std::exception& e) {
+      // TODO: We could throw a nested exception, but converting exceptions
+      // to statuses loses the inner exception messages. We can revisit this
+      // when Status gets removed from this module.
+      throw ArrayDirectoryException(e.what());
+    }
 
-        return Status::Ok();
+    return Status::Ok();
       });
   throw_if_not_ok(status);
 
@@ -712,7 +712,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
 std::vector<URI>
 ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("list_fragment_meta_uris");
   return ls(uri_.join_path(constants::array_fragment_meta_dir_name));
 }
@@ -723,7 +723,7 @@ tuple<
     optional<std::unordered_set<std::string>>>
 ArrayDirectory::load_consolidated_commit_uris(
     const std::vector<URI>& commits_dir_uris) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("load_consolidated_commit_uris");
   // Load the commit URIs to ignore. This is done in serial for now as it can be
   // optimized by vacuuming.
@@ -843,7 +843,7 @@ void ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
   {
-    [[maybe_unused]] auto timer_se =
+    [auto timer_se =
         stats_->start_timer("list_array_meta_uris");
     array_meta_dir_uris =
         ls(uri_.join_path(constants::array_metadata_dir_name));
@@ -869,7 +869,7 @@ void ArrayDirectory::load_array_schema_uris() {
   // Load the URIs from the array schema directory
   std::vector<URI> array_schema_dir_uris;
   {
-    [[maybe_unused]] auto timer_se =
+    [auto timer_se =
         stats_->start_timer("list_array_schema_uris");
     array_schema_dir_uris =
         ls(uri_.join_path(constants::array_schema_dir_name));
@@ -1329,7 +1329,7 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
     const std::string& enumeration_path,
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_.get().stats().start_timer("sm_load_enumeration");
 
   auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)

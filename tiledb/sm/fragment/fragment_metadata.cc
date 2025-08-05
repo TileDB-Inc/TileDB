@@ -752,7 +752,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     const std::vector<TimestampedURI>& fragments_to_load,
     const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources.stats().start_timer("sm_load_fragment_metadata");
 
   // Load the metadata for each fragment
@@ -761,57 +761,57 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
   fragment_metadata.resize(fragment_num);
   auto status =
       parallel_for(&resources.compute_tp(), 0, fragment_num, [&](size_t f) {
-        const auto& sf = fragments_to_load[f];
-        URI coords_uri =
-            sf.uri_.join_path(constants::coords + constants::file_suffix);
+    const auto& sf = fragments_to_load[f];
+    URI coords_uri =
+        sf.uri_.join_path(constants::coords + constants::file_suffix);
 
-        // Note that the fragment metadata version is >= the array schema
-        // version. Therefore, the check below is defensive and will always
-        // ensure backwards compatibility.
-        shared_ptr<FragmentMetadata> metadata;
-        FragmentID fragment_id{sf.uri_};
-        if (fragment_id.array_format_version() <= 2) {
-          metadata = make_shared<FragmentMetadata>(
-              HERE(),
-              &resources,
-              array_schema_latest,
-              sf.uri_,
-              sf.timestamp_range_,
-              memory_tracker,
-              !resources.vfs().is_file(coords_uri));
-        } else {
-          // Fragment format version > 2
-          metadata = make_shared<FragmentMetadata>(
-              HERE(),
-              &resources,
-              array_schema_latest,
-              sf.uri_,
-              sf.timestamp_range_,
-              memory_tracker);
-        }
+    // Note that the fragment metadata version is >= the array schema
+    // version. Therefore, the check below is defensive and will always
+    // ensure backwards compatibility.
+    shared_ptr<FragmentMetadata> metadata;
+    FragmentID fragment_id{sf.uri_};
+    if (fragment_id.array_format_version() <= 2) {
+      metadata = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          array_schema_latest,
+          sf.uri_,
+          sf.timestamp_range_,
+          memory_tracker,
+          !resources.vfs().is_file(coords_uri));
+    } else {
+      // Fragment format version > 2
+      metadata = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          array_schema_latest,
+          sf.uri_,
+          sf.timestamp_range_,
+          memory_tracker);
+    }
 
-        // Potentially find the basic fragment metadata in the consolidated
-        // metadata buffer
-        Tile* fragment_metadata_tile = nullptr;
-        uint64_t offset = 0;
+    // Potentially find the basic fragment metadata in the consolidated
+    // metadata buffer
+    Tile* fragment_metadata_tile = nullptr;
+    uint64_t offset = 0;
 
-        auto it = offsets.end();
-        if (metadata->format_version() >= 9) {
-          it = offsets.find(fragment_id.name());
-        } else {
-          it = offsets.find(sf.uri_.to_string());
-        }
-        if (it != offsets.end()) {
-          fragment_metadata_tile = it->second.first;
-          offset = it->second.second;
-        }
+    auto it = offsets.end();
+    if (metadata->format_version() >= 9) {
+      it = offsets.find(fragment_id.name());
+    } else {
+      it = offsets.find(sf.uri_.to_string());
+    }
+    if (it != offsets.end()) {
+      fragment_metadata_tile = it->second.first;
+      offset = it->second.second;
+    }
 
-        // Load fragment metadata
-        metadata->load(
-            encryption_key, fragment_metadata_tile, offset, array_schemas_all);
+    // Load fragment metadata
+    metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all);
 
-        fragment_metadata[f] = metadata;
-        return Status::Ok();
+    fragment_metadata[f] = metadata;
+    return Status::Ok();
       });
   throw_if_not_ok(status);
 
@@ -842,7 +842,7 @@ void FragmentMetadata::load(
 }
 
 void FragmentMetadata::store(const EncryptionKey& encryption_key) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       resources_->stats().start_timer("write_store_frag_meta");
 
   // Make sure the data fits in the current domain before we commit to disk.

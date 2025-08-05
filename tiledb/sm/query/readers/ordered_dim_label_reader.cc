@@ -264,7 +264,7 @@ void OrderedDimLabelReader::label_read() {
 
 template <typename IndexType>
 void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("compute_array_tile_indexes_for_ranges");
 
   // Save the minimum/maximum tile indexes (in the full domain) to be used
@@ -291,9 +291,8 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
       0,
       ranges_.size(),
       [&](uint64_t f, uint64_t r) {
-        per_range_array_tile_indexes[r][f] =
-            get_array_tile_indexes_for_range(f, r);
-        return Status::Ok();
+    per_range_array_tile_indexes[r][f] = get_array_tile_indexes_for_range(f, r);
+    return Status::Ok();
       }));
 
   // Compute the tile indexes (min/max) that can potentially contain the label
@@ -301,14 +300,14 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
   per_range_array_tile_indexes_.resize(ranges_.size());
   throw_if_not_ok(parallel_for(
       &resources_.compute_tp(), 0, ranges_.size(), [&](uint64_t r) {
-        per_range_array_tile_indexes_[r] = RangeTileIndexes(
-            tile_idx_min, tile_idx_max, per_range_array_tile_indexes[r]);
-        return Status::Ok();
+    per_range_array_tile_indexes_[r] = RangeTileIndexes(
+        tile_idx_min, tile_idx_max, per_range_array_tile_indexes[r]);
+    return Status::Ok();
       }));
 }
 
 void OrderedDimLabelReader::load_label_min_max_values() {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("load_label_min_max_values");
   const auto encryption_key = array_->encryption_key();
 
@@ -318,13 +317,11 @@ void OrderedDimLabelReader::load_label_min_max_values() {
       0,
       fragment_metadata_.size(),
       [&](const uint64_t i) {
-        auto& fragment = fragment_metadata_[i];
-        std::vector<std::string> names = {label_name_};
-        fragment->loaded_metadata()->load_tile_min_values(
-            *encryption_key, names);
-        fragment->loaded_metadata()->load_tile_max_values(
-            *encryption_key, names);
-        return Status::Ok();
+    auto& fragment = fragment_metadata_[i];
+    std::vector<std::string> names = {label_name_};
+    fragment->loaded_metadata()->load_tile_min_values(*encryption_key, names);
+    fragment->loaded_metadata()->load_tile_max_values(*encryption_key, names);
+    return Status::Ok();
       }));
 }
 
@@ -715,7 +712,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
 template <typename IndexType>
 void OrderedDimLabelReader::compute_and_copy_range_indexes(
     uint64_t buffer_offset, uint64_t r) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("compute_and_copy_range_indexes");
 
   auto dest = static_cast<IndexType*>(buffers_[index_dim_->name()].buffer_) +

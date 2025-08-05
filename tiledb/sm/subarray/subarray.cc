@@ -1528,7 +1528,7 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 
 template <class T>
 void Subarray::compute_tile_coords() {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_compute_tile_coords");
   if (array_->array_schema_latest().tile_order() == Layout::ROW_MAJOR) {
     compute_tile_coords_row<T>();
@@ -1836,7 +1836,7 @@ void Subarray::compute_range_offsets() {
 
 void Subarray::compute_est_result_size(
     const Config* config, ThreadPool* compute_tp) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_compute_est_result_size");
   if (est_result_size_computed_) {
     return;
@@ -2210,7 +2210,7 @@ void Subarray::precompute_tile_overlap(
     const Config* config,
     ThreadPool* compute_tp,
     bool override_memory_constraint) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_compute_tile_overlap");
 
   // If the `tile_overlap_` has already been precomputed and contains
@@ -2297,7 +2297,7 @@ void Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* compute_tp,
     const std::vector<FragIdx>& frag_tile_idx,
     ITileRange* tile_ranges) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_compute_simple_tile_overlap");
 
   // For easy reference.
@@ -2325,81 +2325,80 @@ void Subarray::precompute_all_ranges_tile_overlap(
   // Run all fragments in parallel.
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
-        const auto f = relevant_fragments_[i];
-        auto tile_bitmaps_resource_guard =
-            ResourceGuard(all_threads_tile_bitmaps);
-        auto tile_bitmaps = tile_bitmaps_resource_guard.get();
+    const auto f = relevant_fragments_[i];
+    auto tile_bitmaps_resource_guard = ResourceGuard(all_threads_tile_bitmaps);
+    auto tile_bitmaps = tile_bitmaps_resource_guard.get();
 
-        // Make sure all bitmaps have the correct size.
-        if (tile_bitmaps.size() == 0) {
-          tile_bitmaps.resize(dim_num);
-          for (unsigned d = 0; d < dim_num; d++)
-            tile_bitmaps[d].resize(meta[f]->tile_num());
-        } else {
-          uint64_t memset_length =
-              std::min((uint64_t)tile_bitmaps[0].size(), meta[f]->tile_num());
-          for (unsigned d = 0; d < dim_num; d++) {
-            // TODO we might be able to skip the memset if
-            // tile_bitmaps.capacity() <= meta[f]->tile_num().
-            memset(tile_bitmaps[d].data(), 0, memset_length * sizeof(uint8_t));
-            tile_bitmaps[d].resize(meta[f]->tile_num());
-          }
-        }
+    // Make sure all bitmaps have the correct size.
+    if (tile_bitmaps.size() == 0) {
+      tile_bitmaps.resize(dim_num);
+      for (unsigned d = 0; d < dim_num; d++)
+        tile_bitmaps[d].resize(meta[f]->tile_num());
+    } else {
+      uint64_t memset_length =
+          std::min((uint64_t)tile_bitmaps[0].size(), meta[f]->tile_num());
+      for (unsigned d = 0; d < dim_num; d++) {
+        // TODO we might be able to skip the memset if
+        // tile_bitmaps.capacity() <= meta[f]->tile_num().
+        memset(tile_bitmaps[d].data(), 0, memset_length * sizeof(uint8_t));
+        tile_bitmaps[d].resize(meta[f]->tile_num());
+      }
+    }
 
-        for (unsigned d = 0; d < dim_num; d++) {
-          if (is_default_[d]) {
-            continue;
-          }
+    for (unsigned d = 0; d < dim_num; d++) {
+      if (is_default_[d]) {
+        continue;
+      }
 
-          // Run all ranges in parallel.
-          const uint64_t range_num = range_subset_[d].num_ranges();
+      // Run all ranges in parallel.
+      const uint64_t range_num = range_subset_[d].num_ranges();
 
-          // Compute tile bitmaps for this fragment.
-          const auto ranges_per_thread =
-              (uint64_t)std::ceil((double)range_num / num_threads);
-          const auto status_ranges =
-              parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
-                const auto r_start = t * ranges_per_thread;
-                const auto r_end =
-                    std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
-                for (uint64_t r = r_start; r <= r_end; ++r) {
-                  meta[f]->loaded_metadata()->compute_tile_bitmap(
-                      range_subset_[d][r], d, &tile_bitmaps[d]);
-                }
-                return Status::Ok();
-              });
-          RETURN_NOT_OK(status_ranges);
-        }
-
-        // Go through the bitmaps in reverse, whenever there is a "hole" in tile
-        // contiguity, push a new result tile range.
-        uint64_t end = tile_bitmaps[0].size() - 1;
-        uint64_t length = 0;
-        int64_t min = static_cast<int64_t>(frag_tile_idx[f].tile_idx_);
-        for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
-          bool comb = true;
-          for (unsigned d = 0; d < dim_num; d++) {
-            comb &= is_default_[d] || (bool)tile_bitmaps[d][t];
-          }
-
-          if (!comb) {
-            if (length != 0) {
-              tile_ranges->add_tile_range(f, end + 1 - length, end);
-              length = 0;
+      // Compute tile bitmaps for this fragment.
+      const auto ranges_per_thread =
+          (uint64_t)std::ceil((double)range_num / num_threads);
+      const auto status_ranges =
+          parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
+            const auto r_start = t * ranges_per_thread;
+            const auto r_end =
+                std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
+            for (uint64_t r = r_start; r <= r_end; ++r) {
+              meta[f]->loaded_metadata()->compute_tile_bitmap(
+                  range_subset_[d][r], d, &tile_bitmaps[d]);
             }
+            return Status::Ok();
+          });
+      RETURN_NOT_OK(status_ranges);
+    }
 
-            end = t - 1;
-          } else {
-            length++;
-          }
-        }
+    // Go through the bitmaps in reverse, whenever there is a "hole" in tile
+    // contiguity, push a new result tile range.
+    uint64_t end = tile_bitmaps[0].size() - 1;
+    uint64_t length = 0;
+    int64_t min = static_cast<int64_t>(frag_tile_idx[f].tile_idx_);
+    for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
+      bool comb = true;
+      for (unsigned d = 0; d < dim_num; d++) {
+        comb &= is_default_[d] || (bool)tile_bitmaps[d][t];
+      }
 
-        // Push the last result tile range.
+      if (!comb) {
         if (length != 0) {
           tile_ranges->add_tile_range(f, end + 1 - length, end);
+          length = 0;
         }
 
-        return Status::Ok();
+        end = t - 1;
+      } else {
+        length++;
+      }
+    }
+
+    // Push the last result tile range.
+    if (length != 0) {
+      tile_ranges->add_tile_range(f, end + 1 - length, end);
+    }
+
+    return Status::Ok();
       });
   throw_if_not_ok(status);
   tile_ranges->done_adding_tile_ranges();
@@ -2614,7 +2613,7 @@ void Subarray::get_expanded_coordinates(
 }
 
 void Subarray::load_relevant_fragment_rtrees(ThreadPool* compute_tp) const {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_load_relevant_rtrees");
 
   auto meta = array_->fragment_metadata();
@@ -2622,9 +2621,9 @@ void Subarray::load_relevant_fragment_rtrees(ThreadPool* compute_tp) const {
 
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
-        meta[relevant_fragments_[f]]->loaded_metadata()->load_rtree(
-            *encryption_key);
-        return Status::Ok();
+    meta[relevant_fragments_[f]]->loaded_metadata()->load_rtree(
+        *encryption_key);
+    return Status::Ok();
       });
   throw_if_not_ok(status);
 }
@@ -2633,7 +2632,7 @@ void Subarray::compute_relevant_fragment_tile_overlap(
     ThreadPool* compute_tp,
     SubarrayTileOverlap* tile_overlap,
     ComputeRelevantTileOverlapCtx* fn_ctx) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("read_compute_relevant_tile_overlap");
 
   const auto range_num = tile_overlap->range_num();
@@ -2653,27 +2652,25 @@ void Subarray::compute_relevant_fragment_tile_overlap(
       0,
       num_threads,
       [&](uint64_t i, uint64_t t) {
-        const auto frag_idx = relevant_fragments_[i];
-        const auto dense = meta[frag_idx]->dense();
+    const auto frag_idx = relevant_fragments_[i];
+    const auto dense = meta[frag_idx]->dense();
 
-        const auto r_start =
-            fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
-        const auto r_end =
-            fn_ctx->range_idx_offset_ +
-            std::min((t + 1) * ranges_per_thread - 1, fn_ctx->range_len_ - 1);
-        for (uint64_t r = r_start; r <= r_end; ++r) {
-          if (dense) {  // Dense fragment
-            *tile_overlap->at(frag_idx, r) = compute_tile_overlap(
-                r + tile_overlap->range_idx_start(), frag_idx);
-          } else {  // Sparse fragment
-            const auto& range =
-                this->ndrange(r + tile_overlap->range_idx_start());
-            meta[frag_idx]->loaded_metadata()->get_tile_overlap(
-                range, is_default_, tile_overlap->at(frag_idx, r));
-          }
-        }
+    const auto r_start = fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
+    const auto r_end =
+        fn_ctx->range_idx_offset_ +
+        std::min((t + 1) * ranges_per_thread - 1, fn_ctx->range_len_ - 1);
+    for (uint64_t r = r_start; r <= r_end; ++r) {
+      if (dense) {  // Dense fragment
+        *tile_overlap->at(frag_idx, r) =
+            compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
+      } else {  // Sparse fragment
+        const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
+        meta[frag_idx]->loaded_metadata()->get_tile_overlap(
+            range, is_default_, tile_overlap->at(frag_idx, r));
+      }
+    }
 
-        return Status::Ok();
+    return Status::Ok();
       });
   throw_if_not_ok(status);
 }

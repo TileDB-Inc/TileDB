@@ -612,7 +612,7 @@ void ReaderBase::load_tile_metadata(
 }
 
 void ReaderBase::load_processed_conditions() {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
 
@@ -622,14 +622,13 @@ void ReaderBase::load_processed_conditions() {
       0,
       fragment_metadata_.size(),
       [&](const uint64_t i) {
-        auto& fragment = fragment_metadata_[i];
+    auto& fragment = fragment_metadata_[i];
 
-        if (fragment->has_delete_meta()) {
-          fragment->loaded_metadata()->load_processed_conditions(
-              *encryption_key);
-        }
+    if (fragment->has_delete_meta()) {
+      fragment->loaded_metadata()->load_processed_conditions(*encryption_key);
+    }
 
-        return Status::Ok();
+    return Status::Ok();
       }));
 }
 
@@ -1345,7 +1344,7 @@ void ReaderBase::validate_attribute_order(
     Range& array_non_empty_domain,
     std::vector<const void*>& non_empty_domains,
     std::vector<uint64_t>& frag_first_array_tile_idx) {
-  [[maybe_unused]] auto timer_se =
+  [auto timer_se =
       stats_->start_timer("validate_attribute_order");
 
   auto g = [&](auto T) {
