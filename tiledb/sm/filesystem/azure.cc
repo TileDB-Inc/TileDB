@@ -508,8 +508,11 @@ bool Azure::is_bucket(const URI& uri) const {
 }
 
 bool Azure::is_dir(const URI& uri) const {
-  std::vector<std::string> paths = ls(uri, "/", 1);
-  return (bool)paths.size();
+  auto [container_name, blob_path] = parse_azure_uri(uri);
+  std::optional<std::string> continuation_token;
+  auto paths =
+      list_blobs_impl(container_name, blob_path, false, 1, continuation_token);
+  return !paths.empty();
 }
 
 bool Azure::is_file(const URI& uri) const {
