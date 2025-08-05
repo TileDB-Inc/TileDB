@@ -690,37 +690,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C API: tiledb_vfs_ls_recursive argument validation",
-    "[capi][vfs][ls_recursive]") {
-  /*
-   * No "success" sections here; too much overhead to set up.
-   */
-  ordinary_vfs x;
-  int32_t data;
-  auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
-  SECTION("null context") {
-    auto rc{tiledb_vfs_ls_recursive(nullptr, x.vfs, TEST_URI, cb, &data)};
-    CHECK(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
-  }
-  SECTION("null vfs") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, nullptr, TEST_URI, cb, &data)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("null uri") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, nullptr, cb, &data)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("null callback") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, TEST_URI, nullptr, &data)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("null data ptr") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, TEST_URI, cb, nullptr)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
-}
-
-TEST_CASE(
     "C API: tiledb_vfs_ls_recursive_v2 argument validation",
     "[capi][vfs][ls_recursive_v2]") {
   /*
@@ -749,19 +718,12 @@ TEST_CASE(
 
 TEST_CASE(
     "C API: VFS recursive ls unsupported backends",
-    "[capi][vfs][ls_recursive][ls_recursive_v2]") {
+    "[capi][vfs][ls_recursive_v2]") {
   ordinary_vfs vfs;
   int ls_data;
   tiledb::sm::URI uri("mem:///tmp/path/");
   REQUIRE_NOTHROW(vfs.vfs->create_dir(uri));
   REQUIRE_NOTHROW(vfs.vfs->touch(uri.join_path("test_file.txt")));
-  DYNAMIC_SECTION(
-      "Test ls_recursive unsupported backend over " << uri.backend_name()) {
-    auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
-    CHECK(
-        tiledb_vfs_ls_recursive(vfs.ctx, vfs.vfs, uri.c_str(), cb, &ls_data) ==
-        TILEDB_ERR);
-  }
   DYNAMIC_SECTION(
       "Test ls_recursive_v2 unsupported backend over " << uri.backend_name()) {
     auto cb = [](const char*, size_t, uint64_t, uint8_t, void*) { return 0; };
@@ -849,9 +811,6 @@ TEST_CASE(
     SECTION("Null callback") {
       CHECK_THROWS(CallbackWrapperCAPI((tiledb_ls_callback_t) nullptr, &data));
     }
-    SECTION("Null data") {
-      CHECK_THROWS(CallbackWrapperCAPI(cb, nullptr));
-    }
     SECTION("Null callback and data") {
       CHECK_THROWS(
           CallbackWrapperCAPI((tiledb_ls_callback_t) nullptr, nullptr));
@@ -865,9 +824,6 @@ TEST_CASE(
     SECTION("Null callback") {
       CHECK_THROWS(
           CallbackWrapperCAPI((tiledb_ls_callback_v2_t) nullptr, &data));
-    }
-    SECTION("Null data") {
-      CHECK_THROWS(CallbackWrapperCAPI(cb, nullptr));
     }
     SECTION("Null callback and data") {
       CHECK_THROWS(
