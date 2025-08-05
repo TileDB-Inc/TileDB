@@ -185,3 +185,39 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(data.empty());
   }
 }
+
+TEMPLATE_LIST_TEST_CASE(
+    "C API: ls_recursive null data pointer",
+    "[vfs][ls_recursive]",
+    TestBackends) {
+  using tiledb::sm::LsObjects;
+  TestType test({1});
+  if (!test.is_supported()) {
+    return;
+  }
+
+  vfs_config vfs_config;
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(vfs_config.config, &ctx);
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
+
+  LsObjects data;
+  SECTION("ls_recursive") {
+    tiledb_ls_callback_t cb =
+        [](const char*, size_t, uint64_t, void*) -> int32_t { return true; };
+    CHECK(
+        tiledb_vfs_ls_recursive(
+            ctx, vfs, test.temp_dir_.c_str(), cb, nullptr) == TILEDB_OK);
+  }
+
+  SECTION("ls_recursive_v2") {
+    tiledb_ls_callback_v2_t cb =
+        [](const char*, size_t, uint64_t, uint8_t, void*) -> int32_t {
+      return true;
+    };
+    CHECK(
+        tiledb_vfs_ls_recursive_v2(
+            ctx, vfs, test.temp_dir_.c_str(), cb, nullptr) == TILEDB_OK);
+  }
+}

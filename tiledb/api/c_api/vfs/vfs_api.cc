@@ -309,7 +309,6 @@ capi_return_t tiledb_vfs_ls_recursive(
     throw CAPIStatusException(
         "Invalid TileDB object: Callback function is null.");
   }
-  ensure_output_pointer_is_valid(data);
   vfs->ls_recursive(tiledb::sm::URI(path), callback, data);
   return TILEDB_OK;
 }
@@ -326,7 +325,6 @@ capi_return_t tiledb_vfs_ls_recursive_v2(
     throw CAPIStatusException(
         "Invalid TileDB object: Callback function is null.");
   }
-  ensure_output_pointer_is_valid(data);
   vfs->ls_recursive_v2(tiledb::sm::URI(path), callback, data);
   return TILEDB_OK;
 }

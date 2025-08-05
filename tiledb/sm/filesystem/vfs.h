@@ -614,7 +614,6 @@ class VFS : FilesystemBase,
   LsObjects ls_filtered(
       const URI& parent, ResultFilter f, bool recursive) const override;
 
-
   /**
    * Lists objects and object information that start with `prefix`, invoking
    * the ResultFilterV2 on each entry collected. Both objects and common

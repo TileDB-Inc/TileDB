@@ -59,6 +59,20 @@ class VFSExperimental {
    * @return True if the walk should continue, else false.
    */
   using LsCallback = std::function<bool(std::string_view, uint64_t)>;
+
+  /**
+   * Typedef for ls callback function used to collect results from
+   * ls_recursive_v2.
+   *
+   * If the callback returns True, the walk will continue. If False, the walk
+   * will stop. If an error is thrown, the walk will stop and the error will be
+   * propagated to the caller using std::throw_with_nested.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param object_size The size of the object at the current path.
+   * @param is_dir True if the current result is a directory, else False.
+   * @return True if the walk should continue, else false.
+   */
   using LsCallbackV2 = std::function<bool(std::string_view, uint64_t, bool)>;
 
   /**
@@ -160,7 +174,10 @@ class VFSExperimental {
    * If False, the walk will stop. If an error is thrown, the walk will stop and
    * the error will be propagated to the caller using std::throw_with_nested.
    *
-   * Currently LocalFS, S3, Azure, and GCS are supported.
+   * Currently LocalFS, S3, Azure, and GCS are supported. Objects and
+   * directories will be collected for LocalFS. Only objects will be collected
+   * for cloud storage backends such as S3, Azure, and GCS.
+   *
    *
    * @code{.c}
    * VFSExperimental::LsObjects ls_objects;
@@ -200,7 +217,9 @@ class VFSExperimental {
    * If False, the walk will stop. If an error is thrown, the walk will stop and
    * the error will be propagated to the caller using std::throw_with_nested.
    *
-   * Currently LocalFS, S3, Azure, and GCS are supported.
+   *
+   * Currently LocalFS, S3, Azure, and GCS are supported. The results will
+   * include objects and directories for all storage backends.
    *
    * @code{.c}
    * VFSExperimental::LsObjects ls_objects;
@@ -240,7 +259,12 @@ class VFSExperimental {
    * is provided, all results are returned.
    *
    * Currently only local filesystem, S3, Azure and GCS are supported, and the
-   * `path` must be a valid URI for one of those filesystems.
+   * `path` must be a valid URI for one of those filesystems. The results will
+   * include objects and directories for LocalFS.
+   *
+   * Only objects will be collected for cloud storage backends when recursion is
+   * enabled. If recursive if set to false, cloud storage backends will return
+   * common prefix results.
    *
    * @code{.c}
    * VFSExperimental::LsInclude predicate = [](std::string_view path,
@@ -292,7 +316,8 @@ class VFSExperimental {
    * is provided, all results are returned.
    *
    * Currently only local filesystem, S3, Azure and GCS are supported, and the
-   * `path` must be a valid URI for one of those filesystems.
+   * `path` must be a valid URI for one of those filesystems. The results will
+   * include objects and directories for all storage backends.
    *
    * @code{.c}
    * VFSExperimental::LsInclude predicate = [](std::string_view path,
@@ -365,6 +390,18 @@ class VFSExperimental {
     return (*cb)({path, path_len}, object_size);
   }
 
+  /**
+   * Callback function for invoking the C++ ls_recursive callback via C API.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param path_len The length of the path.
+   * @param object_size The size of the object at the current path.
+   * @param is_dir Whether or not the current object is a directory.
+   * @param data Data passed to the callback used to store collected results.
+   * @return 1 if the callback should continue to the next object, or 0 to stop
+   *      traversal.
+   * @sa tiledb_ls_callback_t
+   */
   static int32_t ls_callback_wrapper_v2(
       const char* path,
       size_t path_len,

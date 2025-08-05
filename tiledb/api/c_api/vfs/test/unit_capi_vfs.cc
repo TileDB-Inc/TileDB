@@ -745,10 +745,6 @@ TEST_CASE(
     auto rc{tiledb_vfs_ls_recursive_v2(x.ctx, x.vfs, TEST_URI, nullptr, &data)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("null data ptr") {
-    auto rc{tiledb_vfs_ls_recursive_v2(x.ctx, x.vfs, TEST_URI, cb, nullptr)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
 }
 
 TEST_CASE(

@@ -108,7 +108,7 @@ using ResultFilter = std::function<bool(const std::string_view&, uint64_t)>;
  * @return True if the result should be included, else False.
  */
 using ResultFilterV2 =
-    std::function<bool(const std::string_view&, uint64_t, uint8_t)>;
+    std::function<bool(const std::string_view&, uint64_t, bool)>;
 
 /**
  * Typedef for ls C API callback as std::function for passing to C++
@@ -352,8 +352,6 @@ class CallbackWrapperCAPI {
       , data_(data) {
     if (cb_ == nullptr) {
       throw LsScanException("ls_recursive callback function cannot be null");
-    } else if (data_ == nullptr) {
-      throw LsScanException("ls_recursive data cannot be null");
     }
   }
 
@@ -362,8 +360,6 @@ class CallbackWrapperCAPI {
       , data_(data) {
     if (cb_v2_ == nullptr) {
       throw LsScanException("ls_recursive_v2 callback function cannot be null");
-    } else if (data_ == nullptr) {
-      throw LsScanException("ls_recursive_v2 data cannot be null");
     }
   }
 
