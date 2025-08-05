@@ -240,10 +240,6 @@ std::optional<double> Stats::find_timer(const std::string& stat) const {
   return std::nullopt;
 }
 
-DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
-  return DurationInstrument<Stats>(*this, stat);
-}
-
 void Stats::report_duration(
     const std::string& stat, const std::chrono::duration<double> duration) {
   if (!enabled_) {
@@ -282,10 +278,6 @@ void Stats::report_duration(
 #else
 
 void Stats::add_counter(const std::string&, uint64_t) {
-}
-
-int Stats::start_timer(const std::string&) {
-  return 0;
 }
 
 void Stats::report_duration(
