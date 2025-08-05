@@ -77,6 +77,7 @@ void FragmentInfo::set_config(const Config& config) {
     throw FragmentInfoException("[set_config] Cannot set config after load");
   }
   config_.inherit(config);
+  throw_if_not_ok(set_enc_key_from_config());
 }
 
 void FragmentInfo::expand_anterior_ndrange(
@@ -1003,6 +1004,8 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
         if (preload_rtrees & !meta->dense()) {
           meta->loaded_metadata()->load_rtree(enc_key_);
+          meta->loaded_metadata()->load_fragment_tile_global_order_bounds(
+              enc_key_);
         }
 
         return Status::Ok();

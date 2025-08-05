@@ -720,12 +720,13 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
   if (serialized_load) {
     rc = tiledb_fragment_info_alloc(
         ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
     CHECK(rc == TILEDB_OK);
     tiledb_fragment_info_serialize(
         ctx,
@@ -736,6 +737,8 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
     tiledb_fragment_info_free(&fragment_info);
     fragment_info = deserialized_fragment_info;
   }
+
+  tiledb_config_free(&cfg);
 
   // Get fragment num
   uint32_t fragment_num;
