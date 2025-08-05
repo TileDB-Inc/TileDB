@@ -382,7 +382,7 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("read_next_partition");
+  auto timer_se = stats_->start_timer("read_next_partition");
 
   *unsplittable = false;
 

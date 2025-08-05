@@ -1011,7 +1011,7 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
     const ArrayDirectory& array_dir,
     shared_ptr<MemoryTracker> memory_tracker,
     const EncryptionKey& enc_key) {
-  [[maybe_unused]] auto timer_se = resources.stats().start_timer(
+  auto timer_se = resources.stats().start_timer(
       "sm_load_array_schemas_and_fragment_metadata");
 
   // Load array schemas

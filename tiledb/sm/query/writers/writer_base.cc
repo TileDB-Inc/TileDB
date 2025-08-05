@@ -382,7 +382,7 @@ void WriterBase::check_buffer_sizes() const {
 }
 
 Status WriterBase::check_coord_oob() const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("check_coord_oob");
+  auto timer_se = stats_->start_timer("check_coord_oob");
 
   // Applicable only to sparse writes - exit if coordinates do not exist
   if (!coords_info_.has_coords_)
@@ -528,7 +528,7 @@ bool is_sorted_buffer(
 }
 
 void WriterBase::check_attr_order() const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("check_attr_order");
+  auto timer_se = stats_->start_timer("check_attr_order");
   for (const auto& [name, buffer] : buffers_) {
     // Skip non-attribute buffers.
     if (!array_schema_.is_attr(name)) {
@@ -616,7 +616,7 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
 std::vector<NDRange> WriterBase::compute_mbrs(
     const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
     const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("compute_coord_meta");
+  auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
   if (!coords_info_.has_coords_) {
@@ -793,7 +793,7 @@ Status WriterBase::create_fragment(
 
 Status WriterBase::filter_tiles(
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("filter_tiles");
+  auto timer_se = stats_->start_timer("filter_tiles");
   auto status =
       parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
@@ -863,7 +863,7 @@ Status WriterBase::filter_tile(
     WriterTile* const offsets_tile,
     const bool offsets,
     const bool nullable) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("filter_tile");
+  auto timer_se = stats_->start_timer("filter_tile");
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters;
@@ -982,7 +982,7 @@ void WriterBase::check_extra_element() {
 }
 
 Status WriterBase::split_coords_buffer() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("split_coords_buff");
+  auto timer_se = stats_->start_timer("split_coords_buff");
 
   // Do nothing if the coordinates buffer is not set
   if (coords_info_.coords_buffer_ == nullptr)
@@ -1033,7 +1033,7 @@ Status WriterBase::write_tiles(
     const uint64_t end_tile_idx,
     shared_ptr<FragmentMetadata> frag_meta,
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("write_num_tiles");
+  auto timer_se = stats_->start_timer("write_num_tiles");
 
   iassert(!tiles->empty());
 
@@ -1078,7 +1078,7 @@ Status WriterBase::write_tiles(
     uint64_t start_tile_id,
     WriterTileTupleVector* const tiles,
     bool close_files) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("write_tiles");
+  auto timer_se = stats_->start_timer("write_tiles");
 
   // Handle zero tiles
   if (tiles->empty()) {

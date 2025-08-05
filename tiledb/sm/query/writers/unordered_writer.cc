@@ -123,7 +123,7 @@ UnorderedWriter::~UnorderedWriter() {
 Status UnorderedWriter::dowork() {
   get_dim_attr_stats();
 
-  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
+  auto timer_se = stats_->start_timer("dowork");
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
@@ -147,7 +147,7 @@ Status UnorderedWriter::dowork() {
 }
 
 Status UnorderedWriter::finalize() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("finalize");
+  auto timer_se = stats_->start_timer("finalize");
 
   if (written_buffers_.size() <
       array_schema_.dim_num() + array_schema_.attribute_num()) {
@@ -184,7 +184,7 @@ void UnorderedWriter::clean_up() {
 }
 
 Status UnorderedWriter::check_coord_dups() const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("check_coord_dups");
+  auto timer_se = stats_->start_timer("check_coord_dups");
 
   // Check if applicable
   if (array_schema_.allows_dups() || !check_coord_dups_ || dedup_coords_)
@@ -277,7 +277,7 @@ Status UnorderedWriter::check_coord_dups() const {
 }
 
 Status UnorderedWriter::compute_coord_dups() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("compute_coord_dups");
+  auto timer_se = stats_->start_timer("compute_coord_dups");
 
   if (!coords_info_.has_coords_) {
     return logger_->status(
@@ -366,7 +366,7 @@ Status UnorderedWriter::compute_coord_dups() {
 
 Status UnorderedWriter::prepare_tiles(
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("prepare_tiles");
+  auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute tiles
   tiles->clear();
@@ -600,7 +600,7 @@ Status UnorderedWriter::prepare_tiles_var(
 }
 
 Status UnorderedWriter::sort_coords() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("sort_coords");
+  auto timer_se = stats_->start_timer("sort_coords");
 
   // Populate cell_pos_
   cell_pos_.resize(coords_info_.coords_num_);

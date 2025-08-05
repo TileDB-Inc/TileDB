@@ -73,7 +73,7 @@ void FragmentConsolidationWorkspace::resize_buffers(
     const ArraySchema& array_schema,
     std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
     uint64_t total_buffers_budget) {
-  [[maybe_unused]] auto timer_se = stats->start_timer("resize_buffers");
+  auto timer_se = stats->start_timer("resize_buffers");
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
@@ -207,7 +207,7 @@ Status FragmentConsolidator::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_frags");
+  auto timer_se = stats_->start_timer("consolidate_frags");
 
   check_array_uri(array_name);
 
@@ -320,7 +320,7 @@ Status FragmentConsolidator::consolidate_fragments(
     const void* encryption_key,
     uint32_t key_length,
     const std::vector<std::string>& fragment_uris) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_frags");
+  auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
   auto array_for_reads{make_shared<Array>(HERE(), resources_, URI(array_name))};
@@ -583,7 +583,7 @@ Status FragmentConsolidator::consolidate_internal(
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri,
     FragmentConsolidationWorkspace& cw) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("consolidate_internal");
+  auto timer_se = stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
 

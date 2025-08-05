@@ -125,7 +125,7 @@ GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
 Status GlobalOrderWriter::dowork() {
   get_dim_attr_stats();
 
-  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
+  auto timer_se = stats_->start_timer("dowork");
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
@@ -149,7 +149,7 @@ Status GlobalOrderWriter::dowork() {
 }
 
 Status GlobalOrderWriter::finalize() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("finalize");
+  auto timer_se = stats_->start_timer("finalize");
 
   if (global_write_state_ != nullptr) {
     try {
@@ -293,7 +293,7 @@ Status GlobalOrderWriter::set_multipart_upload_state(
 /* ****************************** */
 
 Status GlobalOrderWriter::check_coord_dups() const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("check_coord_dups");
+  auto timer_se = stats_->start_timer("check_coord_dups");
 
   // Check if applicable
   if (array_schema_.allows_dups() || !check_coord_dups_ || dedup_coords_)
@@ -379,7 +379,7 @@ Status GlobalOrderWriter::check_coord_dups() const {
 }
 
 Status GlobalOrderWriter::check_global_order() const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("check_global_order");
+  auto timer_se = stats_->start_timer("check_global_order");
 
   // Check if applicable
   if (!check_global_order_) {
@@ -542,7 +542,7 @@ Status GlobalOrderWriter::filter_last_tiles(uint64_t cell_num) {
 
 Status GlobalOrderWriter::compute_coord_dups(
     std::set<uint64_t>* coord_dups) const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("compute_coord_dups");
+  auto timer_se = stats_->start_timer("compute_coord_dups");
 
   if (!coords_info_.has_coords_) {
     return logger_->status(
@@ -855,7 +855,7 @@ void GlobalOrderWriter::nuke_global_write_state() {
 Status GlobalOrderWriter::prepare_full_tiles(
     const std::set<uint64_t>& coord_dups,
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("prepare_tiles");
+  auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_) {

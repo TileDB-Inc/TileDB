@@ -105,7 +105,7 @@ OrderedWriter::~OrderedWriter() {
 Status OrderedWriter::dowork() {
   get_dim_attr_stats();
 
-  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
+  auto timer_se = stats_->start_timer("dowork");
 
   check_attr_order();
 
@@ -131,7 +131,7 @@ Status OrderedWriter::dowork() {
 }
 
 Status OrderedWriter::finalize() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("finalize");
+  auto timer_se = stats_->start_timer("finalize");
 
   return Status::Ok();
 }
@@ -175,7 +175,7 @@ Status OrderedWriter::ordered_write() {
 
 template <class T>
 Status OrderedWriter::ordered_write() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("ordered_write");
+  auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
   auto frag_meta = this->create_fragment_metadata();

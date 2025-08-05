@@ -100,7 +100,7 @@ void DeletesAndUpdates::refresh_config() {
 }
 
 Status DeletesAndUpdates::dowork() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
+  auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
   if (condition_.has_value()) {

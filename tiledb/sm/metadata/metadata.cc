@@ -192,7 +192,7 @@ void Metadata::store(
     ContextResources& resources,
     const URI& uri,
     const EncryptionKey& encryption_key) {
-  [[maybe_unused]] auto timer_se = resources.stats().start_timer("write_meta");
+  auto timer_se = resources.stats().start_timer("write_meta");
 
   // Serialize array metadata
   SizeComputationSerializer size_computation_serializer;

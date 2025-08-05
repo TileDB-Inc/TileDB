@@ -258,7 +258,7 @@ void SparseGlobalOrderReader<BitmapType>::refresh_config() {
 
 template <class BitmapType>
 Status SparseGlobalOrderReader<BitmapType>::dowork() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
+  auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
 
   // Check that the query condition is valid.
@@ -863,7 +863,7 @@ std::vector<ResultTile*>
 SparseGlobalOrderReader<BitmapType>::create_result_tiles(
     std::vector<ResultTilesList>& result_tiles,
     std::optional<PreprocessTileMergeFuture>& preprocess_future) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("create_result_tiles");
+  auto timer_se = stats_->start_timer("create_result_tiles");
 
   // Distinguish between leftover result tiles from the previous `submit`
   // and result tiles which are being added now
@@ -1375,7 +1375,7 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
 
 template <class BitmapType>
 uint64_t SparseGlobalOrderReader<BitmapType>::max_num_cells_to_copy() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("max_num_cells_to_copy");
+  auto timer_se = stats_->start_timer("max_num_cells_to_copy");
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
@@ -1994,7 +1994,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
     std::vector<const void*>& var_data) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_offsets_tiles");
+  auto timer_se = stats_->start_timer("copy_offsets_tiles");
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
@@ -2097,7 +2097,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_var_data_tiles(
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
     std::vector<const void*>& var_data) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_var_tiles");
+  auto timer_se = stats_->start_timer("copy_var_tiles");
 
   // For easy reference.
   auto var_data_buffer = static_cast<uint8_t*>(query_buffer.buffer_var_);
@@ -2171,7 +2171,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_fixed_data_tiles");
+  auto timer_se = stats_->start_timer("copy_fixed_data_tiles");
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
@@ -2271,7 +2271,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("copy_timestamps_tiles");
+  auto timer_se = stats_->start_timer("copy_timestamps_tiles");
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
@@ -2663,7 +2663,7 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
     std::vector<std::string>& names,
     std::vector<ResultCellSlab>& result_cell_slabs,
     bool& user_buffers_full) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("process_slabs");
+  auto timer_se = stats_->start_timer("process_slabs");
 
   // Compute parallelization parameters.
   uint64_t num_range_threads = 1;

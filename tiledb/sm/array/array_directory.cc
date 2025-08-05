@@ -630,7 +630,7 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
 
 std::vector<URI> ArrayDirectory::list_root_dir_uris() {
   // List the array directory URIs
-  [[maybe_unused]] auto timer_se = stats_->start_timer("list_root_uris");
+  auto timer_se = stats_->start_timer("list_root_uris");
   return ls(uri_);
 }
 
@@ -648,7 +648,7 @@ ArrayDirectory::load_root_dir_uris_v1_v11(
 
 std::vector<URI> ArrayDirectory::list_commits_dir_uris() {
   // List the commits folder array directory URIs
-  [[maybe_unused]] auto timer_se = stats_->start_timer("list_commit_uris");
+  auto timer_se = stats_->start_timer("list_commit_uris");
   return ls(uri_.join_path(constants::array_commits_dir_name));
 }
 

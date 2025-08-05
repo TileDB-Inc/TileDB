@@ -348,7 +348,7 @@ Status Array::open_without_fragments(
       }
     } else {
       {
-        [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_without_fragments_load_directory");
         set_array_directory(ArrayDirectory(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ));
@@ -406,7 +406,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  [[maybe_unused]] auto timer = resources_.stats().start_timer(
+  auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
@@ -556,7 +556,7 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
-        [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_delete_or_update_load_directory");
         set_array_directory(ArrayDirectory(
             resources_,
@@ -1057,7 +1057,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  [[maybe_unused]] auto timer = resources_.stats().start_timer("array_reopen");
+  auto timer = resources_.stats().start_timer("array_reopen");
   // Check the array was opened already in READ mode.
   if (!is_open_) {
     return LOG_STATUS(
@@ -1756,7 +1756,7 @@ tuple<
     std::unordered_map<std::string, shared_ptr<ArraySchema>>,
     std::vector<shared_ptr<FragmentMetadata>>>
 Array::open_for_reads() {
-  [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
+  auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
   auto result = FragmentInfo::load_array_schemas_and_fragment_metadata(
       resources_, array_directory(), memory_tracker(), *encryption_key());
@@ -1771,7 +1771,7 @@ tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_reads_without_fragments() {
-  [[maybe_unused]] auto timer_se = resources_.stats().start_timer(
+  auto timer_se = resources_.stats().start_timer(
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas

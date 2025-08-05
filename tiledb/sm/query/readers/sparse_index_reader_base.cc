@@ -226,7 +226,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     return Status::Ok();
   }
 
-  [[maybe_unused]] auto timer_se = stats_->start_timer("load_initial_data");
+  auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.set_done_adding_result_tiles(false);
 
   // For easy reference.
@@ -463,7 +463,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
 template <class BitmapType>
 void SparseIndexReaderBase::compute_tile_bitmaps(
     std::vector<ResultTile*>& result_tiles) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("compute_tile_bitmaps");
+  auto timer_se = stats_->start_timer("compute_tile_bitmaps");
 
   // For easy reference.
   const auto& domain{array_schema_.domain()};
@@ -609,7 +609,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 template <class ResultTileType, class BitmapType>
 void SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("apply_query_condition");
+  auto timer_se = stats_->start_timer("apply_query_condition");
 
   if (condition_.has_value() || !delete_and_update_conditions_.empty() ||
       use_timestamps_) {

@@ -1714,7 +1714,7 @@ void Subarray::sort_and_merge_ranges(ThreadPool* const compute_tp) {
     return;
 
   // Sort and conditionally merge ranges
-  [[maybe_unused]] auto timer = stats_->start_timer("sort_and_merge_ranges");
+  auto timer = stats_->start_timer("sort_and_merge_ranges");
   throw_if_not_ok(parallel_for(
       compute_tp,
       0,

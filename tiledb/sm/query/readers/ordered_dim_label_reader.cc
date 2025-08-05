@@ -146,7 +146,7 @@ void OrderedDimLabelReader::refresh_config() {
 }
 
 Status OrderedDimLabelReader::dowork() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("dowork");
+  auto timer_se = stats_->start_timer("dowork");
 
   get_dim_attr_stats();
   reset_buffer_sizes();
@@ -476,7 +476,7 @@ bool OrderedDimLabelReader::tile_overwritten(
 
 template <typename IndexType>
 uint64_t OrderedDimLabelReader::create_result_tiles() {
-  [[maybe_unused]] auto timer_se = stats_->start_timer("create_result_tiles");
+  auto timer_se = stats_->start_timer("create_result_tiles");
 
   uint64_t max_range = 0;
   uint64_t total_mem_used = 0;
