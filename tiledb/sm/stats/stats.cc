@@ -173,6 +173,10 @@ std::string Stats::dump(
   return ss.str();
 }
 
+DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
+  return DurationInstrument<Stats>(*this, stat);
+}
+
 #ifdef TILEDB_STATS
 
 void Stats::add_counter(const std::string& stat, uint64_t count) {
@@ -240,12 +244,9 @@ std::optional<double> Stats::find_timer(const std::string& stat) const {
   return std::nullopt;
 }
 
-DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
-  return DurationInstrument<Stats>(*this, stat);
-}
-
 void Stats::report_duration(
     const std::string& stat, const std::chrono::duration<double> duration) {
+#ifdef TILEDB_STATS
   if (!enabled_) {
     return;
   }
@@ -277,19 +278,12 @@ void Stats::report_duration(
   } else {  // Timer found
     it4->second += 1;
   }
+#endif
 }
 
 #else
 
 void Stats::add_counter(const std::string&, uint64_t) {
-}
-
-int Stats::start_timer(const std::string&) {
-  return 0;
-}
-
-void Stats::report_duration(
-    const std::string&, const std::chrono::duration<double>) {
 }
 
 #endif
