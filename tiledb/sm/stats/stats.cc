@@ -33,6 +33,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/common/assert.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <algorithm>
 #include <cassert>
@@ -49,12 +50,20 @@ Stats::Stats(const std::string& prefix, bool enabled_stats)
     : Stats(prefix, StatsData{}, enabled_stats) {
 }
 
+Stats::Stats(const std::string& prefix)
+    : Stats(prefix, StatsData{}, all_stats.enabled()) {
+}
+
 Stats::Stats(
     const std::string& prefix, const StatsData& data, bool enabled_stats)
     : enabled_(enabled_stats)
     , prefix_(prefix + ".")
     , parent_(nullptr) {
   this->populate_with_data(data);
+}
+
+Stats::Stats(const std::string& prefix, const StatsData& data)
+    : Stats(prefix, data, all_stats.enabled()) {
 }
 
 /* ****************************** */

@@ -123,7 +123,14 @@ class Stats {
    * @param prefix The stat name prefix.
    * @param enabled_stats True if stats are enabled, false otherwise.
    */
-  Stats(const std::string& prefix, bool enabled_stats = true);
+  Stats(const std::string& prefix, bool enabled_stats);
+
+  /**
+   * Value constructor with default enabled_stats from global stats.
+   *
+   * @param prefix The stat name prefix.
+   */
+  explicit Stats(const std::string& prefix);
 
   /**
    * Value constructor.
@@ -132,10 +139,15 @@ class Stats {
    * @param data Initial data to populate the Stats object with.
    * @param enabled_stats True if stats are enabled, false otherwise.
    */
-  Stats(
-      const std::string& prefix,
-      const StatsData& data,
-      bool enabled_stats = true);
+  Stats(const std::string& prefix, const StatsData& data, bool enabled_stats);
+
+  /**
+   * Value constructor with default enabled_stats from global stats.
+   *
+   * @param prefix The stat name prefix.
+   * @param data Initial data to populate the Stats object with.
+   */
+  Stats(const std::string& prefix, const StatsData& data);
 
   /** Destructor. */
   ~Stats() = default;
