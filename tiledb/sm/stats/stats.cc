@@ -45,12 +45,13 @@ namespace tiledb::sm::stats {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Stats::Stats(const std::string& prefix)
-    : Stats(prefix, StatsData{}) {
+Stats::Stats(const std::string& prefix, bool enabled_stats)
+    : Stats(prefix, StatsData{}, enabled_stats) {
 }
 
-Stats::Stats(const std::string& prefix, const StatsData& data)
-    : enabled_(true)
+Stats::Stats(
+    const std::string& prefix, const StatsData& data, bool enabled_stats)
+    : enabled_(enabled_stats)
     , prefix_(prefix + ".")
     , parent_(nullptr) {
   this->populate_with_data(data);
