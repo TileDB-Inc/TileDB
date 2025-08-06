@@ -79,6 +79,9 @@ void Stats::set_enabled(bool enabled) {
 }
 
 void Stats::reset() {
+  if (!enabled_) {
+    return;
+  }
   // We will acquire the locks top-down in the tree and hold
   // until the recursion terminates.
   std::unique_lock<std::mutex> lck(mtx_);
@@ -93,6 +96,10 @@ void Stats::reset() {
 
 std::string Stats::dump(
     const uint64_t indent_size, const uint64_t num_indents) const {
+  if (!enabled_) {
+    return "";
+  }
+
   std::unordered_map<std::string, double> flattened_timers;
   std::unordered_map<std::string, uint64_t> flattened_counters;
 
@@ -201,6 +208,10 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
 }
 
 std::optional<uint64_t> Stats::get_counter(const std::string& stat) const {
+  if (!enabled_) {
+    return std::nullopt;
+  }
+
   const std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
   auto maybe = counters_.find(new_stat);
@@ -212,6 +223,10 @@ std::optional<uint64_t> Stats::get_counter(const std::string& stat) const {
 }
 
 std::optional<uint64_t> Stats::find_counter(const std::string& stat) const {
+  if (!enabled_) {
+    return std::nullopt;
+  }
+
   const auto mine = get_counter(stat);
   if (mine.has_value()) {
     return mine;
@@ -226,6 +241,10 @@ std::optional<uint64_t> Stats::find_counter(const std::string& stat) const {
 }
 
 std::optional<double> Stats::get_timer(const std::string& stat) const {
+  if (!enabled_) {
+    return std::nullopt;
+  }
+
   const std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
   auto maybe = timers_.find(new_stat);
@@ -237,6 +256,10 @@ std::optional<double> Stats::get_timer(const std::string& stat) const {
 }
 
 std::optional<double> Stats::find_timer(const std::string& stat) const {
+  if (!enabled_) {
+    return std::nullopt;
+  }
+
   const auto mine = get_timer(stat);
   if (mine.has_value()) {
     return mine;
@@ -315,8 +338,7 @@ Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
     // Return a singleton null stats object that's safe to use but does nothing.
     // This is necessary because the caller expects a valid (non-null) pointer.
     // Also, this avoids unnecessary allocations when stats are disabled.
-    static Stats null_stats("null_stats");
-    null_stats.set_enabled(false);
+    static Stats null_stats("null_stats", false);
     return &null_stats;
   }
 
@@ -330,6 +352,10 @@ Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
 void Stats::populate_flattened_stats(
     std::unordered_map<std::string, double>* const flattened_timers,
     std::unordered_map<std::string, uint64_t>* const flattened_counters) const {
+  if (!enabled_) {
+    return;
+  }
+
   // We will acquire the locks top-down in the tree and hold
   // until the recursion terminates.
   std::unique_lock<std::mutex> lck(mtx_);
@@ -356,6 +382,10 @@ const std::unordered_map<std::string, uint64_t>* Stats::counters() const {
 }
 
 void Stats::populate_with_data(const StatsData& data) {
+  if (!enabled_) {
+    return;
+  }
+
   auto& timers = data.timers();
   for (const auto& timer : timers) {
     timers_[timer.first] = timer.second;
