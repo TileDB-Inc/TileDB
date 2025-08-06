@@ -41,10 +41,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 LsObjects LocalFilesystem::ls_filtered(
-    const URI& parent,
-    FileFilter file_filter,
-    DirectoryFilter directory_filter,
-    bool recursive) const {
+    const URI& parent, ResultFilter result_filter, bool recursive) const {
   /*
    * The input URI was useful to the top-level VFS to identify this is a
    * regular filesystem path, but we don't need the "file://" qualifier
@@ -64,14 +61,10 @@ LsObjects LocalFilesystem::ls_filtered(
     const auto abspath = entry.path().string();
     const auto absuri = URI(abspath);
     if (entry.is_directory()) {
-      if (file_filter(absuri, 0) || directory_filter(absuri)) {
-        qualifyingPaths.push_back(
-            std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
-        if (!recursive) {
-          iter.disable_recursion_pending();
-        }
-      } else {
-        /* do not descend into directories which don't qualify */
+      if (result_filter(absuri, 0)) {
+        qualifyingPaths.emplace_back(tiledb::sm::URI(abspath).to_string(), 0);
+      }
+      if (!recursive) {
         iter.disable_recursion_pending();
       }
     } else {
@@ -80,9 +73,50 @@ LsObjects LocalFilesystem::ls_filtered(
        * (or symbolic link - split to a separate case if we want to descend into
        * them)
        */
-      if (file_filter(absuri, entry.file_size())) {
-        qualifyingPaths.push_back(
-            std::make_pair(absuri.to_string(), entry.file_size()));
+      if (result_filter(absuri, entry.file_size())) {
+        qualifyingPaths.emplace_back(absuri.to_string(), entry.file_size());
+      }
+    }
+  }
+
+  return qualifyingPaths;
+}
+
+LsObjects LocalFilesystem::ls_filtered_v2(
+    const URI& parent, ResultFilterV2 result_filter, bool recursive) const {
+  /*
+   * The input URI was useful to the top-level VFS to identify this is a
+   * regular filesystem path, but we don't need the "file://" qualifier
+   * anymore and can reason with unqualified strings for the rest of the
+   * function.
+   */
+  const auto parentstr = parent.to_path();
+
+  LsObjects qualifyingPaths;
+
+  // awkward way of iterating, avoids bug in OSX
+  auto begin = std::filesystem::recursive_directory_iterator(parentstr);
+  auto end = std::filesystem::recursive_directory_iterator();
+
+  for (auto iter = begin; iter != end; ++iter) {
+    auto& entry = *iter;
+    const auto abspath = entry.path().string();
+    const auto absuri = URI(abspath);
+    if (entry.is_directory()) {
+      if (result_filter(absuri, 0, true)) {
+        qualifyingPaths.emplace_back(tiledb::sm::URI(abspath).to_string(), 0);
+      }
+      if (!recursive) {
+        iter.disable_recursion_pending();
+      }
+    } else {
+      /*
+       * A leaf of the filesystem
+       * (or symbolic link - split to a separate case if we want to descend into
+       * them)
+       */
+      if (result_filter(absuri, entry.file_size(), false)) {
+        qualifyingPaths.emplace_back(absuri.to_string(), entry.file_size());
       }
     }
   }

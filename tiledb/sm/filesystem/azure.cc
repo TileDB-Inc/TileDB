@@ -1077,12 +1077,30 @@ std::string Azure::BlockListUploadState::next_block_id() {
 AzureScanner::AzureScanner(
     const Azure& client,
     const URI& prefix,
-    FileFilter&& file_filter,
-    DirectoryFilter&& dir_filter,
+    ResultFilter&& result_filter,
     bool recursive,
     int max_keys)
-    : LsScanner(
-          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    ResultFilterV2&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
     , client_(client)
     , max_keys_(max_keys)
     , has_fetched_(false) {
@@ -1104,22 +1122,67 @@ void AzureScanner::next(typename Iterator::pointer& ptr) {
   while (ptr != end_) {
     auto& object = *ptr;
 
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(object.first, object.second)) {
-      // Iterator is at the next object within results accepted by the filters.
+    // Store each unique prefix while scanning objects.
+    // TODO: is_recursive_&& for here and S3Scanner
+    if (result_filter_v2_ && result_type_ == OBJECT) {
+      // The object key contains the azure:// prefix and the bucket name.
+      // Non-recursive request to Azure returns prefixes with a trailing slash.
+      auto prefix = Azure::remove_trailing_slash(object.first);
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != std::string::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        // Do not accept the prefix we are scanning.
+        if (prefix == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
+          break;
+        } else if (result_filter_v2_(prefix, 0, true)) {
+          collected_prefixes_.emplace(prefix, 0);
+        }
+      }
+    }
+
+    // For recursive, prefixes have already been filtered by the predicate.
+    // Non-recursive request with a delimiter set will return prefixes as object
+    // with a trailing slash, those prefixes will be filtered here.
+    bool is_prefix = object.first.ends_with("/");
+    auto uri = Azure::remove_trailing_slash(object.first);
+    if (result_filter_ && result_filter_(uri, object.second)) {
+      return;
+    } else if (
+        result_filter_v2_ &&
+        (result_type_ == PREFIX ||
+         result_filter_v2_(uri, object.second, is_prefix))) {
       return;
     } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
+      // Object was rejected by the FilterPredicate, do not include it in
+      // results.
       advance(ptr);
     }
   }
 }
 
+AzureScanner::Iterator::pointer& AzureScanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.first = collected_prefixes_.extract(next).value();
+    object.second = 0;
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
 AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
-  if (!more_to_fetch()) {
+  if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
+    return build_prefix_vector();
+  } else if (!more_to_fetch()) {
     begin_ = end_ = typename Iterator::pointer();
     return end_;
   }
+  result_type_ = OBJECT;
 
   blobs_ = client_.list_blobs_impl(
       container_name_,

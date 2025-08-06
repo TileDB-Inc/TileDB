@@ -634,81 +634,107 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 }
 
 // Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
-// TODO: LocalFsTest currently fails. Fix and re-enable.
-using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
+using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest>;
 TEMPLATE_LIST_TEST_CASE(
-    "VFS: Test internal ls_filtered recursion argument",
-    "[vfs][ls_filtered][recursion]",
+    "VFS: ls_filtered recursion enabled",
+    "[vfs][ls_filtered][ls_filtered_v2][recursion]",
     TestBackends) {
   TestType fs({10, 50});
   if (!fs.is_supported()) {
     return;
   }
 
-  bool recursive = GENERATE(true, false);
-  DYNAMIC_SECTION(
-      fs.temp_dir_.backend_name()
-      << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
-    // If testing with recursion use the root directory, otherwise use a subdir.
-    auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
+  // If testing with recursion use the root directory, otherwise use a subdir.
+  DYNAMIC_SECTION(fs.temp_dir_.backend_name() << " ls_filtered") {
     auto ls_objects = fs.vfs_.ls_filtered(
-        path, VFSTestBase::accept_all_files, accept_all_dirs, recursive);
-
+        fs.temp_dir_, tiledb::sm::LsScanner::accept_all, true);
     auto expected = fs.expected_results();
-    if (!recursive) {
-      // If non-recursive, all objects in the first directory should be
-      // returned.
-      std::erase_if(expected, [](const auto& p) {
-        return p.first.find("subdir_1") == std::string::npos;
-      });
-    }
-
     CHECK(ls_objects.size() == expected.size());
-    CHECK(ls_objects == expected);
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
+  }
+  DYNAMIC_SECTION(fs.temp_dir_.backend_name() << " ls_filtered_v2") {
+    auto ls_objects = fs.vfs_.ls_filtered_v2(
+        fs.temp_dir_, tiledb::sm::LsScanner::accept_all_v2, true);
+    auto expected = fs.expected_results_v2();
+    CHECK(ls_objects.size() == expected.size());
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
   }
 }
 
-TEST_CASE(
-    "VFS: ls_recursive throws for unsupported backends",
-    "[vfs][ls_recursive]") {
-  // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
-  std::string prefix = GENERATE("s3://", "azure://", "gcs://");
-  VFSTest vfs_test({1}, prefix);
-  if (!vfs_test.is_supported()) {
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: ls_filtered non-recursive",
+    "[vfs][ls_filtered][ls_filtered_v2]",
+    TestBackends) {
+  TestType fs({10});
+  if (!fs.is_supported()) {
     return;
   }
-  std::string backend = vfs_test.temp_dir_.backend_name();
+  auto path = fs.temp_dir_.join_path("subdir_1");
+  auto subdir2 = path.join_path("subdir_2");
+  if (path.is_file() || path.is_memfs()) {
+    REQUIRE_NOTHROW(fs.vfs_.create_dir(path));
+  }
+  // The file in the nested directory should not be returned for any case.
+  auto test_file = subdir2.join_path("test_file_1");
+  REQUIRE_NOTHROW(fs.vfs_.touch(test_file));
+  SECTION("ls_filtered") {
+    auto expected = fs.expected_results();
+    std::erase_if(expected, [](const auto& p) {
+      return p.first.find("subdir_1/test_file") == std::string::npos;
+    });
+    expected.emplace_back(subdir2, 0);
+    auto ls_objects =
+        fs.vfs_.ls_filtered(path, tiledb::sm::LsScanner::accept_all, false);
+    CHECK(ls_objects.size() == expected.size());
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
+  }
 
-  DYNAMIC_SECTION(backend << " supported backend should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, VFSTestBase::accept_all_files));
+  SECTION("ls_filtered_v2") {
+    // The subdir2 directory should be returned for all backends.
+    auto ls_objects = fs.vfs_.ls_filtered_v2(
+        path, tiledb::sm::LsScanner::accept_all_v2, false);
+    auto expected = fs.expected_results_v2();
+    std::erase_if(
+        expected, [](const auto& p) { return p.first.ends_with("subdir_1"); });
+    expected.emplace_back(subdir2, 0);
+    CHECK(ls_objects.size() == expected.size());
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
   }
 }
 
-TEST_CASE(
-    "VFS: Throwing FileFilter for ls_recursive",
-    "[vfs][ls_recursive][file-filter]") {
+TEST_CASE("VFS: Throwing filters for ls_recursive", "[vfs][ls_recursive]") {
   std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
   VFSTest vfs_test({0}, prefix);
   if (!vfs_test.is_supported()) {
     return;
   }
 
-  auto file_filter = [](const std::string_view&, uint64_t) -> bool {
-    throw std::logic_error("Throwing FileFilter");
+  auto filter = [](const std::string_view&, uint64_t) -> bool {
+    throw std::logic_error("Throwing filter");
   };
-  SECTION("Throwing FileFilter with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, file_filter, tiledb::sm::accept_all_dirs));
+  auto filter_v2 = [](const std::string_view&, uint64_t, bool) -> bool {
+    throw std::logic_error("Throwing filter v2");
+  };
+  SECTION("Throwing filter with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter));
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive_v2(vfs_test.temp_dir_, filter_v2));
   }
-  SECTION("Throwing FileFilter with N objects should throw") {
+
+  SECTION("Throwing filter with N objects should throw") {
     REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
         std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
-        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
+
+    CHECK_THROWS_AS(
+        vfs_test.vfs_.ls_recursive_v2(vfs_test.temp_dir_, filter_v2),
+        std::logic_error);
+    CHECK_THROWS_WITH(
+        vfs_test.vfs_.ls_recursive_v2(vfs_test.temp_dir_, filter_v2),
+        Catch::Matchers::ContainsSubstring("Throwing filter v2"));
   }
 }
 

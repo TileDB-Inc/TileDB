@@ -45,8 +45,12 @@ class LocalFilesystem : public FilesystemBase {
  public:
   LsObjects ls_filtered(
       const URI& parent,
-      FileFilter file_filter,
-      [[maybe_unused]] DirectoryFilter directory_filter,
+      ResultFilter result_filter,
+      bool recursive) const override;
+
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 result_filter,
       bool recursive) const override;
 
   void copy_file(const URI& old_uri, const URI& new_uri) const override;

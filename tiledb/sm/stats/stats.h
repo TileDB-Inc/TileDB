@@ -154,8 +154,9 @@ class Stats {
    *
    * @param stat The name under which the duration is to be reported
    */
-  [[nodiscard]] std::optional<DurationInstrument<Stats>> start_timer(
-      const std::string& stat);
+  [[nodiscard]] DurationInstrument<Stats> start_timer(const std::string& stat) {
+    return DurationInstrument<Stats>(*this, stat);
+  }
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);
