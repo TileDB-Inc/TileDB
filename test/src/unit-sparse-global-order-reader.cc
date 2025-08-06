@@ -649,36 +649,10 @@ void CSparseGlobalOrderFx::write_fragment(
   }
 
   CApiArray& array = *existing;
+  Array cpparray(vfs_test_setup_.ctx(), array, false);
 
-  // Create the query.
-  tiledb_query_t* query;
-  auto rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
-  ASSERTER(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
-  ASSERTER(rc == TILEDB_OK);
-
-  auto field_sizes = templates::query::make_field_sizes<Asserter>(fragment);
-  templates::query::set_fields<Asserter, Fragment>(
-      context(),
-      query,
-      field_sizes,
-      fragment,
-      [](unsigned d) { return "d" + std::to_string(d + 1); },
-      [](unsigned a) { return "a" + std::to_string(a + 1); });
-
-  // Submit query.
-  rc = tiledb_query_submit(context(), query);
-  ASSERTER(std::optional<std::string>() == error_if_any(rc));
-
-  // check that sizes match what we expect
-  const uint64_t expect_num_cells = fragment.size();
-  const uint64_t num_cells =
-      templates::query::num_cells<Asserter>(fragment, field_sizes);
-
-  ASSERTER(num_cells == expect_num_cells);
-
-  // Clean up.
-  tiledb_query_free(&query);
+  templates::query::write_fragment<Asserter, Fragment>(
+      fragment, cpparray, TILEDB_UNORDERED);
 }
 
 void CSparseGlobalOrderFx::write_1d_fragment_strings(
@@ -3333,64 +3307,15 @@ TEST_CASE_METHOD(
  */
 template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::create_array(const Instance& instance) {
-  const auto dimensions = instance.dimensions();
-  const auto attributes = instance.attributes();
-
-  std::vector<std::string> dimension_names;
-  std::vector<tiledb_datatype_t> dimension_types;
-  std::vector<void*> dimension_ranges;
-  std::vector<void*> dimension_extents;
-  auto add_dimension = [&]<Datatype D>(
-                           const templates::Dimension<D>& dimension) {
-    using CoordType = templates::Dimension<D>::value_type;
-    dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
-    dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
-    dimension_ranges.push_back(
-        const_cast<CoordType*>(&dimension.domain.lower_bound));
-    dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
-  };
-  std::apply(
-      [&]<Datatype... Ds>(const templates::Dimension<Ds>&... dimension) {
-        (add_dimension(dimension), ...);
-      },
-      dimensions);
-
-  std::vector<std::string> attribute_names;
-  std::vector<tiledb_datatype_t> attribute_types;
-  std::vector<uint32_t> attribute_cell_val_nums;
-  std::vector<bool> attribute_nullables;
-  std::vector<std::pair<tiledb_filter_type_t, int>> attribute_compressors;
-  auto add_attribute = [&](Datatype datatype,
-                           uint32_t cell_val_num,
-                           bool nullable) {
-    attribute_names.push_back("a" + std::to_string(attribute_names.size() + 1));
-    attribute_types.push_back(static_cast<tiledb_datatype_t>(datatype));
-    attribute_cell_val_nums.push_back(cell_val_num);
-    attribute_nullables.push_back(nullable);
-    attribute_compressors.push_back(std::make_pair(TILEDB_FILTER_NONE, -1));
-  };
-  for (const auto& [datatype, cell_val_num, nullable] : attributes) {
-    add_attribute(datatype, cell_val_num, nullable);
-  }
-
-  tiledb::test::create_array(
-      context(),
+  templates::ddl::create_array(
       array_name_,
-      TILEDB_SPARSE,
-      dimension_names,
-      dimension_types,
-      dimension_ranges,
-      dimension_extents,
-      attribute_names,
-      attribute_types,
-      attribute_cell_val_nums,
-      attribute_compressors,
+      Context(context(), false),
+      instance.dimensions(),
+      instance.attributes(),
       instance.tile_order(),
       instance.cell_order(),
       instance.tile_capacity(),
-      instance.allow_duplicates(),
-      false,
-      {attribute_nullables});
+      instance.allow_duplicates());
 }
 
 /**
