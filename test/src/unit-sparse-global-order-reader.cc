@@ -524,6 +524,80 @@ struct CSparseGlobalOrderFx {
 
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
+
+ protected:
+  // test helper functions
+
+  template <typename Asserter>
+  void instance_fragment_skew(
+      size_t fragment_size,
+      size_t num_user_cells,
+      int extent,
+      const std::vector<templates::Domain<int>>& subarray =
+          std::vector<templates::Domain<int>>(),
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_fragment_interleave(
+      size_t fragment_size,
+      size_t num_user_cells,
+      const std::vector<templates::Domain<int>>& subarray = {},
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_fragment_wide_overlap(
+      size_t num_fragments,
+      size_t fragment_size,
+      size_t num_user_cells,
+      bool allow_dups,
+      const std::vector<templates::Domain<int>>& subarray =
+          std::vector<templates::Domain<int>>(),
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_merge_bound_duplication(
+      size_t num_fragments,
+      size_t fragment_size,
+      size_t num_user_cells,
+      size_t tile_capacity,
+      bool allow_dups,
+      const Subarray1DType<int>& subarray = {},
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_out_of_order_mbrs(
+      tiledb_layout_t tile_order,
+      tiledb_layout_t cell_order,
+      size_t num_fragments,
+      size_t fragment_size,
+      size_t num_user_cells,
+      size_t tile_capacity,
+      bool allow_dups,
+      const Subarray2DType<int, int>& subarray = {},
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_fragment_skew_2d_merge_bound(
+      tiledb_layout_t tile_order,
+      tiledb_layout_t cell_order,
+      size_t approximate_memory_tiles,
+      size_t num_user_cells,
+      size_t num_fragments,
+      size_t tile_capacity,
+      bool allow_dups,
+      const Subarray2DType<int, int>& subarray = {},
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_fragment_full_copy_1d(
+      size_t num_fragments,
+      templates::Dimension<Datatype::INT64> dimension,
+      const Subarray1DType<int64_t>& subarray = {},
+      tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr);
+
+  template <typename Asserter>
+  void instance_repeatable_read_submillisecond(
+      const std::vector<uint64_t>& fragment_same_timestamp_runs);
 };
 
 template <typename CAPIReturn>
@@ -918,17 +992,19 @@ int32_t CSparseGlobalOrderFx::read_strings(
 }
 
 /**
- * Determines whether the array fragments are "too wide" to merge with the given
- * memory budget. "Too wide" means that there are overlapping tiles from
+ * Determines whether the array fragments are "too wide" to merge with the
+ * given memory budget. "Too wide" means that there are overlapping tiles from
  * different fragments to fit in memory, so the merge cannot progress without
  * producing out-of-order data*.
  *
  * *there are ways to get around this but they are not implemented.
  *
- * An answer cannot be determined if the tile MBR lower bounds within a fragment
- * are not in order. This is common for 2+ dimensions, so this won't even try.
+ * An answer cannot be determined if the tile MBR lower bounds within a
+ * fragment are not in order. This is common for 2+ dimensions, so this won't
+ * even try.
  *
- * @return std::nullopt if an answer cannot be determined, true/false if it can
+ * @return std::nullopt if an answer cannot be determined, true/false if it
+ * can
  */
 template <typename Asserter, InstanceType Instance>
 static std::optional<bool> can_complete_in_memory_budget(
@@ -1336,10 +1412,13 @@ struct PAssertFailureCallbackShowRapidcheckInput {
  * must be a mechanism for emitting (F0, T1) before (F1, T0) even though the
  * the memory budget might not process them in the same loop.
  */
-TEST_CASE_METHOD(
-    CSparseGlobalOrderFx,
-    "Sparse global order reader: fragment skew",
-    "[sparse-global-order][rest][rapidcheck]") {
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_fragment_skew(
+    size_t fragment_size,
+    size_t num_user_cells,
+    int extent,
+    const std::vector<templates::Domain<int>>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
   using InstanceType = FxRun1D<
       Datatype::INT32,
       static_attribute<Datatype::INT32, 1, false>,
@@ -1348,109 +1427,114 @@ TEST_CASE_METHOD(
           tiledb::sm::cell_val_num_var,
           true>>;
 
-  auto doit = [this]<typename Asserter>(
-                  size_t fragment_size,
-                  size_t num_user_cells,
-                  int extent,
-                  const std::vector<templates::Domain<int>>& subarray =
-                      std::vector<templates::Domain<int>>(),
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            fragment_size, num_user_cells, extent, subarray, *condition.get()));
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          fragment_size, num_user_cells, extent, subarray, *condition.get()));
 
-    // Write a fragment F0 with unique coordinates
-    InstanceType::FragmentType fragment0;
-    fragment0.dim_.resize(fragment_size);
-    std::iota(fragment0.dim_.begin(), fragment0.dim_.end(), 1);
+  // Write a fragment F0 with unique coordinates
+  InstanceType::FragmentType fragment0;
+  fragment0.dim_.resize(fragment_size);
+  std::iota(fragment0.dim_.begin(), fragment0.dim_.end(), 1);
 
-    // Write a fragment F1 with lots of duplicates
-    // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
-    InstanceType::FragmentType fragment1;
-    fragment1.dim_.resize(fragment0.dim_.num_cells());
-    for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
-      fragment1.dim_[i] =
-          static_cast<int>((i / 10) + (fragment0.dim_.num_cells() / 2));
-    }
+  // Write a fragment F1 with lots of duplicates
+  // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
+  InstanceType::FragmentType fragment1;
+  fragment1.dim_.resize(fragment0.dim_.num_cells());
+  for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
+    fragment1.dim_[i] =
+        static_cast<int>((i / 10) + (fragment0.dim_.num_cells() / 2));
+  }
 
-    // atts are whatever, used just for query condition and correctness check
-    auto& f0atts = std::get<0>(fragment0.atts_);
-    f0atts.resize(fragment0.dim_.num_cells());
-    std::iota(f0atts.begin(), f0atts.end(), 0);
-    for (uint64_t i = 0; i < fragment0.dim_.num_cells(); i++) {
-      if ((i * i) % 7 == 0) {
-        std::get<1>(fragment0.atts_).push_back(std::nullopt);
-      } else {
-        std::vector<char> f0str;
-        for (uint64_t j = 0; j < (i * i) % 11; j++) {
-          f0str.push_back(static_cast<char>(0x41 + ((i + (j * j)) % 26)));
-        }
-        std::get<1>(fragment0.atts_).push_back(f0str);
+  // atts are whatever, used just for query condition and correctness check
+  auto& f0atts = std::get<0>(fragment0.atts_);
+  f0atts.resize(fragment0.dim_.num_cells());
+  std::iota(f0atts.begin(), f0atts.end(), 0);
+  for (uint64_t i = 0; i < fragment0.dim_.num_cells(); i++) {
+    if ((i * i) % 7 == 0) {
+      std::get<1>(fragment0.atts_).push_back(std::nullopt);
+    } else {
+      std::vector<char> f0str;
+      for (uint64_t j = 0; j < (i * i) % 11; j++) {
+        f0str.push_back(static_cast<char>(0x41 + ((i + (j * j)) % 26)));
       }
+      std::get<1>(fragment0.atts_).push_back(f0str);
     }
+  }
 
-    auto& f1atts = std::get<0>(fragment1.atts_);
-    f1atts.resize(fragment1.dim_.num_cells());
-    std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.num_cells()));
-    for (uint64_t i = 0; i < fragment1.dim_.num_cells(); i++) {
-      if ((i * i) % 11 == 0) {
-        std::get<1>(fragment1.atts_).push_back(std::nullopt);
-      } else {
-        std::vector<char> f1str;
-        for (uint64_t j = 0; j < (i * i) % 11; j++) {
-          f1str.push_back(static_cast<char>(0x61 + ((i + (j * j)) % 26)));
-        }
-        std::get<1>(fragment1.atts_).push_back(f1str);
+  auto& f1atts = std::get<0>(fragment1.atts_);
+  f1atts.resize(fragment1.dim_.num_cells());
+  std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.num_cells()));
+  for (uint64_t i = 0; i < fragment1.dim_.num_cells(); i++) {
+    if ((i * i) % 11 == 0) {
+      std::get<1>(fragment1.atts_).push_back(std::nullopt);
+    } else {
+      std::vector<char> f1str;
+      for (uint64_t j = 0; j < (i * i) % 11; j++) {
+        f1str.push_back(static_cast<char>(0x61 + ((i + (j * j)) % 26)));
       }
+      std::get<1>(fragment1.atts_).push_back(f1str);
     }
+  }
 
-    InstanceType instance;
-    instance.fragments.push_back(fragment0);
-    instance.fragments.push_back(fragment1);
-    instance.num_user_cells = num_user_cells;
+  InstanceType instance;
+  instance.fragments.push_back(fragment0);
+  instance.fragments.push_back(fragment1);
+  instance.num_user_cells = num_user_cells;
 
-    instance.array.dimension_.extent = extent;
-    instance.array.allow_dups_ = true;
+  instance.array.dimension_.extent = extent;
+  instance.array.allow_dups_ = true;
 
-    instance.memory.total_budget_ = "30000";
-    instance.memory.ratio_array_data_ = "0.5";
+  instance.memory.total_budget_ = "30000";
+  instance.memory.ratio_array_data_ = "0.5";
 
-    instance.subarray = subarray;
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
+  instance.subarray = subarray;
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
 
-    run<Asserter>(instance);
-  };
+  run<Asserter>(instance);
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew",
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
     SKIP(
-        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF "
+        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: "
+        "OFF "
         "| Assertions: ON | Debug To re-enable when fixed.");
-    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
+    instance_fragment_skew<tiledb::test::AsserterCatch>(200, 8, 2);
   }
 
   SECTION("Condition") {
     SKIP(
-        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF "
+        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: "
+        "OFF "
         "| Assertions: ON | Debug To re-enable when fixed.");
     int value = 110;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::GE));
-    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2, {}, std::move(qc));
+    instance_fragment_skew<tiledb::test::AsserterCatch>(
+        200, 8, 2, {}, std::move(qc));
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_skew<tiledb::test::AsserterCatch>(
         2, 1, 1, {templates::Domain<int>(1, 1)});
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_skew<tiledb::test::AsserterCatch>(
         2, 1, 1, {templates::Domain<int>(1, 2)});
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_skew<tiledb::test::AsserterCatch>(
         39, 1, 1, {templates::Domain<int>(20, 21)});
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment skew", [doit]() {
+    rc::prop("rapidcheck fragment skew", [this]() {
       const size_t fragment_size = *rc::gen::inRange(2, 200);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
       const int extent = *rc::gen::inRange(1, 200);
@@ -1459,7 +1543,7 @@ TEST_CASE_METHOD(
       auto condition =
           *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
               templates::Domain<int>(1, 200), templates::Domain<int>(0, 400)));
-      doit.operator()<tiledb::test::AsserterRapidcheck>(
+      instance_fragment_skew<tiledb::test::AsserterRapidcheck>(
           fragment_size,
           num_user_cells,
           extent,
@@ -1480,66 +1564,73 @@ TEST_CASE_METHOD(
  * results with a naive implementation is to have *all* the tiles loaded
  * in one pass, which is not practical.
  */
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_fragment_interleave(
+    size_t fragment_size,
+    size_t num_user_cells,
+    const std::vector<templates::Domain<int>>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          fragment_size, num_user_cells, subarray, *condition.get()));
+
+  // NB: the tile extent is 2
+
+  templates::Fragment1D<int, int> fragment0;
+  templates::Fragment1D<int, int> fragment1;
+
+  // Write a fragment F0 with tiles [1,3][3,5][5,7][7,9]...
+  fragment0.dim_.resize(fragment_size);
+  fragment0.dim_[0] = 1;
+  for (size_t i = 1; i < fragment0.dim_.num_cells(); i++) {
+    fragment0.dim_[i] = static_cast<int>(1 + 2 * ((i + 1) / 2));
+  }
+
+  // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
+  fragment1.dim_.resize(fragment0.dim_.num_cells());
+  for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
+    fragment1.dim_[i] = fragment0.dim_[i] + 1;
+  }
+
+  // atts don't really matter
+  auto& f0atts = std::get<0>(fragment0.atts_);
+  f0atts.resize(fragment0.dim_.num_cells());
+  std::iota(f0atts.begin(), f0atts.end(), 0);
+
+  auto& f1atts = std::get<0>(fragment1.atts_);
+  f1atts.resize(fragment1.dim_.num_cells());
+  std::iota(f1atts.begin(), f1atts.end(), int(f0atts.num_cells()));
+
+  FxRun1D instance;
+  instance.fragments.push_back(fragment0);
+  instance.fragments.push_back(fragment1);
+  instance.num_user_cells = num_user_cells;
+  instance.subarray = subarray;
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
+  instance.memory.total_budget_ = "20000";
+  instance.memory.ratio_array_data_ = "0.5";
+  instance.array.allow_dups_ = true;
+
+  run<Asserter>(instance);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment interleave",
-    "[sparse-global-order][rest][rapidcheck]") {
-  // NB: the tile extent is 2
-  auto doit = [this]<typename Asserter>(
-                  size_t fragment_size,
-                  size_t num_user_cells,
-                  const std::vector<templates::Domain<int>>& subarray = {},
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            fragment_size, num_user_cells, subarray, *condition.get()));
-
-    templates::Fragment1D<int, int> fragment0;
-    templates::Fragment1D<int, int> fragment1;
-
-    // Write a fragment F0 with tiles [1,3][3,5][5,7][7,9]...
-    fragment0.dim_.resize(fragment_size);
-    fragment0.dim_[0] = 1;
-    for (size_t i = 1; i < fragment0.dim_.num_cells(); i++) {
-      fragment0.dim_[i] = static_cast<int>(1 + 2 * ((i + 1) / 2));
-    }
-
-    // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
-    fragment1.dim_.resize(fragment0.dim_.num_cells());
-    for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
-      fragment1.dim_[i] = fragment0.dim_[i] + 1;
-    }
-
-    // atts don't really matter
-    auto& f0atts = std::get<0>(fragment0.atts_);
-    f0atts.resize(fragment0.dim_.num_cells());
-    std::iota(f0atts.begin(), f0atts.end(), 0);
-
-    auto& f1atts = std::get<0>(fragment1.atts_);
-    f1atts.resize(fragment1.dim_.num_cells());
-    std::iota(f1atts.begin(), f1atts.end(), int(f0atts.num_cells()));
-
-    FxRun1D instance;
-    instance.fragments.push_back(fragment0);
-    instance.fragments.push_back(fragment1);
-    instance.num_user_cells = num_user_cells;
-    instance.subarray = subarray;
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
-    instance.memory.total_budget_ = "20000";
-    instance.memory.ratio_array_data_ = "0.5";
-    instance.array.allow_dups_ = true;
-
-    run<Asserter>(instance);
-  };
-
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(196, 8);
+    instance_fragment_interleave<tiledb::test::AsserterCatch>(196, 8);
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment interleave rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment interleave", [doit]() {
+    rc::prop("rapidcheck fragment interleave", [this]() {
       const size_t fragment_size = *rc::gen::inRange(2, 196);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
       const auto subarray =
@@ -1547,7 +1638,7 @@ TEST_CASE_METHOD(
       auto condition =
           *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
               templates::Domain<int>(1, 200), templates::Domain<int>(1, 200)));
-      doit.operator()<tiledb::test::AsserterRapidcheck>(
+      instance_fragment_interleave<tiledb::test::AsserterRapidcheck>(
           fragment_size, num_user_cells, subarray, std::move(condition));
     });
   }
@@ -1581,75 +1672,76 @@ TEST_CASE_METHOD(
  * 1) increase memory budget; or
  * 2) consolidate some fragments.
  */
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_fragment_wide_overlap(
+    size_t num_fragments,
+    size_t fragment_size,
+    size_t num_user_cells,
+    bool allow_dups,
+    const std::vector<templates::Domain<int>>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          allow_dups,
+          subarray,
+          *condition.get()));
+
+  const uint64_t total_budget = 100000;
+  const double ratio_coords = 0.2;
+
+  FxRun1D instance;
+  instance.array.capacity_ = num_fragments * 2;
+  instance.array.dimension_.extent = int(num_fragments) * 2;
+  instance.array.allow_dups_ = allow_dups;
+  instance.subarray = subarray;
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
+
+  instance.memory.total_budget_ = std::to_string(total_budget);
+  instance.memory.ratio_coords_ = std::to_string(ratio_coords);
+  instance.memory.ratio_array_data_ = "0.6";
+
+  for (size_t f = 0; f < num_fragments; f++) {
+    templates::Fragment1D<int, int> fragment;
+    fragment.dim_.resize(fragment_size);
+    std::iota(
+        fragment.dim_.begin(),
+        fragment.dim_.end(),
+        instance.array.dimension_.domain.lower_bound + static_cast<int>(f));
+
+    auto& atts = std::get<0>(fragment.atts_);
+    atts.resize(fragment_size);
+    std::iota(
+        atts.begin(),
+        atts.end(),
+        static_cast<int>(fragment_size * num_fragments));
+
+    instance.fragments.push_back(fragment);
+  }
+
+  instance.num_user_cells = num_user_cells;
+
+  run<Asserter>(instance);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment wide overlap",
-    "[sparse-global-order][rest][rapidcheck]") {
-  auto doit = [this]<typename Asserter>(
-                  size_t num_fragments,
-                  size_t fragment_size,
-                  size_t num_user_cells,
-                  bool allow_dups,
-                  const std::vector<templates::Domain<int>>& subarray =
-                      std::vector<templates::Domain<int>>(),
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            num_fragments,
-            fragment_size,
-            num_user_cells,
-            allow_dups,
-            subarray,
-            *condition.get()));
-
-    const uint64_t total_budget = 100000;
-    const double ratio_coords = 0.2;
-
-    FxRun1D instance;
-    instance.array.capacity_ = num_fragments * 2;
-    instance.array.dimension_.extent = int(num_fragments) * 2;
-    instance.array.allow_dups_ = allow_dups;
-    instance.subarray = subarray;
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
-
-    instance.memory.total_budget_ = std::to_string(total_budget);
-    instance.memory.ratio_coords_ = std::to_string(ratio_coords);
-    instance.memory.ratio_array_data_ = "0.6";
-
-    for (size_t f = 0; f < num_fragments; f++) {
-      templates::Fragment1D<int, int> fragment;
-      fragment.dim_.resize(fragment_size);
-      std::iota(
-          fragment.dim_.begin(),
-          fragment.dim_.end(),
-          instance.array.dimension_.domain.lower_bound + static_cast<int>(f));
-
-      auto& atts = std::get<0>(fragment.atts_);
-      atts.resize(fragment_size);
-      std::iota(
-          atts.begin(),
-          atts.end(),
-          static_cast<int>(fragment_size * num_fragments));
-
-      instance.fragments.push_back(fragment);
-    }
-
-    instance.num_user_cells = num_user_cells;
-
-    run<Asserter>(instance);
-  };
-
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64, true);
+    instance_fragment_wide_overlap<tiledb::test::AsserterCatch>(
+        16, 100, 64, true);
   }
 
   SECTION("Condition") {
     const int value = 3;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "d1", &value, sizeof(int), tiledb::sm::QueryConditionOp::LE));
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_wide_overlap<tiledb::test::AsserterCatch>(
         10,
         21,
         1024,
@@ -1659,18 +1751,23 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_wide_overlap<tiledb::test::AsserterCatch>(
         10, 2, 64, false, Subarray1DType<int>{templates::Domain<int>(1, 3)});
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_wide_overlap<tiledb::test::AsserterCatch>(
         12,
         15,
         1024,
         false,
         Subarray1DType<int>{templates::Domain<int>(1, 12)});
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment wide overlap rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment wide overlap", [doit]() {
+    rc::prop("rapidcheck fragment wide overlap", [this]() {
       const size_t num_fragments = *rc::gen::inRange(10, 24);
       const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
       const size_t num_user_cells = 1024;
@@ -1682,7 +1779,7 @@ TEST_CASE_METHOD(
               templates::Domain<int>(1, 200),
               templates::Domain<int>(
                   0, static_cast<int>(num_fragments * fragment_size))));
-      doit.operator()<tiledb::test::AsserterRapidcheck>(
+      instance_fragment_wide_overlap<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
           num_user_cells,
@@ -1709,71 +1806,73 @@ TEST_CASE_METHOD(
  * This test illustrates that the merge bound must not be an
  * inclusive bound (unless duplicates are allowed).
  */
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_merge_bound_duplication(
+    size_t num_fragments,
+    size_t fragment_size,
+    size_t num_user_cells,
+    size_t tile_capacity,
+    bool allow_dups,
+    const Subarray1DType<int>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray,
+          *condition.get()));
+
+  FxRun1D instance;
+  instance.num_user_cells = num_user_cells;
+  instance.subarray = subarray;
+  instance.memory.total_budget_ = "50000";
+  instance.memory.ratio_array_data_ = "0.5";
+  instance.array.capacity_ = tile_capacity;
+  instance.array.allow_dups_ = allow_dups;
+  instance.array.dimension_.domain.lower_bound = 0;
+  instance.array.dimension_.domain.upper_bound =
+      static_cast<int>(num_fragments * fragment_size);
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
+
+  for (size_t f = 0; f < num_fragments; f++) {
+    templates::Fragment1D<int, int> fragment;
+    fragment.dim_.resize(fragment_size);
+    std::iota(
+        fragment.dim_.begin(),
+        fragment.dim_.end(),
+        static_cast<int>(f * (fragment_size - 1)));
+
+    auto& atts = std::get<0>(fragment.atts_);
+    atts.resize(fragment_size);
+    std::iota(atts.begin(), atts.end(), static_cast<int>(f * fragment_size));
+
+    instance.fragments.push_back(fragment);
+  }
+
+  instance.num_user_cells = num_user_cells;
+
+  run<Asserter>(instance);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: merge bound duplication",
-    "[sparse-global-order][rest][rapidcheck]") {
-  auto doit = [this]<typename Asserter>(
-                  size_t num_fragments,
-                  size_t fragment_size,
-                  size_t num_user_cells,
-                  size_t tile_capacity,
-                  bool allow_dups,
-                  const Subarray1DType<int>& subarray = {},
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            num_fragments,
-            fragment_size,
-            num_user_cells,
-            tile_capacity,
-            allow_dups,
-            subarray,
-            *condition.get()));
-
-    FxRun1D instance;
-    instance.num_user_cells = num_user_cells;
-    instance.subarray = subarray;
-    instance.memory.total_budget_ = "50000";
-    instance.memory.ratio_array_data_ = "0.5";
-    instance.array.capacity_ = tile_capacity;
-    instance.array.allow_dups_ = allow_dups;
-    instance.array.dimension_.domain.lower_bound = 0;
-    instance.array.dimension_.domain.upper_bound =
-        static_cast<int>(num_fragments * fragment_size);
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
-
-    for (size_t f = 0; f < num_fragments; f++) {
-      templates::Fragment1D<int, int> fragment;
-      fragment.dim_.resize(fragment_size);
-      std::iota(
-          fragment.dim_.begin(),
-          fragment.dim_.end(),
-          static_cast<int>(f * (fragment_size - 1)));
-
-      auto& atts = std::get<0>(fragment.atts_);
-      atts.resize(fragment_size);
-      std::iota(atts.begin(), atts.end(), static_cast<int>(f * fragment_size));
-
-      instance.fragments.push_back(fragment);
-    }
-
-    instance.num_user_cells = num_user_cells;
-
-    run<Asserter>(instance);
-  };
-
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(16, 16, 1024, 16, false);
+    instance_merge_bound_duplication<tiledb::test::AsserterCatch>(
+        16, 16, 1024, 16, false);
   }
 
   SECTION("Condition") {
     int value = 1;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_merge_bound_duplication<tiledb::test::AsserterCatch>(
         4,
         12,
         1024,
@@ -1785,12 +1884,13 @@ TEST_CASE_METHOD(
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
     SKIP(
-        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: OFF "
+        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: "
+        "OFF "
         "| Assertions: ON | Debug To re-enable when fixed.");
     int value = 1329;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_merge_bound_duplication<tiledb::test::AsserterCatch>(
         21,
         133,
         1024,
@@ -1803,7 +1903,7 @@ TEST_CASE_METHOD(
     qc.reset(new tiledb::sm::ASTNodeVal(
         "d1", &value, sizeof(value), tiledb::sm::QueryConditionOp::LT));
 
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_merge_bound_duplication<tiledb::test::AsserterCatch>(
         17,
         160,
         1024,
@@ -1812,9 +1912,14 @@ TEST_CASE_METHOD(
         Subarray1DType<int>{templates::Domain<int>(0, 1908)},
         std::move(qc));
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: merge bound duplication rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck merge bound duplication", [doit]() {
+    rc::prop("rapidcheck merge bound duplication", [this]() {
       const size_t num_fragments = *rc::gen::inRange(4, 32);
       const size_t fragment_size = *rc::gen::inRange(2, 256);
       const size_t num_user_cells = 1024;
@@ -1827,7 +1932,7 @@ TEST_CASE_METHOD(
               templates::Domain<int>(1, 200),
               templates::Domain<int>(
                   0, static_cast<int>(num_fragments * fragment_size))));
-      doit.operator()<tiledb::test::AsserterRapidcheck>(
+      instance_merge_bound_duplication<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
           num_user_cells,
@@ -1865,9 +1970,9 @@ TEST_CASE_METHOD(
  *
  * If the capacity is 17, then:
  * Data tile 1 holds
- * [1, 2, 3, 4, 201, 202, 203, 204, 401, 402, 403, 404, 601, 602, 603, 604, 5].
- * Data tile 2 holds
- * [6, 7, 8, 205, 206, 207, 208, 405, 406, 407, 408, 605, 606, 607, 608, 9, 10].
+ * [1, 2, 3, 4, 201, 202, 203, 204, 401, 402, 403, 404, 601, 602, 603, 604,
+ * 5]. Data tile 2 holds [6, 7, 8, 205, 206, 207, 208, 405, 406, 407, 408,
+ * 605, 606, 607, 608, 9, 10].
  *
  * Data tile 1 has a MBR of [(1, 1), (5, 4)].
  * Data tile 2 has a MBR of [(5, 1), (10, 4)].
@@ -1881,116 +1986,113 @@ TEST_CASE_METHOD(
  * sides, AND the space tile after the boundary contains a coordinate
  * which is lesser in the second dimension.
  */
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_out_of_order_mbrs(
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    size_t num_fragments,
+    size_t fragment_size,
+    size_t num_user_cells,
+    size_t tile_capacity,
+    bool allow_dups,
+    const Subarray2DType<int, int>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          tile_order,
+          cell_order,
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray,
+          *condition.get()));
+
+  FxRun2D instance;
+  instance.num_user_cells = num_user_cells;
+  instance.capacity = tile_capacity;
+  instance.allow_dups = allow_dups;
+  instance.tile_order_ = tile_order;
+  instance.cell_order_ = cell_order;
+  instance.subarray = subarray;
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
+
+  auto row = [&](size_t f, size_t i) -> int {
+    return 1 + static_cast<int>(
+                   ((num_fragments * i) + f) / instance.d1.domain.upper_bound);
+  };
+  auto col = [&](size_t f, size_t i) -> int {
+    return 1 + static_cast<int>(
+                   ((num_fragments * i) + f) % instance.d1.domain.upper_bound);
+  };
+
+  for (size_t f = 0; f < num_fragments; f++) {
+    templates::Fragment2D<int, int, int> fdata;
+    fdata.d1_.reserve(fragment_size);
+    fdata.d2_.reserve(fragment_size);
+    std::get<0>(fdata.atts_).reserve(fragment_size);
+
+    for (size_t i = 0; i < fragment_size; i++) {
+      fdata.d1_.push_back(row(f, i));
+      fdata.d2_.push_back(col(f, i));
+      std::get<0>(fdata.atts_)
+          .push_back(static_cast<int>(f * fragment_size + i));
+    }
+
+    instance.fragments.push_back(fdata);
+  }
+
+  auto guard = run_create<Asserter, FxRun2D>(instance);
+
+  // validate that we have set up the condition we claim,
+  // i.e. some fragment has out-of-order MBRs
+  {
+    CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
+
+    const auto& fragment_metadata = array->array()->fragment_metadata();
+    for (const auto& fragment : fragment_metadata) {
+      const_cast<sm::FragmentMetadata*>(fragment.get())
+          ->loaded_metadata()
+          ->load_rtree(array->array()->get_encryption_key());
+    }
+
+    sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
+
+    // check that we actually have out-of-order MBRs
+    // (disable on REST where we have no metadata)
+    // (disable with rapidcheck where this may not be guaranteed)
+    if (!vfs_test_setup_.is_rest() &&
+        std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
+      bool any_out_of_order = false;
+      for (size_t f = 0; !any_out_of_order && f < fragment_metadata.size();
+           f++) {
+        for (size_t t = 1;
+             !any_out_of_order && t < fragment_metadata[f]->tile_num();
+             t++) {
+          const sm::RangeUpperBound lt = {
+              .mbr = fragment_metadata[f]->mbr(t - 1)};
+          const sm::RangeLowerBound rt = {.mbr = fragment_metadata[f]->mbr(t)};
+          if (globalcmp(rt, lt)) {
+            any_out_of_order = true;
+          }
+        }
+      }
+      ASSERTER(any_out_of_order);
+    }
+  }
+
+  run_execute<Asserter, FxRun2D>(instance);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: out-of-order MBRs",
-    "[sparse-global-order][rest][rapidcheck]") {
-  auto doit = [this]<typename Asserter>(
-                  tiledb_layout_t tile_order,
-                  tiledb_layout_t cell_order,
-                  size_t num_fragments,
-                  size_t fragment_size,
-                  size_t num_user_cells,
-                  size_t tile_capacity,
-                  bool allow_dups,
-                  const Subarray2DType<int, int>& subarray = {},
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            tile_order,
-            cell_order,
-            num_fragments,
-            fragment_size,
-            num_user_cells,
-            tile_capacity,
-            allow_dups,
-            subarray,
-            *condition.get()));
-
-    FxRun2D instance;
-    instance.num_user_cells = num_user_cells;
-    instance.capacity = tile_capacity;
-    instance.allow_dups = allow_dups;
-    instance.tile_order_ = tile_order;
-    instance.cell_order_ = cell_order;
-    instance.subarray = subarray;
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
-
-    auto row = [&](size_t f, size_t i) -> int {
-      return 1 +
-             static_cast<int>(
-                 ((num_fragments * i) + f) / instance.d1.domain.upper_bound);
-    };
-    auto col = [&](size_t f, size_t i) -> int {
-      return 1 +
-             static_cast<int>(
-                 ((num_fragments * i) + f) % instance.d1.domain.upper_bound);
-    };
-
-    for (size_t f = 0; f < num_fragments; f++) {
-      templates::Fragment2D<int, int, int> fdata;
-      fdata.d1_.reserve(fragment_size);
-      fdata.d2_.reserve(fragment_size);
-      std::get<0>(fdata.atts_).reserve(fragment_size);
-
-      for (size_t i = 0; i < fragment_size; i++) {
-        fdata.d1_.push_back(row(f, i));
-        fdata.d2_.push_back(col(f, i));
-        std::get<0>(fdata.atts_)
-            .push_back(static_cast<int>(f * fragment_size + i));
-      }
-
-      instance.fragments.push_back(fdata);
-    }
-
-    auto guard = run_create<Asserter, FxRun2D>(instance);
-
-    // validate that we have set up the condition we claim,
-    // i.e. some fragment has out-of-order MBRs
-    {
-      CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
-
-      const auto& fragment_metadata = array->array()->fragment_metadata();
-      for (const auto& fragment : fragment_metadata) {
-        const_cast<sm::FragmentMetadata*>(fragment.get())
-            ->loaded_metadata()
-            ->load_rtree(array->array()->get_encryption_key());
-      }
-
-      sm::GlobalCellCmp globalcmp(
-          array->array()->array_schema_latest().domain());
-
-      // check that we actually have out-of-order MBRs
-      // (disable on REST where we have no metadata)
-      // (disable with rapidcheck where this may not be guaranteed)
-      if (!vfs_test_setup_.is_rest() &&
-          std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
-        bool any_out_of_order = false;
-        for (size_t f = 0; !any_out_of_order && f < fragment_metadata.size();
-             f++) {
-          for (size_t t = 1;
-               !any_out_of_order && t < fragment_metadata[f]->tile_num();
-               t++) {
-            const sm::RangeUpperBound lt = {
-                .mbr = fragment_metadata[f]->mbr(t - 1)};
-            const sm::RangeLowerBound rt = {
-                .mbr = fragment_metadata[f]->mbr(t)};
-            if (globalcmp(rt, lt)) {
-              any_out_of_order = true;
-            }
-          }
-        }
-        ASSERTER(any_out_of_order);
-      }
-    }
-
-    run_execute<Asserter, FxRun2D>(instance);
-  };
-
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_out_of_order_mbrs<tiledb::test::AsserterCatch>(
         TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 100, 32, 6, false);
   }
 
@@ -2001,7 +2103,7 @@ TEST_CASE_METHOD(
     int value = 58;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "d1", &value, sizeof(int), tiledb::sm::QueryConditionOp::LT));
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_out_of_order_mbrs<tiledb::test::AsserterCatch>(
         TILEDB_COL_MAJOR,
         TILEDB_ROW_MAJOR,
         3,
@@ -2012,9 +2114,14 @@ TEST_CASE_METHOD(
         subarray,
         std::move(qc));
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: out-of-order MBRs rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck out-of-order MBRs", [doit](bool allow_dups) {
+    rc::prop("rapidcheck out-of-order MBRs", [this](bool allow_dups) {
       const auto tile_order =
           *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
       const auto cell_order =
@@ -2032,7 +2139,7 @@ TEST_CASE_METHOD(
               templates::Domain<int>(
                   0, static_cast<int>((num_fragments + 1) * fragment_size))));
 
-      doit.operator()<tiledb::test::AsserterRapidcheck>(
+      instance_out_of_order_mbrs<tiledb::test::AsserterRapidcheck>(
           tile_order,
           cell_order,
           num_fragments,
@@ -2074,111 +2181,113 @@ TEST_CASE_METHOD(
  * coordinate from (4, 6) has a lesser value. The merge bound
  * is necessary to ensure we don't emit out-of-order coordinates.
  */
+constexpr size_t fragment_skew_2d_merge_bound_d1_extent = 4;
+constexpr size_t fragment_skew_2d_merge_bound_d2_extent = 4;
+
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_fragment_skew_2d_merge_bound(
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    size_t approximate_memory_tiles,
+    size_t num_user_cells,
+    size_t num_fragments,
+    size_t tile_capacity,
+    bool allow_dups,
+    const Subarray2DType<int, int>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          tile_order,
+          cell_order,
+          approximate_memory_tiles,
+          num_user_cells,
+          num_fragments,
+          tile_capacity,
+          allow_dups,
+          subarray,
+          *condition.get()));
+
+  FxRun2D instance;
+  instance.tile_order_ = tile_order;
+  instance.cell_order_ = cell_order;
+  instance.d1.extent = fragment_skew_2d_merge_bound_d1_extent;
+  instance.d2.extent = fragment_skew_2d_merge_bound_d2_extent;
+  instance.capacity = tile_capacity;
+  instance.allow_dups = allow_dups;
+  instance.num_user_cells = num_user_cells;
+  instance.subarray = subarray;
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
+
+  const size_t tile_size_estimate = (1600 + instance.capacity * sizeof(int));
+  const double coords_ratio =
+      (1.02 / (std::stold(instance.memory.total_budget_) / tile_size_estimate /
+               approximate_memory_tiles));
+  instance.memory.ratio_coords_ = std::to_string(coords_ratio);
+
+  int att = 0;
+
+  // for each fragment, make one fragment which is just a point
+  // so that its MBR is equal to its coordinate (and thus more likely
+  // to be out of order with respect to the MBRs of tiles from other
+  // fragments)
+  for (size_t f = 0; f < num_fragments; f++) {
+    FxRun2D::FragmentType fdata;
+    // make one mostly dense space tile
+    const int trow = instance.d1.domain.lower_bound +
+                     static_cast<int>(f * instance.d1.extent);
+    const int tcol = instance.d2.domain.lower_bound +
+                     static_cast<int>(f * instance.d2.extent);
+    for (int i = 0; i < instance.d1.extent * instance.d2.extent - 2; i++) {
+      fdata.d1_.push_back(trow + i / instance.d1.extent);
+      fdata.d2_.push_back(tcol + i % instance.d1.extent);
+      std::get<0>(fdata.atts_).push_back(att++);
+    }
+
+    // then some sparse coords in the next space tile,
+    // fill the data tile (if the capacity is 4), we'll call it T
+    fdata.d1_.push_back(trow);
+    fdata.d2_.push_back(tcol + instance.d2.extent);
+    std::get<0>(fdata.atts_).push_back(att++);
+    fdata.d1_.push_back(trow + instance.d1.extent - 1);
+    fdata.d2_.push_back(tcol + instance.d2.extent + 2);
+    std::get<0>(fdata.atts_).push_back(att++);
+
+    // then begin a new data tile "Tnext" which straddles the bounds of that
+    // space tile. this will have a low MBR.
+    fdata.d1_.push_back(trow + instance.d1.extent - 1);
+    fdata.d2_.push_back(tcol + instance.d2.extent + 3);
+    std::get<0>(fdata.atts_).push_back(att++);
+    fdata.d1_.push_back(trow);
+    fdata.d2_.push_back(tcol + 2 * instance.d2.extent);
+    std::get<0>(fdata.atts_).push_back(att++);
+
+    // then add a point P which is less than the lower bound of Tnext's MBR,
+    // and also between the last two coordinates of T
+    FxRun2D::FragmentType fpoint;
+    fpoint.d1_.push_back(trow + instance.d1.extent - 1);
+    fpoint.d2_.push_back(tcol + instance.d1.extent + 1);
+    std::get<0>(fpoint.atts_).push_back(att++);
+
+    instance.fragments.push_back(fdata);
+    instance.fragments.push_back(fpoint);
+  }
+
+  run<Asserter>(instance);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew 2d merge bound",
     "[sparse-global-order][rest][rapidcheck]") {
-  constexpr size_t d1_extent = 4;
-  constexpr size_t d2_extent = 4;
-  auto doit = [this]<typename Asserter>(
-                  tiledb_layout_t tile_order,
-                  tiledb_layout_t cell_order,
-                  size_t approximate_memory_tiles,
-                  size_t num_user_cells,
-                  size_t num_fragments,
-                  size_t tile_capacity,
-                  bool allow_dups,
-                  const Subarray2DType<int, int>& subarray = {},
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            tile_order,
-            cell_order,
-            approximate_memory_tiles,
-            num_user_cells,
-            num_fragments,
-            tile_capacity,
-            allow_dups,
-            subarray,
-            *condition.get()));
-
-    FxRun2D instance;
-    instance.tile_order_ = tile_order;
-    instance.cell_order_ = cell_order;
-    instance.d1.extent = d1_extent;
-    instance.d2.extent = d2_extent;
-    instance.capacity = tile_capacity;
-    instance.allow_dups = allow_dups;
-    instance.num_user_cells = num_user_cells;
-    instance.subarray = subarray;
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
-
-    const size_t tile_size_estimate = (1600 + instance.capacity * sizeof(int));
-    const double coords_ratio =
-        (1.02 / (std::stold(instance.memory.total_budget_) /
-                 tile_size_estimate / approximate_memory_tiles));
-    instance.memory.ratio_coords_ = std::to_string(coords_ratio);
-
-    int att = 0;
-
-    // for each fragment, make one fragment which is just a point
-    // so that its MBR is equal to its coordinate (and thus more likely
-    // to be out of order with respect to the MBRs of tiles from other
-    // fragments)
-    for (size_t f = 0; f < num_fragments; f++) {
-      FxRun2D::FragmentType fdata;
-      // make one mostly dense space tile
-      const int trow = instance.d1.domain.lower_bound +
-                       static_cast<int>(f * instance.d1.extent);
-      const int tcol = instance.d2.domain.lower_bound +
-                       static_cast<int>(f * instance.d2.extent);
-      for (int i = 0; i < instance.d1.extent * instance.d2.extent - 2; i++) {
-        fdata.d1_.push_back(trow + i / instance.d1.extent);
-        fdata.d2_.push_back(tcol + i % instance.d1.extent);
-        std::get<0>(fdata.atts_).push_back(att++);
-      }
-
-      // then some sparse coords in the next space tile,
-      // fill the data tile (if the capacity is 4), we'll call it T
-      fdata.d1_.push_back(trow);
-      fdata.d2_.push_back(tcol + instance.d2.extent);
-      std::get<0>(fdata.atts_).push_back(att++);
-      fdata.d1_.push_back(trow + instance.d1.extent - 1);
-      fdata.d2_.push_back(tcol + instance.d2.extent + 2);
-      std::get<0>(fdata.atts_).push_back(att++);
-
-      // then begin a new data tile "Tnext" which straddles the bounds of that
-      // space tile. this will have a low MBR.
-      fdata.d1_.push_back(trow + instance.d1.extent - 1);
-      fdata.d2_.push_back(tcol + instance.d2.extent + 3);
-      std::get<0>(fdata.atts_).push_back(att++);
-      fdata.d1_.push_back(trow);
-      fdata.d2_.push_back(tcol + 2 * instance.d2.extent);
-      std::get<0>(fdata.atts_).push_back(att++);
-
-      // then add a point P which is less than the lower bound of Tnext's MBR,
-      // and also between the last two coordinates of T
-      FxRun2D::FragmentType fpoint;
-      fpoint.d1_.push_back(trow + instance.d1.extent - 1);
-      fpoint.d2_.push_back(tcol + instance.d1.extent + 1);
-      std::get<0>(fpoint.atts_).push_back(att++);
-
-      instance.fragments.push_back(fdata);
-      instance.fragments.push_back(fpoint);
-    }
-
-    run<Asserter>(instance);
-  };
-
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_skew_2d_merge_bound<tiledb::test::AsserterCatch>(
         TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 1024, 1, 4, false);
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
-    doit.operator()<tiledb::test::AsserterCatch>(
+    instance_fragment_skew_2d_merge_bound<tiledb::test::AsserterCatch>(
         TILEDB_ROW_MAJOR,
         TILEDB_ROW_MAJOR,
         2,
@@ -2188,9 +2297,14 @@ TEST_CASE_METHOD(
         false,
         {std::make_pair(templates::Domain<int>(2, 2), std::nullopt)});
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew 2d merge bound rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment skew 2d merge bound", [doit]() {
+    rc::prop("rapidcheck fragment skew 2d merge bound", [this]() {
       const auto tile_order =
           *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
       const auto cell_order =
@@ -2209,8 +2323,10 @@ TEST_CASE_METHOD(
               templates::Domain<int>(
                   0,
                   static_cast<int>(
-                      2 * num_fragments * d1_extent * d2_extent))));
-      doit.operator()<tiledb::test::AsserterRapidcheck>(
+                      2 * num_fragments *
+                      fragment_skew_2d_merge_bound_d1_extent *
+                      fragment_skew_2d_merge_bound_d2_extent))));
+      instance_fragment_skew_2d_merge_bound<tiledb::test::AsserterRapidcheck>(
           tile_order,
           cell_order,
           approximate_memory_tiles,
@@ -2239,74 +2355,77 @@ TEST_CASE_METHOD(
  * timestamp are nice and easy; queries which do not open with a specific
  * timestamp are sad because they do tons of work to de-duplicate.
  */
+using FragmentFullCopy1DFxRunType = FxRun1D<
+    Datatype::INT64,
+    static_attribute<Datatype::INT64, 1, true>,
+    static_attribute<
+        Datatype::STRING_ASCII,
+        tiledb::sm::cell_val_num_var,
+        false>>;
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_fragment_full_copy_1d(
+    size_t num_fragments,
+    templates::Dimension<Datatype::INT64> dimension,
+    const Subarray1DType<int64_t>& subarray,
+    tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+  using FxRunType = FragmentFullCopy1DFxRunType;
+
+  PAssertFailureCallbackRegistration showInput(
+      PAssertFailureCallbackShowRapidcheckInput(
+          num_fragments, dimension, subarray, *condition.get()));
+
+  const size_t fragment_size =
+      std::min<size_t>(1024 * 32, dimension.domain.num_cells());
+
+  FxRunType instance;
+  instance.num_user_cells = 1024 * 1024;
+  instance.array.dimension_ = dimension;
+  instance.memory.total_budget_ = std::to_string(1024 * 1024 * 4);
+  instance.array.capacity_ = std::min<uint64_t>(
+      1024, std::max<uint64_t>(16, dimension.domain.num_cells() / 1024));
+  instance.array.allow_dups_ = false;
+  instance.subarray = subarray;
+  if (condition) {
+    instance.condition.emplace(std::move(condition));
+  }
+
+  for (size_t f = 0; f < num_fragments; f++) {
+    FxRunType::FragmentType fragment;
+
+    fragment.dim_.resize(fragment_size);
+    std::iota(
+        fragment.dim_.begin(),
+        fragment.dim_.end(),
+        dimension.domain.lower_bound);
+
+    std::get<0>(fragment.atts_).resize(fragment.dim_.num_cells());
+    std::iota(
+        std::get<0>(fragment.atts_).begin(),
+        std::get<0>(fragment.atts_).end(),
+        0);
+
+    std::get<1>(fragment.atts_).resize(0);
+    for (uint64_t i = 0; i < fragment_size; i++) {
+      std::vector<char> values;
+      for (uint64_t j = 0; j < (i * i) % 11; j++) {
+        values.push_back(static_cast<char>((0x41 + i + (j * j)) % 26));
+      }
+      std::get<1>(fragment.atts_).push_back(values);
+    }
+
+    instance.fragments.push_back(fragment);
+  }
+
+  run<Asserter>(instance);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment full copy 1d",
-    "[sparse-global-order][rest][rapidcheck]") {
-  using FxRunType = FxRun1D<
-      Datatype::INT64,
-      static_attribute<Datatype::INT64, 1, true>,
-      static_attribute<
-          Datatype::STRING_ASCII,
-          tiledb::sm::cell_val_num_var,
-          false>>;
-  auto doit = [this]<typename Asserter>(
-                  size_t num_fragments,
-                  templates::Dimension<Datatype::INT64> dimension,
-                  const Subarray1DType<int64_t>& subarray = {},
-                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
-    PAssertFailureCallbackRegistration showInput(
-        PAssertFailureCallbackShowRapidcheckInput(
-            num_fragments, dimension, subarray, *condition.get()));
-
-    const size_t fragment_size =
-        std::min<size_t>(1024 * 32, dimension.domain.num_cells());
-
-    FxRunType instance;
-    instance.num_user_cells = 1024 * 1024;
-    instance.array.dimension_ = dimension;
-    instance.memory.total_budget_ = std::to_string(1024 * 1024 * 4);
-    instance.array.capacity_ = std::min<uint64_t>(
-        1024, std::max<uint64_t>(16, dimension.domain.num_cells() / 1024));
-    instance.array.allow_dups_ = false;
-    instance.subarray = subarray;
-    if (condition) {
-      instance.condition.emplace(std::move(condition));
-    }
-
-    for (size_t f = 0; f < num_fragments; f++) {
-      FxRunType::FragmentType fragment;
-
-      fragment.dim_.resize(fragment_size);
-      std::iota(
-          fragment.dim_.begin(),
-          fragment.dim_.end(),
-          dimension.domain.lower_bound);
-
-      std::get<0>(fragment.atts_).resize(fragment.dim_.num_cells());
-      std::iota(
-          std::get<0>(fragment.atts_).begin(),
-          std::get<0>(fragment.atts_).end(),
-          0);
-
-      std::get<1>(fragment.atts_).resize(0);
-      for (uint64_t i = 0; i < fragment_size; i++) {
-        std::vector<char> values;
-        for (uint64_t j = 0; j < (i * i) % 11; j++) {
-          values.push_back(static_cast<char>((0x41 + i + (j * j)) % 26));
-        }
-        std::get<1>(fragment.atts_).push_back(values);
-      }
-
-      instance.fragments.push_back(fragment);
-    }
-
-    run<Asserter>(instance);
-  };
-
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
     templates::Domain<int64_t> domain(0, 262143);
-    doit.operator()<AsserterCatch>(
+    instance_fragment_full_copy_1d<AsserterCatch>(
         8, templates::Dimension<Datatype::INT64>(domain, 1024));
   }
 
@@ -2315,15 +2434,21 @@ TEST_CASE_METHOD(
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(value), tiledb::sm::QueryConditionOp::GE));
     templates::Domain<int64_t> domain(0, 262143);
-    doit.operator()<AsserterCatch>(
+    instance_fragment_full_copy_1d<AsserterCatch>(
         8,
         templates::Dimension<Datatype::INT64>(domain, 1024),
         {},
         std::move(qc));
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment full copy 1d rapidcheck",
+    "[sparse-global-order][rest][rapidcheck]") {
+  using FxRunType = FragmentFullCopy1DFxRunType;
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment full copy 1d", [doit]() {
+    rc::prop("rapidcheck fragment full copy 1d", [this]() {
       const size_t num_fragments = *rc::gen::inRange(2, 16);
       const auto dimension =
           *rc::gen::arbitrary<templates::Dimension<FxRunType::DimensionType>>();
@@ -2336,7 +2461,7 @@ TEST_CASE_METHOD(
       auto condition =
           *rc::make_query_condition<FxRunType::FragmentType>(domains);
 
-      doit.operator()<AsserterRapidcheck>(
+      instance_fragment_full_copy_1d<AsserterRapidcheck>(
           num_fragments, dimension, subarray, std::move(condition));
     });
   }
@@ -3120,9 +3245,9 @@ TEST_CASE_METHOD(
 
   // Read with fixed size buffers that can fit the whole dataset but var sized
   // buffer can only fit 3 cells. This will revert progress for the second
-  // fragment before cell at coord 5 for sure because of the cell at coordinate
-  // 4 but might not regress progress for the second fragment before cell at
-  // coord 5 as cell at coordinate 5 was deleted.
+  // fragment before cell at coord 5 for sure because of the cell at
+  // coordinate 4 but might not regress progress for the second fragment
+  // before cell at coord 5 as cell at coordinate 5 was deleted.
   int coords_r[100];
   char data_r[9];
   uint64_t offsets_r[100];
@@ -3196,142 +3321,148 @@ TEST_CASE_METHOD(
  * are written at the same timestamp.  That is, for a fixed array
  * A, reading the contents of A should always produce the same results.
  */
+template <typename Asserter>
+void CSparseGlobalOrderFx::instance_repeatable_read_submillisecond(
+    const std::vector<uint64_t>& fragment_same_timestamp_runs) {
+  PAssertFailureCallbackRegistration showInput{
+      PAssertFailureCallbackShowRapidcheckInput(fragment_same_timestamp_runs)};
+
+  uint64_t num_fragments = 0;
+  for (const auto same_timestamp_run : fragment_same_timestamp_runs) {
+    num_fragments += same_timestamp_run;
+  }
+
+  FxRun2D instance;
+  instance.allow_dups = false;
+
+  /*
+   * Each fragment (T, F) writes its fragment index into both (1, 1)
+   * and (2 + T, 2 + F).
+   *
+   * (1, 1) is the coordinate where they must be de-duplicated.
+   * The other coordinate is useful for ensuring that all fragments
+   * are included in the result set, and for debugging by inspecting tile
+   * MBRs.
+   */
+  for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
+    for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++) {
+      FxRun2D::FragmentType fragment;
+      fragment.d1_ = {1, 2 + static_cast<int>(t)};
+      fragment.d2_ = {1, 2 + static_cast<int>(f)};
+      std::get<0>(fragment.atts_) = std::vector<int>{
+          static_cast<int>(instance.fragments.size()),
+          static_cast<int>(instance.fragments.size())};
+
+      instance.fragments.push_back(fragment);
+    }
+  }
+
+  create_array<Asserter, decltype(instance)>(instance);
+
+  DeleteArrayGuard arrayguard(context(), array_name_.c_str());
+
+  /*
+   * Write each fragment at a fixed timestamp.
+   * Opening for write at timestamp `t` causes all the fragments to have `t`
+   * as their start and end timestamps.
+   */
+  for (uint64_t i = 0, t = 0; t < fragment_same_timestamp_runs.size(); t++) {
+    tiledb_array_t* raw_array;
+    TRY(context(),
+        tiledb_array_alloc(context(), array_name_.c_str(), &raw_array));
+    TRY(context(),
+        tiledb_array_set_open_timestamp_start(context(), raw_array, t + 1));
+    TRY(context(),
+        tiledb_array_set_open_timestamp_end(context(), raw_array, t + 1));
+
+    CApiArray array(context(), raw_array, TILEDB_WRITE);
+    for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, i++) {
+      write_fragment<Asserter, decltype(instance.fragments[i])>(
+          instance.fragments[i], &array);
+    }
+  }
+
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
+
+  // Value from (1, 1).
+  // Because all the writes are at the same timestamp we make no guarantee
+  // of ordering. `attvalue` may be the value from any of the fragments,
+  // but it must be the same value each time we read.
+  std::optional<int> attvalue;
+
+  for (uint64_t f = 0; f < num_fragments; f++) {
+    std::vector<int> dim1(instance.fragments.size() * 4);
+    std::vector<int> dim2(instance.fragments.size() * 4);
+    std::vector<int> atts(instance.fragments.size() * 4);
+    uint64_t dim1_size = sizeof(int) * dim1.size();
+    uint64_t dim2_size = sizeof(int) * dim2.size();
+    uint64_t atts_size = sizeof(int) * atts.size();
+
+    tiledb_query_t* query;
+    TRY(context(), tiledb_query_alloc(context(), array, TILEDB_READ, &query));
+    TRY(context(),
+        tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER));
+    TRY(context(),
+        tiledb_query_set_data_buffer(
+            context(), query, "d1", dim1.data(), &dim1_size));
+    TRY(context(),
+        tiledb_query_set_data_buffer(
+            context(), query, "d2", dim2.data(), &dim2_size));
+    TRY(context(),
+        tiledb_query_set_data_buffer(
+            context(), query, "a1", atts.data(), &atts_size));
+
+    tiledb_query_status_t status;
+    TRY(context(), tiledb_query_submit(context(), query));
+    TRY(context(), tiledb_query_get_status(context(), query, &status));
+    tiledb_query_free(&query);
+    ASSERTER(status == TILEDB_COMPLETED);
+
+    ASSERTER(dim1_size == (1 + num_fragments) * sizeof(int));
+    ASSERTER(dim2_size == (1 + num_fragments) * sizeof(int));
+    ASSERTER(atts_size == (1 + num_fragments) * sizeof(int));
+
+    ASSERTER(dim1[0] == 1);
+    ASSERTER(dim2[0] == 1);
+    if (attvalue.has_value()) {
+      ASSERTER(attvalue.value() == atts[0]);
+    } else {
+      attvalue.emplace(atts[0]);
+    }
+
+    uint64_t c = 1;
+    for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
+      for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, c++) {
+        ASSERTER(dim1[c] == 2 + static_cast<int>(t));
+        ASSERTER(dim2[c] == 2 + static_cast<int>(f));
+        ASSERTER(atts[c] == static_cast<int>(c - 1));
+      }
+    }
+  }
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: repeatable reads for sub-millisecond "
     "fragments",
-    "[sparse-global-order][sub-millisecond][rest][rapidcheck]") {
-  auto doit = [this]<typename Asserter>(
-                  const std::vector<uint64_t>& fragment_same_timestamp_runs) {
-    PAssertFailureCallbackRegistration showInput{
-        PAssertFailureCallbackShowRapidcheckInput(
-            fragment_same_timestamp_runs)};
-
-    uint64_t num_fragments = 0;
-    for (const auto same_timestamp_run : fragment_same_timestamp_runs) {
-      num_fragments += same_timestamp_run;
-    }
-
-    FxRun2D instance;
-    instance.allow_dups = false;
-
-    /*
-     * Each fragment (T, F) writes its fragment index into both (1, 1)
-     * and (2 + T, 2 + F).
-     *
-     * (1, 1) is the coordinate where they must be de-duplicated.
-     * The other coordinate is useful for ensuring that all fragments
-     * are included in the result set, and for debugging by inspecting tile
-     * MBRs.
-     */
-    for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
-      for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++) {
-        FxRun2D::FragmentType fragment;
-        fragment.d1_ = {1, 2 + static_cast<int>(t)};
-        fragment.d2_ = {1, 2 + static_cast<int>(f)};
-        std::get<0>(fragment.atts_) = std::vector<int>{
-            static_cast<int>(instance.fragments.size()),
-            static_cast<int>(instance.fragments.size())};
-
-        instance.fragments.push_back(fragment);
-      }
-    }
-
-    create_array<Asserter, decltype(instance)>(instance);
-
-    DeleteArrayGuard arrayguard(context(), array_name_.c_str());
-
-    /*
-     * Write each fragment at a fixed timestamp.
-     * Opening for write at timestamp `t` causes all the fragments to have `t`
-     * as their start and end timestamps.
-     */
-    for (uint64_t i = 0, t = 0; t < fragment_same_timestamp_runs.size(); t++) {
-      tiledb_array_t* raw_array;
-      TRY(context(),
-          tiledb_array_alloc(context(), array_name_.c_str(), &raw_array));
-      TRY(context(),
-          tiledb_array_set_open_timestamp_start(context(), raw_array, t + 1));
-      TRY(context(),
-          tiledb_array_set_open_timestamp_end(context(), raw_array, t + 1));
-
-      CApiArray array(context(), raw_array, TILEDB_WRITE);
-      for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, i++) {
-        write_fragment<Asserter, decltype(instance.fragments[i])>(
-            instance.fragments[i], &array);
-      }
-    }
-
-    CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
-
-    // Value from (1, 1).
-    // Because all the writes are at the same timestamp we make no guarantee
-    // of ordering. `attvalue` may be the value from any of the fragments,
-    // but it must be the same value each time we read.
-    std::optional<int> attvalue;
-
-    for (uint64_t f = 0; f < num_fragments; f++) {
-      std::vector<int> dim1(instance.fragments.size() * 4);
-      std::vector<int> dim2(instance.fragments.size() * 4);
-      std::vector<int> atts(instance.fragments.size() * 4);
-      uint64_t dim1_size = sizeof(int) * dim1.size();
-      uint64_t dim2_size = sizeof(int) * dim2.size();
-      uint64_t atts_size = sizeof(int) * atts.size();
-
-      tiledb_query_t* query;
-      TRY(context(), tiledb_query_alloc(context(), array, TILEDB_READ, &query));
-      TRY(context(),
-          tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER));
-      TRY(context(),
-          tiledb_query_set_data_buffer(
-              context(), query, "d1", dim1.data(), &dim1_size));
-      TRY(context(),
-          tiledb_query_set_data_buffer(
-              context(), query, "d2", dim2.data(), &dim2_size));
-      TRY(context(),
-          tiledb_query_set_data_buffer(
-              context(), query, "a1", atts.data(), &atts_size));
-
-      tiledb_query_status_t status;
-      TRY(context(), tiledb_query_submit(context(), query));
-      TRY(context(), tiledb_query_get_status(context(), query, &status));
-      tiledb_query_free(&query);
-      ASSERTER(status == TILEDB_COMPLETED);
-
-      ASSERTER(dim1_size == (1 + num_fragments) * sizeof(int));
-      ASSERTER(dim2_size == (1 + num_fragments) * sizeof(int));
-      ASSERTER(atts_size == (1 + num_fragments) * sizeof(int));
-
-      ASSERTER(dim1[0] == 1);
-      ASSERTER(dim2[0] == 1);
-      if (attvalue.has_value()) {
-        ASSERTER(attvalue.value() == atts[0]);
-      } else {
-        attvalue.emplace(atts[0]);
-      }
-
-      uint64_t c = 1;
-      for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
-        for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, c++) {
-          ASSERTER(dim1[c] == 2 + static_cast<int>(t));
-          ASSERTER(dim2[c] == 2 + static_cast<int>(f));
-          ASSERTER(atts[c] == static_cast<int>(c - 1));
-        }
-      }
-    }
-  };
-
+    "[sparse-global-order][sub-millisecond][rest]") {
   SECTION("Example") {
-    doit.operator()<AsserterCatch>({10});
+    instance_repeatable_read_submillisecond<AsserterCatch>({10});
   }
+}
 
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: repeatable reads for sub-millisecond "
+    "fragments rapidcheck",
+    "[sparse-global-order][sub-millisecond][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck consistent read order for sub-millisecond", [doit]() {
+    rc::prop("rapidcheck consistent read order for sub-millisecond", [this]() {
       const auto runs = *rc::gen::suchThat(
           rc::gen::nonEmpty(rc::gen::container<std::vector<uint64_t>>(
               rc::gen::inRange(1, 8))),
           [](auto value) { return value.size() <= 6; });
-      doit.operator()<AsserterRapidcheck>(runs);
+      instance_repeatable_read_submillisecond<AsserterRapidcheck>(runs);
     });
   }
 }
@@ -3638,18 +3769,17 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
           return;
         }
         if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
-          if (err->find(
-                  "Cannot allocate space for preprocess result tile ID list") !=
-              std::string::npos) {
+          if (err->find("Cannot allocate space for preprocess result tile ID "
+                        "list") != std::string::npos) {
             // not enough memory to determine tile order
-            // we can probably make some assertions about what this should have
-            // looked like but for now we'll let it go
+            // we can probably make some assertions about what this should
+            // have looked like but for now we'll let it go
             tiledb_query_free(&query);
             return;
           }
           if (err->find("Cannot load tile offsets") != std::string::npos) {
-            // not enough memory budget for tile offsets, don't bother asserting
-            // about it (for now?)
+            // not enough memory budget for tile offsets, don't bother
+            // asserting about it (for now?)
             tiledb_query_free(&query);
             return;
           }
