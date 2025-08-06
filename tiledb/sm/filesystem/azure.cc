@@ -825,30 +825,43 @@ void Azure::remove_dir(const URI& uri) const {
 
   if (data_lake_client) {
     auto [container_name, blob_path] = parse_azure_uri(uri);
-    bool deleted;
-    std::string error_message = "";
+    // We cannot empty the whole container with a single call.
+    if (!blob_path.empty()) {
+      bool deleted;
+      std::string error_message = "";
+      try {
+        deleted = data_lake_client->GetFileSystemClient(container_name)
+                      .GetDirectoryClient(blob_path)
+                      .DeleteRecursive()
+                      .Value.Deleted;
+      } catch (const ::Azure::Storage::StorageException& e) {
+        deleted = false;
+        error_message = "; " + e.Message;
+      }
 
-    try {
-      deleted = data_lake_client->GetFileSystemClient(container_name)
-                    .GetDirectoryClient(blob_path)
-                    .DeleteRecursive()
-                    .Value.Deleted;
-    } catch (const ::Azure::Storage::StorageException& e) {
-      deleted = false;
-      error_message = "; " + e.Message;
+      if (!deleted) {
+        throw AzureException(
+            "Remove directory failed on: " + uri.to_string() + error_message);
+      }
+      return;
     }
-
-    if (!deleted) {
-      throw AzureException(
-          "Remove directory failed on: " + uri.to_string() + error_message);
-    }
-
-    return;
   }
 
-  std::vector<std::string> paths = ls(uri, "");
+  // If we have a datalake client (at which point we want to empty the
+  // container), we should make a non-recursive listing, and then delete the
+  // top-level files and directories.
+  // If we don't have a datalake client, just list and remove all blobs.
+  std::vector<directory_entry> paths =
+      ls_with_sizes(uri, data_lake_client ? "/" : "");
   throw_if_not_ok(parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
-    remove_file(URI(paths[i]));
+    if (paths[i].is_directory()) {
+      // This is a recursive call, but we won't be reaching this again; we will
+      // get directories only with the data lake client, and blob path will not
+      // be empty, so we will hit the path above.
+      remove_dir(URI(paths[i].path().native()));
+    } else {
+      remove_file(URI(paths[i].path().native()));
+    }
     return Status::Ok();
   }));
 }
