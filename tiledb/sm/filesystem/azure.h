@@ -443,14 +443,10 @@ class Azure : public FilesystemBase {
    *
    * @param uri The prefix URI.
    * @param delimiter The delimiter that will
-   * @param max_paths The maximum number of paths to be retrieved. The default
-   *     `-1` indicates that no upper bound is specified.
    * @return The retrieved paths.
    */
   std::vector<std::string> ls(
-      const URI& uri,
-      const std::string& delimiter = "/",
-      int max_paths = -1) const;
+      const URI& uri, const std::string& delimiter = "/") const;
 
   /**
    * Lists objects and object information that start with `uri`.
@@ -466,11 +462,10 @@ class Azure : public FilesystemBase {
    *
    * @param uri The prefix URI.
    * @param delimiter The uri is truncated to the first delimiter
-   * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri, const std::string& delimiter, int max_paths) const;
+      const URI& uri, const std::string& delimiter) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
