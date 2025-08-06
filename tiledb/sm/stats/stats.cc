@@ -308,15 +308,19 @@ Stats* Stats::create_child(const std::string& prefix) {
 }
 
 Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
-  if (!enabled_) {
-    // If stats are not enabled, return the same instance that was called.
-    // NOTE: Given the current architecture of Stats, this is a low-hanging
-    // fruit solution. The issue is that this function is called in classes
-    // like Query, and the returned pointer is later used to access other
-    // methods—meaning a valid (non-null) pointer is expected. In any case,
-    // since no new allocation is made, this behaves as expected when stats
-    // are disabled.
-    return this;
+#if !defined(TILEDB_STATS)
+  constexpr bool stats_enabled = false;
+#else
+  const bool stats_enabled = enabled_;
+#endif
+
+  if (!stats_enabled) {
+    // Return a singleton null stats object that's safe to use but does nothing.
+    // This is necessary because the caller expects a valid (non-null) pointer.
+    // Also, this avoids unnecessary allocations when stats are disabled.
+    static Stats null_stats("null_stats");
+    null_stats.set_enabled(false);
+    return &null_stats;
   }
 
   std::unique_lock<std::mutex> lck(mtx_);
