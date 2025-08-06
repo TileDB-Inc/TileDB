@@ -557,21 +557,20 @@ std::string Azure::remove_trailing_slash(const std::string& path) {
 }
 
 std::vector<std::string> Azure::ls(
-    const URI& uri, const std::string& delimiter, const int max_paths) const {
+    const URI& uri, const std::string& delimiter) const {
   std::vector<std::string> paths;
-  for (auto& fs : ls_with_sizes(uri, delimiter, max_paths)) {
+  for (auto& fs : ls_with_sizes(uri, delimiter)) {
     paths.emplace_back(fs.path().native());
   }
   return paths;
 }
 
 std::vector<directory_entry> Azure::ls_with_sizes(const URI& uri) const {
-  return ls_with_sizes(uri, "/", -1);
+  return ls_with_sizes(uri, "/");
 }
 
 std::vector<directory_entry> Azure::ls_with_sizes(
-    const URI& uri, const std::string& delimiter, int max_paths) const {
-  max_paths = max_paths > 0 ? max_paths : 5000;
+    const URI& uri, const std::string& delimiter) const {
   const auto& [client, data_lake_client] = clients();
 
   const URI uri_dir = uri.add_trailing_slash();
@@ -582,18 +581,68 @@ std::vector<directory_entry> Azure::ls_with_sizes(
 
   auto [container_name, blob_path] = parse_azure_uri(uri_dir);
   std::vector<directory_entry> entries;
-  std::optional<std::string> continuation_token;
-  do {
-    auto results = list_blobs_impl(
-        container_name, blob_path, false, max_paths, continuation_token);
-    std::transform(
-        results.begin(),
-        results.end(),
-        std::back_inserter(entries),
-        [](const LsObjects::value_type& x) -> directory_entry {
-          return directory_entry(x.first, x.second, false);
-        });
-  } while (continuation_token.has_value());
+
+  try {
+    if (data_lake_client) {
+      if (!delimiter.empty() && delimiter != "/") {
+        throw AzureException(
+            "Delimiter must be empty or '/' for storage accounts with "
+            "hierarchical namespace enabled.");
+      }
+
+      bool recursive = delimiter.empty();
+      auto response = data_lake_client->GetFileSystemClient(container_name)
+                          .GetDirectoryClient(blob_path)
+                          .ListPaths(recursive);
+      do {
+        for (const auto& entry : response.Paths) {
+          if (recursive && entry.IsDirectory) {
+            // Unlike the blob endpoint, the data lake endpoint returns
+            // directories even in recursive listing. Do not return them here,
+            // in order to match semantics.
+            continue;
+          }
+
+          entries.emplace_back(
+              "azure://" + container_name + "/" +
+                  remove_front_slash(remove_trailing_slash(entry.Name)),
+              entry.FileSize,
+              entry.IsDirectory);
+        }
+
+        response.MoveToNextPage();
+      } while (response.HasPage());
+    } else {
+      auto response =
+          client.GetBlobContainerClient(container_name)
+              .ListBlobsByHierarchy(delimiter, {.Prefix = blob_path});
+      do {
+        for (const auto& blob : response.Blobs) {
+          entries.emplace_back(
+              "azure://" + container_name + "/" +
+                  remove_front_slash(remove_trailing_slash(blob.Name)),
+              blob.BlobSize,
+              false);
+        }
+
+        for (const auto& prefix : response.BlobPrefixes) {
+          entries.emplace_back(
+              "azure://" + container_name + "/" +
+                  remove_front_slash(remove_trailing_slash(prefix)),
+              0,
+              true);
+        }
+
+        response.MoveToNextPage();
+      } while (response.HasPage());
+    }
+  } catch (const ::Azure::Storage::StorageException& e) {
+    if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
+      return {};
+    }
+    throw AzureException(
+        "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message);
+  }
 
   return entries;
 }
@@ -1034,38 +1083,38 @@ LsObjects Azure::list_blobs_impl(
   auto& [client, data_lake_client] = clients();
   try {
     if (data_lake_client) {
-      ::Azure::Storage::Files::DataLake::ListPathsOptions options{
-          .ContinuationToken = to_azure_nullable(continuation_token),
-          .PageSizeHint = max_keys};
-
       auto dir_client = data_lake_client->GetFileSystemClient(container_name)
                             .GetDirectoryClient(blob_path);
-      auto response = dir_client.ListPaths(recursive, options);
+      auto response = dir_client.ListPaths(
+          recursive,
+          {.ContinuationToken = to_azure_nullable(continuation_token),
+           .PageSizeHint = max_keys});
       continuation_token = from_azure_nullable(response.NextPageToken);
 
       result.reserve(response.Paths.size());
-      std::transform(
-          response.Paths.begin(),
-          response.Paths.end(),
-          std::back_inserter(result),
-          [&container_name](
-              const ::Azure::Storage::Files::DataLake::Models::PathItem& path)
-              -> LsObjects::value_type {
-            // TODO: Include IsDirectory.
-            return {
-                "azure://" + container_name + "/" +
-                    remove_front_slash(remove_trailing_slash(path.Name)),
-                path.FileSize >= 0 ? static_cast<uint64_t>(path.FileSize) : 0};
-          });
+      for (auto& path : response.Paths) {
+        // Unlike the blob endpoint, the data lake endpoint returns
+        // directories even in recursive listing. Do not return them here,
+        // in order to match semantics.
+        // We could in the future rely on this and avoid the manual common
+        // prefix calculation, but LsObjects does not currently support marking
+        // whether an item is a directory or not.
+        if (recursive && path.IsDirectory) {
+          continue;
+        }
+        result.emplace_back(
+            "azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(path.Name)),
+            path.FileSize >= 0 ? static_cast<uint64_t>(path.FileSize) : 0);
+      }
     } else {
-      ::Azure::Storage::Blobs::ListBlobsOptions options{
-          .Prefix = blob_path,
-          .ContinuationToken = to_azure_nullable(continuation_token),
-          .PageSizeHint = max_keys};
-
-      auto container_client = client.GetBlobContainerClient(container_name);
       auto response =
-          container_client.ListBlobsByHierarchy(recursive ? "" : "/", options);
+          client.GetBlobContainerClient(container_name)
+              .ListBlobsByHierarchy(
+                  recursive ? "" : "/",
+                  {.Prefix = blob_path,
+                   .ContinuationToken = to_azure_nullable(continuation_token),
+                   .PageSizeHint = max_keys});
       continuation_token = from_azure_nullable(response.NextPageToken);
 
       result.reserve(response.Blobs.size() + response.BlobPrefixes.size());
