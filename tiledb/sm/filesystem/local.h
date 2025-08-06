@@ -34,13 +34,25 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 
 namespace tiledb::sm {
 /**
  * Contains the local filesystem code shared by the Windows and POSIX
  * filesystems.
  */
-class LocalFilesystem {
+class LocalFilesystem : public FilesystemBase {
+ public:
+  LsObjects ls_filtered(
+      const URI& parent,
+      FileFilter file_filter,
+      [[maybe_unused]] DirectoryFilter directory_filter,
+      bool recursive) const override;
+
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+
  protected:
   /**
    * Creates the containing directories of a path if they do not exist.

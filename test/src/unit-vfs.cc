@@ -33,6 +33,9 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif
 #ifdef HAVE_AZURE
 #include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
@@ -390,6 +393,48 @@ TEST_CASE("VFS: Create directory", "[vfs][create-dir]") {
   REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
 }
 
+TEMPLATE_LIST_TEST_CASE("VFS: Copy directory", "[vfs][copy-dir]", AllBackends) {
+  TestType fs({0});
+  if (!fs.is_supported()) {
+    SKIP("unsupported backend");
+  }
+
+  URI path = fs.temp_dir_.add_trailing_slash();
+
+  URI subdir1 = URI(path.to_string() + "subdir1/");
+  URI file1 = URI(subdir1.to_string() + "file1");
+  URI file2 = URI(subdir1.to_string() + "file2");
+  URI subdir2 = URI(path.to_string() + "subdir2/");
+  URI file2_2 = URI(subdir2.to_string() + "file2");
+  URI file3 = URI(subdir2.to_string() + "file3");
+
+  auto write_all_text = [&](const URI& uri, const std::string& text) {
+    REQUIRE_NOTHROW(fs.vfs_.write(uri, text.data(), text.size()));
+    require_tiledb_ok(fs.vfs_.close_file(uri));
+  };
+
+  auto read_all_text = [&](const URI& uri) {
+    auto size = fs.vfs_.file_size(uri);
+    std::string ret(size, '\0');
+    REQUIRE_NOTHROW(fs.vfs_.read_exactly(uri, 0, ret.data(), size));
+    return ret;
+  };
+
+  REQUIRE_NOTHROW(write_all_text(file1, "file1"));
+  REQUIRE_NOTHROW(write_all_text(file2, "file2_1"));
+  REQUIRE_NOTHROW(write_all_text(file2_2, "file2_2"));
+  REQUIRE_NOTHROW(write_all_text(file3, "file3"));
+
+  // Copy two directories with a common file.
+  REQUIRE(fs.vfs_.ls_with_sizes(subdir2).size() == 2);
+  REQUIRE_NOTHROW(fs.vfs_.copy_dir(subdir1, subdir2));
+  REQUIRE(fs.vfs_.ls_with_sizes(subdir2).size() == 3);
+
+  REQUIRE(read_all_text(URI(subdir2.to_string() + "file1")) == "file1");
+  REQUIRE(read_all_text(file2_2) == "file2_1");
+  REQUIRE(read_all_text(file3) == "file3");
+}
+
 TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   TestType fs({0});
   if (!fs.is_supported()) {
@@ -486,7 +531,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  require_tiledb_ok(vfs.read(largefile, 0, read_buffer, 26));
+  require_tiledb_ok(vfs.read_exactly(largefile, 0, read_buffer, 26));
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -497,7 +542,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   CHECK(allok);
 
   // Read from a different offset
-  require_tiledb_ok(vfs.read(largefile, 11, read_buffer, 26));
+  require_tiledb_ok(vfs.read_exactly(largefile, 11, read_buffer, 26));
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {

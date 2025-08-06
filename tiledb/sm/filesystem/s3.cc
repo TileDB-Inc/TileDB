@@ -346,6 +346,10 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
+bool S3::supports_uri(const URI& uri) const {
+  return uri.is_s3();
+}
+
 void S3::create_bucket(const URI& bucket) const {
   throw_if_not_ok(init_client());
 
@@ -473,14 +477,38 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void S3::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    bool) const {
-  uint64_t nbytes_read = 0;
-  throw_if_not_ok(read_impl(uri, offset, buffer, nbytes, 0, &nbytes_read));
+uint64_t S3::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+  throw_if_not_ok(init_client());
+
+  if (!uri.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
+  }
+
+  Aws::Http::URI aws_uri = uri.c_str();
+  Aws::S3::Model::GetObjectRequest get_object_request;
+  get_object_request.WithBucket(aws_uri.GetAuthority())
+      .WithKey(aws_uri.GetPath());
+  get_object_request.SetRange(Aws::String(
+      "bytes=" + std::to_string(offset) + "-" +
+      std::to_string(offset + nbytes - 1)));
+  get_object_request.SetResponseStreamFactory([buffer, nbytes]() {
+    return Aws::New<PreallocatedIOStream>(
+        constants::s3_allocation_tag.c_str(), buffer, nbytes);
+  });
+
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    get_object_request.SetRequestPayer(request_payer_);
+
+  auto get_object_outcome = client_->GetObject(get_object_request);
+  if (!get_object_outcome.IsSuccess()) {
+    throw S3Exception(std::string(
+        std::string("Failed to read S3 object ") + uri.c_str() +
+        outcome_error_message(get_object_outcome)));
+  }
+
+  return static_cast<uint64_t>(
+      get_object_outcome.GetResult().GetContentLength());
 }
 
 void S3::remove_bucket(const URI& bucket) const {
@@ -859,14 +887,19 @@ void S3::finalize_and_flush_object(const URI& uri) {
     std::vector<std::byte> merged(sum_sizes);
     throw_if_not_ok(parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-          uint64_t length_returned;
-          throw_if_not_ok(read_impl(
+          uint64_t nbytes = intermediate_chunks[i].size;
+          uint64_t length_read = read(
               URI(intermediate_chunks[i].uri),
               0,
               merged.data() + offsets[i],
-              intermediate_chunks[i].size,
-              0,
-              &length_returned));
+              nbytes);
+          if (length_read < nbytes) {
+            return Status_S3Error(
+                "The read did not return the correct number of bytes. "
+                "Expected: " +
+                std::to_string(nbytes) +
+                " Actual: " + std::to_string(length_read));
+          }
           return Status::Ok();
         }));
 
@@ -1111,56 +1144,6 @@ uint64_t S3::file_size(const URI& uri) const {
       head_object_outcome.GetResult().GetContentLength());
 }
 
-Status S3::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
-  RETURN_NOT_OK(init_client());
-
-  if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
-  }
-
-  Aws::Http::URI aws_uri = uri.c_str();
-  Aws::S3::Model::GetObjectRequest get_object_request;
-  get_object_request.WithBucket(aws_uri.GetAuthority())
-      .WithKey(aws_uri.GetPath());
-  get_object_request.SetRange(Aws::String(
-      "bytes=" + std::to_string(offset) + "-" +
-      std::to_string(offset + length + read_ahead_length - 1)));
-  get_object_request.SetResponseStreamFactory(
-      [buffer, length, read_ahead_length]() {
-        return Aws::New<PreallocatedIOStream>(
-            constants::s3_allocation_tag.c_str(),
-            buffer,
-            length + read_ahead_length);
-      });
-
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
-    get_object_request.SetRequestPayer(request_payer_);
-
-  auto get_object_outcome = client_->GetObject(get_object_request);
-  if (!get_object_outcome.IsSuccess()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Failed to read S3 object ") + uri.c_str() +
-        outcome_error_message(get_object_outcome)));
-  }
-
-  *length_returned =
-      static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
-  if (*length_returned < length) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Read operation returned different size of bytes ") +
-        std::to_string(*length_returned) + " vs " + std::to_string(length)));
-  }
-
-  return Status::Ok();
-}
-
 void S3::global_order_write_buffered(
     const URI& uri, const void* buffer, uint64_t length) {
   throw_if_not_ok(init_client());
@@ -1262,14 +1245,19 @@ void S3::global_order_write(
   std::vector<std::byte> merged(sum_sizes);
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        uint64_t length_returned;
-        throw_if_not_ok(read_impl(
+        uint64_t nbytes = intermediate_chunks[i].size;
+        uint64_t length_read = read(
             URI(intermediate_chunks[i].uri),
             0,
             merged.data() + offsets[i],
-            intermediate_chunks[i].size,
-            0,
-            &length_returned));
+            nbytes);
+        if (length_read < nbytes) {
+          return Status_S3Error(
+              "The read did not return the correct number of bytes. "
+              "Expected: " +
+              std::to_string(nbytes) +
+              " Actual: " + std::to_string(length_read));
+        }
         return Status::Ok();
       }));
   std::memcpy(merged.data() + offsets.back(), buffer, length);
@@ -2093,6 +2081,102 @@ URI S3::generate_chunk_uri(
   auto buffering_dir = fragment_uri.join_path(
       tiledb::sm::constants::s3_multipart_buffering_dirname);
   return buffering_dir.join_path(chunk_name);
+}
+
+S3Scanner::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    FileFilter&& file_filter,
+    DirectoryFilter&& dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(
+          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    , client_(client) {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
+  // If this is our first request, GetIsTruncated() will be false.
+  if (more_to_fetch()) {
+    // If results are truncated on a subsequent request, we set the next
+    // continuation token before resubmitting our request.
+    Aws::String next_marker =
+        list_objects_outcome_.GetResult().GetNextContinuationToken();
+    if (next_marker.empty()) {
+      throw S3Exception(
+          "Failed to retrieve next continuation token for ListObjectsV2 "
+          "request.");
+    }
+    list_objects_request_.SetContinuationToken(std::move(next_marker));
+  } else if (list_objects_outcome_.IsSuccess()) {
+    // If we have previously submitted a successful request and there are no
+    // more results, we've reached the end of the scan.
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+
+  list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+  if (!list_objects_outcome_.IsSuccess()) {
+    throw S3Exception(
+        std::string("Error while listing with prefix '") +
+        this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+        delimiter() + "'" + outcome_error_message(list_objects_outcome_));
+  }
+  // Update pointers to the newly fetched results.
+  begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+  end_ = list_objects_outcome_.GetResult().GetContents().end();
+
+  if (list_objects_outcome_.GetResult().GetContents().empty()) {
+    // If the request returned no results, we've reached the end of the scan.
+    // We hit this case when the number of objects in the bucket is a multiple
+    // of the current max_keys.
+    return end_;
+  }
+
+  return begin_;
+}
+
+void S3Scanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto object = *ptr;
+    uint64_t size = object.GetSize();
+    std::string path = "s3://" +
+                       std::string(list_objects_request_.GetBucket()) +
+                       S3::add_front_slash(std::string(object.GetKey()));
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(path, size)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
 }
 
 }  // namespace tiledb::sm

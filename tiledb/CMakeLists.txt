@@ -236,7 +236,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/rectangle.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_math.cc
@@ -447,8 +446,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS
 
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE configuration_definitions)
 
-add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
-
 target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
@@ -578,7 +575,6 @@ find_package(LZ4 MODULE REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
-find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
@@ -586,7 +582,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     ZLIB::ZLIB
     zstd::libzstd
-    libmagic
 )
 
 if(TILEDB_WEBP)
@@ -912,7 +907,6 @@ install(
 )
 
 if (WIN32 AND TILEDB_WEBP)
-  set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
   string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
 endif()
 

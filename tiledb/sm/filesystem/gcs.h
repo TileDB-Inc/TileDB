@@ -154,7 +154,7 @@ struct GCSParameters {
   uint64_t max_direct_upload_size_;
 };
 
-class GCS : FilesystemBase {
+class GCS : public FilesystemBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -176,14 +176,22 @@ class GCS : FilesystemBase {
   /* ********************************* */
 
   /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
+
+  /**
    * Creates a bucket.
    *
    * @param uri The uri of the bucket to be created.
    */
-  void create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const override;
 
   /** Removes the contents of a GCS bucket. */
-  void empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const override;
 
   /**
    * Check if a bucket is empty.
@@ -191,7 +199,7 @@ class GCS : FilesystemBase {
    * @param bucket The name of the bucket.
    * @return `true` if the bucket is empty, `false` otherwise.
    */
-  bool is_empty_bucket(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const override;
 
   /**
    * Check if a bucket exists.
@@ -199,7 +207,7 @@ class GCS : FilesystemBase {
    * @param bucket The name of the bucket.
    * @return `true` if `uri` is a bucket, `false` otherwise.
    */
-  bool is_bucket(const URI& uri) const;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Check if 'uri' is an object on GCS.
@@ -207,7 +215,7 @@ class GCS : FilesystemBase {
    * @param uri URI of the object.
    * @return `true` if `uri` is an obkect on GCS, `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -226,21 +234,21 @@ class GCS : FilesystemBase {
    * @param uri The URI to check.
    * @return`true` if the above mentioned condition holds, `false` otherwise.
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Deletes a bucket.
    *
    * @param uri The URI of the bucket to be deleted.
    */
-  void remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const override;
 
   /**
    * Deletes an object with a given URI.
    *
    * @param uri The URI of the object to be deleted.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -266,7 +274,7 @@ class GCS : FilesystemBase {
    *
    * @param uri The prefix uri of the objects to be deleted.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -299,29 +307,24 @@ class GCS : FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * the FileFilter on each entry collected and the DirectoryFilter on
    * common prefixes for pruning.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param file_filter The FilePredicate to invoke on each object for
+   * @param file_filter The FileFilter to invoke on each object for
    * filtering.
-   * @param directory_filter The DirectoryPredicate to invoke on each common
+   * @param directory_filter The DirectoryFilter to invoke on each common
    * prefix for pruning. This is currently unused, but is kept here for future
    * support.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI
    * and object size.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
-      const URI& uri,
-      F file_filter,
-      [[maybe_unused]] D directory_filter = accept_all_dirs,
-      bool recursive = false) const {
-    // We use the constructor of std::function that accepts an F&& to convert
-    // the generic F to a polymorphic std::function.
-    return ls_filtered_impl(uri, std::move(file_filter), recursive);
-  }
+      const URI& parent,
+      FileFilter file_filter,
+      DirectoryFilter directory_filter,
+      bool recursive) const override;
 
   /**
    *
@@ -343,7 +346,7 @@ class GCS : FilesystemBase {
    * @return A list of directory_entry objects.
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri) const;
+      const URI& uri) const override;
 
   /**
    * Copies the directory at 'old_uri' to `new_uri`.
@@ -351,7 +354,7 @@ class GCS : FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) const;
+  void copy_dir(const URI&, const URI&) const override;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -359,7 +362,7 @@ class GCS : FilesystemBase {
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames an object.
@@ -367,7 +370,7 @@ class GCS : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -378,14 +381,14 @@ class GCS : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Creates an empty object.
    *
    * @param uri The URI of the object to be created.
    */
-  void touch(const URI& uri) const;
+  void touch(const URI& uri) const override;
 
   /**
    * Writes the input buffer to an GCS object. Note that this is essentially
@@ -400,39 +403,18 @@ class GCS : FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t length,
-      bool remote_global_order_write);
+      bool remote_global_order_write) override;
 
   /**
-   * Reads data from an object into a buffer.
+   * Reads from a file.
    *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param read_ahead_length The additional length to read ahead.
-   * @param length_returned Returns the total length read into `buffer`.
-   * @return Status
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
    */
-  Status read_impl(
-      const URI& uri,
-      off_t offset,
-      void* buffer,
-      uint64_t length,
-      uint64_t read_ahead_length,
-      uint64_t* length_returned) const;
-
-  /**
-   * Reads data from an object into a buffer.
-   *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   */
-  void read(const URI&, uint64_t, void*, uint64_t, bool) const {
-    // #TODO. Currently a no-op until read refactor.
-  }
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Returns the size of the input object with a given URI in bytes.
@@ -440,7 +422,7 @@ class GCS : FilesystemBase {
    * @param uri The URI of the object.
    * @return The size of the object.
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Flushes an object to GCS, finalizing the upload.
@@ -448,7 +430,7 @@ class GCS : FilesystemBase {
    * @param uri The URI of the object to be flushed.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool finalize);
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Creates a GCS credentials object.
@@ -466,7 +448,7 @@ class GCS : FilesystemBase {
    *
    * @param uri The directory's URI.
    */
-  void create_dir(const URI&) const {
+  void create_dir(const URI&) const override {
     // No-op. Stub function for other filesystems.
   }
 
@@ -718,20 +700,8 @@ class GCS : FilesystemBase {
   /**
    * Contains the implementation of ls_filtered.
    *
-   * @section Notes
-   *
-   * The use of the non-generic std::function is necessary to keep the
-   * function's implementation in gcs.cc and avoid leaking the Google Cloud
-   * SDK headers, which would cause significant build performance regressions
-   * (see PR 4777). In the public-facing ls_filtered, we still use a generic
-   * callback which we convert.
-   *
-   * This has the consequence that the callback cannot capture variables that
-   * are not copy-constructible. It could be rectified with C++ 23's
-   * std::move_only_function, when it becomes available.
-   *
    * @param uri The parent path to list sub-paths.
-   * @param file_filter The FilePredicate to invoke on each object for
+   * @param file_filter The FileFilter to invoke on each object for
    * filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI

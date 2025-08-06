@@ -701,7 +701,7 @@ TEST_CASE(
     CHECK_THROWS_WITH(
         vfs_test.vfs_.ls_recursive(
             vfs_test.temp_dir_, tiledb::sm::accept_all_files),
-        Catch::Matchers::ContainsSubstring("storage backend is not supported"));
+        Catch::Matchers::ContainsSubstring("not supported"));
   }
 
   REQUIRE(vfs_test.check_open_files());
