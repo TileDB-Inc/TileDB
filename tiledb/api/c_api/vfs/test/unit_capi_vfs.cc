@@ -689,58 +689,53 @@ TEST_CASE(
   CHECK(error != nullptr);
 }
 
-TEST_CASE("C API: tiledb_vfs_ls_recursive argument validation", "[capi][vfs]") {
+TEST_CASE(
+    "C API: tiledb_vfs_ls_recursive_v2 argument validation",
+    "[capi][vfs][ls_recursive_v2]") {
   /*
    * No "success" sections here; too much overhead to set up.
    */
   ordinary_vfs x;
   int32_t data;
-  auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
+  auto cb = [](const char*, size_t, uint64_t, uint8_t, void*) { return 0; };
   SECTION("null context") {
-    auto rc{tiledb_vfs_ls_recursive(nullptr, x.vfs, TEST_URI, cb, &data)};
+    auto rc{tiledb_vfs_ls_recursive_v2(nullptr, x.vfs, TEST_URI, cb, &data)};
     CHECK(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null vfs") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, nullptr, TEST_URI, cb, &data)};
+    auto rc{tiledb_vfs_ls_recursive_v2(x.ctx, nullptr, TEST_URI, cb, &data)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null uri") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, nullptr, cb, &data)};
+    auto rc{tiledb_vfs_ls_recursive_v2(x.ctx, x.vfs, nullptr, cb, &data)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null callback") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, TEST_URI, nullptr, &data)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("null data ptr") {
-    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, TEST_URI, cb, nullptr)};
+    auto rc{tiledb_vfs_ls_recursive_v2(x.ctx, x.vfs, TEST_URI, nullptr, &data)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
 }
 
 TEST_CASE(
     "C API: VFS recursive ls unsupported backends",
-    "[capi][vfs][ls-recursive]") {
+    "[capi][vfs][ls_recursive_v2]") {
   ordinary_vfs vfs;
   int ls_data;
-  auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
-  // Recursive ls is currently only supported for S3.
-  tiledb::sm::URI uri{GENERATE(
-      "file:///path/", "mem:///path/", "azure://path/", "gcs://path/")};
+  tiledb::sm::URI uri("mem:///tmp/path/");
+  REQUIRE_NOTHROW(vfs.vfs->create_dir(uri));
+  REQUIRE_NOTHROW(vfs.vfs->touch(uri.join_path("test_file.txt")));
   DYNAMIC_SECTION(
-      "Test recursive ls usupported backend over " << uri.backend_name()) {
-    if (!vfs.vfs->vfs()->supports_uri_scheme(uri)) {
-      return;
-    }
+      "Test ls_recursive_v2 unsupported backend over " << uri.backend_name()) {
+    auto cb = [](const char*, size_t, uint64_t, uint8_t, void*) { return 0; };
     CHECK(
-        tiledb_vfs_ls_recursive(vfs.ctx, vfs.vfs, uri.c_str(), cb, &ls_data) ==
-        TILEDB_ERR);
+        tiledb_vfs_ls_recursive_v2(
+            vfs.ctx, vfs.vfs, uri.c_str(), cb, &ls_data) == TILEDB_ERR);
   }
 }
 
 TEST_CASE(
-    "C API: CallbackWrapperCAPI operator() validation",
-    "[ls-recursive][callback][wrapper]") {
+    "C API: CallbackWrapperCAPI LsCallback operator() validation",
+    "[ls_recursive][callback][wrapper]") {
   tiledb::sm::LsCallback cb = [](const char* path,
                                  size_t path_len,
                                  uint64_t object_size,
@@ -765,29 +760,77 @@ TEST_CASE(
     CHECK(data.size() == 1);
   }
   SECTION("Callback return 0 signals to stop traversal") {
-    CHECK_THROWS_AS(wrapper("some/dir/", 0) == 0, tiledb::sm::LsStopTraversal);
+    CHECK_THROWS_AS(wrapper("some/dir/", 0), tiledb::sm::LsStopTraversal);
   }
   SECTION("Callback exception is propagated") {
-    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
+    CHECK_THROWS_WITH(wrapper("path", 101), "Throwing callback");
+  }
+}
+
+TEST_CASE(
+    "C API: CallbackWrapperCAPI LsCallbackV2 operator() validation",
+    "[ls_recursive_v2][callback][wrapper]") {
+  tiledb::sm::LsCallbackV2 cb = [](const char* path,
+                                   size_t path_len,
+                                   uint64_t object_size,
+                                   uint8_t,
+                                   void* data) -> int32_t {
+    std::string path_str(path, path_len);
+    if (path_str == "throw") {
+      throw std::runtime_error("Throwing callback v2");
+    } else if (path_str == "bad/dir") {
+      return 0;
+    }
+    auto* ls_data = static_cast<tiledb::sm::LsObjects*>(data);
+    ls_data->push_back({{path, path_len}, object_size});
+    return 1;
+  };
+
+  tiledb::sm::LsObjects data{};
+  tiledb::sm::CallbackWrapperCAPI wrapper(cb, static_cast<void*>(&data));
+
+  SECTION("Callback return 1 signals to continue traversal") {
+    CHECK(wrapper("good/dir", 0, true) == 1);
+    CHECK(data.size() == 1);
+  }
+  SECTION("Callback return 0 signals to stop traversal") {
+    CHECK_THROWS_AS(wrapper("bad/dir", 0, true), tiledb::sm::LsStopTraversal);
+  }
+  SECTION("Callback exception is propagated") {
+    CHECK_THROWS_WITH(wrapper("throw", 500, true), "Throwing callback v2");
   }
 }
 
 TEST_CASE(
     "C API: CallbackWrapperCAPI construction validation",
-    "[ls-recursive][callback][wrapper]") {
+    "[ls_recursive][ls_recursive_v2][callback][wrapper]") {
   using tiledb::sm::CallbackWrapperCAPI;
   tiledb::sm::LsObjects data;
   auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t { return 1; };
-  SECTION("Null callback") {
-    CHECK_THROWS(CallbackWrapperCAPI(nullptr, &data));
+  SECTION("ls_recursive") {
+    SECTION("Null callback") {
+      CHECK_THROWS(CallbackWrapperCAPI((tiledb_ls_callback_t) nullptr, &data));
+    }
+    SECTION("Null callback and data") {
+      CHECK_THROWS(
+          CallbackWrapperCAPI((tiledb_ls_callback_t) nullptr, nullptr));
+    }
+    SECTION("Valid callback and data") {
+      CHECK_NOTHROW(CallbackWrapperCAPI(cb, &data));
+    }
   }
-  SECTION("Null data") {
-    CHECK_THROWS(CallbackWrapperCAPI(cb, nullptr));
-  }
-  SECTION("Null callback and data") {
-    CHECK_THROWS(CallbackWrapperCAPI(nullptr, nullptr));
-  }
-  SECTION("Valid callback and data") {
-    CHECK_NOTHROW(CallbackWrapperCAPI(cb, &data));
+
+  SECTION("ls_recursive_v2") {
+    SECTION("Null callback") {
+      CHECK_THROWS(
+          CallbackWrapperCAPI((tiledb_ls_callback_v2_t) nullptr, &data));
+    }
+    SECTION("Null callback and data") {
+      CHECK_THROWS(
+          CallbackWrapperCAPI((tiledb_ls_callback_v2_t) nullptr, nullptr));
+    }
+    SECTION("Valid callback and data") {
+      CHECK_NOTHROW(CallbackWrapperCAPI(cb, &data));
+    }
   }
 }

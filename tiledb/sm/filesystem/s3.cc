@@ -2086,12 +2086,10 @@ URI S3::generate_chunk_uri(
 S3Scanner::S3Scanner(
     const shared_ptr<TileDBS3Client>& client,
     const URI& prefix,
-    FileFilter&& file_filter,
-    DirectoryFilter&& dir_filter,
+    ResultFilter&& result_filter,
     bool recursive,
     int max_keys)
-    : LsScanner(
-          prefix, std::move(file_filter), std::move(dir_filter), recursive)
+    : LsScanner(prefix, std::move(result_filter), recursive)
     , client_(client) {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
@@ -2115,9 +2113,66 @@ S3Scanner::S3Scanner(
   next(begin_);
 }
 
+S3Scanner::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    ResultFilterV2&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client) {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+S3Scanner::Iterator::pointer& S3Scanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.SetKey(collected_prefixes_.extract(next).value());
+    object.SetSize(0);
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
 typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
-  // If this is our first request, GetIsTruncated() will be false.
-  if (more_to_fetch()) {
+  if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
+    // Filter prefixes if there are no more results to fetch from S3.
+    return build_prefix_vector();
+  } else if (!is_recursive_ && response_contains_prefixes_) {
+    // If using V2 APIs, collect common prefix results for non-recursive scan.
+    response_contains_prefixes_ = false;
+    const auto& aws_prefixes =
+        list_objects_outcome_.GetResult().GetCommonPrefixes();
+    common_prefixes_.resize(aws_prefixes.size());
+    for (size_t i = 0; i < common_prefixes_.size(); i++) {
+      common_prefixes_[i].SetKey(
+          S3::remove_trailing_slash(aws_prefixes[i].GetPrefix()));
+      common_prefixes_[i].SetSize(0);
+    }
+    end_ = common_prefixes_.end();
+    return begin_ = common_prefixes_.begin();
+  } else if (more_to_fetch()) {
     // If results are truncated on a subsequent request, we set the next
     // continuation token before resubmitting our request.
     Aws::String next_marker =
@@ -2134,6 +2189,7 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
     begin_ = end_ = typename Iterator::pointer();
     return end_;
   }
+  result_type_ = OBJECT;
 
   list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
   if (!list_objects_outcome_.IsSuccess()) {
@@ -2142,11 +2198,19 @@ typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
         this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
         delimiter() + "'" + outcome_error_message(list_objects_outcome_));
   }
+  response_contains_prefixes_ =
+      !is_recursive_ &&
+      !list_objects_outcome_.GetResult().GetCommonPrefixes().empty();
+
   // Update pointers to the newly fetched results.
   begin_ = list_objects_outcome_.GetResult().GetContents().begin();
   end_ = list_objects_outcome_.GetResult().GetContents().end();
 
   if (list_objects_outcome_.GetResult().GetContents().empty()) {
+    if (result_filter_v2_ && !collected_prefixes_.empty()) {
+      return build_prefix_vector();
+    }
+
     // If the request returned no results, we've reached the end of the scan.
     // We hit this case when the number of objects in the bucket is a multiple
     // of the current max_keys.
@@ -2161,19 +2225,41 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
     ptr = fetch_results();
   }
 
+  std::string bucket = "s3://" + std::string(list_objects_request_.GetBucket());
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
-    std::string path = "s3://" +
-                       std::string(list_objects_request_.GetBucket()) +
-                       S3::add_front_slash(std::string(object.GetKey()));
+    // The object key does not contain s3:// prefix or the bucket name.
+    std::string path =
+        bucket + S3::add_front_slash(std::string(object.GetKey()));
 
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(path, size)) {
-      // Iterator is at the next object within results accepted by the filters.
+    // Store each unique prefix while scanning S3 objects.
+    if (result_filter_v2_ && result_type_ == OBJECT) {
+      std::string prefix = object.GetKey();
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != Aws::String::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        auto full_uri = bucket + S3::add_front_slash(prefix);
+        // Do not accept the prefix we are scanning.
+        if (full_uri == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
+          break;
+        } else if (result_filter_v2_(full_uri, 0, true)) {
+          collected_prefixes_.emplace(prefix, 0);
+        }
+      }
+    }
+
+    // Advance until we reach a result accepted by a filter predicate.
+    // Prefix results have already been filtered by the predicate.
+    if (!result_filter_v2_ && result_filter_(path, size)) {
+      return;
+    } else if (
+        result_filter_v2_ &&
+        (result_type_ == PREFIX || result_filter_v2_(path, size, false))) {
       return;
     } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
       advance(ptr);
     }
   }
