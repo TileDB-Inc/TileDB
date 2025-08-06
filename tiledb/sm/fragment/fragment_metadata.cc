@@ -1372,7 +1372,8 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
     // Sparse arrays also store the global order lower/upper bounds
     if (!array_schema_->dense() && is_dim) {
-      const unsigned dimension = i - array_schema_->dim_num();
+      const unsigned dimension =
+          array_schema_->domain().get_dimension_index(it.first);
       loaded_metadata_ptr_->tile_global_order_min_buffer()[dimension].resize(
           num_tiles * cell_size, 0);
       loaded_metadata_ptr_->tile_global_order_max_buffer()[dimension].resize(
