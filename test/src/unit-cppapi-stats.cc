@@ -37,8 +37,11 @@
 
 using namespace tiledb;
 
-TEST_CASE("stats gathering is on by default", "[stats]") {
+TEST_CASE("stats enabled, disable and enable", "[stats]") {
+  Stats::enable();
   CHECK(Stats::is_enabled());
+  Stats::disable();
+  CHECK(!Stats::is_enabled());
 }
 
 TEST_CASE("stats disabled, scoped enable", "[stats]") {
