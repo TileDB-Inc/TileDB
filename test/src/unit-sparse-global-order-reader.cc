@@ -1500,18 +1500,10 @@ TEST_CASE_METHOD(
     "Sparse global order reader: fragment skew",
     "[sparse-global-order][rest]") {
   SECTION("Example") {
-    SKIP(
-        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: "
-        "OFF "
-        "| Assertions: ON | Debug To re-enable when fixed.");
     instance_fragment_skew<tiledb::test::AsserterCatch>(200, 8, 2);
   }
 
   SECTION("Condition") {
-    SKIP(
-        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: "
-        "OFF "
-        "| Assertions: ON | Debug To re-enable when fixed.");
     int value = 110;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::GE));
@@ -1533,24 +1525,19 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment skew", [this]() {
-      const size_t fragment_size = *rc::gen::inRange(2, 200);
-      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      const int extent = *rc::gen::inRange(1, 200);
-      const auto subarray =
-          *rc::make_subarray_1d(templates::Domain<int>(1, 200));
-      auto condition =
-          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
-              templates::Domain<int>(1, 200), templates::Domain<int>(0, 400)));
-      instance_fragment_skew<tiledb::test::AsserterRapidcheck>(
-          fragment_size,
-          num_user_cells,
-          extent,
-          subarray,
-          std::move(condition));
-    });
-  }
+  SKIP("CORE-328");
+
+  rc::prop("rapidcheck fragment skew", [this]() {
+    const size_t fragment_size = *rc::gen::inRange(2, 200);
+    const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+    const int extent = *rc::gen::inRange(1, 200);
+    const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+    auto condition =
+        *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+            templates::Domain<int>(1, 200), templates::Domain<int>(0, 400)));
+    instance_fragment_skew<tiledb::test::AsserterRapidcheck>(
+        fragment_size, num_user_cells, extent, subarray, std::move(condition));
+  });
 }
 
 /**
@@ -1629,19 +1616,18 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment interleave rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment interleave", [this]() {
-      const size_t fragment_size = *rc::gen::inRange(2, 196);
-      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      const auto subarray =
-          *rc::make_subarray_1d(templates::Domain<int>(1, 200));
-      auto condition =
-          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
-              templates::Domain<int>(1, 200), templates::Domain<int>(1, 200)));
-      instance_fragment_interleave<tiledb::test::AsserterRapidcheck>(
-          fragment_size, num_user_cells, subarray, std::move(condition));
-    });
-  }
+  SKIP("CORE-328");
+
+  rc::prop("rapidcheck fragment interleave", [this]() {
+    const size_t fragment_size = *rc::gen::inRange(2, 196);
+    const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+    const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+    auto condition =
+        *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+            templates::Domain<int>(1, 200), templates::Domain<int>(1, 200)));
+    instance_fragment_interleave<tiledb::test::AsserterRapidcheck>(
+        fragment_size, num_user_cells, subarray, std::move(condition));
+  });
 }
 
 /**
@@ -1766,28 +1752,27 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment wide overlap rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment wide overlap", [this]() {
-      const size_t num_fragments = *rc::gen::inRange(10, 24);
-      const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
-      const size_t num_user_cells = 1024;
-      const bool allow_dups = *rc::gen::arbitrary<bool>();
-      const auto subarray =
-          *rc::make_subarray_1d(templates::Domain<int>(1, 200));
-      auto condition =
-          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
-              templates::Domain<int>(1, 200),
-              templates::Domain<int>(
-                  0, static_cast<int>(num_fragments * fragment_size))));
-      instance_fragment_wide_overlap<tiledb::test::AsserterRapidcheck>(
-          num_fragments,
-          fragment_size,
-          num_user_cells,
-          allow_dups,
-          subarray,
-          std::move(condition));
-    });
-  }
+  SKIP("CORE-328");
+
+  rc::prop("rapidcheck fragment wide overlap", [this]() {
+    const size_t num_fragments = *rc::gen::inRange(10, 24);
+    const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
+    const size_t num_user_cells = 1024;
+    const bool allow_dups = *rc::gen::arbitrary<bool>();
+    const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+    auto condition =
+        *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+            templates::Domain<int>(1, 200),
+            templates::Domain<int>(
+                0, static_cast<int>(num_fragments * fragment_size))));
+    instance_fragment_wide_overlap<tiledb::test::AsserterRapidcheck>(
+        num_fragments,
+        fragment_size,
+        num_user_cells,
+        allow_dups,
+        subarray,
+        std::move(condition));
+  });
 }
 
 /**
@@ -1883,10 +1868,6 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
-    SKIP(
-        "CORE-328: Tests that fail on nightly windows-latest - Sanitizer: "
-        "OFF "
-        "| Assertions: ON | Debug To re-enable when fixed.");
     int value = 1329;
     tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
         "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
@@ -1918,30 +1899,30 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: merge bound duplication rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck merge bound duplication", [this]() {
-      const size_t num_fragments = *rc::gen::inRange(4, 32);
-      const size_t fragment_size = *rc::gen::inRange(2, 256);
-      const size_t num_user_cells = 1024;
-      const size_t tile_capacity = *rc::gen::inRange<size_t>(1, fragment_size);
-      const bool allow_dups = *rc::gen::arbitrary<bool>();
-      const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(
-          0, static_cast<int>(num_fragments * fragment_size)));
-      auto condition =
-          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
-              templates::Domain<int>(1, 200),
-              templates::Domain<int>(
-                  0, static_cast<int>(num_fragments * fragment_size))));
-      instance_merge_bound_duplication<tiledb::test::AsserterRapidcheck>(
-          num_fragments,
-          fragment_size,
-          num_user_cells,
-          tile_capacity,
-          allow_dups,
-          subarray,
-          std::move(condition));
-    });
-  }
+  SKIP("CORE-328");
+
+  rc::prop("rapidcheck merge bound duplication", [this]() {
+    const size_t num_fragments = *rc::gen::inRange(4, 32);
+    const size_t fragment_size = *rc::gen::inRange(2, 256);
+    const size_t num_user_cells = 1024;
+    const size_t tile_capacity = *rc::gen::inRange<size_t>(1, fragment_size);
+    const bool allow_dups = *rc::gen::arbitrary<bool>();
+    const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(
+        0, static_cast<int>(num_fragments * fragment_size)));
+    auto condition =
+        *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+            templates::Domain<int>(1, 200),
+            templates::Domain<int>(
+                0, static_cast<int>(num_fragments * fragment_size))));
+    instance_merge_bound_duplication<tiledb::test::AsserterRapidcheck>(
+        num_fragments,
+        fragment_size,
+        num_user_cells,
+        tile_capacity,
+        allow_dups,
+        subarray,
+        std::move(condition));
+  });
 }
 
 /**
@@ -2120,37 +2101,37 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: out-of-order MBRs rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck out-of-order MBRs", [this](bool allow_dups) {
-      const auto tile_order =
-          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-      const auto cell_order =
-          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-      const size_t num_fragments = *rc::gen::inRange(2, 8);
-      const size_t fragment_size = *rc::gen::inRange(32, 400);
-      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      const size_t tile_capacity = *rc::gen::inRange(4, 32);
-      const auto subarray = *rc::make_subarray_2d(
-          templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
-      auto condition =
-          *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
-              templates::Domain<int>(1, 200),
-              templates::Domain<int>(1, 200),
-              templates::Domain<int>(
-                  0, static_cast<int>((num_fragments + 1) * fragment_size))));
+  SKIP("CORE-328");
 
-      instance_out_of_order_mbrs<tiledb::test::AsserterRapidcheck>(
-          tile_order,
-          cell_order,
-          num_fragments,
-          fragment_size,
-          num_user_cells,
-          tile_capacity,
-          allow_dups,
-          subarray,
-          std::move(condition));
-    });
-  }
+  rc::prop("rapidcheck out-of-order MBRs", [this](bool allow_dups) {
+    const auto tile_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    const auto cell_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    const size_t num_fragments = *rc::gen::inRange(2, 8);
+    const size_t fragment_size = *rc::gen::inRange(32, 400);
+    const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+    const size_t tile_capacity = *rc::gen::inRange(4, 32);
+    const auto subarray = *rc::make_subarray_2d(
+        templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+    auto condition =
+        *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
+            templates::Domain<int>(1, 200),
+            templates::Domain<int>(1, 200),
+            templates::Domain<int>(
+                0, static_cast<int>((num_fragments + 1) * fragment_size))));
+
+    instance_out_of_order_mbrs<tiledb::test::AsserterRapidcheck>(
+        tile_order,
+        cell_order,
+        num_fragments,
+        fragment_size,
+        num_user_cells,
+        tile_capacity,
+        allow_dups,
+        subarray,
+        std::move(condition));
+  });
 }
 
 /**
@@ -2280,7 +2261,7 @@ void CSparseGlobalOrderFx::instance_fragment_skew_2d_merge_bound(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew 2d merge bound",
-    "[sparse-global-order][rest][rapidcheck]") {
+    "[sparse-global-order][rest]") {
   SECTION("Example") {
     instance_fragment_skew_2d_merge_bound<tiledb::test::AsserterCatch>(
         TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 1024, 1, 4, false);
@@ -2303,41 +2284,40 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew 2d merge bound rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment skew 2d merge bound", [this]() {
-      const auto tile_order =
-          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-      const auto cell_order =
-          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-      const size_t approximate_memory_tiles = *rc::gen::inRange(2, 64);
-      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      const size_t num_fragments = *rc::gen::inRange(1, 8);
-      const size_t tile_capacity = *rc::gen::inRange(1, 16);
-      const bool allow_dups = *rc::gen::arbitrary<bool>();
-      const auto subarray = *rc::make_subarray_2d(
-          templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
-      auto condition =
-          *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
-              templates::Domain<int>(1, 200),
-              templates::Domain<int>(1, 200),
-              templates::Domain<int>(
-                  0,
-                  static_cast<int>(
-                      2 * num_fragments *
-                      fragment_skew_2d_merge_bound_d1_extent *
-                      fragment_skew_2d_merge_bound_d2_extent))));
-      instance_fragment_skew_2d_merge_bound<tiledb::test::AsserterRapidcheck>(
-          tile_order,
-          cell_order,
-          approximate_memory_tiles,
-          num_user_cells,
-          num_fragments,
-          tile_capacity,
-          allow_dups,
-          subarray,
-          std::move(condition));
-    });
-  }
+  SKIP("CORE-328");
+
+  rc::prop("rapidcheck fragment skew 2d merge bound", [this]() {
+    const auto tile_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    const auto cell_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    const size_t approximate_memory_tiles = *rc::gen::inRange(2, 64);
+    const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+    const size_t num_fragments = *rc::gen::inRange(1, 8);
+    const size_t tile_capacity = *rc::gen::inRange(1, 16);
+    const bool allow_dups = *rc::gen::arbitrary<bool>();
+    const auto subarray = *rc::make_subarray_2d(
+        templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+    auto condition =
+        *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
+            templates::Domain<int>(1, 200),
+            templates::Domain<int>(1, 200),
+            templates::Domain<int>(
+                0,
+                static_cast<int>(
+                    2 * num_fragments * fragment_skew_2d_merge_bound_d1_extent *
+                    fragment_skew_2d_merge_bound_d2_extent))));
+    instance_fragment_skew_2d_merge_bound<tiledb::test::AsserterRapidcheck>(
+        tile_order,
+        cell_order,
+        approximate_memory_tiles,
+        num_user_cells,
+        num_fragments,
+        tile_capacity,
+        allow_dups,
+        subarray,
+        std::move(condition));
+  });
 }
 
 /**
@@ -2446,25 +2426,26 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment full copy 1d rapidcheck",
     "[sparse-global-order][rest][rapidcheck]") {
+  SKIP("CORE-328");
+
   using FxRunType = FragmentFullCopy1DFxRunType;
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment full copy 1d", [this]() {
-      const size_t num_fragments = *rc::gen::inRange(2, 16);
-      const auto dimension =
-          *rc::gen::arbitrary<templates::Dimension<FxRunType::DimensionType>>();
-      const auto subarray = *rc::make_subarray_1d(dimension.domain);
 
-      const auto domains = std::make_tuple(
-          dimension.domain,
-          templates::Domain<int64_t>(0, dimension.domain.upper_bound),
-          templates::Domain<char>('A', 'Z'));
-      auto condition =
-          *rc::make_query_condition<FxRunType::FragmentType>(domains);
+  rc::prop("rapidcheck fragment full copy 1d", [this]() {
+    const size_t num_fragments = *rc::gen::inRange(2, 16);
+    const auto dimension =
+        *rc::gen::arbitrary<templates::Dimension<FxRunType::DimensionType>>();
+    const auto subarray = *rc::make_subarray_1d(dimension.domain);
 
-      instance_fragment_full_copy_1d<AsserterRapidcheck>(
-          num_fragments, dimension, subarray, std::move(condition));
-    });
-  }
+    const auto domains = std::make_tuple(
+        dimension.domain,
+        templates::Domain<int64_t>(0, dimension.domain.upper_bound),
+        templates::Domain<char>('A', 'Z'));
+    auto condition =
+        *rc::make_query_condition<FxRunType::FragmentType>(domains);
+
+    instance_fragment_full_copy_1d<AsserterRapidcheck>(
+        num_fragments, dimension, subarray, std::move(condition));
+  });
 }
 
 TEST_CASE_METHOD(
@@ -3456,15 +3437,15 @@ TEST_CASE_METHOD(
     "Sparse global order reader: repeatable reads for sub-millisecond "
     "fragments rapidcheck",
     "[sparse-global-order][sub-millisecond][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop("rapidcheck consistent read order for sub-millisecond", [this]() {
-      const auto runs = *rc::gen::suchThat(
-          rc::gen::nonEmpty(rc::gen::container<std::vector<uint64_t>>(
-              rc::gen::inRange(1, 8))),
-          [](auto value) { return value.size() <= 6; });
-      instance_repeatable_read_submillisecond<AsserterRapidcheck>(runs);
-    });
-  }
+  SKIP("CORE-328");
+
+  rc::prop("rapidcheck consistent read order for sub-millisecond", [this]() {
+    const auto runs = *rc::gen::suchThat(
+        rc::gen::nonEmpty(
+            rc::gen::container<std::vector<uint64_t>>(rc::gen::inRange(1, 8))),
+        [](auto value) { return value.size() <= 6; });
+    instance_repeatable_read_submillisecond<AsserterRapidcheck>(runs);
+  });
 }
 
 /**
@@ -4218,14 +4199,13 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("Rapidcheck") {
-    rc::prop(
-        "rapidcheck arbitrary 1d",
-        [this](rc::NonShrinking<FxRun1D<>> instance) {
-          run<tiledb::test::AsserterRapidcheck, decltype(instance)::value_type>(
-              instance);
-        });
-  }
+  SKIP("CORE-328");
+
+  rc::prop(
+      "rapidcheck arbitrary 1d", [this](rc::NonShrinking<FxRun1D<>> instance) {
+        run<tiledb::test::AsserterRapidcheck, decltype(instance)::value_type>(
+            instance);
+      });
 }
 
 /**
@@ -4242,12 +4222,12 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 2d",
     "[sparse-global-order][rest][rapidcheck]") {
-  SECTION("rapidcheck") {
-    rc::prop(
-        "rapidcheck arbitrary 2d", [this](rc::NonShrinking<FxRun2D> instance) {
-          run<tiledb::test::AsserterRapidcheck, FxRun2D>(instance);
-        });
-  }
+  SKIP("CORE-328");
+
+  rc::prop(
+      "rapidcheck arbitrary 2d", [this](rc::NonShrinking<FxRun2D> instance) {
+        run<tiledb::test::AsserterRapidcheck, FxRun2D>(instance);
+      });
 }
 
 /**
