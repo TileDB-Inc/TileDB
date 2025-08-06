@@ -36,12 +36,14 @@
 
 #include "tiledb.h"
 #include "tiledb/common/unreachable.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
 
 #include <test/support/assert_helpers.h>
 #include <test/support/src/error_helpers.h>
+#include <test/support/src/helpers.h>
 #include <test/support/stdx/fold.h>
 #include <test/support/stdx/span.h>
 #include <test/support/stdx/traits.h>
@@ -1379,7 +1381,119 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
   }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
+/**
+ * Writes a fragment to an array.
+ */
+template <typename Asserter, FragmentType Fragment>
+void write_fragment(
+    const Fragment& fragment,
+    Array& forwrite,
+    tiledb_layout_t layout = TILEDB_UNORDERED) {
+  Query query(forwrite.context(), forwrite, TILEDB_WRITE);
+  query.set_layout(layout);
+
+  auto field_sizes = make_field_sizes<Asserter>(fragment);
+  templates::query::set_fields<Asserter, Fragment>(
+      query.ctx().ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      fragment,
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); });
+
+  const auto status = query.submit();
+  ASSERTER(status == Query::Status::COMPLETE);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query.finalize();
+  }
+
+  // check that sizes match what we expect
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t num_cells =
+      templates::query::num_cells<Asserter>(fragment, field_sizes);
+
+  ASSERTER(num_cells == expect_num_cells);
+}
+
 }  // namespace query
+
+namespace ddl {
+
+/**
+ * Creates an array with a schema whose dimensions and attributes
+ * come from the simplified arguments.
+ * The names of the dimensions are d1, d2, etc.
+ * The names of the attributes are a1, a2, etc.
+ */
+template <Datatype... DimensionDatatypes>
+void create_array(
+    const std::string& array_name,
+    const Context& context,
+    const std::tuple<const Dimension<DimensionDatatypes>&...> dimensions,
+    std::vector<std::tuple<Datatype, uint32_t, bool>> attributes,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t tile_capacity,
+    bool allow_duplicates) {
+  std::vector<std::string> dimension_names;
+  std::vector<tiledb_datatype_t> dimension_types;
+  std::vector<void*> dimension_ranges;
+  std::vector<void*> dimension_extents;
+  auto add_dimension = [&]<Datatype D>(
+                           const templates::Dimension<D>& dimension) {
+    using CoordType = templates::Dimension<D>::value_type;
+    dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
+    dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
+    dimension_ranges.push_back(
+        const_cast<CoordType*>(&dimension.domain.lower_bound));
+    dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
+  };
+  std::apply(
+      [&]<Datatype... Ds>(const templates::Dimension<Ds>&... dimension) {
+        (add_dimension(dimension), ...);
+      },
+      dimensions);
+
+  std::vector<std::string> attribute_names;
+  std::vector<tiledb_datatype_t> attribute_types;
+  std::vector<uint32_t> attribute_cell_val_nums;
+  std::vector<bool> attribute_nullables;
+  std::vector<std::pair<tiledb_filter_type_t, int>> attribute_compressors;
+  auto add_attribute = [&](Datatype datatype,
+                           uint32_t cell_val_num,
+                           bool nullable) {
+    attribute_names.push_back("a" + std::to_string(attribute_names.size() + 1));
+    attribute_types.push_back(static_cast<tiledb_datatype_t>(datatype));
+    attribute_cell_val_nums.push_back(cell_val_num);
+    attribute_nullables.push_back(nullable);
+    attribute_compressors.push_back(std::make_pair(TILEDB_FILTER_NONE, -1));
+  };
+  for (const auto& [datatype, cell_val_num, nullable] : attributes) {
+    add_attribute(datatype, cell_val_num, nullable);
+  }
+
+  tiledb::test::create_array(
+      context.ptr().get(),
+      array_name,
+      TILEDB_SPARSE,
+      dimension_names,
+      dimension_types,
+      dimension_ranges,
+      dimension_extents,
+      attribute_names,
+      attribute_types,
+      attribute_cell_val_nums,
+      attribute_compressors,
+      tile_order,
+      cell_order,
+      tile_capacity,
+      allow_duplicates,
+      false,
+      {attribute_nullables});
+}
+
+}  // namespace ddl
 
 }  // namespace tiledb::test::templates
 
