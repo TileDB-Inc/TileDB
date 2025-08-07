@@ -438,6 +438,10 @@ struct query_buffers<T> {
       : values_(cells) {
   }
 
+  query_buffers(std::initializer_list<T> cells)
+      : values_(cells) {
+  }
+
   bool operator==(const self_type&) const = default;
 
   uint64_t num_cells() const {
@@ -479,6 +483,11 @@ struct query_buffers<T> {
   }
 
   self_type& operator=(const std::vector<T>& values) {
+    values_ = values;
+    return *this;
+  }
+
+  self_type& operator=(const std::initializer_list<T>& values) {
     values_ = values;
     return *this;
   }
@@ -1127,42 +1136,124 @@ struct query_buffers<std::optional<std::vector<T>>> {
   }
 };
 
+template <typename DimensionTuple, typename AttributeTuple>
+struct Fragment {
+ private:
+  template <typename... Ts>
+  struct to_query_buffers {
+    using value_type = std::tuple<query_buffers<Ts>...>;
+    using ref_type = std::tuple<query_buffers<Ts>&...>;
+    using const_ref_type = std::tuple<const query_buffers<Ts>&...>;
+  };
+
+  template <typename... Ts>
+  static to_query_buffers<Ts...>::value_type f_qb_value(std::tuple<Ts...>) {
+    return std::declval<to_query_buffers<Ts...>::value_type>();
+  }
+
+  template <typename... Ts>
+  static to_query_buffers<Ts...>::ref_type f_qb_ref(std::tuple<Ts...>) {
+    return std::declval<to_query_buffers<Ts...>::ref_type>();
+  }
+
+  template <typename... Ts>
+  static to_query_buffers<Ts...>::const_ref_type f_qb_const_ref(
+      std::tuple<Ts...>) {
+    return std::declval<to_query_buffers<Ts...>::const_ref_type>();
+  }
+
+  template <typename T>
+  using value_tuple_query_buffers = decltype(f_qb_value(std::declval<T>()));
+
+  template <typename T>
+  using ref_tuple_query_buffers = decltype(f_qb_ref(std::declval<T>()));
+
+  template <typename T>
+  using const_ref_tuple_query_buffers =
+      decltype(f_qb_const_ref(std::declval<T>()));
+
+ public:
+  using DimensionBuffers = value_tuple_query_buffers<DimensionTuple>;
+  using DimensionBuffersRef = ref_tuple_query_buffers<DimensionTuple>;
+  using DimensionBuffersConstRef =
+      const_ref_tuple_query_buffers<DimensionTuple>;
+
+  using AttributeBuffers = value_tuple_query_buffers<AttributeTuple>;
+  using AttributeBuffersRef = ref_tuple_query_buffers<AttributeTuple>;
+  using AttributeBuffersConstRef =
+      const_ref_tuple_query_buffers<AttributeTuple>;
+
+  DimensionBuffers dims_;
+  AttributeBuffers atts_;
+
+  uint64_t num_cells() const {
+    static_assert(
+        std::tuple_size<DimensionBuffers>::value > 0 ||
+        std::tuple_size<AttributeBuffers>::value > 0);
+
+    if constexpr (std::tuple_size<DimensionBuffers>::value == 0) {
+      return std::get<0>(atts_).num_cells();
+    } else {
+      return std::get<0>(atts_).num_cells();
+    }
+  }
+
+  uint64_t size() const {
+    return num_cells();
+  }
+
+  const DimensionBuffersConstRef dimensions() const {
+    return std::apply(
+        [](const auto&... field) { return std::forward_as_tuple(field...); },
+        dims_);
+  }
+
+  DimensionBuffersRef dimensions() {
+    return std::apply(
+        [](auto&... field) { return std::forward_as_tuple(field...); }, dims_);
+  }
+
+  const AttributeBuffersConstRef attributes() const {
+    return std::apply(
+        [](const auto&... field) { return std::forward_as_tuple(field...); },
+        atts_);
+  }
+
+  AttributeBuffersRef attributes() {
+    return std::apply(
+        [](auto&... field) { return std::forward_as_tuple(field...); }, atts_);
+  }
+
+  void reserve(uint64_t num_cells) {
+    std::apply(
+        [num_cells]<typename... Ts>(Ts&... field) {
+          (field.reserve(num_cells), ...);
+        },
+        std::tuple_cat(dimensions(), attributes()));
+  }
+
+  void resize(uint64_t num_cells) {
+    std::apply(
+        [num_cells]<typename... Ts>(Ts&... field) {
+          (field.resize(num_cells), ...);
+        },
+        std::tuple_cat(dimensions(), attributes()));
+  }
+};
+
 /**
  * Data for a one-dimensional array
  */
 template <DimensionType D, AttributeType... Att>
-struct Fragment1D {
+struct Fragment1D : public Fragment<std::tuple<D>, std::tuple<Att...>> {
   using DimensionType = D;
 
-  query_buffers<D> dim_;
-  std::tuple<query_buffers<Att>...> atts_;
-
-  uint64_t size() const {
-    return dim_.num_cells();
+  const query_buffers<D>& dimension() const {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<const query_buffers<D>&> dimensions() const {
-    return std::tuple<const query_buffers<D>&>(dim_);
-  }
-
-  std::tuple<const query_buffers<Att>&...> attributes() const {
-    return std::apply(
-        [](const query_buffers<Att>&... attribute) {
-          return std::tuple<const query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
-  }
-
-  std::tuple<query_buffers<D>&> dimensions() {
-    return std::tuple<query_buffers<D>&>(dim_);
-  }
-
-  std::tuple<query_buffers<Att>&...> attributes() {
-    return std::apply(
-        [](query_buffers<Att>&... attribute) {
-          return std::tuple<query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
+  query_buffers<D>& dimension() {
+    return std::get<0>(this->dimensions());
   }
 };
 
@@ -1170,39 +1261,21 @@ struct Fragment1D {
  * Data for a two-dimensional array
  */
 template <DimensionType D1, DimensionType D2, typename... Att>
-struct Fragment2D {
-  query_buffers<D1> d1_;
-  query_buffers<D2> d2_;
-  std::tuple<query_buffers<Att>...> atts_;
-
-  uint64_t size() const {
-    return d1_.num_cells();
+struct Fragment2D : public Fragment<std::tuple<D1, D2>, std::tuple<Att...>> {
+  const query_buffers<D1>& d1() const {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<const query_buffers<D1>&, const query_buffers<D2>&> dimensions()
-      const {
-    return std::tuple<const query_buffers<D1>&, const query_buffers<D2>&>(
-        d1_, d2_);
+  const query_buffers<D2>& d2() const {
+    return std::get<1>(this->dimensions());
   }
 
-  std::tuple<query_buffers<D1>&, query_buffers<D2>&> dimensions() {
-    return std::tuple<query_buffers<D1>&, query_buffers<D2>&>(d1_, d2_);
+  query_buffers<D1>& d1() {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<const query_buffers<Att>&...> attributes() const {
-    return std::apply(
-        [](const query_buffers<Att>&... attribute) {
-          return std::tuple<const query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
-  }
-
-  std::tuple<query_buffers<Att>&...> attributes() {
-    return std::apply(
-        [](query_buffers<Att>&... attribute) {
-          return std::tuple<query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
+  query_buffers<D2>& d2() {
+    return std::get<0>(this->dimensions());
   }
 };
 
@@ -1351,24 +1424,31 @@ void set_fields(
       std::decay_t<decltype(field_cursors)>,
       std::tuple_size_v<decltype(fragment.dimensions())>>::value(field_cursors);
 
-  [&]<typename... Ts>(std::tuple<Ts...> fields) {
-    query_applicator<Asserter, Ts...>::set(
-        ctx,
-        query,
-        split_sizes.first,
-        fields,
-        dimension_name,
-        split_cursors.first);
-  }(fragment.dimensions());
-  [&]<typename... Ts>(std::tuple<Ts...> fields) {
-    query_applicator<Asserter, Ts...>::set(
-        ctx,
-        query,
-        split_sizes.second,
-        fields,
-        attribute_name,
-        split_cursors.second);
-  }(fragment.attributes());
+  if constexpr (!std::
+                    is_same_v<decltype(fragment.dimensions()), std::tuple<>>) {
+    [&]<typename... Ts>(std::tuple<Ts...> fields) {
+      query_applicator<Asserter, Ts...>::set(
+          ctx,
+          query,
+          split_sizes.first,
+          fields,
+          dimension_name,
+          split_cursors.first);
+    }(fragment.dimensions());
+  }
+
+  if constexpr (!std::
+                    is_same_v<decltype(fragment.attributes()), std::tuple<>>) {
+    [&]<typename... Ts>(std::tuple<Ts...> fields) {
+      query_applicator<Asserter, Ts...>::set(
+          ctx,
+          query,
+          split_sizes.second,
+          fields,
+          attribute_name,
+          split_cursors.second);
+    }(fragment.attributes());
+  }
 }
 
 /**

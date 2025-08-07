@@ -195,7 +195,7 @@ Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
         stdx::transpose(cells));
 
     return Fragment1D<D, typename Att::cell_type...>{
-        .dim_ = coords, .atts_ = atts};
+        std::make_tuple(coords), atts};
   });
 }
 
@@ -233,7 +233,7 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
         stdx::transpose(cells));
 
     return Fragment2D<D1, D2, Att...>{
-        .d1_ = coords_d1, .d2_ = coords_d2, .atts_ = atts};
+        std::make_tuple(coords_d1, coords_d2), atts};
   });
 }
 
