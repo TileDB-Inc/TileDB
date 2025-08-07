@@ -46,7 +46,7 @@ gather_sources(${SOURCES})
 # Maturity Note: object library `capi_query_field` cannot be linked stand-alone
 #   at present.
 #
-add_library(capi_query_field OBJECT ${SOURCES})
+add_library(capi_query_field OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 target_link_libraries(capi_query_field PUBLIC export)
 target_link_libraries(capi_query_field PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
