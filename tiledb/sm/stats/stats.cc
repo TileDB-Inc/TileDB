@@ -208,10 +208,6 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
 }
 
 std::optional<uint64_t> Stats::get_counter(const std::string& stat) const {
-  if (!enabled_) {
-    return std::nullopt;
-  }
-
   const std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
   auto maybe = counters_.find(new_stat);
@@ -223,10 +219,6 @@ std::optional<uint64_t> Stats::get_counter(const std::string& stat) const {
 }
 
 std::optional<uint64_t> Stats::find_counter(const std::string& stat) const {
-  if (!enabled_) {
-    return std::nullopt;
-  }
-
   const auto mine = get_counter(stat);
   if (mine.has_value()) {
     return mine;
@@ -241,10 +233,6 @@ std::optional<uint64_t> Stats::find_counter(const std::string& stat) const {
 }
 
 std::optional<double> Stats::get_timer(const std::string& stat) const {
-  if (!enabled_) {
-    return std::nullopt;
-  }
-
   const std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
   auto maybe = timers_.find(new_stat);
@@ -256,10 +244,6 @@ std::optional<double> Stats::get_timer(const std::string& stat) const {
 }
 
 std::optional<double> Stats::find_timer(const std::string& stat) const {
-  if (!enabled_) {
-    return std::nullopt;
-  }
-
   const auto mine = get_timer(stat);
   if (mine.has_value()) {
     return mine;
