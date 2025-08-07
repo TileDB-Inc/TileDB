@@ -1183,18 +1183,21 @@ struct Fragment {
   using AttributeBuffersConstRef =
       const_ref_tuple_query_buffers<AttributeTuple>;
 
+  static constexpr size_t NUM_DIMENSIONS =
+      std::tuple_size<DimensionBuffers>::value;
+  static constexpr size_t NUM_ATTRIBUTES =
+      std::tuple_size<AttributeBuffers>::value;
+
   DimensionBuffers dims_;
   AttributeBuffers atts_;
 
   uint64_t num_cells() const {
-    static_assert(
-        std::tuple_size<DimensionBuffers>::value > 0 ||
-        std::tuple_size<AttributeBuffers>::value > 0);
+    static_assert(NUM_DIMENSIONS > 0 || NUM_ATTRIBUTES > 0);
 
-    if constexpr (std::tuple_size<DimensionBuffers>::value == 0) {
+    if constexpr (NUM_DIMENSIONS == 0) {
       return std::get<0>(atts_).num_cells();
     } else {
-      return std::get<0>(atts_).num_cells();
+      return std::get<0>(dims_).num_cells();
     }
   }
 
@@ -1472,12 +1475,15 @@ void write_fragment(
   Query query(forwrite.context(), forwrite, TILEDB_WRITE);
   query.set_layout(layout);
 
-  auto field_sizes = make_field_sizes<Asserter>(fragment);
+  // for writes the arg is read-only
+  Fragment& nonconst = const_cast<Fragment&>(fragment);
+
+  auto field_sizes = make_field_sizes<Asserter>(nonconst);
   templates::query::set_fields<Asserter, Fragment>(
       query.ctx().ptr().get(),
       query.ptr().get(),
       field_sizes,
-      fragment,
+      nonconst,
       [](unsigned d) { return "d" + std::to_string(d + 1); },
       [](unsigned a) { return "a" + std::to_string(a + 1); });
 
