@@ -556,11 +556,12 @@ class Azure : public FilesystemBase {
   /**
    * Creates a directory.
    *
-   * @param uri The directory's URI.
+   * Calling this function has no effect in storage accounts with
+   * hierarchical namespace disabled.
+   *
+   * @param uri The URI of the directory.
    */
-  void create_dir(const URI&) const override {
-    // No-op. Stub function for other filesystems.
-  }
+  void create_dir(const URI&) const override;
 
   /**
    * Copies the directory at 'old_uri' to `new_uri`.
