@@ -9,7 +9,6 @@ on:
         required: false
         description: TileDB core reference to test against REST CI.
   push:
-
 #    branches:
 #      - dev
 #      - release-*
@@ -17,8 +16,7 @@ on:
 
 jobs:
   rest-ci:
-    # TODO: runs-on: tiledb
-    runs-on: ubuntu-latest
+    runs-on: tiledb
 
     steps:
       # For easy access to lookup dispatched CI job.
@@ -30,8 +28,7 @@ jobs:
         id: trigger-step
         uses: aurelien-baudet/workflow-dispatch@v2
         env:
-          TILEDB_REST_CI_TOKEN: ${{ secrets.TILEDB_REST_CI_PAT }}
-          # TODO: TILEDB_REST_CI_TOKEN: ${{ secrets.GH_TOKEN }}
+          TILEDB_REST_CI_TOKEN: ${{ secrets.GH_TOKEN }}
         # Skip if no PAT is set (e.g. for PRs from forks).
         if: env.TILEDB_REST_CI_TOKEN != null
         with:
