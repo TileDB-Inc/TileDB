@@ -100,7 +100,7 @@
 #include <functional>
 #include <thread>
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"

@@ -16,6 +16,7 @@ if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   find_dependency(Threads)
   find_dependency(BZip2)
   find_dependency(lz4)
+  find_dependency(nlohmann_json) # TODO: Remove in a future build system refactoring when the dependency is not exported from a static library.
   find_dependency(spdlog)
   find_dependency(ZLIB)
   find_dependency(zstd)

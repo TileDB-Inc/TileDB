@@ -37,7 +37,7 @@
 #include <map>
 #include <string>
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/home_directory.h"
 #include "tiledb/sm/misc/constants.h"

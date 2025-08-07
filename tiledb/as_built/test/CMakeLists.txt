@@ -25,8 +25,10 @@
 
 include(unit_test)
 
+find_package(nlohmann_json CONFIG REQUIRED)
+
 commence(unit_test as_built)
-  this_target_link_libraries(as_built)
+  this_target_link_libraries(as_built nlohmann_json::nlohmann_json)
   target_include_directories(
     unit_as_built PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
   this_target_sources(main.cc unit_as_built.cc)

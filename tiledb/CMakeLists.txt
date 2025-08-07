@@ -572,6 +572,7 @@ endif()
 # which is installed here.
 find_package(BZip2 REQUIRED)
 find_package(LZ4 MODULE REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
@@ -579,6 +580,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
     lz4::lz4
+    nlohmann_json::nlohmann_json
     spdlog::spdlog
     ZLIB::ZLIB
     zstd::libzstd
