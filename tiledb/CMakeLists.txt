@@ -580,7 +580,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
     lz4::lz4
-    nlohmann_json::nlohmann_json
+    $<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
     spdlog::spdlog
     ZLIB::ZLIB
     zstd::libzstd
@@ -751,7 +751,7 @@ target_link_libraries(tiledb
   PRIVATE
     # TODO: TILEDB_CORE_OBJECTS_ILIB should be removed and dependencies should be specified
     # without directly getting target_properties.
-    $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+    $<GENEX_EVAL:$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>>
     $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 
