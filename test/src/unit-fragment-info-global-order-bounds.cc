@@ -179,7 +179,7 @@ std::vector<std::vector<std::pair<CoordsTuple<F>, CoordsTuple<F>>>> instance(
   {
     Array forwrite(ctx, array_uri, TILEDB_WRITE);
     for (const auto& fragment : fragments) {
-      templates::query::write_fragment<Asserter, F>(fragment, forwrite);
+      templates::query::write_fragment<Asserter, F>(fragment, forwrite, layout);
     }
   }
 
@@ -250,15 +250,9 @@ TEST_CASE(
         return out_bounds;
       };
 
-  SECTION("Example 1") {
+  SECTION("Ascending fragment") {
     Fragment f;
     f.resize(64);
-    std::iota(f.dimension().begin(), f.dimension().end(), 1);
-
-    const auto fragment_bounds =
-        instance<tiledb::test::AsserterCatch, Fragment>(
-            vfs_test_setup.ctx(), array_uri, std::vector<Fragment>{f});
-    REQUIRE(fragment_bounds.size() == 1);
 
     const auto expect = make_expect({
         {1, 8},
@@ -270,6 +264,29 @@ TEST_CASE(
         {49, 56},
         {57, 64},
     });
-    CHECK(fragment_bounds[0] == expect);
+
+    SECTION("Global Order") {
+      std::iota(f.dimension().begin(), f.dimension().end(), 1);
+      const auto fragment_bounds =
+          instance<tiledb::test::AsserterCatch, Fragment>(
+              vfs_test_setup.ctx(), array_uri, std::vector<Fragment>{f});
+      REQUIRE(fragment_bounds.size() == 1);
+      CHECK(fragment_bounds[0] == expect);
+    }
+
+    SECTION("Unordered") {
+      for (uint64_t i = 0; i < f.size(); i++) {
+        f.dimension()[i] = f.size() - i;
+      }
+
+      const auto fragment_bounds =
+          instance<tiledb::test::AsserterCatch, Fragment>(
+              vfs_test_setup.ctx(),
+              array_uri,
+              std::vector<Fragment>{f},
+              TILEDB_UNORDERED);
+      REQUIRE(fragment_bounds.size() == 1);
+      CHECK(fragment_bounds[0] == expect);
+    }
   }
 }
