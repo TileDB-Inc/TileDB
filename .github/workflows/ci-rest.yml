@@ -8,12 +8,12 @@ on:
         type: string
         required: false
         description: TileDB core reference to test against REST CI.
-
   push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
+
+#    branches:
+#      - dev
+#      - release-*
+#      - refs/tags/*
 
 jobs:
   rest-ci:
@@ -35,7 +35,7 @@ jobs:
         with:
           repo: TileDB-Inc/TileDB-Internal
           # Trigger workflow on TileDB-Internal at this ref.
-          ref: "main"
+          ref: "smr/sc-64563/test-tiledb-server"
           workflow: rest-ci.yml
           token: ${{ env.TILEDB_REST_CI_TOKEN }}
           # Pass TileDB core ref to test against REST.
