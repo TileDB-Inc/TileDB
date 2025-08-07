@@ -507,8 +507,56 @@ bool Azure::is_bucket(const URI& uri) const {
   return true;
 }
 
+void Azure::create_dir(const URI& uri) const {
+  if (!uri.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
+  }
+  const auto& [_, data_lake_client] = clients();
+  if (!data_lake_client) {
+    // Directories exist only in Data Lake Storage.
+    return;
+  }
+
+  auto [container_name, blob_path] =
+      parse_azure_uri(uri.remove_trailing_slash());
+  try {
+    data_lake_client->GetFileSystemClient(container_name)
+        .GetDirectoryClient(blob_path)
+        .CreateIfNotExists();
+  } catch (const ::Azure::Storage::StorageException& e) {
+    throw AzureException(
+        "Create directory failed on: " + container_name + "; " + e.Message);
+  }
+}
+
 bool Azure::is_dir(const URI& uri) const {
   auto [container_name, blob_path] = parse_azure_uri(uri);
+
+  auto& [_, data_lake_client] = clients();
+  // Ideally, we would minimize the differences in the semantics between Blob
+  // Storage and Data Lake Storage, and treat directories with no files
+  // underneath as non-existent, but we cannot efficiently do the same, since
+  // recursive listing also returns directories necessitating to list everything
+  // (not just get the first element) to make sure there are no files
+  // underneath.
+  // This also forces us to implement create_dir on Data Lake Storage for
+  // symmetry.
+  if (data_lake_client) {
+    try {
+      auto properties = data_lake_client->GetFileSystemClient(container_name)
+                            .GetDirectoryClient(blob_path)
+                            .GetProperties();
+      return properties.Value.IsDirectory;
+    } catch (const ::Azure::Storage::StorageException& e) {
+      if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
+        return false;
+      }
+      throw AzureException(
+          "Get directory properties failed on: " + blob_path + "; " +
+          e.Message);
+    }
+  }
+
   std::optional<std::string> continuation_token;
   auto paths =
       list_blobs_impl(container_name, blob_path, false, 1, continuation_token);
@@ -685,8 +733,10 @@ void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
   auto [_, data_lake_client] = clients();
 
   if (data_lake_client) {
-    auto [old_container_name, old_blob_path] = parse_azure_uri(old_uri);
-    auto [new_container_name, new_blob_path] = parse_azure_uri(new_uri);
+    auto [old_container_name, old_blob_path] =
+        parse_azure_uri(old_uri.remove_trailing_slash());
+    auto [new_container_name, new_blob_path] =
+        parse_azure_uri(new_uri.remove_trailing_slash());
 
     ::Azure::Storage::Files::DataLake::RenameDirectoryOptions options{
         .DestinationFileSystem = std::move(new_container_name)};
@@ -824,7 +874,8 @@ void Azure::remove_dir(const URI& uri) const {
   auto [_, data_lake_client] = clients();
 
   if (data_lake_client) {
-    auto [container_name, blob_path] = parse_azure_uri(uri);
+    auto [container_name, blob_path] =
+        parse_azure_uri(uri.remove_trailing_slash());
     // We cannot empty the whole container with a single call.
     if (!blob_path.empty()) {
       bool deleted;
