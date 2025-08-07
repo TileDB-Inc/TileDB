@@ -9,10 +9,10 @@ on:
         required: false
         description: TileDB core reference to test against REST CI.
   push:
-#    branches:
-#      - dev
-#      - release-*
-#      - refs/tags/*
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
 
 jobs:
   rest-ci:
