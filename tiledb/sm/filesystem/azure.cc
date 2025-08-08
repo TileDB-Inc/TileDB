@@ -233,8 +233,7 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
       cred_options.Transport = options.Transport;
       auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
           HERE(),
-          std::vector<
-              std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
+          ::Azure::Identity::ChainedTokenCredential::Sources{
               make_shared<::Azure::Identity::EnvironmentCredential>(
                   HERE(), cred_options),
               make_shared<::Azure::Identity::AzureCliCredential>(
