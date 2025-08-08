@@ -37,25 +37,20 @@
 
 using namespace tiledb;
 
-TEST_CASE("stats enabled, disable and enable", "[stats]") {
-  Stats::enable();
+TEST_CASE("stats gathering default", "[stats]") {
   CHECK(Stats::is_enabled());
-  Stats::disable();
-  CHECK(!Stats::is_enabled());
 }
 
-TEST_CASE("stats disabled, scoped enable", "[stats]") {
-  Stats::disable();
-  CHECK(!Stats::is_enabled());
+TEST_CASE("stats enabled, scoped enable", "[stats]") {
+  CHECK(Stats::is_enabled());
   {
     test::ScopedStats scoped;
     CHECK(Stats::is_enabled());
   }
-  CHECK(!Stats::is_enabled());
+  CHECK(Stats::is_enabled());
 }
 
-TEST_CASE("stats enabled, scoped enable", "[stats]") {
-  Stats::enable();
+TEST_CASE("stats enabled, outer inner scoped enable", "[stats]") {
   CHECK(Stats::is_enabled());
 
   // outer scope disables when exiting
