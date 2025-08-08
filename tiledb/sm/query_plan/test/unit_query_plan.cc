@@ -33,8 +33,8 @@
 #include <test/support/src/mem_helpers.h>
 #include <test/support/src/temporary_local_directory.h>
 #include <test/support/tdb_catch.h>
+#include <nlohmann/json.hpp>
 #include "../query_plan.h"
-#include "external/include/nlohmann/json.hpp"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"

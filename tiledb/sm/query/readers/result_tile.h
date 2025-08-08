@@ -891,7 +891,7 @@ class ResultTileWithBitmap : public ResultTile {
    * Accumulates the number of cells in the bitmap.
    */
   void count_cells() {
-    result_num_ = std::accumulate(bitmap_.begin(), bitmap_.end(), 0);
+    result_num_ = std::accumulate(bitmap_.begin(), bitmap_.end(), 0ull);
   }
 
   /**

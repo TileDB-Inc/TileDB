@@ -128,7 +128,7 @@
 #include "tiledb/sm/stats/duration_instrument.h"
 #include "tiledb/type/apply_with_type.h"
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <fstream>
 #include <iostream>

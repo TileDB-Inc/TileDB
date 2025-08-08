@@ -34,7 +34,7 @@
 #ifndef TILEDB_STORAGE_BACKENDS_H
 #define TILEDB_STORAGE_BACKENDS_H
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
