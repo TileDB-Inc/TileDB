@@ -34,7 +34,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 
 #include <iostream>

@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <cassert>
 #include <codecvt>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <locale>

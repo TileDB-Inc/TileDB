@@ -30,14 +30,19 @@
  * This file implements class RestProfile.
  */
 
+#include "rest_profile.h"
+
 #include <filesystem>
 #include <iostream>
 
-#include "rest_profile.h"
 #include "tiledb/common/random/random_label.h"
+
+#include <nlohmann/json.hpp>
 
 using namespace tiledb::common;
 using namespace tiledb::common::filesystem;
+
+using json = nlohmann::json;
 
 namespace tiledb::sm {
 
