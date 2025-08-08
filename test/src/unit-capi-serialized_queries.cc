@@ -117,6 +117,7 @@ struct SerializationFx {
   }
 
   static void check_subarray_stats(int dim0_expected, int dim1_expected) {
+    Stats::enable();
     std::string stats;
     Stats::dump(&stats);
     // Note: if these checks fail, use Stats::dump(stdout) to validate counters
@@ -128,6 +129,7 @@ struct SerializationFx {
         stats.find(
             "\"Context.subSubarray.add_range_dim_1\": " +
             std::to_string(dim1_expected)) != std::string::npos);
+    Stats::disable();
   }
 
   static void check_delete_stats(const Query& query) {
