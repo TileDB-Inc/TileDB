@@ -132,22 +132,6 @@ int32_t tiledb_attribute_get_cell_size(
   return TILEDB_OK;
 }
 
-int32_t tiledb_attribute_dump(
-    const tiledb_attribute_handle_t* attr, FILE* out) {
-  ensure_attribute_is_valid(attr);
-  ensure_cstream_handle_is_valid(out);
-
-  std::stringstream ss;
-  ss << *attr;
-  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  if (r != ss.str().size()) {
-    throw CAPIException(
-        "Error writing attribute " + attr->name() + " to output stream");
-  }
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_attribute_dump_str(
     const tiledb_attribute_handle_t* attr, tiledb_string_handle_t** out) {
   ensure_attribute_is_valid(attr);
@@ -325,14 +309,6 @@ CAPI_INTERFACE(
     uint64_t* cell_size) {
   return api_entry_context<tiledb::api::tiledb_attribute_get_cell_size>(
       ctx, attr, cell_size);
-}
-
-CAPI_INTERFACE(
-    attribute_dump,
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_handle_t* attr,
-    FILE* out) {
-  return api_entry_context<tiledb::api::tiledb_attribute_dump>(ctx, attr, out);
 }
 
 CAPI_INTERFACE(
