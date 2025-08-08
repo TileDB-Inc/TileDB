@@ -579,10 +579,6 @@ if (TILEDB_TESTS)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
 
-  if (ENABLE_MAGIC_TEST)
-    add_dependencies(tests unit_mgc_dict)
-  endif()
-
   add_subdirectory(test/regression)
 
   # Add custom target 'check', which builds and runs all tests.

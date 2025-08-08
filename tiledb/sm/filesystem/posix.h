@@ -40,7 +40,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <filesystem>
 #include <functional>
 #include <string>
 #include <vector>
@@ -66,8 +65,12 @@ class URI;
 /**
  * This class implements the POSIX filesystem functions.
  */
-class Posix : public FilesystemBase, public LocalFilesystem {
+class Posix : public LocalFilesystem {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /** Default constructor. */
   Posix()
       : Posix(Config()) {
@@ -78,6 +81,18 @@ class Posix : public FilesystemBase, public LocalFilesystem {
 
   /** Destructor. */
   ~Posix() override = default;
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
+  /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
 
   /**
    * Creates a new directory.
@@ -157,39 +172,21 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    */
   void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
-  /**
-   * Copy a given filesystem file.
-   * Both URI must be of the same file:// backend type.
-   *
-   * @param old_uri The old URI.
-   * @param new_uri The new URI.
-   */
-  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+  /** Whether or not to use the read-ahead cache. */
+  bool use_read_ahead_cache() const override {
+    return false;
+  }
 
   /**
-   * Copy a given filesystem directory.
-   * Both URI must be of the same file:// backend type.
+   * Reads from a file.
    *
-   * @param old_uri The old URI.
-   * @param new_uri The new URI.
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
-
-  /**
-   * Reads data from a file into a buffer.
-   *
-   * @param path The name of the file.
-   * @param offset The offset in the file from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param nbytes The size of the data to be read from the file.
-   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
-   */
-  void read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead) const override;
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Flushes a file or directory.
@@ -232,29 +229,6 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
       const URI& uri) const override;
-
-  /**
-   * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
-   *
-   * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
-   * @param recursive Whether to recursively list subdirectories.
-   *
-   * Note: the return type LsObjects does not match the other "ls" methods so as
-   * to match the S3 equivalent API.
-   */
-  template <FilePredicate F, DirectoryPredicate D>
-  LsObjects ls_filtered(
-      const URI& parent,
-      F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const {
-    return std_filesystem_ls_filtered<F, D>(parent, f, d, recursive);
-  }
 
   /**
    * Lists files one level deep under a given path.

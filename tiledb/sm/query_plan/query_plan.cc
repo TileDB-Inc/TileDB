@@ -40,7 +40,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 using namespace tiledb::common;
 

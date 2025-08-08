@@ -273,6 +273,10 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   return *client_;
 }
 
+bool Azure::supports_uri(const URI& uri) const {
+  return uri.is_azure();
+}
+
 void Azure::create_bucket(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {
@@ -626,13 +630,8 @@ uint64_t Azure::file_size(const URI& uri) const {
   }
 }
 
-Status Azure::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
+uint64_t Azure::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   const auto& c = client();
 
   if (!uri.is_azure()) {
@@ -640,11 +639,10 @@ Status Azure::read_impl(
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  size_t total_length = length + read_ahead_length;
 
   ::Azure::Storage::Blobs::DownloadBlobOptions options;
   options.Range = ::Azure::Core::Http::HttpRange();
-  options.Range.Value().Length = static_cast<int64_t>(total_length);
+  options.Range.Value().Length = static_cast<int64_t>(nbytes);
   options.Range.Value().Offset = static_cast<int64_t>(offset);
 
   ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
@@ -658,14 +656,7 @@ Status Azure::read_impl(
         "Read blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
-  *length_returned = result.BodyStream->ReadToCount(
-      static_cast<uint8_t*>(buffer), total_length);
-
-  if (*length_returned < length) {
-    throw AzureException("Read operation read unexpected number of bytes.");
-  }
-
-  return Status::Ok();
+  return result.BodyStream->ReadToCount(static_cast<uint8_t*>(buffer), nbytes);
 }
 
 void Azure::remove_bucket(const URI& uri) const {
@@ -1081,6 +1072,130 @@ std::string Azure::BlockListUploadState::next_block_id() {
   block_ids_.emplace_back(b64_block_id_str);
 
   return b64_block_id_str;
+}
+
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    ResultFilter&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    ResultFilterV2&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+void AzureScanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto& object = *ptr;
+
+    // Store each unique prefix while scanning objects.
+    // TODO: is_recursive_&& for here and S3Scanner
+    if (result_filter_v2_ && result_type_ == OBJECT) {
+      // The object key contains the azure:// prefix and the bucket name.
+      // Non-recursive request to Azure returns prefixes with a trailing slash.
+      auto prefix = Azure::remove_trailing_slash(object.first);
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != std::string::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        // Do not accept the prefix we are scanning.
+        if (prefix == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
+          break;
+        } else if (result_filter_v2_(prefix, 0, true)) {
+          collected_prefixes_.emplace(prefix, 0);
+        }
+      }
+    }
+
+    // For recursive, prefixes have already been filtered by the predicate.
+    // Non-recursive request with a delimiter set will return prefixes as object
+    // with a trailing slash, those prefixes will be filtered here.
+    bool is_prefix = object.first.ends_with("/");
+    auto uri = Azure::remove_trailing_slash(object.first);
+    if (result_filter_ && result_filter_(uri, object.second)) {
+      return;
+    } else if (
+        result_filter_v2_ &&
+        (result_type_ == PREFIX ||
+         result_filter_v2_(uri, object.second, is_prefix))) {
+      return;
+    } else {
+      // Object was rejected by the FilterPredicate, do not include it in
+      // results.
+      advance(ptr);
+    }
+  }
+}
+
+AzureScanner::Iterator::pointer& AzureScanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.first = collected_prefixes_.extract(next).value();
+    object.second = 0;
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
+AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
+  if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
+    return build_prefix_vector();
+  } else if (!more_to_fetch()) {
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+  result_type_ = OBJECT;
+
+  blobs_ = client_.list_blobs_impl(
+      container_name_,
+      blob_path_,
+      this->is_recursive_,
+      max_keys_,
+      continuation_token_);
+  has_fetched_ = true;
+  // Update pointers to the newly fetched results.
+  begin_ = blobs_.begin();
+  end_ = blobs_.end();
+
+  return begin_;
 }
 
 }  // namespace tiledb::sm

@@ -349,7 +349,7 @@ if (TILEDB_RUST)
 
     set(OXIDIZE_LIB "${OXIDIZE_NAME}_oxidize")
 
-    add_library(${OXIDIZE_LIB} OBJECT ${OXIDIZE_CC})
+    add_library(${OXIDIZE_LIB} OBJECT EXCLUDE_FROM_ALL ${OXIDIZE_CC})
     add_dependencies(${OXIDIZE_LIB} ${OXIDIZE_NAME}_h rust_h ${OXIDIZE_NAME}_cc ${OXIDIZE_STATICLIB})
     target_include_directories(${OXIDIZE_LIB} PUBLIC ${CMAKE_SOURCE_DIR} ${TILEDB_OXIDIZE_INCLUDE_DIR} ${OXIDIZE_INCLUDE_DIR})
     target_link_libraries(${OXIDIZE_LIB} PUBLIC assert_header ${OXIDIZE_STATICLIB})

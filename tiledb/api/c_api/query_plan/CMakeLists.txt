@@ -37,7 +37,7 @@ gather_sources(${SOURCES})
 #   This object library cannot link standalone because `query_plan` cannot link
 #   standalone.
 #
-add_library(capi_query_plan OBJECT ${SOURCES})
+add_library(capi_query_plan OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 target_link_libraries(capi_query_plan PUBLIC export)
 target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_plan>)

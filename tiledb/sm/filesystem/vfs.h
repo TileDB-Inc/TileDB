@@ -65,10 +65,6 @@
 #include "tiledb/sm/filesystem/gcs.h"
 #endif  // HAVE_GCS
 
-#ifdef HAVE_S3
-#include "tiledb/sm/filesystem/s3.h"
-#endif  // HAVE_S3
-
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -291,24 +287,29 @@ class GCS_within_VFS {
 
 /** The S3 filesystem. */
 #ifdef HAVE_S3
+
+class S3;
+
 class S3_within_VFS {
   /** Private member variable */
-  S3 s3_;
+  tdb_unique_ptr<S3> s3_;
 
  protected:
   template <typename... Args>
   S3_within_VFS(Args&&... args)
-      : s3_(std::forward<Args>(args)...) {
+      : s3_(tdb_unique_ptr<S3>(tdb_new(S3, std::forward<Args>(args)...))) {
   }
+
+  ~S3_within_VFS();
 
   /** Protected accessor for the S3 object. */
   inline S3& s3() {
-    return s3_;
+    return *s3_;
   }
 
   /** Protected accessor for the const S3 object. */
   inline const S3& s3() const {
-    return s3_;
+    return *s3_;
   }
 };
 #else
@@ -395,6 +396,22 @@ class VFS : FilesystemBase,
   /* ********************************* */
 
   /**
+   * Returns the filesystem which corresponds to the given URI.
+   *
+   * @param uri The URI which may correspond to a filesystem.
+   * @return The filesystem on which `uri` is stored.
+   */
+  const FilesystemBase& get_fs(const URI& uri) const;
+
+  /**
+   * Returns the filesystem which corresponds to the given URI.
+   *
+   * @param uri The URI which may correspond to a filesystem.
+   * @return The filesystem on which `uri` is stored.
+   */
+  FilesystemBase& get_fs(const URI uri);
+
+  /**
    * Returns the absolute path of the input string (mainly useful for
    * posix URI's).
    *
@@ -410,18 +427,29 @@ class VFS : FilesystemBase,
   Config config() const;
 
   /**
+   * Checks if the filesystem supports the given URI.
+   *
+   * - s3.supports_uri(s3://test) will return true.
+   * - posix.supports_uri(s3://test) will return false.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on the filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
+
+  /**
    * Creates a directory.
    *
    * @param uri The URI of the directory.
    */
-  void create_dir(const URI& uri) const;
+  void create_dir(const URI& uri) const override;
 
   /**
    * Creates an empty file.
    *
    * @param uri The URI of the file.
    */
-  void touch(const URI& uri) const;
+  void touch(const URI& uri) const override;
 
   /**
    * Cancels all background or queued tasks.
@@ -433,7 +461,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The name of the bucket to be created.
    */
-  void create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const override;
 
   /**
    * Returns the size of the files in the input directory.
@@ -453,21 +481,21 @@ class VFS : FilesystemBase,
    *
    * @param uri The name of the bucket to be deleted.
    */
-  void remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const override;
 
   /**
    * Deletes the contents of an object store bucket.
    *
    * @param uri The name of the bucket to be emptied.
    */
-  void empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const override;
 
   /**
    * Removes a given directory (recursive)
    *
    * @param uri The uri of the directory to be removed.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Removes a given empty directory. No exceptions are raised if the directory
@@ -492,7 +520,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The URI of the file.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Deletes files in parallel from the given vector of files.
@@ -517,7 +545,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the file.
    * @return The file size.
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Checks if a directory exists.
@@ -529,7 +557,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the directory.
    * @return `true` if the directory exists and `false` otherwise.
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if a file exists.
@@ -537,7 +565,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the file.
    * @return `true` if the file exists and `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    * Checks if an object store bucket exists.
@@ -545,7 +573,7 @@ class VFS : FilesystemBase,
    * @param uri The name of the object store bucket.
    * @return `true` if the bucket exists and `false` otherwise.
    */
-  bool is_bucket(const URI& uri) const;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Checks if an object-store bucket is empty.
@@ -553,7 +581,7 @@ class VFS : FilesystemBase,
    * @param uri The name of the object store bucket.
    * @return `true` if the bucket is empty and `false` otherwise.
    */
-  bool is_empty_bucket(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const override;
 
   /**
    * Retrieves all the URIs that have the first input as parent.
@@ -570,86 +598,67 @@ class VFS : FilesystemBase,
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
-   * Currently this API is only supported for local files, S3 and Azure.
+   * Both objects and common prefixes will be collected if non-recursive.
+   * For recursive listing cloud backends will not collect prefix results.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
-   * @param recursive Whether to list the objects recursively.
-   * @return Vector of results with each entry being a pair of the string URI
-   *    and object size.
+   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
    */
-  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
   LsObjects ls_filtered(
-      const URI& parent,
-      [[maybe_unused]] F f,
-      [[maybe_unused]] D d,
-      bool recursive) const {
-    LsObjects results;
-    try {
-      if (parent.is_file()) {
-        results = local_.ls_filtered(parent, f, d, recursive);
-      } else if (parent.is_s3()) {
-#ifdef HAVE_S3
-        results = s3().ls_filtered(parent, f, d, recursive);
-#else
-        throw filesystem::VFSException("TileDB was built without S3 support");
-#endif
-      } else if (parent.is_gcs()) {
-#ifdef HAVE_GCS
-        results = gcs().ls_filtered(parent, f, d, recursive);
-#else
-        throw filesystem::VFSException("TileDB was built without GCS support");
-#endif
-      } else if (parent.is_azure()) {
-#ifdef HAVE_AZURE
-        results = azure().ls_filtered(parent, f, d, recursive);
-#else
-        throw filesystem::VFSException(
-            "TileDB was built without Azure support");
-#endif
-      } else {
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
-      }
-    } catch (LsStopTraversal& e) {
-      // Do nothing, callback signaled to stop traversal.
-    } catch (...) {
-      // Rethrow exception thrown by the callback.
-      throw;
-    }
-    return results;
-  }
+      const URI& parent, ResultFilter f, bool recursive) const override;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected for all storage backends.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent, ResultFilterV2 f, bool recursive) const override;
 
   /**
    * Recursively lists objects and object information that start with `prefix`,
-   * invoking the FilePredicate on each entry collected and the
-   * DirectoryPredicate on common prefixes for pruning.
+   * invoking the FilterPredicate on each entry collected.
    *
    * Currently this API is only supported for local files, S3, Azure and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The FilterPredicate to invoke on each object for filtering.
    * @return Vector of results with each entry being a pair of the string URI
    *    and object size.
    */
-  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  LsObjects ls_recursive(
-      const URI& parent,
-      [[maybe_unused]] F f,
-      [[maybe_unused]] D d = accept_all_dirs) const {
-    return ls_filtered(parent, f, d, true);
+  template <FilterPredicate F>
+  LsObjects ls_recursive(const URI& parent, F&& f) const {
+    return ls_filtered(parent, std::move(f), true);
+  }
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`,
+   * invoking the FilterPredicate on each entry collected.
+   *
+   * Currently this API is only supported for local files, S3, Azure and GCS.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilterPredicate to invoke on each object for filtering.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilterPredicateV2 F>
+  LsObjects ls_recursive_v2(const URI& parent, F&& f) const {
+    return ls_filtered_v2(parent, std::move(f), true);
   }
 
   /**
@@ -658,7 +667,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory.
@@ -666,7 +675,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies a file.
@@ -674,7 +683,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies directory.
@@ -682,7 +691,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const;
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Reads from a file.
@@ -691,31 +700,21 @@ class VFS : FilesystemBase,
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
    */
-  void read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead = true) const;
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
-   * Reads from a file.
+   * Reads the specified number of bytes from a file.
    *
    * @param uri The URI of the file.
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
-  Status read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead = true);
+  Status read_exactly(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
@@ -730,7 +729,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The URI of the file.
    */
-  void sync(const URI& uri) const;
+  void sync(const URI& uri) const override;
 
   /**
    * Opens a file in a given mode.
@@ -766,7 +765,7 @@ class VFS : FilesystemBase,
    * @param finalize For s3 objects only. If `true`, flushes as a result of a
    * remote global order write `finalize()` call.
    */
-  void flush(const URI& uri, [[maybe_unused]] bool finalize = false);
+  void flush(const URI& uri, [[maybe_unused]] bool finalize = false) override;
 
   /**
    * Closes a file, flushing its contents to persistent storage.
@@ -794,7 +793,7 @@ class VFS : FilesystemBase,
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write = false);
+      bool remote_global_order_write = false) override;
 
   /**
    * Used in serialization to share the multipart upload state
@@ -1057,27 +1056,8 @@ class VFS : FilesystemBase,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead);
-
-  /**
-   * Executes a read, using the read-ahead cache as necessary.
-   *
-   * @param read_fn The read routine to execute.
-   * @param uri The URI of the file.
-   * @param offset The offset where the read begins.
-   * @param buffer The buffer to read into.
-   * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
-   */
-  Status read_ahead_impl(
-      const std::function<Status(
-          const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
-      const URI& uri,
-      const uint64_t offset,
-      void* const buffer,
-      const uint64_t nbytes,
-      const bool use_read_ahead);
+      bool use_read_ahead,
+      uint64_t* length_read);
 
   /**
    * Retrieves the backend-specific max number of parallel operations for VFS

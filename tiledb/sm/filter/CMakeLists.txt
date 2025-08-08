@@ -123,7 +123,7 @@ conclude(object_library)
 #
 # `webp_filter` object library.
 #
-#add_library(webp_filter OBJECT webp_filter.cc)
+#add_library(webp_filter OBJECT EXCLUDE_FROM_ALL webp_filter.cc)
 #target_link_libraries(webp_filter PUBLIC filter $<TARGET_OBJECTS:filter>)
 #target_link_libraries(webp_filter PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
 #target_link_libraries(webp_filter PUBLIC tile $<TARGET_OBJECTS:tile>)

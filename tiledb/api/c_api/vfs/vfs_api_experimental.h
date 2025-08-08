@@ -41,6 +41,7 @@
 extern "C" {
 #endif
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Typedef for ls_recursive callback function invoked on each object collected.
  *
@@ -58,8 +59,9 @@ typedef int32_t (*tiledb_ls_callback_t)(
  * on error. The callback is responsible for writing gathered entries into the
  * `data` buffer, for example using a pointer to a user-defined struct.
  *
- * Currently only local filesystem, S3, Azure and GCS are supported, and the
- * `path` must be a valid URI for one of those filesystems.
+ * Currently LocalFS, S3, Azure, and GCS are supported. Objects and
+ * directories will be collected for LocalFS. Only objects will be collected
+ * for cloud storage backends such as S3, Azure, and GCS.
  *
  * **Example:**
  *
@@ -89,11 +91,83 @@ typedef int32_t (*tiledb_ls_callback_t)(
  * @param[in] data Data pointer passed into the callback for storing results.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
     tiledb_ls_callback_t callback,
+    void* data) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
+
+/**
+ * Typedef for ls_recursive_v2 callback function invoked on each object
+ * collected.
+ *
+ * @param path The path of a visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param object_size The size of the object at the current path.
+ * @param is_dir 1 if the current object is a directory, else 0.
+ * @param data Data passed to the callback used to store collected results.
+ */
+typedef int32_t (*tiledb_ls_callback_v2_t)(
+    const char* path,
+    size_t path_len,
+    uint64_t object_size,
+    uint8_t is_dir,
+    void* data);
+
+/**
+ * Visits the children of `path` recursively, invoking the callback for each
+ * entry. The callback should return 1 to continue traversal, 0 to stop, or -1
+ * on error. The callback is responsible for writing gathered entries into the
+ * `data` buffer, for example using a pointer to a user-defined struct.
+ *
+ * Currently LocalFS, S3, Azure, and GCS are supported. The results will
+ * include objects and directories for all storage backends.
+ *
+ * The LsCallbackV2 used in this API adds an additional parameter for checking
+ * if the current result is a directory. This can be used by the caller to
+ * include or exclude directories as needed during traversal.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int my_callback(
+ *     const char* path,
+ *     size_t path_length,
+ *     uint64_t file_size,
+ *     uint8_t is_dir,
+ *     void* data) {
+ *   MyCbStruct cb_data = static_cast<MyCbStruct*>(data);
+ *   // Perform custom callback behavior here.
+ *   return 1;  // Continue traversal to next entry.
+ * }
+ * MyCbStruct* cb_data = allocate_cb_struct();
+ *
+ * tiledb_vfs_ls_recursive_v2(
+ *     ctx, vfs, "s3://bucket/foo", my_callback, &cb_data);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] vfs The virtual filesystem object.
+ * @param[in] path The path in which the traversal will occur.
+ * @param[in] callback
+ * The callback function to be applied on every visited object.
+ *     The callback should return `0` if the iteration must stop, and `1`
+ *     if the iteration must continue. It takes as input the currently visited
+ *     path, the length of the currently visited path, the size of the file,
+ *     a uint8 marking the object as a directory or not, and user provided
+ *     buffer for paths and object sizes in the form of a struct pointer. The
+ *     callback returns `-1` upon error. Note that `path` in the callback will
+ *     be an **absolute** path.
+ * @param[in] data Data pointer passed into the callback for storing results.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    tiledb_ls_callback_v2_t callback,
     void* data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
