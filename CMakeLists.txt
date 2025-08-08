@@ -107,6 +107,12 @@ else()
   set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+# Set C99 as default required standard for all C targets.
+# Some vendored source files are written in C. We should remove
+# this when we switch to vcpkg.
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
 if (TILEDB_CCACHE)
   include(FindCcache)
   set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
