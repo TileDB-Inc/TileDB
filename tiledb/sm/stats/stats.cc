@@ -46,24 +46,14 @@ namespace tiledb::sm::stats {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Stats::Stats(const std::string& prefix, bool enabled_stats)
-    : Stats(prefix, StatsData{}, enabled_stats) {
-}
-
 Stats::Stats(const std::string& prefix)
-    : Stats(prefix, StatsData{}, all_stats.enabled()) {
-}
-
-Stats::Stats(
-    const std::string& prefix, const StatsData& data, bool enabled_stats)
-    : enabled_(enabled_stats)
-    , prefix_(prefix + ".")
-    , parent_(nullptr) {
-  this->populate_with_data(data);
+    : Stats(prefix, StatsData{}) {
 }
 
 Stats::Stats(const std::string& prefix, const StatsData& data)
-    : Stats(prefix, data, all_stats.enabled()) {
+    : prefix_(prefix + ".")
+    , parent_(nullptr) {
+  this->populate_with_data(data);
 }
 
 /* ****************************** */
@@ -71,11 +61,7 @@ Stats::Stats(const std::string& prefix, const StatsData& data)
 /* ****************************** */
 
 bool Stats::enabled() const {
-  return enabled_;
-}
-
-void Stats::set_enabled(bool enabled) {
-  enabled_ = enabled;
+  return all_stats.enabled();
 }
 
 void Stats::reset() {
@@ -186,7 +172,7 @@ std::string Stats::dump(
 #ifdef TILEDB_STATS
 
 void Stats::add_counter(const std::string& stat, uint64_t count) {
-  if (!enabled_) {
+  if (!all_stats.enabled()) {
     return;
   }
 
@@ -252,7 +238,7 @@ std::optional<double> Stats::find_timer(const std::string& stat) const {
 
 void Stats::report_duration(
     const std::string& stat, const std::chrono::duration<double> duration) {
-  if (!enabled_) {
+  if (!all_stats.enabled()) {
     return;
   }
 
@@ -308,14 +294,14 @@ Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
 #if !defined(TILEDB_STATS)
   constexpr bool stats_enabled = false;
 #else
-  const bool stats_enabled = enabled_;
+  const bool stats_enabled = all_stats.enabled();
 #endif
 
   if (!stats_enabled) {
     // Return a singleton null stats object that's safe to use but does nothing.
     // This is necessary because the caller expects a valid (non-null) pointer.
     // Also, this avoids unnecessary allocations when stats are disabled.
-    static Stats null_stats("null_stats", false);
+    static Stats null_stats("null_stats");
     return &null_stats;
   }
 
@@ -329,7 +315,7 @@ Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
 void Stats::populate_flattened_stats(
     std::unordered_map<std::string, double>* const flattened_timers,
     std::unordered_map<std::string, uint64_t>* const flattened_counters) const {
-  if (!enabled_) {
+  if (!all_stats.enabled()) {
     return;
   }
 
@@ -359,7 +345,7 @@ const std::unordered_map<std::string, uint64_t>* Stats::counters() const {
 }
 
 void Stats::populate_with_data(const StatsData& data) {
-  if (!enabled_) {
+  if (!all_stats.enabled()) {
     return;
   }
 
