@@ -87,7 +87,9 @@ class zip_view : public std::ranges::view_interface<zip_view<Rngs...>> {
    ****************************************************************************/
 
   /** Default constructor */
-  zip_view() = default;
+  zip_view()
+    requires(std::default_initializable<Rngs> && ...)
+  = default;
 
   /**
    * Construct a zip view from a set of ranges.  The ranges are stored in a
