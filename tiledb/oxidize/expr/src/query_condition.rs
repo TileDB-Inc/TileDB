@@ -8,13 +8,14 @@ use datafusion::common::arrow::array::{
     self as aa, Array as ArrowArray, ArrayData, FixedSizeListArray, GenericListArray,
 };
 use datafusion::common::arrow::buffer::OffsetBuffer;
-use datafusion::common::arrow::datatypes::Field as ArrowField;
+use datafusion::common::arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
 use itertools::Itertools;
 use num_traits::FromBytes;
 use tiledb_arrow::offsets::Error as OffsetsError;
+use tiledb_arrow::schema::WhichSchema;
 use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum, Field};
 use tiledb_cxx_interface::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 use tiledb_cxx_interface::sm::misc::ByteVecValue;
@@ -68,6 +69,8 @@ pub enum UserError {
     InListCellValNumMismatch(CellValNum, usize),
     #[error("Variable-length data offsets: ")]
     InListVarOffsets(#[from] OffsetsError),
+    #[error("Invalid query condition operand: {0}")]
+    ExpectedUtf8(#[source] std::string::FromUtf8Error),
 }
 
 /// Returns an iterator over the values of type [T] contained in `bytes`.
@@ -104,6 +107,7 @@ where
 
 fn leaf_ast_to_binary_expr(
     schema: &ArraySchema,
+    which: WhichSchema,
     ast: &ASTNode,
     op: Operator,
 ) -> Result<Expr, Error> {
@@ -113,7 +117,13 @@ fn leaf_ast_to_binary_expr(
         );
     };
 
-    fn apply<T>(field: &Field, ast: &ASTNode, operator: Operator) -> Result<Expr, Error>
+    fn apply<T>(
+        schema: &ArraySchema,
+        which: WhichSchema,
+        field: &Field,
+        ast: &ASTNode,
+        operator: Operator,
+    ) -> Result<Expr, Error>
     where
         T: FromBytes,
         <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
@@ -127,9 +137,10 @@ fn leaf_ast_to_binary_expr(
             .map(ScalarValue::from)
             .peekable();
 
-        let expect_datatype = tiledb_arrow::schema::field_arrow_datatype(field).map_err(|e| {
-            InternalError::SchemaField(field.name_cxx().to_string_lossy().into_owned(), e)
-        })?;
+        let expect_datatype = tiledb_arrow::schema::field_arrow_datatype(schema, which, field)
+            .map_err(|e| {
+                InternalError::SchemaField(field.name_cxx().to_string_lossy().into_owned(), e)
+            })?;
 
         let right = match field.cell_val_num() {
             CellValNum::Single => {
@@ -168,23 +179,31 @@ fn leaf_ast_to_binary_expr(
                 )
             }
             CellValNum::Var => {
-                let values = if values.peek().is_none() {
-                    aa::make_array(ArrayData::new_empty(&expect_datatype))
+                if matches!(expect_datatype, ArrowDataType::LargeUtf8) {
+                    ScalarValue::LargeUtf8(Some(
+                        String::from_utf8(ast.get_data().as_slice().to_vec())
+                            .map_err(UserError::ExpectedUtf8)?,
+                    ))
                 } else {
-                    // SAFETY: `values` produces a static type, so all will match.
-                    // `values` is also non-empty per `peek`.
-                    ScalarValue::iter_to_array(values).unwrap()
-                };
-                let element_field = ArrowField::new_list_field(values.data_type().clone(), false);
-                ScalarValue::LargeList(
-                    GenericListArray::<i64>::new(
-                        element_field.into(),
-                        OffsetBuffer::<i64>::from_lengths(std::iter::once(values.len())),
-                        values,
-                        None,
+                    let values = if values.peek().is_none() {
+                        aa::make_array(ArrayData::new_empty(&expect_datatype))
+                    } else {
+                        // SAFETY: `values` produces a static type, so all will match.
+                        // `values` is also non-empty per `peek`.
+                        ScalarValue::iter_to_array(values).unwrap()
+                    };
+                    let element_field =
+                        ArrowField::new_list_field(values.data_type().clone(), false);
+                    ScalarValue::LargeList(
+                        GenericListArray::<i64>::new(
+                            element_field.into(),
+                            OffsetBuffer::<i64>::from_lengths(std::iter::once(values.len())),
+                            values,
+                            None,
+                        )
+                        .into(),
                     )
-                    .into(),
-                )
+                }
             }
         };
 
@@ -199,7 +218,7 @@ fn leaf_ast_to_binary_expr(
     apply_physical_type!(
         value_type,
         NativeType,
-        apply::<NativeType>(&field, ast, op),
+        apply::<NativeType>(schema, which, &field, ast, op),
         |invalid: Datatype| Err(InternalError::InvalidDatatype(invalid.repr.into()).into())
     )
 }
@@ -316,13 +335,45 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
         }))
     }
 
-    let value_type = field.datatype();
-    apply_physical_type!(
-        value_type,
-        NativeType,
-        apply::<NativeType>(&field, ast, negated),
-        |invalid: Datatype| Err(InternalError::InvalidDatatype(invalid.repr.into()).into())
-    )
+    if matches!(
+        field.datatype(),
+        Datatype::STRING_ASCII | Datatype::STRING_UTF8
+    ) && field.cell_val_num().is_var()
+    {
+        let array_offsets = tiledb_arrow::offsets::try_from_bytes_and_num_values(
+            field.datatype().value_size(),
+            ast.get_offsets().as_slice(),
+            ast.get_data().len(),
+        )
+        .map_err(UserError::from)?;
+
+        let column = Expr::Column(Column::from_name(
+            field.name().map_err(UserError::FieldNameNotUtf8)?,
+        ));
+        let in_list = array_offsets
+            .windows(2)
+            .map(|w| {
+                let elts = ast.get_data().as_slice()[w[0] as usize..w[1] as usize].to_vec();
+                String::from_utf8(elts).map_err(UserError::ExpectedUtf8)
+            })
+            .map_ok(|s| ScalarValue::LargeUtf8(Some(s)))
+            .map_ok(Expr::Literal)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Expr::InList(InList {
+            expr: Box::new(column),
+            list: in_list,
+            negated,
+        }))
+    } else {
+        let value_type = field.datatype();
+        apply_physical_type!(
+            value_type,
+            NativeType,
+            apply::<NativeType>(&field, ast, negated),
+            |invalid: Datatype| Err(InternalError::InvalidDatatype(invalid.repr.into()).into())
+        )
+    }
 }
 
 fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Error> {
@@ -361,12 +412,13 @@ fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Er
 
 fn combination_ast_to_binary_expr(
     schema: &ArraySchema,
+    which: WhichSchema,
     query_condition: &ASTNode,
     operator: Operator,
 ) -> Result<Expr, Error> {
     let mut level = query_condition
         .children()
-        .map(|ast| to_datafusion_impl(schema, ast))
+        .map(|ast| to_datafusion_impl(schema, which, ast))
         .collect::<Result<Vec<_>, _>>()?;
 
     while level.len() != 1 {
@@ -396,21 +448,25 @@ fn combination_ast_to_binary_expr(
     Ok(level.into_iter().next().unwrap())
 }
 
-fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> Result<Expr, Error> {
+fn to_datafusion_impl(
+    schema: &ArraySchema,
+    which: WhichSchema,
+    query_condition: &ASTNode,
+) -> Result<Expr, Error> {
     if query_condition.is_expr() {
         match *query_condition.get_combination_op() {
             QueryConditionCombinationOp::AND => {
-                combination_ast_to_binary_expr(schema, query_condition, Operator::And)
+                combination_ast_to_binary_expr(schema, which, query_condition, Operator::And)
             }
             QueryConditionCombinationOp::OR => {
-                combination_ast_to_binary_expr(schema, query_condition, Operator::Or)
+                combination_ast_to_binary_expr(schema, which, query_condition, Operator::Or)
             }
             QueryConditionCombinationOp::NOT => {
                 let children = query_condition.children().collect::<Vec<_>>();
                 if children.len() != 1 {
                     return Err(InternalError::NotTree(children.len()).into());
                 }
-                let negate_arg = to_datafusion_impl(schema, children[0])?;
+                let negate_arg = to_datafusion_impl(schema, which, children[0])?;
                 Ok(!negate_arg)
             }
             invalid => Err(InternalError::InvalidCombinationOp(invalid.repr.into()).into()),
@@ -421,31 +477,37 @@ fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> Result
         match *query_condition.get_op() {
             QueryConditionOp::LT => Ok(leaf_ast_to_binary_expr(
                 schema,
+                which,
                 query_condition,
                 Operator::Lt,
             )?),
             QueryConditionOp::LE => Ok(leaf_ast_to_binary_expr(
                 schema,
+                which,
                 query_condition,
                 Operator::LtEq,
             )?),
             QueryConditionOp::GT => Ok(leaf_ast_to_binary_expr(
                 schema,
+                which,
                 query_condition,
                 Operator::Gt,
             )?),
             QueryConditionOp::GE => Ok(leaf_ast_to_binary_expr(
                 schema,
+                which,
                 query_condition,
                 Operator::GtEq,
             )?),
             QueryConditionOp::EQ => Ok(leaf_ast_to_binary_expr(
                 schema,
+                which,
                 query_condition,
                 Operator::Eq,
             )?),
             QueryConditionOp::NE => Ok(leaf_ast_to_binary_expr(
                 schema,
+                which,
                 query_condition,
                 Operator::NotEq,
             )?),
@@ -483,10 +545,12 @@ fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> Result
 /// as the requested query condition.
 pub fn to_datafusion(
     schema: &ArraySchema,
+    which: &WhichSchema,
     query_condition: &ASTNode,
 ) -> Result<Box<LogicalExpr>, Error> {
     Ok(Box::new(LogicalExpr(to_datafusion_impl(
         schema,
+        *which,
         query_condition,
     )?)))
 }
