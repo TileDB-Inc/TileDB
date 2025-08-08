@@ -122,7 +122,7 @@ class Stats {
    *
    * @param prefix The stat name prefix.
    */
-  Stats(const std::string& prefix);
+  explicit Stats(const std::string& prefix);
 
   /**
    * Value constructor.
@@ -178,9 +178,6 @@ class Stats {
   /** Returns true if statistics are currently enabled. */
   bool enabled() const;
 
-  /** Enable or disable statistics gathering. */
-  void set_enabled(bool enabled);
-
   /** Reset all stats. */
   void reset();
 
@@ -230,9 +227,6 @@ class Stats {
 
   /** Mutex. */
   mutable std::mutex mtx_;
-
-  /** True if stats are being gathered. */
-  bool enabled_;
 
   /** A map of timer stats measuring time in seconds. */
   std::unordered_map<std::string, double> timers_;

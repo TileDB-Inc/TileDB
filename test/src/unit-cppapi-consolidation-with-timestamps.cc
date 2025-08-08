@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/stats.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -617,6 +618,8 @@ TEST_CASE_METHOD(
     "coords, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][same-coords][mem-"
     "budget][non-rest]") {
+  test::ScopedStats scoped_stats;
+
   remove_sparse_array();
   create_sparse_array();
 
@@ -660,6 +663,8 @@ TEST_CASE_METHOD(
     "across tiles, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles][mem-"
     "budget][non-rest]") {
+  test::ScopedStats scoped_stats;
+
   remove_sparse_array();
   create_sparse_array();
 
@@ -1438,6 +1443,8 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, check number of tiles read",
     "[cppapi][consolidation-with-timestamps][partial-read][stats][non-rest]") {
+  test::ScopedStats scoped_stats;
+
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
