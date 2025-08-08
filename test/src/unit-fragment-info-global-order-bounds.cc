@@ -34,11 +34,29 @@
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/sm/misc/comparators.h"
 
+#include <test/support/rapidcheck/array_templates.h>
+#include <test/support/src/array_helpers.h>
 #include <test/support/src/array_templates.h>
 #include <test/support/src/vfs_helpers.h>
 
 using namespace tiledb;
 using namespace tiledb::test;
+
+using Fragment1DFixed = templates::Fragment1D<uint64_t>;
+
+void showValue(const Fragment1DFixed& value, std::ostream& os) {
+  rc::showFragment(value, os);
+}
+
+namespace rc::detail {
+template <bool A, bool B>
+struct ShowDefault<Fragment1DFixed, A, B> {
+  static void show(const Fragment1DFixed& value, std::ostream& os) {
+    rc::showFragment(value, os);
+  }
+};
+
+}  // namespace rc::detail
 
 /**
  * @return another fragment containing the contents of the argument sorted in
@@ -108,11 +126,14 @@ static void prepare_bound_buffers(
       bufs);
 }
 
+template <templates::FragmentType F>
+using Bounds = std::pair<CoordsTuple<F>, CoordsTuple<F>>;
+
 /**
  * @return the lower and upper bounds of tile `(f, t)` in the fragment info
  */
 template <templates::FragmentType F>
-static std::pair<CoordsTuple<F>, CoordsTuple<F>> global_order_bounds(
+static Bounds<F> global_order_bounds(
     const FragmentInfo& finfo, uint64_t fragment, uint64_t tile) {
   constexpr size_t num_fields = std::tuple_size<DimensionTuple<F>>::value;
 
@@ -167,11 +188,16 @@ static std::pair<CoordsTuple<F>, CoordsTuple<F>> global_order_bounds(
  * Asserts that when a set of fragments are written, the fragment metadata
  * accurately reflects the expected global order bounds of the input.
  *
+ * "Accurately reflects" means that:
+ * 1) the lower bound is indeed the first coordinate in global order in the
+ * fragment 2) the upper bound is indeed the last coordinate in global order in
+ * the fragment
+ *
  * @return the global order bounds for each tile per fragment
  */
 template <typename Asserter, templates::FragmentType F>
-std::vector<std::vector<std::pair<CoordsTuple<F>, CoordsTuple<F>>>> instance(
-    Context ctx,
+std::vector<std::vector<Bounds<F>>> instance(
+    const Context& ctx,
     const std::string& array_uri,
     const std::vector<F>& fragments,
     tiledb_layout_t layout = TILEDB_GLOBAL_ORDER) {
@@ -226,7 +252,10 @@ TEST_CASE(
       "fragment_metadata_global_order_bounds_1d_fixed");
 
   const templates::Dimension<Datatype::UINT64> dimension(
-      templates::Domain<uint64_t>(1, 1024), 16);
+      templates::Domain<uint64_t>(0, 1024 * 8), 16);
+
+  const bool allow_dups = GENERATE(true, false);
+
   templates::ddl::create_array<Datatype::UINT64>(
       array_uri,
       vfs_test_setup.ctx(),
@@ -235,7 +264,10 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       8,
-      false);
+      allow_dups);
+
+  DeleteArrayGuard delarray(
+      vfs_test_setup.ctx().ptr().get(), array_uri.c_str());
 
   using Fragment = templates::Fragment1D<uint64_t>;
 
@@ -249,6 +281,30 @@ TEST_CASE(
         }
         return out_bounds;
       };
+
+  SECTION("Minimum write") {
+    Fragment f;
+    f.resize(1);
+    f.dimension()[0] = 1;
+
+    std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
+    SECTION("Global Order") {
+      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+          vfs_test_setup.ctx(), array_uri, std::vector<Fragment1DFixed>{f});
+    }
+
+    SECTION("Unordered") {
+      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+          vfs_test_setup.ctx(),
+          array_uri,
+          std::vector<Fragment1DFixed>{f},
+          TILEDB_UNORDERED);
+    }
+    REQUIRE(fragment_bounds.size() == 1);
+    CHECK(
+        fragment_bounds[0] == std::vector<Bounds<Fragment>>{std::make_pair(
+                                  std::make_tuple(1), std::make_tuple(1))});
+  }
 
   SECTION("Ascending fragment") {
     Fragment f;
@@ -268,8 +324,8 @@ TEST_CASE(
     SECTION("Global Order") {
       std::iota(f.dimension().begin(), f.dimension().end(), 1);
       const auto fragment_bounds =
-          instance<tiledb::test::AsserterCatch, Fragment>(
-              vfs_test_setup.ctx(), array_uri, std::vector<Fragment>{f});
+          instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+              vfs_test_setup.ctx(), array_uri, std::vector<Fragment1DFixed>{f});
       REQUIRE(fragment_bounds.size() == 1);
       CHECK(fragment_bounds[0] == expect);
     }
@@ -280,13 +336,94 @@ TEST_CASE(
       }
 
       const auto fragment_bounds =
-          instance<tiledb::test::AsserterCatch, Fragment>(
+          instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
               vfs_test_setup.ctx(),
               array_uri,
-              std::vector<Fragment>{f},
+              std::vector<Fragment1DFixed>{f},
               TILEDB_UNORDERED);
       REQUIRE(fragment_bounds.size() == 1);
       CHECK(fragment_bounds[0] == expect);
     }
   }
+
+  if (allow_dups) {
+    SECTION("Duplicates") {
+      Fragment f;
+      f.dimension() = {0, 0, 0, 0, 0, 0, 0, 0, 1};
+
+      const auto expect = make_expect({{0, 1}});
+
+      SECTION("Global Order") {
+        const auto fragment_bounds =
+            instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+                vfs_test_setup.ctx(),
+                array_uri,
+                std::vector<Fragment1DFixed>{f});
+        REQUIRE(fragment_bounds.size() == 1);
+        CHECK(fragment_bounds[0] == expect);
+      }
+    }
+  }
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D fixed rapidcheck",
+    "[fragment_info][global-order][rapidcheck]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_fixed");
+
+  static constexpr uint64_t LB = 0;
+  static constexpr uint64_t UB = 1024 * 8;
+  const templates::Domain<uint64_t> domain(LB, UB);
+  const templates::Dimension<Datatype::UINT64> dimension(domain, 16);
+
+  Context ctx = vfs_test_setup.ctx();
+
+  auto temp_array = [&](bool allow_dups) {
+    templates::ddl::create_array<Datatype::UINT64>(
+        array_uri,
+        ctx,
+        std::tuple<const templates::Dimension<Datatype::UINT64>&>{dimension},
+        std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        8,
+        allow_dups);
+
+    return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  };
+
+  rc::prop("global order", [&](bool allow_dups) {
+    auto fragments = *rc::gen::container<std::vector<Fragment1DFixed>>(
+        rc::make_fragment_1d<uint64_t>(allow_dups, domain));
+    auto arrayguard = temp_array(allow_dups);
+    Array forread(ctx, array_uri, TILEDB_READ);
+    std::vector<Fragment1DFixed> global_order_fragments;
+    for (const auto& fragment : fragments) {
+      global_order_fragments.push_back(make_global_order<Fragment1DFixed>(
+          forread, fragment, TILEDB_UNORDERED));
+    }
+
+    instance<tiledb::test::AsserterRapidcheck, Fragment1DFixed>(
+        vfs_test_setup.ctx(),
+        array_uri,
+        global_order_fragments,
+        TILEDB_GLOBAL_ORDER);
+  });
+
+  /*
+  rc::prop(
+      "unordered",
+      [&](std::vector<rc::Fragment1DFixedWrapper<LB, UB>> fragments) {
+      auto arrayguard = temp_array();
+      Array forread(ctx, array_uri, TILEDB_READ);
+        std::vector<Fragment1DFixed> fs;
+        for (auto fragment : fragments) {
+          fs.push_back(std::move(fragment.f_));
+        }
+        instance<tiledb::test::AsserterRapidcheck, Fragment1DFixed>(
+            vfs_test_setup.ctx(), array_uri, fs, TILEDB_UNORDERED);
+      });
+      */
 }

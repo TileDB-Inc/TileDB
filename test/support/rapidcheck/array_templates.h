@@ -237,9 +237,40 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
   });
 }
 
-template <>
-void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os) {
-  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
+void showValue(const templates::Domain<int>& domain, std::ostream& os);
+void showValue(const templates::Domain<int64_t>& domain, std::ostream& os);
+void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os);
+
+namespace detail {
+
+template <stdx::is_fundamental T, bool A, bool B>
+struct ShowDefault<templates::query_buffers<T>, A, B> {
+  static void show(const query_buffers<T>& value, std::ostream& os) {
+    ::rc::show<decltype(value.values_)>(value.values_, os);
+  }
+};
+
+}  // namespace detail
+
+template <typename DimensionTuple, typename AttributeTuple>
+void showFragment(
+    const templates::Fragment<DimensionTuple, AttributeTuple>& value,
+    std::ostream& os) {
+  auto showField = [&]<typename T>(const query_buffers<T>& field) {
+    os << "\t\t";
+    show(field, os);
+    os << std::endl;
+  };
+  os << "{" << std::endl << "\t\"dimensions\": [" << std::endl;
+  std::apply(
+      [&](const auto&... dimension) { (showField(dimension), ...); },
+      value.dimensions());
+  os << "\t]" << std::endl;
+  os << "\t\"attributes\": [" << std::endl;
+  std::apply(
+      [&](const auto&... attribute) { (showField(attribute), ...); },
+      value.attributes());
+  os << "\t]" << std::endl << "}" << std::endl;
 }
 
 }  // namespace rc
