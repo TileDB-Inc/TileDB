@@ -129,6 +129,11 @@ class RestProfile {
   }
 
   /**
+   * @return true if there is a regular file at the file path expected for this
+   */
+  bool file_exists() const;
+
+  /**
    * Saves this profile to the local file.
    *
    * @param overwrite If true, overwrite the existing profile with the same

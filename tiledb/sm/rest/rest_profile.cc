@@ -226,8 +226,12 @@ void RestProfile::save_to_file(const bool overwrite) {
   write_file(data, filepath_);
 }
 
+bool RestProfile::file_exists() const {
+  return std::filesystem::exists(filepath_);
+}
+
 void RestProfile::load_from_file() {
-  if (std::filesystem::exists(filepath_)) {
+  if (file_exists()) {
     // If the local file exists, load the profile with the given name.
     load_from_json_file(filepath_);
   } else {
