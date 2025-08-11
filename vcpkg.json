@@ -75,6 +75,12 @@
                 "clipp"
             ]
         },
+        "tracing": {
+            "description": "Enable tracing",
+            "dependencies": [
+              "opentelemetry-cpp"
+            ]
+        },
         "webp": {
             "description": "Support WebP compression",
             "dependencies": [

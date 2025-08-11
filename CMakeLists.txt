@@ -390,6 +390,10 @@ if (TILEDB_RUST)
     add_compile_definitions("HAVE_RUST")
 endif ()
 
+if (TILEDB_TRACING)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_TRACING)
+endif ()
+
 if (TILEDB_ASSERTIONS)
   string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)
   add_compile_definitions(TILEDB_ASSERTIONS)

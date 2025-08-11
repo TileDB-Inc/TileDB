@@ -110,6 +110,17 @@ commence(object_library tdb_catch)
   this_target_object_libraries(seedable_global_PRNG)
 conclude(object_library)
 
+add_library(tdb_catch_tracing OBJECT)
+target_sources(tdb_catch_tracing PUBLIC tdb_catch_tracing.cc)
+if (TILEDB_TRACING)
+  find_package(opentelemetry-cpp CONFIG REQUIRED NO_DEFAULT_PATH COMPONENTS ostream_span_exporter trace)
+  target_link_libraries(tdb_catch_tracing
+    INTERFACE
+      opentelemetry-cpp::ostream_span_exporter
+      opentelemetry-cpp::trace
+    )
+endif ()
+
 commence(object_library mem_helpers)
   this_target_sources(src/mem_helpers.cc)
   this_target_object_libraries(baseline)
