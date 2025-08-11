@@ -345,7 +345,9 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
 }
 
 void FragmentMetadata::set_tile_global_order_bounds_fixed(
-    const std::string& dim_name, uint64_t tile, const WriterTileTuple& data) {
+    const std::string& dim_name,
+    uint64_t which_tile,
+    const WriterTileTuple& data) {
   iassert(data.cell_num() > 0);
 
   const auto dim = array_schema_->domain().get_dimension_index(dim_name);
@@ -355,6 +357,8 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
 
   const auto& tile_max = data.global_order_max();
   iassert(tile_max.has_value());
+
+  const uint64_t tile = which_tile + tile_index_base_;
 
   if (array_schema_->domain().dimensions()[dim]->var_size()) {
     // NB: for now we set a length, and it will be updated to an offset
