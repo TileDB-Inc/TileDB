@@ -81,5 +81,12 @@
                 "libwebp"
             ]
         }
-    }
+    },
+    "overrides": [
+        {
+            "$note": "Remove this when CI updates to newer versions of GCC",
+            "name": "libwebp",
+            "version": "1.5.0"
+        }
+    ]
 }
