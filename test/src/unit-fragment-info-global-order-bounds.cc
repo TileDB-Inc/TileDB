@@ -254,7 +254,7 @@ TEST_CASE(
   const templates::Dimension<Datatype::UINT64> dimension(
       templates::Domain<uint64_t>(0, 1024 * 8), 16);
 
-  const bool allow_dups = false;  // FIXME: allow_dups = true bug
+  const bool allow_dups = GENERATE(true, false);
 
   templates::ddl::create_array<Datatype::UINT64>(
       array_uri,
@@ -348,17 +348,32 @@ TEST_CASE(
 
   if (allow_dups) {
     SECTION("Duplicates") {
-      Fragment f;
-      f.dimension() = {0, 0, 0, 0, 0, 0, 0, 0, 1};
-
-      const auto expect = make_expect({{0, 1}});
+      const auto expect = make_expect({{0, 0}, {1, 1}});
 
       SECTION("Global Order") {
+        Fragment f;
+        f.dimension() = {0, 0, 0, 0, 0, 0, 0, 0, 1};
+
         const auto fragment_bounds =
             instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
                 vfs_test_setup.ctx(),
                 array_uri,
-                std::vector<Fragment1DFixed>{f});
+                std::vector<Fragment1DFixed>{f},
+                TILEDB_GLOBAL_ORDER);
+        REQUIRE(fragment_bounds.size() == 1);
+        CHECK(fragment_bounds[0] == expect);
+      }
+
+      SECTION("Unordered") {
+        Fragment f;
+        f.dimension() = {0, 0, 0, 1, 0, 0, 0, 0, 0};
+
+        const auto fragment_bounds =
+            instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+                vfs_test_setup.ctx(),
+                array_uri,
+                std::vector<Fragment1DFixed>{f},
+                TILEDB_UNORDERED);
         REQUIRE(fragment_bounds.size() == 1);
         CHECK(fragment_bounds[0] == expect);
       }
@@ -394,8 +409,7 @@ TEST_CASE(
     return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
   };
 
-  rc::prop("global order", [&]() {
-    const bool allow_dups = false;  // FIXME: not working correctly
+  rc::prop("global order", [&](bool allow_dups) {
     auto fragments = *rc::gen::container<std::vector<Fragment1DFixed>>(
         rc::make_fragment_1d<uint64_t>(allow_dups, domain));
     auto arrayguard = temp_array(allow_dups);
