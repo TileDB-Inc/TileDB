@@ -389,6 +389,12 @@ if (TILEDB_SERIALIZATION)
 
 endif()
 
+if (TILEDB_TRACING)
+  list(APPEND TILEDB_CORE_SOURCES
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/tracing.cc
+  )
+endif ()
+
 # 'External' source files included in the source tree.
 list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
@@ -545,6 +551,15 @@ if (TILEDB_SERIALIZATION)
       CURL::libcurl
     )
 endif()
+
+# Tracing
+if (TILEDB_TRACING)
+  find_package(opentelemetry-cpp COMPONENTS trace)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      opentelemetry-cpp::trace
+    )
+endif ()
 
 # Sanitizer linker flags
 if (TILEDB_SANITIZER)

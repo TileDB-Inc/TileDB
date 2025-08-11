@@ -383,6 +383,10 @@ if (TILEDB_ASSERTIONS)
   add_compile_definitions("__SOURCE_DIR_PATH_SIZE__=${SOURCE_DIR_PATH_SIZE}")
 endif ()
 
+if (TILEDB_TRACING)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_TRACING)
+endif ()
+
 ##################################
 # Local install
 ##################################
