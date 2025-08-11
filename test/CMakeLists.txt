@@ -229,6 +229,7 @@ target_link_libraries(tiledb_unit
     TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
+    tdb_catch_tracing
     configuration_definitions
     rapidcheck
 )

@@ -84,6 +84,7 @@ tiledb_vcpkg_enable_if(TILEDB_GCS "gcs")
 tiledb_vcpkg_enable_if(TILEDB_SERIALIZATION "serialization")
 tiledb_vcpkg_enable_if(TILEDB_S3 "s3")
 tiledb_vcpkg_enable_if(TILEDB_TESTS "tests")
+tiledb_vcpkg_enable_if(TILEDB_TRACING "tracing")
 tiledb_vcpkg_enable_if(TILEDB_TOOLS "tools")
 tiledb_vcpkg_enable_if(TILEDB_WEBP "webp")
 

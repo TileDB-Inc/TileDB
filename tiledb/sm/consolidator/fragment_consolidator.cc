@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/tracing.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -222,8 +223,10 @@ Status FragmentConsolidator::consolidate(
   throw_if_not_ok(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
+  const ArraySchema& rschema = array_for_reads->array_schema_latest();
+
   // Disable consolidation with timestamps on older arrays.
-  if (array_for_reads->array_schema_latest().write_version() <
+  if (rschema.write_version() <
       constants::consolidation_with_timestamps_min_version) {
     config_.with_timestamps_ = false;
   }
@@ -253,6 +256,14 @@ Status FragmentConsolidator::consolidate(
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
   do {
+#ifdef HAVE_TRACING
+    const auto step_span = tiledb::tracing::get_tracer().StartSpan(
+        "FragmentConsolidator::consolidate");
+    step_span->SetAttribute("array_name", array_name);
+    // TODO: consider putting relevant configs here
+
+    const auto step_scope = opentelemetry::trace::Scope(step_span);
+#endif
     // No need to consolidate if no more than 1 fragment exist
     if (fragment_info.fragment_num() <= 1)
       break;
@@ -260,15 +271,29 @@ Status FragmentConsolidator::consolidate(
     // Find the next fragments to be consolidated
     NDRange union_non_empty_domains;
     st = compute_next_to_consolidate(
-        array_for_reads->array_schema_latest(),
-        fragment_info,
-        &to_consolidate,
-        &union_non_empty_domains);
+        rschema, fragment_info, &to_consolidate, &union_non_empty_domains);
     if (!st.ok()) {
       throw_if_not_ok(array_for_reads->close());
       throw_if_not_ok(array_for_writes->close());
       return st;
     }
+
+#ifdef HAVE_TRACING
+    for (const auto& target : to_consolidate) {
+      step_span->AddEvent(
+          "compute_next_to_consolidate",
+          tiledb::tracing::EventBuilder().attribute(
+              "uri", target.uri().to_string()));
+      // TODO: we would like some details here including domain?
+    }
+    for (size_t d = 0; d < rschema.dim_num(); d++) {
+      const auto dimension = rschema.domain().shared_dimension(d);
+      step_span->SetAttribute(
+          "target_domain." + dimension->name(),
+          tiledb::type::range_str(
+              union_non_empty_domains[d], dimension->type()));
+    }
+#endif
 
     // Check if there is anything to consolidate
     if (to_consolidate.size() <= 1) {
@@ -583,6 +608,12 @@ Status FragmentConsolidator::consolidate_internal(
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri,
     FragmentConsolidationWorkspace& cw) {
+#ifdef HAVE_TRACING
+  const auto span =
+      opentelemetry::trace::Scope(tiledb::tracing::get_tracer().StartSpan(
+          "FragmentConsolidator::consolidate_internal"));
+#endif
+
   auto timer_se = stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);

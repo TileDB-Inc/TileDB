@@ -40,6 +40,11 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/tracing.h"
+
+#ifdef HAVE_TRACING
+#include <opentelemetry/trace/tracer.h>
+#endif
 
 namespace tiledb::api {
 namespace detail {
@@ -745,6 +750,10 @@ template <class... Args, capi_return_t (*f)(tiledb_ctx_handle_t*, Args...)>
 struct CAPIFunctionContext<f> : CAPIFunction<f, ExceptionActionCtx> {
   inline static capi_return_t function_with_context(
       tiledb_ctx_handle_t* ctx, Args... args) {
+#ifdef HAVE_TRACING
+    const auto api_span = opentelemetry::trace::Scope(
+        tiledb::tracing::get_tracer().StartSpan(typeid(f).name()));
+#endif
     tiledb::api::ExceptionActionCtx action{ctx};
     return CAPIFunction<f, ExceptionActionCtx>::function(action, ctx, args...);
   }
