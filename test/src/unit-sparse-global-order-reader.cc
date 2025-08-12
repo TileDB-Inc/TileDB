@@ -4203,9 +4203,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 2d",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop(
       "rapidcheck arbitrary 2d", [this](rc::NonShrinking<FxRun2D> instance) {
         run<tiledb::test::AsserterRapidcheck, FxRun2D>(instance);
