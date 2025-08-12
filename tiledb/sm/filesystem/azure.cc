@@ -85,32 +85,41 @@ std::string GetDfsUrlFromUrl(const std::string& url) {
   return GetDfsUrlFromUrl(Azure::Core::Url(url)).GetAbsoluteUrl();
 }
 
+/**
+ * Returns an empty tuple if the given parameter is an std::monostate, otherwise
+ * it wraps it in a one-element tuple.
+ */
+template <class T>
+auto unwrap_if_not_monostate(T&& x) {
+  if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
+    return std::make_tuple();
+  } else {
+    return std::forward_as_tuple<T>(x);
+  }
+}
+
 template <class Client>
 tdb_unique_ptr<Client> make_service_client(
     const std::string& endpoint,
     const tiledb::sm::Azure::ServiceCredentialType& creds,
     auto&& options) {
-  Client* ptr;
-  switch (creds.index()) {
-    case 0:
-      ptr = tdb_new(Client, endpoint, std::forward<decltype(options)>(options));
-      break;
-    case 1:
-      ptr = tdb_new(
-          Client,
-          endpoint,
-          std::get<1>(creds),
-          std::forward<decltype(options)>(options));
-      break;
-    default:
-      ptr = tdb_new(
-          Client,
-          endpoint,
-          std::get<2>(creds),
-          std::forward<decltype(options)>(options));
-      break;
-  }
-  return tdb_unique_ptr<Client>(ptr);
+  return tdb_unique_ptr<Client>(std::visit(
+      [&](auto cred) {
+        return std::apply(
+            // tdb_new is a macro, so we have to wrap it in a lambda.
+            [](auto&&... args) {
+              return tdb_new(Client, std::forward<decltype(args)>(args)...);
+            },
+            // The client constructors are either of the form (endpoint,
+            // credential, options), or (endpoint, options) for anonymous
+            // authentication. Use tuple_cat in conjunction with
+            // unwrap_if_monostate, to pass credentials only if they exist.
+            std::tuple_cat(
+                std::make_tuple(endpoint),
+                unwrap_if_not_monostate(cred),
+                std::forward_as_tuple<decltype(options)>(options)));
+      },
+      creds));
 }
 
 tiledb::sm::Azure::ServiceCredentialType get_service_credential(
