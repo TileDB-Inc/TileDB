@@ -1259,8 +1259,7 @@ class S3 : public FilesystemBase {
   };
 
   /**
-   * Used to stream results from the GetObject request into
-   * a pre-allocated buffer.
+   * Used to stream in-memoty data from/to S3.
    */
   class PreallocatedIOStream : public Aws::IOStream {
    public:
@@ -1271,9 +1270,10 @@ class S3 : public FilesystemBase {
      * @param buffer The pre-allocated underlying buffer.
      * @param size The maximum size of the underlying buffer.
      */
-    PreallocatedIOStream(void* const buffer, const size_t size)
+    PreallocatedIOStream(const void* buffer, const size_t size)
         : Aws::IOStream(new Aws::Utils::Stream::PreallocatedStreamBuf(
-              reinterpret_cast<unsigned char*>(buffer), size)) {
+              reinterpret_cast<unsigned char*>(const_cast<void*>(buffer)),
+              size)) {
     }
 
     /** Destructor. */
