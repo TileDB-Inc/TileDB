@@ -1524,9 +1524,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck fragment skew", [this]() {
     const size_t fragment_size = *rc::gen::inRange(2, 200);
     const size_t num_user_cells = *rc::gen::inRange(1, 1024);
@@ -1615,9 +1613,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment interleave rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck fragment interleave", [this]() {
     const size_t fragment_size = *rc::gen::inRange(2, 196);
     const size_t num_user_cells = *rc::gen::inRange(1, 1024);
@@ -1751,9 +1747,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment wide overlap rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck fragment wide overlap", [this]() {
     const size_t num_fragments = *rc::gen::inRange(10, 24);
     const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
@@ -1898,9 +1892,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: merge bound duplication rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck merge bound duplication", [this]() {
     const size_t num_fragments = *rc::gen::inRange(4, 32);
     const size_t fragment_size = *rc::gen::inRange(2, 256);
@@ -2100,9 +2092,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: out-of-order MBRs rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck out-of-order MBRs", [this](bool allow_dups) {
     const auto tile_order =
         *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
@@ -2283,9 +2273,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew 2d merge bound rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck fragment skew 2d merge bound", [this]() {
     const auto tile_order =
         *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
@@ -2425,9 +2413,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment full copy 1d rapidcheck",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   using FxRunType = FragmentFullCopy1DFxRunType;
 
   rc::prop("rapidcheck fragment full copy 1d", [this]() {
@@ -3436,9 +3422,7 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: repeatable reads for sub-millisecond "
     "fragments rapidcheck",
-    "[sparse-global-order][sub-millisecond][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][sub-millisecond][rest][rapidcheck][!mayfail]") {
   rc::prop("rapidcheck consistent read order for sub-millisecond", [this]() {
     const auto runs = *rc::gen::suchThat(
         rc::gen::nonEmpty(
@@ -4198,9 +4182,7 @@ void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
-    "[sparse-global-order][rest][rapidcheck]") {
-  SKIP("CORE-328");
-
+    "[sparse-global-order][rest][rapidcheck][!mayfail]") {
   rc::prop(
       "rapidcheck arbitrary 1d", [this](rc::NonShrinking<FxRun1D<>> instance) {
         run<tiledb::test::AsserterRapidcheck, decltype(instance)::value_type>(
