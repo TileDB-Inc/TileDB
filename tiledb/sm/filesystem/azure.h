@@ -773,11 +773,13 @@ class Azure : public FilesystemBase {
     }
 
    private:
+    /** Contains the logic to initialize the Azure SDK service clients. */
     void ensure_initialized(const AzureParameters& params);
 
     /** The Azure blob service client. */
     tdb_unique_ptr<BlobServiceClientType> client_;
 
+    /** The Azure data lake service client. */
     tdb_unique_ptr<DataLakeServiceClientType> data_lake_client_;
 
     /** Protects from creating the client many times. */
