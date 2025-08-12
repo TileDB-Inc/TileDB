@@ -134,7 +134,8 @@ void CellSlabIter<T>::advance_col() {
   auto dim_num = (int)subarray_->dim_num();
 
   for (int i = 0; i < dim_num; ++i) {
-    cell_slab_coords_[i] += (i == 0) ? cell_slab_lengths_[range_coords_[i]] : 1;
+    cell_slab_coords_[i] +=
+        (i == 0) ? static_cast<T>(cell_slab_lengths_[range_coords_[i]]) : 1;
     if (cell_slab_coords_[i] > ranges_[i][range_coords_[i]].end_) {
       ++range_coords_[i];
       if (range_coords_[i] < (T)ranges_[i].size())
@@ -161,8 +162,8 @@ void CellSlabIter<T>::advance_row() {
   auto dim_num = (int)subarray_->dim_num();
 
   for (int i = dim_num - 1; i >= 0; --i) {
-    cell_slab_coords_[i] +=
-        (i == dim_num - 1) ? cell_slab_lengths_[range_coords_[i]] : 1;
+    cell_slab_coords_[i] += static_cast<T>(
+        (i == dim_num - 1) ? cell_slab_lengths_[range_coords_[i]] : 1);
     if (cell_slab_coords_[i] > ranges_[i][range_coords_[i]].end_) {
       ++range_coords_[i];
       if (range_coords_[i] < (T)ranges_[i].size())

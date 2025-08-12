@@ -422,8 +422,15 @@ class S3Scanner : public LsScanner {
   S3Scanner(
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
-      FileFilter&& file_filter,
-      DirectoryFilter&& dir_filter = accept_all_dirs,
+      ResultFilter&& result_filter,
+      bool recursive = false,
+      int max_keys = 1000);
+
+  /** Constructor. */
+  S3Scanner(
+      const std::shared_ptr<TileDBS3Client>& client,
+      const URI& prefix,
+      ResultFilterV2&& result_filter,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -470,7 +477,7 @@ class S3Scanner : public LsScanner {
   void advance(typename Iterator::pointer& ptr) {
     ptr++;
     if (ptr == end_) {
-      if (more_to_fetch()) {
+      if (more_to_fetch() || !collected_prefixes_.empty()) {
         // Fetch results and reset the iterator.
         ptr = fetch_results();
       } else {
@@ -484,6 +491,17 @@ class S3Scanner : public LsScanner {
   const char* delimiter() const {
     return this->is_recursive_ ? "" : "/";
   }
+
+  /**
+   * Builds a prefix vector matching the expected Iterator type for filtering,
+   * and initializes begin_ and end_ iterators to scan the common prefixes.
+   *
+   * When collected_prefixes_ is empty and there are no results to fetch from S3
+   * the scan is complete.
+   *
+   * @returns Iterator to the beginning of the prefix vector.
+   */
+  typename Iterator::pointer& build_prefix_vector();
 
   /**
    * Fetch the next batch of results from S3. This also handles setting the
@@ -507,6 +525,10 @@ class S3Scanner : public LsScanner {
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
   /** The current request outcome being scanned. */
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+  bool response_contains_prefixes_ = false;
+
+  /** Move prefixes to this vector usable with Iterator type for filtering. */
+  std::vector<Iterator::value_type> common_prefixes_;
 };
 
 /**
@@ -825,29 +847,54 @@ class S3 : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FileFilter on each entry collected and the DirectoryFilter on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FileFilter to invoke on each object for filtering.
-   * @param d The DirectoryFilter to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    */
   LsObjects ls_filtered(
       const URI& parent,
-      FileFilter f,
-      DirectoryFilter d = accept_all_dirs,
+      ResultFilter f,
       bool recursive = false) const override {
     throw_if_not_ok(init_client());
-    S3Scanner s3_scanner =
-        scanner(parent, std::move(f), std::move(d), recursive);
+    S3Scanner s3_scanner = scanner(parent, std::move(f), recursive);
     // Prepend each object key with the bucket URI.
     auto prefix = parent.to_string();
     prefix = prefix.substr(0, prefix.find('/', 5));
 
     LsObjects objects;
-    for (auto object : s3_scanner) {
+    for (const auto& object : s3_scanner) {
+      objects.emplace_back(
+          prefix + "/" + std::string(object.GetKey()), object.GetSize());
+    }
+    return objects;
+  }
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 f,
+      bool recursive = false) const override {
+    throw_if_not_ok(init_client());
+    S3Scanner s3_scanner = scanner_v2(parent, f, recursive);
+    // Prepend each object key with the bucket URI.
+    auto prefix = parent.to_string();
+    prefix = prefix.substr(0, prefix.find('/', 5));
+
+    LsObjects objects;
+    for (const auto& object : s3_scanner) {
       objects.emplace_back(
           prefix + "/" + std::string(object.GetKey()), object.GetSize());
     }
@@ -860,22 +907,38 @@ class S3 : public FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FileFilter to invoke on each object for filtering.
-   * @param d The DirectoryFilter to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed S3Scanner object.
    */
   S3Scanner scanner(
       const URI& parent,
-      FileFilter f,
-      DirectoryFilter d = accept_all_dirs,
+      ResultFilter f,
       bool recursive = false,
       int max_keys = 1000) const {
     throw_if_not_ok(init_client());
-    return S3Scanner(
-        client_, parent, std::move(f), std::move(d), recursive, max_keys);
+    return S3Scanner(client_, parent, std::move(f), recursive, max_keys);
+  }
+
+  /**
+   * Constructs a scanner for listing S3 objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilterV2 to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed S3Scanner object.
+   */
+  S3Scanner scanner_v2(
+      const URI& parent,
+      ResultFilterV2 f,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    throw_if_not_ok(init_client());
+    return S3Scanner(client_, parent, std::move(f), recursive, max_keys);
   }
 
   /**

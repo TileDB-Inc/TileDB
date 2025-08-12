@@ -30,7 +30,7 @@ list(APPEND SOURCES
 )
 gather_sources(${SOURCES})
 
-add_library(handle OBJECT handle.cc)
+add_library(handle OBJECT EXCLUDE_FROM_ALL handle.cc)
 target_link_libraries(handle PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 add_test_subdirectory()

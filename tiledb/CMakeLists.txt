@@ -572,6 +572,7 @@ endif()
 # which is installed here.
 find_package(BZip2 REQUIRED)
 find_package(LZ4 MODULE REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
@@ -579,6 +580,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
     lz4::lz4
+    $<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
     spdlog::spdlog
     ZLIB::ZLIB
     zstd::libzstd
@@ -749,7 +751,7 @@ target_link_libraries(tiledb
   PRIVATE
     # TODO: TILEDB_CORE_OBJECTS_ILIB should be removed and dependencies should be specified
     # without directly getting target_properties.
-    $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+    $<GENEX_EVAL:$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>>
     $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 

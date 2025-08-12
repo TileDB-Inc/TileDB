@@ -1,3 +1,87 @@
+# TileDB v2.29.0 Release Notes
+
+
+## Breaking behavior
+
+* Remove experimental features code and build/bootstrap option. [#5540](https://github.com/TileDB-Inc/TileDB/pull/5540)
+* `tiledb_filestore_uri_import` and `tiledb_filestore_buffer_import` no longer auto-detect the file's MIME type. `TILEDB_MIME_AUTODETECT` will always set the filestore array's MIME type to `application/octet-stream`. [#5605](https://github.com/TileDB-Inc/TileDB/pull/5605)
+* `tiledb_filestore_uri_import` and `tiledb_filestore_buffer_import` no longer auto-detect the file's encoding. New filestore arrays will always have their encoding metadata set to `binary`. [#5605](https://github.com/TileDB-Inc/TileDB/pull/5605)
+* `tiledb_filestore_uri_import` and `tiledb_filestore_buffer_import` no longer compresses the filestore array's content. [#5605](https://github.com/TileDB-Inc/TileDB/pull/5605)
+
+
+## New features
+
+* Add support for `Profiles` onto the `Config`. [#5498](https://github.com/TileDB-Inc/TileDB/pull/5498)
+
+
+## Improvements
+
+* Finalize Profile feature and add example. [#5533](https://github.com/TileDB-Inc/TileDB/pull/5533)
+* Use config parameters instead of a config setter to set a profile on a config object. [#5539](https://github.com/TileDB-Inc/TileDB/pull/5539)
+* Relax Profile parameter constraints for flexibility. [#5547](https://github.com/TileDB-Inc/TileDB/pull/5547)
+* Adjust global logger default level to align with `config.logging_level` when no context is created. [#5551](https://github.com/TileDB-Inc/TileDB/pull/5551)
+* Avoid throwing on missing Profile parameters in getter APIs. [#5552](https://github.com/TileDB-Inc/TileDB/pull/5552)
+* Improve Fill Value Dumping for Non-Printable Characters. [#5556](https://github.com/TileDB-Inc/TileDB/pull/5556)
+* Fix `Subarray::add_range` to validate var_size consistency between range and dimension. [#5569](https://github.com/TileDB-Inc/TileDB/pull/5569)
+* Class `MemFS` inherits base class `FilesystemBase`. [#5573](https://github.com/TileDB-Inc/TileDB/pull/5573)
+* Class `GCS` inherits base class `FilesystemBase`. [#5576](https://github.com/TileDB-Inc/TileDB/pull/5576)
+* Class `Azure` inherits base class `FilesystemBase`. [#5575](https://github.com/TileDB-Inc/TileDB/pull/5575)
+* Update array create to pass the storage path in payload. [#5565](https://github.com/TileDB-Inc/TileDB/pull/5565)
+* Class `Windows` inherits base class `FilesystemBase`. [#5578](https://github.com/TileDB-Inc/TileDB/pull/5578)
+* Class `VFS` inherits base class `FilesystemBase`. [#5584](https://github.com/TileDB-Inc/TileDB/pull/5584)
+* Fix empty array name for URIs with trailing slash. [#5591](https://github.com/TileDB-Inc/TileDB/pull/5591)
+* Refactor `class VFS` to remove `#ifdef`s. [#5589](https://github.com/TileDB-Inc/TileDB/pull/5589)
+* Added support for `tiledb_vfs_copy_file` and `tiledb_vfs_copy_dir` on Windows. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
+
+
+## Deprecations
+
+* Deprecate `ls_recursive`. [#5602](https://github.com/TileDB-Inc/TileDB/pull/5602)
+
+
+## Defects removed
+
+* Fix overflow detection errors in double delta and bit width reduction filters. [#5506](https://github.com/TileDB-Inc/TileDB/pull/5506)
+* Fixed integer overflows. [#5518](https://github.com/TileDB-Inc/TileDB/pull/5518)
+* Fix a missing newline in array-schema printer. [#5522](https://github.com/TileDB-Inc/TileDB/pull/5522)
+* Erase `param` from `set_params_` in `Config::unset`. [#5519](https://github.com/TileDB-Inc/TileDB/pull/5519)
+* Build error on `make examples` on M1 Mac for the PNG/Web_P examples. [#5529](https://github.com/TileDB-Inc/TileDB/pull/5529)
+* Fix segfault race condition at process exit. [#5477](https://github.com/TileDB-Inc/TileDB/pull/5477)
+* URL encode workspace and teamspace for REST URIs. [#5544](https://github.com/TileDB-Inc/TileDB/pull/5544)
+* Fixed compile errors in the S3 VFS. [#5545](https://github.com/TileDB-Inc/TileDB/pull/5545)
+* Fix `Subarray::add_point_ranges_var` to use the appropriate variable data `Range` constructor. [#5560](https://github.com/TileDB-Inc/TileDB/pull/5560)
+* Update to use new route for group creation. [#5543](https://github.com/TileDB-Inc/TileDB/pull/5543)
+* Fix Rust linter error [#5577](https://github.com/TileDB-Inc/TileDB/pull/5577)
+* Fixed opening groups on object storage, that contain directory placeholder files. [#5558](https://github.com/TileDB-Inc/TileDB/pull/5558)
+* Fixed the `tiledb_vfs_create_dir` function to automatically create non-existent parent directories on POSIX. [#5579](https://github.com/TileDB-Inc/TileDB/pull/5579)
+* Fixed the `tiledb_vfs_create_dir` function to not fail when the directory already exists. [#5579](https://github.com/TileDB-Inc/TileDB/pull/5579)
+* Correctly reset bugdet when initial data already loadad. [#5599](https://github.com/TileDB-Inc/TileDB/pull/5599)
+* Fixed incorrect documentation of `tiledb_vfs_copy_dir`. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
+* Fix build errors with `--disable-stats` from unused variable warnings. [#5603](https://github.com/TileDB-Inc/TileDB/pull/5603)
+
+
+## API changes
+
+
+### C API
+
+* Introduce `Profile` C APIs: `tiledb_profile_alloc`, `tiledb_profile_free`, `tiledb_profile_get_name`, `tiledb_profile_get_homedir`, `tiledb_profile_set_param`, `tiledb_profile_get_param`, `tiledb_profile_save`, `tiledb_profile_load`, `tiledb_profile_remove`, and `tiledb_profile_dump_str`. [#5492](https://github.com/TileDB-Inc/TileDB/pull/5492)
+* Introduce `tiledb_current_domain_dump_str` and `tiledb_ndrectangle_dump_str`. [#5538](https://github.com/TileDB-Inc/TileDB/pull/5538)
+
+
+### C++ API
+
+* Introduce `Profile` C++ APIs: `name`, `homedir`, `set_param`, `get_param`, `save`, `load`, `remove`, `dump`. [#5492](https://github.com/TileDB-Inc/TileDB/pull/5492)
+* Introduce `operator<<` overloads for the `CurrentDomain` and `NDRectangle`. [#5538](https://github.com/TileDB-Inc/TileDB/pull/5538)
+* Introduce `ls_recursive_v2` that includes directories in results for all backends. [#5602](https://github.com/TileDB-Inc/TileDB/pull/5602)
+
+
+## Build System Changes
+
+* Install serialization C API headers regardless of build configuration. [#5530](https://github.com/TileDB-Inc/TileDB/pull/5530)
+* Removed dependency to libmagic. [#5605](https://github.com/TileDB-Inc/TileDB/pull/5605)
+
+
 # TileDB v2.28.1 Release Notes
 
 

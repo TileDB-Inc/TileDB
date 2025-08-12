@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <cassert>
 #include <codecvt>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -382,7 +383,7 @@ std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
-      if (is_dir(URI(file_path))) {
+      if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
         entries.emplace_back(file_path, 0, true);
       } else {
         ULARGE_INTEGER size;

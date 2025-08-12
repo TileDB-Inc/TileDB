@@ -34,10 +34,15 @@
 #include "tiledb/sm/rest/rest_profile.h"
 
 #include <test/support/tdb_catch.h>
+#include <filesystem>
 #include <iostream>
+
+#include <nlohmann/json.hpp>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
+
+using json = nlohmann::json;
 
 struct RestProfileFx {
  public:

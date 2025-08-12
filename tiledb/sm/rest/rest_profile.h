@@ -37,12 +37,12 @@
 #include <map>
 #include <string>
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json_fwd.hpp>
+
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/home_directory.h"
 #include "tiledb/sm/misc/constants.h"
 
-using json = nlohmann::json;
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -129,6 +129,11 @@ class RestProfile {
   }
 
   /**
+   * @return true if there is a regular file at the file path expected for this
+   */
+  bool file_exists() const;
+
+  /**
    * Saves this profile to the local file.
    *
    * @param overwrite If true, overwrite the existing profile with the same
@@ -160,7 +165,7 @@ class RestProfile {
    *
    * @return A json object of this RestProfile's parameter : value mapping.
    */
-  json to_json();
+  nlohmann::json to_json();
 
   /**
    * Dumps the parameter : value mapping in json object format.

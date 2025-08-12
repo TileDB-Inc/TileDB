@@ -386,7 +386,7 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
         loaded_metadata_ptr_->fragment_null_counts()[idx] = std::accumulate(
             loaded_metadata_ptr_->tile_null_counts()[idx].begin(),
             loaded_metadata_ptr_->tile_null_counts()[idx].end(),
-            0);
+            0ull);
 
         if (var_size) {
           min_max_var(name);

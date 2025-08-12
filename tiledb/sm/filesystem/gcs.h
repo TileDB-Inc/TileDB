@@ -307,23 +307,35 @@ class GCS : public FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FileFilter on each entry collected and the DirectoryFilter on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param file_filter The FileFilter to invoke on each object for
+   * @param result_filter The ResultFilter to invoke on each object for
    * filtering.
-   * @param directory_filter The DirectoryFilter to invoke on each common
-   * prefix for pruning. This is currently unused, but is kept here for future
-   * support.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI
    * and object size.
    */
   LsObjects ls_filtered(
       const URI& parent,
-      FileFilter file_filter,
-      DirectoryFilter directory_filter,
+      ResultFilter result_filter,
+      bool recursive) const override;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 result_filter,
       bool recursive) const override;
 
   /**
@@ -701,7 +713,7 @@ class GCS : public FilesystemBase {
    * Contains the implementation of ls_filtered.
    *
    * @param uri The parent path to list sub-paths.
-   * @param file_filter The FileFilter to invoke on each object for
+   * @param result_filter The ResultFilter to invoke on each object for
    * filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @return Vector of results with each entry being a pair of the string URI
@@ -709,7 +721,7 @@ class GCS : public FilesystemBase {
    */
   LsObjects ls_filtered_impl(
       const URI& uri,
-      std::function<bool(const std::string_view, uint64_t)> file_filter,
+      std::function<bool(const std::string_view, uint64_t)> result_filter,
       bool recursive) const;
 
   /**

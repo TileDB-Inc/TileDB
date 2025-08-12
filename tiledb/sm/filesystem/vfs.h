@@ -600,30 +600,65 @@ class VFS : FilesystemBase,
    */
   std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilter on each entry collected.
+   *
+   * Both objects and common prefixes will be collected if non-recursive.
+   * For recursive listing cloud backends will not collect prefix results.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilter to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   */
   LsObjects ls_filtered(
-      const URI& parent,
-      FileFilter f,
-      DirectoryFilter d,
-      bool recursive) const override;
+      const URI& parent, ResultFilter f, bool recursive) const override;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected for all storage backends.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent, ResultFilterV2 f, bool recursive) const override;
 
   /**
    * Recursively lists objects and object information that start with `prefix`,
-   * invoking the FilePredicate on each entry collected and the
-   * DirectoryPredicate on common prefixes for pruning.
+   * invoking the FilterPredicate on each entry collected.
    *
    * Currently this API is only supported for local files, S3, Azure and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The FilterPredicate to invoke on each object for filtering.
    * @return Vector of results with each entry being a pair of the string URI
    *    and object size.
    */
-  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  LsObjects ls_recursive(
-      const URI& parent, F&& f, D&& d = accept_all_dirs) const {
-    return ls_filtered(parent, std::move(f), std::move(d), true);
+  template <FilterPredicate F>
+  LsObjects ls_recursive(const URI& parent, F&& f) const {
+    return ls_filtered(parent, std::move(f), true);
+  }
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`,
+   * invoking the FilterPredicate on each entry collected.
+   *
+   * Currently this API is only supported for local files, S3, Azure and GCS.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilterPredicate to invoke on each object for filtering.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilterPredicateV2 F>
+  LsObjects ls_recursive_v2(const URI& parent, F&& f) const {
+    return ls_filtered_v2(parent, std::move(f), true);
   }
 
   /**

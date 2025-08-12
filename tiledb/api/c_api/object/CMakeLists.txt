@@ -42,7 +42,7 @@ gather_sources(${SOURCES})
 # absent. This is the reason that it hasn't been converted to use the
 # `object_library` environment for CMake.
 #
-add_library(capi_object OBJECT ${SOURCES})
+add_library(capi_object OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 target_link_libraries(capi_object PUBLIC export)
 target_link_libraries(capi_object PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(capi_object PUBLIC constants $<TARGET_OBJECTS:constants>)
