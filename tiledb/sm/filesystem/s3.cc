@@ -62,7 +62,6 @@
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <aws/sts/STSClient.h>
-#include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
 
@@ -1797,10 +1796,8 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
 
   Aws::S3::Model::PutObjectRequest put_object_request;
 
-  auto stream = shared_ptr<Aws::IOStream>(
-      new boost::interprocess::bufferstream((char*)buffer, length));
-
-  put_object_request.SetBody(stream);
+  put_object_request.SetBody(
+      make_shared<PreallocatedIOStream>(HERE(), buffer, length));
   put_object_request.SetContentLength(length);
 
   put_object_request.SetContentType("application/octet-stream");
@@ -1961,15 +1958,13 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
     const uint64_t length,
     const Aws::String& upload_id,
     const int upload_part_num) {
-  auto stream = shared_ptr<Aws::IOStream>(
-      new boost::interprocess::bufferstream((char*)buffer, length));
-
   Aws::S3::Model::UploadPartRequest upload_part_request;
   upload_part_request.SetBucket(aws_uri.GetAuthority());
   upload_part_request.SetKey(aws_uri.GetPath());
   upload_part_request.SetPartNumber(upload_part_num);
   upload_part_request.SetUploadId(upload_id);
-  upload_part_request.SetBody(stream);
+  upload_part_request.SetBody(
+      make_shared<PreallocatedIOStream>(HERE(), buffer, length));
   upload_part_request.SetContentLength(length);
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     upload_part_request.SetRequestPayer(request_payer_);

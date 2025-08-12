@@ -123,9 +123,6 @@ endif()
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-# Disable warnings from Boost
-set(Boost_NO_WARN_NEW_VERSIONS ON)
-
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
 message(STATUS "  CMake version: ${CMAKE_VERSION}")
