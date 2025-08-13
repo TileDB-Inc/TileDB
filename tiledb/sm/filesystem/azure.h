@@ -134,6 +134,10 @@ struct AzureParameters {
   /** The Blob Storage endpoint to connect to. */
   std::string blob_endpoint_;
 
+  /** Whether the Azure storage account is known to support hierarchical
+   * namespace or not. */
+  std::optional<bool> is_data_lake_endpoint_;
+
   /** SSL configuration. */
   SSLConfig ssl_cfg_;
 

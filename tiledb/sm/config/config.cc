@@ -188,6 +188,7 @@ const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
+const std::string Config::VFS_AZURE_IS_DATA_LAKE_ENDPOINT = "";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
@@ -438,6 +439,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
+    std::make_pair("vfs.azure.is_data_lake_endpoint", Config::VFS_AZURE_IS_DATA_LAKE_ENDPOINT),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
     std::make_pair(
@@ -877,6 +879,10 @@ Status Config::sanity_check(
       std::stringstream msg;
       msg << "value " << param << " invalid canned acl for " << param;
       return Status_Error(msg.str());
+    }
+  } else if (param == "vfs.azure.is_data_lake_endpoint") {
+    if (!value.empty()) {
+      RETURN_NOT_OK(utils::parse::convert(value, &v));
     }
   }
 
