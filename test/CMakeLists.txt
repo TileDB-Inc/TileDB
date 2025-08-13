@@ -331,7 +331,7 @@ if (LIBFAKETIME)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=path_list_append:${LIBFAKETIME}")
+    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=string_append: ${LIBFAKETIME}")
 endif()
 
 add_test(
