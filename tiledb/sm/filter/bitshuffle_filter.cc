@@ -37,7 +37,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include "bitshuffle_core.h"
+#include <blosc2.h>
 
 using namespace tiledb::common;
 
@@ -124,36 +124,22 @@ Status BitshuffleFilter::compute_parts(
 Status BitshuffleFilter::shuffle_part(
     const WriterTile&, const ConstBuffer* part, Buffer* output) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
-  auto part_nelts = part->size() / tile_type_size;
-  auto bytes_processed = bshuf_bitshuffle(
-      part->data(), output->cur_data(), part_nelts, tile_type_size, 0);
+  auto bytes_processed = blosc2_bitshuffle(
+      tile_type_size,
+      part->size(),
+      (uint8_t*)part->data(),
+      (uint8_t*)output->cur_data());
 
-  switch (bytes_processed) {
-    case -1:
-      return LOG_STATUS(
-          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
-    case -11:
-      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
-    case -12:
-      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing AVX."));
-    case -80:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Input size not a multiple of 8."));
-    case -81:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Block size not a multiple of 8."));
-    case -91:
-      return LOG_STATUS(
-          Status_FilterError("Bitshuffle error; Decompression error, wrong "
-                             "number of bytes processed."));
-    default: {
-      if (bytes_processed != (int64_t)part->size())
-        return LOG_STATUS(Status_FilterError(
-            "Bitshuffle error; Unhandled internal error code " +
-            std::to_string(bytes_processed)));
-      break;
-    }
+  if (bytes_processed < 0) {
+    return LOG_STATUS(Status_FilterError(
+        std::string("Bitshuffle error; ") +
+        blosc2_error_string(bytes_processed)));
   }
+
+  if (bytes_processed != (int64_t)part->size())
+    return LOG_STATUS(Status_FilterError(
+        "Bitshuffle error; Unhandled internal error code " +
+        std::to_string(bytes_processed)));
 
   return Status::Ok();
 }
@@ -207,36 +193,22 @@ Status BitshuffleFilter::run_reverse(
 Status BitshuffleFilter::unshuffle_part(
     const Tile&, const ConstBuffer* part, Buffer* output) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
-  auto part_nelts = part->size() / tile_type_size;
-  auto bytes_processed = bshuf_bitunshuffle(
-      part->data(), output->cur_data(), part_nelts, tile_type_size, 0);
+  auto bytes_processed = blosc2_bitunshuffle(
+      tile_type_size,
+      part->size(),
+      (uint8_t*)part->data(),
+      (uint8_t*)output->cur_data());
 
-  switch (bytes_processed) {
-    case -1:
-      return LOG_STATUS(
-          Status_FilterError("Bitshuffle error; Failed to allocate memory."));
-    case -11:
-      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing SSE."));
-    case -12:
-      return LOG_STATUS(Status_FilterError("Bitshuffle error; Missing AVX."));
-    case -80:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Input size not a multiple of 8."));
-    case -81:
-      return LOG_STATUS(Status_FilterError(
-          "Bitshuffle error; Block size not a multiple of 8."));
-    case -91:
-      return LOG_STATUS(
-          Status_FilterError("Bitshuffle error; Decompression error, wrong "
-                             "number of bytes processed."));
-    default: {
-      if (bytes_processed != (int64_t)part->size())
-        return LOG_STATUS(Status_FilterError(
-            "Bitshuffle error; Unhandled internal error code " +
-            std::to_string(bytes_processed)));
-      break;
-    }
+  if (bytes_processed < 0) {
+    return LOG_STATUS(Status_FilterError(
+        std::string("Bitunshuffle error; ") +
+        blosc2_error_string(bytes_processed)));
   }
+
+  if (bytes_processed != (int64_t)part->size())
+    return LOG_STATUS(Status_FilterError(
+        "Bitshuffle error; Unhandled internal error code " +
+        std::to_string(bytes_processed)));
 
   return Status::Ok();
 }
