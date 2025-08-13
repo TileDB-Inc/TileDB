@@ -8,7 +8,7 @@
 # Use the build arg 'enable' to configure optional TileDB components, e.g.:
 #   docker build -f examples/Dockerfile/Dockerfile --build-arg enable=s3 -t tiledb:dev
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Optional components to enable (defaults to empty).
 ARG enable
@@ -38,7 +38,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     && apt-get clean \
     && apt-get purge -y \
     && rm -rf /var/lib/apt/lists* \
-    && pip3 install cmake
+    && pip3 install --break-system-packages cmake
 
 # Copy TileDB source files from the build context.
 COPY . /home/tiledb/TileDB
