@@ -1,0 +1,402 @@
+diff --git a/blosc/blosc2.c b/blosc/blosc2.c
+index 44e6d74..76056ed 100644
+--- a/blosc/blosc2.c
++++ b/blosc/blosc2.c
+@@ -984,10 +984,10 @@ uint8_t* pipeline_forward(struct thread_context* thread_context, const int32_t b
+     if (filters[i] <= BLOSC2_DEFINED_FILTERS_STOP) {
+       switch (filters[i]) {
+         case BLOSC_SHUFFLE:
+-          shuffle(typesize, bsize, _src, _dest);
++          blosc2_shuffle(typesize, bsize, _src, _dest);
+           break;
+         case BLOSC_BITSHUFFLE:
+-          if (bitshuffle(typesize, bsize, _src, _dest) < 0) {
++          if (blosc2_bitshuffle(typesize, bsize, _src, _dest) < 0) {
+             return NULL;
+           }
+           break;
+@@ -1353,7 +1353,7 @@ int pipeline_backward(struct thread_context* thread_context, const int32_t bsize
+     if (filters[i] <= BLOSC2_DEFINED_FILTERS_STOP) {
+       switch (filters[i]) {
+         case BLOSC_SHUFFLE:
+-          unshuffle(typesize, bsize, _src, _dest);
++          blosc2_unshuffle(typesize, bsize, _src, _dest);
+           break;
+         case BLOSC_BITSHUFFLE:
+           if (bitunshuffle(typesize, bsize, _src, _dest, context->src[BLOSC2_CHUNK_VERSION]) < 0) {
+diff --git a/blosc/shuffle.c b/blosc/shuffle.c
+index 23210c5..7833ed7 100644
+--- a/blosc/shuffle.c
++++ b/blosc/shuffle.c
+@@ -8,7 +8,8 @@
+   See LICENSE.txt for details about copyright and rights to use.
+ **********************************************************************/
+ 
+-#include "shuffle.h" /* needs to be included first to define macros */
++#include "blosc2.h" /* needs to be included first to define macros */
++#include "shuffle.h"
+ 
+ /*  Include hardware-accelerated shuffle/unshuffle routines based on
+     the target architecture. Note that a target architecture may support
+@@ -45,7 +46,6 @@
+ 
+ #include "shuffle-generic.h"
+ #include "bitshuffle-generic.h"
+-#include "blosc2.h"
+ 
+ #include <stdio.h>
+ #include <string.h>
+@@ -417,42 +417,59 @@ void init_shuffle_implementation(void) {
+ 
+ /* Shuffle a block by dynamically dispatching to the appropriate
+    hardware-accelerated routine at run-time. */
+-void
+-shuffle(const int32_t bytesoftype, const int32_t blocksize,
+-        const uint8_t* _src, uint8_t* _dest) {
++int32_t
++blosc2_shuffle(const int32_t typesize, const int32_t blocksize,
++               const uint8_t* _src, uint8_t* _dest) {
+   /* Initialize the shuffle implementation if necessary. */
+   init_shuffle_implementation();
+ 
++  if (typesize < 1 || typesize > 256 || blocksize < 0) {
++    return BLOSC2_ERROR_INVALID_PARAM;
++  }
++
+   /* The implementation is initialized.
+      Dispatch to its shuffle routine. */
+-  (host_implementation.shuffle)(bytesoftype, blocksize, _src, _dest);
++  (host_implementation.shuffle)(typesize, blocksize, _src, _dest);
++
++  return blocksize;
+ }
+ 
+ /* Unshuffle a block by dynamically dispatching to the appropriate
+    hardware-accelerated routine at run-time. */
+-void
+-unshuffle(const int32_t bytesoftype, const int32_t blocksize,
+-          const uint8_t* _src, uint8_t* _dest) {
++int32_t
++blosc2_unshuffle(const int32_t typesize, const int32_t blocksize,
++                 const uint8_t* _src, uint8_t* _dest) {
+   /* Initialize the shuffle implementation if necessary. */
+   init_shuffle_implementation();
+ 
++  if (typesize < 1 || typesize > 256 || blocksize < 0) {
++    return BLOSC2_ERROR_INVALID_PARAM;
++  }
++
+   /* The implementation is initialized.
+      Dispatch to it's unshuffle routine. */
+-  (host_implementation.unshuffle)(bytesoftype, blocksize, _src, _dest);
++  (host_implementation.unshuffle)(typesize, blocksize, _src, _dest);
++
++  return blocksize;
+ }
+ 
+ /*  Bit-shuffle a block by dynamically dispatching to the appropriate
+     hardware-accelerated routine at run-time. */
+ int32_t
+-bitshuffle(const int32_t bytesoftype, const int32_t blocksize,
+-           const uint8_t *_src, uint8_t *_dest) {
++blosc2_bitshuffle(const int32_t typesize, const int32_t blocksize,
++                  const uint8_t *src, uint8_t *dest) {
+   /* Initialize the shuffle implementation if necessary. */
+   init_shuffle_implementation();
+-  size_t size = blocksize / bytesoftype;
++  size_t size = blocksize / typesize;
++
++  if (typesize < 1 || typesize > 256 || blocksize < 0) {
++    return BLOSC2_ERROR_INVALID_PARAM;
++  }
++
+   /* bitshuffle only supports a number of elements that is a multiple of 8. */
+   size -= size % 8;
+   int ret = (int) (host_implementation.bitshuffle)
+-      ((const void *) _src, (void *) _dest, size, bytesoftype);
++  ((const void *) src, (void *) dest, size, typesize);
+   if (ret < 0) {
+     // Some error in bitshuffle (should not happen)
+     BLOSC_TRACE_ERROR("the impossible happened: the bitshuffle filter failed!");
+@@ -460,20 +477,20 @@ bitshuffle(const int32_t bytesoftype, const int32_t blocksize,
+   }
+ 
+   // Copy the leftovers
+-  size_t offset = size * bytesoftype;
+-  memcpy((void *) (_dest + offset), (void *) (_src + offset), blocksize - offset);
++  size_t offset = size * typesize;
++  memcpy((void *) (dest + offset), (void *) (src + offset), blocksize - offset);
+ 
+   return blocksize;
+ }
+ 
+ /*  Bit-unshuffle a block by dynamically dispatching to the appropriate
+     hardware-accelerated routine at run-time. */
+-int32_t bitunshuffle(const int32_t bytesoftype, const int32_t blocksize,
+-                     const uint8_t *_src, uint8_t *_dest,
++int32_t bitunshuffle(const int32_t typesize, const int32_t blocksize,
++                     const uint8_t *src, uint8_t *dest,
+                      const uint8_t format_version) {
+   /* Initialize the shuffle implementation if necessary. */
+   init_shuffle_implementation();
+-  size_t size = blocksize / bytesoftype;
++  size_t size = blocksize / typesize;
+ 
+   if (format_version == 2) {
+     /* Starting from version 3, bitshuffle() works differently */
+@@ -481,34 +498,38 @@ int32_t bitunshuffle(const int32_t bytesoftype, const int32_t blocksize,
+       /* The number of elems is a multiple of 8 which is supported by
+          bitshuffle. */
+       int ret = (int) (host_implementation.bitunshuffle)
+-          ((const void *) _src, (void *) _dest, blocksize / bytesoftype, bytesoftype);
++          ((const void *) src, (void *) dest, blocksize / typesize, typesize);
+       if (ret < 0) {
+         // Some error in bitshuffle (should not happen)
+         BLOSC_TRACE_ERROR("the impossible happened: the bitunshuffle filter failed!");
+         return ret;
+       }
+-      /* Copy the leftovers (we do so starting from c-blosc 1.18 on) */
+-      size_t offset = size * bytesoftype;
+-      memcpy((void *) (_dest + offset), (void *) (_src + offset), blocksize - offset);
+     }
+     else {
+-      memcpy((void *) _dest, (void *) _src, blocksize);
++      memcpy((void *) dest, (void *) src, blocksize);
+     }
+   }
+   else {
+     /* bitshuffle only supports a number of bytes that is a multiple of 8. */
+     size -= size % 8;
+     int ret = (int) (host_implementation.bitunshuffle)
+-        ((const void *) _src, (void *) _dest, size, bytesoftype);
++        ((const void *) src, (void *) dest, size, typesize);
+     if (ret < 0) {
+       BLOSC_TRACE_ERROR("the impossible happened: the bitunshuffle filter failed!");
+       return ret;
+     }
+ 
+     /* Copy the leftovers */
+-    size_t offset = size * bytesoftype;
+-    memcpy((void *) (_dest + offset), (void *) (_src + offset), blocksize - offset);
++    size_t offset = size * typesize;
++    memcpy((void *) (dest + offset), (void *) (src + offset), blocksize - offset);
+   }
+ 
+   return blocksize;
+ }
++
++/* Stub public API that redirects to internal implementation. */
++int32_t
++blosc2_bitunshuffle(const int32_t typesize, const int32_t blocksize,
++                  const uint8_t *src, uint8_t *dest) {
++  return bitunshuffle(typesize, blocksize, src, dest, BLOSC2_VERSION_FORMAT);
++}
+diff --git a/blosc/shuffle.h b/blosc/shuffle.h
+index a2a1a3b..b57c138 100644
+--- a/blosc/shuffle.h
++++ b/blosc/shuffle.h
+@@ -24,38 +24,10 @@
+ #include <stdint.h>
+ 
+ /**
+-  Primary shuffle and bitshuffle routines.
+-  This function dynamically dispatches to the appropriate hardware-accelerated
+-  routine based on the host processor's architecture. If the host processor is
+-  not supported by any of the hardware-accelerated routines, the generic
+-  (non-accelerated) implementation is used instead.
+-  Consumers should almost always prefer to call this routine instead of directly
+-  calling the hardware-accelerated routines because this method is both cross-
+-  platform and future-proof.
+-*/
+-BLOSC_NO_EXPORT void
+-    shuffle(const int32_t bytesoftype, const int32_t blocksize,
+-            const uint8_t* _src, uint8_t* _dest);
+-
+-BLOSC_NO_EXPORT int32_t
+-    bitshuffle(const int32_t bytesoftype, const int32_t blocksize,
+-               const uint8_t *_src, uint8_t *_dest);
+-
+-/**
+-  Primary unshuffle and bitunshuffle routine.
+-  This function dynamically dispatches to the appropriate hardware-accelerated
+-  routine based on the host processor's architecture. If the host processor is
+-  not supported by any of the hardware-accelerated routines, the generic
+-  (non-accelerated) implementation is used instead.
+-  Consumers should almost always prefer to call this routine instead of directly
+-  calling the hardware-accelerated routines because this method is both cross-
+-  platform and future-proof.
+-*/
+-BLOSC_NO_EXPORT void
+-    unshuffle(const int32_t bytesoftype, const int32_t blocksize,
+-              const uint8_t* _src, uint8_t* _dest);
+-
+-
++  Internal bitunshuffle routine that accepts a format version.
++  We don't have to expose this parameter to users, since the public API is new to blosc2, and its
++  behavior can be independent of the storage format.
++ */
+ BLOSC_NO_EXPORT int32_t
+     bitunshuffle(const int32_t bytesoftype, const int32_t blocksize,
+                  const uint8_t *_src, uint8_t *_dest,
+diff --git a/include/blosc2.h b/include/blosc2.h
+index 9be4045..a53f0df 100644
+--- a/include/blosc2.h
++++ b/include/blosc2.h
+@@ -2510,6 +2510,81 @@ BLOSC_EXPORT int blosc2_get_slice_nchunks(blosc2_schunk* schunk, int64_t *start,
+ 
+ 
+ /*********************************************************************
++  Raw shuffle functions.
++*********************************************************************/
++
++/**
++ * @brief Applies the shuffle operation to a block of data in @p src, and puts the result in @p dest.
++ *
++ * @warning The @p src buffer and the @p dest buffer can not overlap.
++ *
++ * @param typesize Is the number of bytes for the atomic type in binary @p src buffer. Only 1 < typesize
++ * < 256 is allowed.
++ * @param blocksize The size of the block.
++ * @param src The source buffer to be shuffled.
++ * @param dest The destination buffer where the shuffled data will be written.
++ *
++ * @return @p blocksize on success or a negative value if some error happens (mainly an invalid parameter).
++ */
++BLOSC_EXPORT int32_t blosc2_shuffle(const int32_t typesize, const int32_t blocksize, const uint8_t* src,
++                                    uint8_t* dest);
++
++/**
++ * @brief Applies the inverse shuffle operation to a block of data in @p src, and puts the result in @p dest.
++ *
++ * @warning The @p src buffer and the @p dest buffer can not overlap.
++ *
++ * @param typesize Is the number of bytes for the atomic type in binary @p src buffer. Only 1 < typesize
++ * < 256 is allowed.
++ * @param blocksize The size of the block.
++ * @param src The source buffer to be unshuffled.
++ * @param dest The destination buffer where the unshuffled data will be written.
++ *
++ * @return @p blocksize on success or a negative value if some error happens (mainly an invalid parameter).
++ */
++BLOSC_EXPORT int32_t blosc2_unshuffle(const int32_t typesize, const int32_t blocksize, const uint8_t* src,
++                                      uint8_t* dest);
++
++/**
++ * @brief Applies the bitshuffle operation to a block of data in @p src, and puts the result in @p dest.
++ *
++ * @warning The @p src buffer and the @p dest buffer can not overlap.
++ *
++ * @remark The function will shuffle the maximum amount of elements that can be divided by 8, and copy the
++ * rest to the destination buffer unchanged. There are @p blocksize / @p typesize elements.
++ *
++ * @param typesize Is the number of bytes for the atomic type in binary @p src buffer. Only 1 < typesize
++ * < 256 is allowed.
++ * @param blocksize The size of the block.
++ * @param src The source buffer to be shuffled.
++ * @param dest The destination buffer where the shuffled data will be written.
++ *
++ * @return @p blocksize on success or a negative value if some error happens (mainly an invalid parameter).
++ */
++BLOSC_EXPORT int32_t blosc2_bitshuffle(const int32_t typesize, const int32_t blocksize, const uint8_t* src,
++                                       uint8_t* dest);
++
++/**
++ * @brief Applies the inverse bitshuffle operation to a block of data in @p src, and puts the result in @p dest.
++ *
++ * @warning The @p src buffer and the @p dest buffer can not overlap.
++ *
++ * @remark The function will shuffle the maximum amount of elements that can be divided by 8, and copy the
++ * rest to the destination buffer unchanged. There are @p blocksize / @p typesize elements.
++ *
++ * @param typesize Is the number of bytes for the atomic type in binary @p src buffer. Only 1 < typesize
++ * < 256 is allowed.
++ * @param blocksize The size of the block.
++ * @param src The source buffer to be unshuffled.
++ * @param dest The destination buffer where the unshuffled data will be written.
++ *
++ * @return @p blocksize on success or a negative value if some error happens (mainly an invalid parameter).
++ */
++BLOSC_EXPORT int32_t blosc2_bitunshuffle(const int32_t typesize, const int32_t blocksize, const uint8_t* src,
++                                         uint8_t* dest);
++
++
++/*********************************************************************
+   Private functions, these are here for convenience,
+   and are not meant to be included in public docs
+ *********************************************************************/
+diff --git a/tests/test_compress_roundtrip.c b/tests/test_compress_roundtrip.c
+index 7469dcd..eba6801 100644
+--- a/tests/test_compress_roundtrip.c
++++ b/tests/test_compress_roundtrip.c
+@@ -11,7 +11,6 @@
+ **********************************************************************/
+ 
+ #include "test_common.h"
+-#include "../blosc/shuffle.h"
+ 
+ 
+ /** Perform a compress + decompress round trip. */
+diff --git a/tests/test_shuffle_roundtrip_altivec.c b/tests/test_shuffle_roundtrip_altivec.c
+index 0e73278..c0a992b 100644
+--- a/tests/test_shuffle_roundtrip_altivec.c
++++ b/tests/test_shuffle_roundtrip_altivec.c
+@@ -11,8 +11,6 @@
+ **********************************************************************/
+ 
+ #include "test_common.h"
+-#include "../blosc/shuffle.h"
+-#include "../blosc/shuffle-generic.h"
+ 
+ 
+ /* Include ALTIVEC-accelerated shuffle implementation if supported by this compiler.
+diff --git a/tests/test_shuffle_roundtrip_avx2.c b/tests/test_shuffle_roundtrip_avx2.c
+index f6f43c0..9a87207 100644
+--- a/tests/test_shuffle_roundtrip_avx2.c
++++ b/tests/test_shuffle_roundtrip_avx2.c
+@@ -11,8 +11,6 @@
+ **********************************************************************/
+ 
+ #include "test_common.h"
+-#include "../blosc/shuffle.h"
+-#include "../blosc/shuffle-generic.h"
+ 
+ /* Include accelerated shuffles if supported by this compiler.
+    TODO: Need to also do run-time CPU feature support here. */
+diff --git a/tests/test_shuffle_roundtrip_generic.c b/tests/test_shuffle_roundtrip_generic.c
+index 86ac269..76e17df 100644
+--- a/tests/test_shuffle_roundtrip_generic.c
++++ b/tests/test_shuffle_roundtrip_generic.c
+@@ -11,7 +11,6 @@
+ **********************************************************************/
+ 
+ #include "test_common.h"
+-#include "../blosc/shuffle.h"
+ #include "../blosc/shuffle-generic.h"
+ 
+ 
+diff --git a/tests/test_shuffle_roundtrip_neon.c b/tests/test_shuffle_roundtrip_neon.c
+index fea5c97..a8ec61a 100644
+--- a/tests/test_shuffle_roundtrip_neon.c
++++ b/tests/test_shuffle_roundtrip_neon.c
+@@ -11,8 +11,6 @@
+ **********************************************************************/
+ 
+ #include "test_common.h"
+-#include "../blosc/shuffle.h"
+-#include "../blosc/shuffle-generic.h"
+ 
+ 
+ /* Include NEON-accelerated shuffle implementation if supported by this compiler.
+diff --git a/tests/test_shuffle_roundtrip_sse2.c b/tests/test_shuffle_roundtrip_sse2.c
+index 3edba39..155e603 100644
+--- a/tests/test_shuffle_roundtrip_sse2.c
++++ b/tests/test_shuffle_roundtrip_sse2.c
+@@ -11,8 +11,6 @@
+ **********************************************************************/
+ 
+ #include "test_common.h"
+-#include "../blosc/shuffle.h"
+-#include "../blosc/shuffle-generic.h"
+ 
+ 
+ /* Include SSE2-accelerated shuffle implementation if supported by this compiler.
