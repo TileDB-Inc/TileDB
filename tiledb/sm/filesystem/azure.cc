@@ -47,6 +47,7 @@
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/misc/tdb_math.h"
 
 static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
@@ -179,6 +180,15 @@ tiledb::sm::Azure::ServiceCredentialType get_service_credential(
 
   return {};
 }
+
+std::optional<bool> parse_optional_bool(const std::string& str) {
+  if (str.empty()) {
+    return nullopt;
+  }
+  bool result;
+  throw_if_not_ok(tiledb::sm::utils::parse::convert(str, &result));
+  return result;
+}
 }  // namespace
 
 namespace tiledb::sm {
@@ -218,6 +228,8 @@ AzureParameters::AzureParameters(const Config& config)
     , account_key_(get_config_with_env_fallback(
           config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
     , blob_endpoint_(get_blob_endpoint(config, account_name_))
+    , is_data_lake_endpoint_(parse_optional_bool(config.get<std::string>(
+          "vfs.azure.is_data_lake_endpoint", Config::must_find)))
     , ssl_cfg_(config)
     , has_sas_token_(
           !get_config_with_env_fallback(
@@ -325,9 +337,14 @@ void Azure::AzureClientSingleton::ensure_initialized(
   client_ = make_service_client<BlobServiceClientType>(
       params.blob_endpoint_, credential, options);
 
-  auto accountInfo = client_->GetAccountInfo();
+  auto is_datalake = params.is_data_lake_endpoint_;
 
-  if (accountInfo.Value.IsHierarchicalNamespaceEnabled) {
+  if (!is_datalake.has_value()) {
+    auto accountInfo = client_->GetAccountInfo();
+    is_datalake = accountInfo.Value.IsHierarchicalNamespaceEnabled;
+  }
+
+  if (*is_datalake) {
     ::Azure::Storage::Files::DataLake::DataLakeClientOptions data_lake_options;
     data_lake_options.Retry = options.Retry;
     data_lake_options.Transport = options.Transport;
