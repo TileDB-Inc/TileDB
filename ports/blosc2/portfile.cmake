@@ -1,0 +1,42 @@
+vcpkg_from_github(
+    OUT_SOURCE_PATH SOURCE_PATH
+    REPO Blosc/c-blosc2
+    REF "v${VERSION}"
+    SHA512 7c40a3b64d956a2141d482bfac65601a999e068262091c51525bde9e05a3667109c5f275688213af0caebbb439cb3004a76f45cb216a468e0793f20e04cc1ba3
+    HEAD_REF main
+    PATCHES
+        shuffle-public.patch
+)
+
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" BLOSC2_STATIC)
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" BLOSC2_SHARED)
+
+file(REMOVE_RECURSE "${SOURCE_PATH}/internal-complibs")
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    DISABLE_PARALLEL_CONFIGURE
+    OPTIONS
+        -DPREFER_EXTERNAL_LZ4=ON
+        -DPREFER_EXTERNAL_ZLIB=ON
+        -DPREFER_EXTERNAL_ZSTD=ON
+        -DBUILD_TESTS=OFF
+        -DBUILD_FUZZERS=OFF
+        -DBUILD_BENCHMARKS=OFF
+        -DBUILD_EXAMPLES=OFF
+        -DBUILD_STATIC=${BLOSC2_STATIC}
+        -DBUILD_SHARED=${BLOSC2_SHARED}
+)
+
+vcpkg_cmake_install()
+vcpkg_copy_pdbs()
+if (VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_cmake_config_fixup(CONFIG_PATH "cmake")
+else()
+    vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/Blosc2")
+endif()
+vcpkg_fixup_pkgconfig()
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
