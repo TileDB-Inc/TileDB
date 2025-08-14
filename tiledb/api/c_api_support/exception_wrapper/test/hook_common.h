@@ -33,13 +33,26 @@
 #ifndef TILEDB_EXCEPTION_WRAPPER_TEST_HOOK_COMMON_H
 #define TILEDB_EXCEPTION_WRAPPER_TEST_HOOK_COMMON_H
 
+#ifndef WITH_HOOK
+#define WITH_HOOK ""
+#endif
+
+enum class WhichHook { None, Logger, Tracer };
+
+constexpr WhichHook get_constexpr_which_hook() {
+  constexpr std::string_view view(WITH_HOOK);
+  if (view == "logger") {
+    return WhichHook::Logger;
+  } else if (view == "tracer") {
+    return WhichHook::Tracer;
+  } else {
+    return WhichHook::None;
+  }
+}
+
 /*
  * Convert the possible command line argument WITH_HOOK into a C++ constant.
  */
-#if defined(WITH_HOOK)
-constexpr bool compiled_with_hook{true};
-#else
-constexpr bool compiled_with_hook{false};
-#endif
+constexpr WhichHook which_hook = get_constexpr_which_hook();
 
 #endif  // TILEDB_EXCEPTION_WRAPPER_TEST_HOOK_COMMON_H
