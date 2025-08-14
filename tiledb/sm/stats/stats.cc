@@ -33,6 +33,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/common/assert.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <algorithm>
 #include <cassert>
@@ -50,8 +51,7 @@ Stats::Stats(const std::string& prefix)
 }
 
 Stats::Stats(const std::string& prefix, const StatsData& data)
-    : enabled_(true)
-    , prefix_(prefix + ".")
+    : prefix_(prefix + ".")
     , parent_(nullptr) {
   this->populate_with_data(data);
 }
@@ -61,11 +61,7 @@ Stats::Stats(const std::string& prefix, const StatsData& data)
 /* ****************************** */
 
 bool Stats::enabled() const {
-  return enabled_;
-}
-
-void Stats::set_enabled(bool enabled) {
-  enabled_ = enabled;
+  return all_stats.enabled();
 }
 
 void Stats::reset() {
@@ -176,7 +172,7 @@ std::string Stats::dump(
 #ifdef TILEDB_STATS
 
 void Stats::add_counter(const std::string& stat, uint64_t count) {
-  if (!enabled_) {
+  if (!all_stats.enabled()) {
     return;
   }
 
@@ -242,7 +238,7 @@ std::optional<double> Stats::find_timer(const std::string& stat) const {
 
 void Stats::report_duration(
     const std::string& stat, const std::chrono::duration<double> duration) {
-  if (!enabled_) {
+  if (!all_stats.enabled()) {
     return;
   }
 
@@ -295,6 +291,20 @@ Stats* Stats::create_child(const std::string& prefix) {
 }
 
 Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
+#if !defined(TILEDB_STATS)
+  constexpr bool stats_enabled = false;
+#else
+  const bool stats_enabled = all_stats.enabled();
+#endif
+
+  if (!stats_enabled) {
+    // Return a singleton null stats object that's safe to use but does nothing.
+    // This is necessary because the caller expects a valid (non-null) pointer.
+    // Also, this avoids unnecessary allocations when stats are disabled.
+    static Stats null_stats("null_stats");
+    return &null_stats;
+  }
+
   std::unique_lock<std::mutex> lck(mtx_);
   children_.emplace_back(prefix_ + prefix, data);
   Stats* const child = &children_.back();
@@ -305,6 +315,11 @@ Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
 void Stats::populate_flattened_stats(
     std::unordered_map<std::string, double>* const flattened_timers,
     std::unordered_map<std::string, uint64_t>* const flattened_counters) const {
+  // Skip the null stats singleton to prevent it from contributing empty data
+  if (prefix_ == "null_stats.") {
+    return;
+  }
+
   // We will acquire the locks top-down in the tree and hold
   // until the recursion terminates.
   std::unique_lock<std::mutex> lck(mtx_);
@@ -331,6 +346,10 @@ const std::unordered_map<std::string, uint64_t>* Stats::counters() const {
 }
 
 void Stats::populate_with_data(const StatsData& data) {
+  if (!all_stats.enabled()) {
+    return;
+  }
+
   auto& timers = data.timers();
   for (const auto& timer : timers) {
     timers_[timer.first] = timer.second;
