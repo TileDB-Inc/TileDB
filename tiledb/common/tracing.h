@@ -5,9 +5,12 @@
 
 #include <opentelemetry/trace/tracer.h>
 
+template <typename T>
+using otel_ptr = opentelemetry::nostd::shared_ptr<T>;
+
 namespace tiledb::tracing {
 
-opentelemetry::nostd::shared_ptr<opentelemetry::trace::Tracer> get_tracer();
+otel_ptr<opentelemetry::trace::Tracer> get_tracer();
 
 class AttributeSet : public opentelemetry::common::KeyValueIterable {
  public:
@@ -43,19 +46,37 @@ class AttributeSet : public opentelemetry::common::KeyValueIterable {
 
 class Scope {
  private:
-  Scope(opentelemetry::trace::Scope&& scope)
-      : otel_(std::move(scope)) {
+  Scope(otel_ptr<opentelemetry::trace::Span> span)
+      : span_(span)
+      , scope_(span) {
   }
 
-  opentelemetry::trace::Scope otel_;
+  otel_ptr<opentelemetry::trace::Span> span_;
+  opentelemetry::trace::Scope scope_;
 
   friend class ScopeBuilder;
+
+ public:
+  Scope(const char* name)
+      : span_(get_tracer()->StartSpan(name))
+      , scope_(span_) {
+  }
+
+  opentelemetry::trace::Span* operator->() {
+    return span_.get();
+  }
 };
 
 class ScopeBuilder {
  public:
   ScopeBuilder(const char* name)
       : name_(name) {
+  }
+
+  ScopeBuilder& with_attribute(
+      std::string_view key, opentelemetry::common::AttributeValue value) {
+    attributes_.add(key, value);
+    return *this;
   }
 
   ScopeBuilder& with_function_arguments(
@@ -68,8 +89,7 @@ class ScopeBuilder {
   }
 
   Scope finish() {
-    auto span = get_tracer()->StartSpan(name_, attributes_);
-    return Scope(opentelemetry::trace::Scope(span));
+    return Scope(get_tracer()->StartSpan(name_, attributes_));
   }
 
  private:

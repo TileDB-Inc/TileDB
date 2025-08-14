@@ -257,12 +257,11 @@ Status FragmentConsolidator::consolidate(
   std::vector<TimestampedURI> to_consolidate;
   do {
 #ifdef HAVE_TRACING
-    const auto step_span = tiledb::tracing::get_tracer()->StartSpan(
-        "FragmentConsolidator::consolidate");
-    step_span->SetAttribute("array_name", array_name);
+    auto trace =
+        tiledb::tracing::ScopeBuilder("FragmentConsolidator::consolidate")
+            .with_attribute("array_name", array_name)
+            .finish();
     // TODO: consider putting relevant configs here
-
-    const auto step_scope = opentelemetry::trace::Scope(step_span);
 #endif
     // No need to consolidate if no more than 1 fragment exist
     if (fragment_info.fragment_num() <= 1)
@@ -280,14 +279,14 @@ Status FragmentConsolidator::consolidate(
 
 #ifdef HAVE_TRACING
     for (const auto& target : to_consolidate) {
-      step_span->AddEvent(
+      trace->AddEvent(
           "compute_next_to_consolidate",
           tiledb::tracing::AttributeSet().add("uri", target.uri().to_string()));
       // TODO: we would like some details here including domain?
     }
     for (size_t d = 0; d < rschema.dim_num(); d++) {
       const auto dimension = rschema.domain().shared_dimension(d);
-      step_span->SetAttribute(
+      trace->SetAttribute(
           "target_domain." + dimension->name(),
           tiledb::type::range_str(
               union_non_empty_domains[d], dimension->type()));
@@ -609,8 +608,7 @@ Status FragmentConsolidator::consolidate_internal(
     FragmentConsolidationWorkspace& cw) {
 #ifdef HAVE_TRACING
   const auto span =
-      opentelemetry::trace::Scope(tiledb::tracing::get_tracer()->StartSpan(
-          "FragmentConsolidator::consolidate_internal"));
+      tiledb::tracing::Scope("FragmentConsolidator::consolidate_internal");
 #endif
 
   auto timer_se = stats_->start_timer("consolidate_internal");
