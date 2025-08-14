@@ -315,7 +315,8 @@ Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
 void Stats::populate_flattened_stats(
     std::unordered_map<std::string, double>* const flattened_timers,
     std::unordered_map<std::string, uint64_t>* const flattened_counters) const {
-  if (!all_stats.enabled()) {
+  // Skip the null stats singleton to prevent it from contributing empty data
+  if (prefix_ == "null_stats.") {
     return;
   }
 
