@@ -1278,7 +1278,7 @@ struct Fragment2D : public Fragment<std::tuple<D1, D2>, std::tuple<Att...>> {
   }
 
   query_buffers<D2>& d2() {
-    return std::get<0>(this->dimensions());
+    return std::get<1>(this->dimensions());
   }
 };
 
