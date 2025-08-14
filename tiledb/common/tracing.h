@@ -7,14 +7,14 @@
 
 namespace tiledb::tracing {
 
-opentelemetry::trace::Tracer& get_tracer();
+opentelemetry::nostd::shared_ptr<opentelemetry::trace::Tracer> get_tracer();
 
-class EventBuilder : public opentelemetry::common::KeyValueIterable {
+class AttributeSet : public opentelemetry::common::KeyValueIterable {
  public:
-  EventBuilder() {
+  AttributeSet() {
   }
 
-  EventBuilder& attribute(
+  AttributeSet& add(
       std::string_view key, opentelemetry::common::AttributeValue value) {
     attributes_[std::string(key)] = value;
     return *this;
@@ -39,6 +39,42 @@ class EventBuilder : public opentelemetry::common::KeyValueIterable {
 
  private:
   std::map<std::string, opentelemetry::common::AttributeValue> attributes_;
+};
+
+class Scope {
+ private:
+  Scope(opentelemetry::trace::Scope&& scope)
+      : otel_(std::move(scope)) {
+  }
+
+  opentelemetry::trace::Scope otel_;
+
+  friend class ScopeBuilder;
+};
+
+class ScopeBuilder {
+ public:
+  ScopeBuilder(const char* name)
+      : name_(name) {
+  }
+
+  ScopeBuilder& with_function_arguments(
+      std::unordered_map<size_t, std::string> args) {
+    for (const auto& arg : args) {
+      const std::string key = "arg" + std::to_string(arg.first);
+      attributes_.add(key, arg.second);
+    }
+    return *this;
+  }
+
+  Scope finish() {
+    auto span = get_tracer()->StartSpan(name_, attributes_);
+    return Scope(opentelemetry::trace::Scope(span));
+  }
+
+ private:
+  const char* name_;
+  AttributeSet attributes_;
 };
 
 }  // namespace tiledb::tracing
