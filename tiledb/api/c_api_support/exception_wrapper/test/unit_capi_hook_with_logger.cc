@@ -32,6 +32,6 @@
 
 #include "hook_common.h"
 
-TEST_CASE("Compile definition - with hook") {
-  CHECK(compiled_with_hook == true);
+TEST_CASE("Compile definition - with hook logger") {
+  CHECK(which_hook == WhichHook::Logger);
 }
