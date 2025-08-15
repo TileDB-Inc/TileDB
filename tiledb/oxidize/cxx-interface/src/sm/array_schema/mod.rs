@@ -359,7 +359,7 @@ impl ArraySchema {
     }
 
     /// Returns an iterator over all of the fields of this schema.
-    pub fn fields(&self) -> impl Iterator<Item = Field> {
+    pub fn fields(&self) -> impl Iterator<Item = Field<'_>> {
         self.domain()
             .dimensions()
             .map(Field::Dimension)
