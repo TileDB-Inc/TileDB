@@ -392,6 +392,7 @@ endif()
 if (TILEDB_TRACING)
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/tracing.cc
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api_support/tracing_wrapper.cc
   )
 endif ()
 

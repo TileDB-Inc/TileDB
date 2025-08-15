@@ -19,6 +19,16 @@ struct NameTrait {
 namespace tiledb::api::tracing {
 
 /**
+ * Encapsulates a trace of a C API function call
+ */
+struct CApiTrace {
+  CApiTrace(const char* funcname, std::unordered_map<size_t, std::string> args);
+
+ private:
+  tiledb::tracing::Scope scope_;
+};
+
+/**
  * Formats C API arguments for reporting as a span attribute
  */
 struct ArgumentTrace {
@@ -31,12 +41,6 @@ struct ArgumentTrace {
   ArgumentTrace(T value)
       : fmt_(std::to_string(value)) {
   }
-
-  /*
-  ArgumentTrace(const char* cstr)
-      : fmt_(cstr) {
-  }
-  */
 
   template <typename T, std::enable_if_t<std::is_pointer_v<T>, bool> = true>
   ArgumentTrace(T value) {
@@ -66,31 +70,15 @@ struct TracingAspect;
 
 template <typename R, typename... Args, R (*func)(Args...)>
 struct TracingAspect<func> {
-  static tiledb::tracing::Scope call(Args... args) {
+  static auto call(Args... args) {
     static_assert(NameTrait<func>::exists);
     static constexpr const char* funcname = NameTrait<func>::name;
-    return tiledb::tracing::ScopeBuilder(funcname)
-        .with_function_arguments(format_arguments(args...))
-        .finish();
+    return tiledb::api::tracing::CApiTrace(funcname, format_arguments(args...));
   }
 };
 
 }  // namespace tiledb::api::tracing
 
-#undef CAPI_PREFIX
-#define CAPI_PREFIX(root)                                \
-  template <>                                            \
-  struct NameTrait<tiledb::api::tiledb_##root> {         \
-    static constexpr bool exists = true;                 \
-    static constexpr const char* name = "tiledb_" #root; \
-  };
-
-template <auto f>
-struct tiledb::api::CAPIFunctionSelector<f, void> {
-  using aspect_type = tiledb::api::tracing::TracingAspect<f>;
-};
-
-#else
 #endif
 
 #endif
