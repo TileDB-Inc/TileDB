@@ -40,7 +40,7 @@
 #include "tiledb/api/c_api_support/cpp_string/cpp_string.h"
 #include "tiledb/api/c_api_support/exception_wrapper/capi_definition.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
-#include "tiledb/api/c_api_support/tracing_wrapper.h"
+#include "tiledb/api/c_api_support/tracing_aspect.h"
 #if __has_include("capi_function_override.h")
 #include "capi_function_override.h"
 #endif
