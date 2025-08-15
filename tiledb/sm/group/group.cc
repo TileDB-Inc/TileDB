@@ -648,14 +648,6 @@ void Group::mark_member_for_addition(
     throw GroupException("Cannot add member; Group is not open");
   }
 
-  if (remote_ && relative) {
-    // Relative URIs are supported in the capnp serialization format, but the
-    // REST server has not yet implemented the logic.
-    throw GroupException(
-        "Cannot add member; Remote groups do not support members with relative "
-        "URIs");
-  }
-
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
