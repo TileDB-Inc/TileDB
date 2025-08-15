@@ -1116,16 +1116,15 @@ TEST_CASE(
   // Open group in write mode
   {
     auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
+    CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
     if (vfs_test_setup.is_rest()) {
       CHECK_THROWS_WITH(
-          group.add_member("subgroup", true, "subgroup"),
-          Catch::Matchers::EndsWith("Cannot add member; Remote groups do not "
-                                    "support members with relative "
-                                    "URIs"));
+          group.close(),
+          Catch::Matchers::ContainsSubstring(
+              "relative paths are not yet supported for cloud groups"));
     } else {
-      CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
+      CHECK_NOTHROW(group.close());
     }
-    group.close();
   }
 
   if (!vfs_test_setup.is_rest()) {
