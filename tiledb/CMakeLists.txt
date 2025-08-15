@@ -555,7 +555,7 @@ endif()
 
 # Tracing
 if (TILEDB_TRACING)
-  find_package(opentelemetry-cpp CONFIG REQUIRED NO_DEFAULT_PATH COMPONENTS trace)
+  find_package(opentelemetry-cpp COMPONENTS trace)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       opentelemetry-cpp::trace

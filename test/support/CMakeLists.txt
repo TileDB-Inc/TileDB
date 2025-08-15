@@ -113,7 +113,7 @@ conclude(object_library)
 add_library(tdb_catch_tracing OBJECT)
 target_sources(tdb_catch_tracing PUBLIC tdb_catch_tracing.cc)
 if (TILEDB_TRACING)
-  find_package(opentelemetry-cpp CONFIG REQUIRED NO_DEFAULT_PATH COMPONENTS ostream_span_exporter trace)
+  find_package(opentelemetry-cpp COMPONENTS ostream_span_exporter trace)
   target_link_libraries(tdb_catch_tracing
     INTERFACE
       opentelemetry-cpp::ostream_span_exporter
