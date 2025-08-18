@@ -1,6 +1,9 @@
 #include "tiledb/common/tracing.h"
 
 #include <opentelemetry/exporters/ostream/span_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter_options.h>
 #include <opentelemetry/exporters/otlp/otlp_http.h>
 #include <opentelemetry/exporters/otlp/otlp_http_exporter.h>
 #include <opentelemetry/exporters/otlp/otlp_http_exporter_factory.h>
@@ -28,11 +31,11 @@ static void init_stdout(void) {
 }
 
 static void init_otlp(const char* uri) {
-  opentelemetry::exporter::otlp::OtlpHttpExporterOptions opts;
-  opts.url = std::string(uri);
+  opentelemetry::exporter::otlp::OtlpGrpcExporterOptions opts;
+  opts.endpoint = std::string(uri);
 
   auto exporter =
-      opentelemetry::exporter::otlp::OtlpHttpExporterFactory::Create(opts);
+      opentelemetry::exporter::otlp::OtlpGrpcExporterFactory::Create(opts);
   auto processor =
       opentelemetry::sdk::trace::SimpleSpanProcessorFactory::Create(
           std::move(exporter));
