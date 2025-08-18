@@ -291,7 +291,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
     std::make_pair(
         "config.logging_format", Config::CONFIG_LOGGING_DEFAULT_FORMAT),
-    std::make_pair("config.tracing.enabled", "false"),
     std::make_pair("config.tracing.uri", ""),
     std::make_pair(
         "sm.allow_separate_attribute_writes",
@@ -653,20 +652,16 @@ Status Config::set(const std::string& param, const std::string& value) {
     rest_profile_.reset();
   }
 
-  std::cerr << "HELLO SET " << param << " = " << value << std::endl;
-
   // tracing
-  if (param.starts_with("config.tracing")) {
-    std::cerr << "HELLO TRACING" << std::endl;
+  if (param.starts_with("config.tracing.uri")) {
+    std::optional<std::string> tracing_uri =
+        get<std::string>("config.tracing.uri");
 
-    std::optional<bool> tracing_enabled = get<bool>("config.tracing.enabled");
-    if (tracing_enabled.has_value() && tracing_enabled.value()) {
-      std::optional<std::string> tracing_uri =
-          get<std::string>("config.tracing.uri");
-      if (tracing_uri.has_value() && tracing_uri.value() != "") {
-        tiledb::tracing::init(tracing_uri.value().c_str());
-      } else {
+    if (tracing_uri.has_value()) {
+      if (tracing_uri.value() == "stdout") {
         tiledb::tracing::init(nullptr);
+      } else if (tracing_uri.value() != "") {
+        tiledb::tracing::init(tracing_uri.value().c_str());
       }
     }
   }
