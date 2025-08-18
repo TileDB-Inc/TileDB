@@ -34,7 +34,7 @@ For ease of review when patching existing ports, you are recommended to make one
 |---------------|--------------------------------------------------------------------------|
 | `aws-c-cal`   | Patching to remove unused OpenSSL dependency on Windows (vcpkg PR 44996) |
 | `aws-sdk-cpp` | Patching to fix MinGW build failures.                                    |
-| `blosc2`      | Patching to update to version 2.20.0 and add public APIs for raw shuffle operations |
+| `blosc2`      | Patching to update to version 2.21.0 (vcpkg PR 46957)                    |
 | `capnproto`   | Patching to fix compatibility with CMake 4.0 (PR 2272)                   |
 | `crc32c`      | Patching to fix compatibility with CMake 4.0 (PR 68)                     |
 | `fmt`         | Patching to update to version 1.11.4 (vcpkg PR 44774)                    |
