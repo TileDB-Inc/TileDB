@@ -555,9 +555,11 @@ endif()
 
 # Tracing
 if (TILEDB_TRACING)
-  find_package(opentelemetry-cpp COMPONENTS trace)
+  find_package(opentelemetry-cpp COMPONENTS ostream_span_exporter otlp_http_exporter trace)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
+      opentelemetry-cpp::ostream_span_exporter
+      opentelemetry-cpp::otlp_http_exporter
       opentelemetry-cpp::trace
     )
 endif ()

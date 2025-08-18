@@ -78,7 +78,12 @@
         "tracing": {
             "description": "Enable tracing",
             "dependencies": [
-              "opentelemetry-cpp"
+              {
+                  "name": "opentelemetry-cpp",
+                  "features": [
+                      "otlp-http"
+                  ]
+              }
             ]
         },
         "webp": {

@@ -59,6 +59,7 @@
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/tracing.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
@@ -1344,6 +1345,25 @@ int32_t tiledb_heap_profiler_enable(
       dump_interval_bytes,
       dump_threshold_bytes);
   return TILEDB_OK;
+}
+
+/* ****************************** */
+/*             Tracing            */
+/* ****************************** */
+
+/**
+ * Initialize tracing.
+ *
+ * @param hostname hostname to export traces to, or stdout if NULL
+ * @param port port to export traces to, unused if `hostname` is NULL
+ */
+capi_return_t tiledb_tracing_init(const char* uri) {
+  if constexpr (tiledb::tracing::compiled) {
+    tiledb::tracing::init(uri);
+    return TILEDB_OK;
+  } else {
+    throw std::runtime_error("No tracing");
+  }
 }
 
 /* ****************************** */
@@ -3153,6 +3173,14 @@ CAPI_INTERFACE(
       dump_interval_ms,
       dump_interval_bytes,
       dump_threshold_bytes);
+}
+
+/* ****************************** */
+/*             Tracing            */
+/* ****************************** */
+
+CAPI_INTERFACE(tracing_init, const char* url) {
+  return api_entry_plain<tiledb::api::tiledb_tracing_init>(url);
 }
 
 /* ****************************** */
