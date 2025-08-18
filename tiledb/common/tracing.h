@@ -10,6 +10,10 @@ using otel_ptr = opentelemetry::nostd::shared_ptr<T>;
 
 namespace tiledb::tracing {
 
+static constexpr bool compiled = true;
+
+extern void init(const char* uri);
+
 otel_ptr<opentelemetry::trace::Tracer> get_tracer();
 
 class AttributeSet : public opentelemetry::common::KeyValueIterable {
@@ -98,6 +102,12 @@ class ScopeBuilder {
 };
 
 }  // namespace tiledb::tracing
+
+#else
+
+namespace tiledb::tracing {
+static constexpr bool compiled = false;
+}
 
 #endif
 

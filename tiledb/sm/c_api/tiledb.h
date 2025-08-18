@@ -1518,6 +1518,18 @@ TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
     uint64_t dump_interval_bytes,
     uint64_t dump_threshold_bytes) TILEDB_NOEXCEPT;
 
+/* ****************************** */
+/*             Tracing            */
+/* ****************************** */
+
+/**
+ * Initialize tracing.
+ *
+ * @param uri uri to export traces to, or stdout if NULL
+ */
+TILEDB_EXPORT capi_return_t tiledb_tracing_init(const char* uri)
+    TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif
