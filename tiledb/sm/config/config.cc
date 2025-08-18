@@ -37,6 +37,7 @@
 #include "config.h"
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/tracing.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
@@ -290,6 +291,8 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
     std::make_pair(
         "config.logging_format", Config::CONFIG_LOGGING_DEFAULT_FORMAT),
+    std::make_pair("config.tracing.enabled", "false"),
+    std::make_pair("config.tracing.uri", ""),
     std::make_pair(
         "sm.allow_separate_attribute_writes",
         Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES),
@@ -611,7 +614,7 @@ Status Config::load_from_file(const std::string& filename) {
     }
 
     // Set param-value pair
-    param_values_[param] = value;
+    throw_if_not_ok(set(param, value));
 
     linenum += 1;
   }
@@ -648,6 +651,24 @@ Status Config::set(const std::string& param, const std::string& value) {
   if (param.starts_with("profile")) {
     rest_profile_load_attempted_ = false;
     rest_profile_.reset();
+  }
+
+  std::cerr << "HELLO SET " << param << " = " << value << std::endl;
+
+  // tracing
+  if (param.starts_with("config.tracing")) {
+    std::cerr << "HELLO TRACING" << std::endl;
+
+    std::optional<bool> tracing_enabled = get<bool>("config.tracing.enabled");
+    if (tracing_enabled.has_value() && tracing_enabled.value()) {
+      std::optional<std::string> tracing_uri =
+          get<std::string>("config.tracing.uri");
+      if (tracing_uri.has_value() && tracing_uri.value() != "") {
+        tiledb::tracing::init(tracing_uri.value().c_str());
+      } else {
+        tiledb::tracing::init(nullptr);
+      }
+    }
   }
 
   return Status::Ok();
