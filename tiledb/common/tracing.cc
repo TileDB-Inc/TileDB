@@ -47,11 +47,19 @@ static void init_otlp(const char* uri) {
 }
 
 void init(const char* uri) {
+  static bool isInitialized = false;
+
+  if (isInitialized) {
+    return;
+  }
+
   if (uri) {
     init_otlp(uri);
   } else {
     init_stdout();
   }
+
+  isInitialized = true;
 }
 
 opentelemetry::nostd::shared_ptr<opentelemetry::trace::Tracer> get_tracer() {
