@@ -101,6 +101,12 @@ class ScopeBuilder {
   AttributeSet attributes_;
 };
 
+/**
+ * Records an event occuring in the current span.
+ */
+void event(
+    const char* description, const AttributeSet& attributes = AttributeSet());
+
 }  // namespace tiledb::tracing
 
 #else
