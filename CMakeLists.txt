@@ -384,7 +384,7 @@ if (TILEDB_ASSERTIONS)
 endif ()
 
 if (TILEDB_TRACING)
-  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_TRACING)
+  add_compile_definitions(HAVE_TRACING)
 endif ()
 
 ##################################

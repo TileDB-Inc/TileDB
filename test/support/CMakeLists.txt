@@ -112,10 +112,13 @@ conclude(object_library)
 
 add_library(tdb_catch_tracing OBJECT)
 target_sources(tdb_catch_tracing PUBLIC tdb_catch_tracing.cc)
+find_package(Catch2 REQUIRED)
+target_include_directories(tdb_catch_tracing BEFORE PUBLIC ${INCLUDE_BASE} ${TILEDB_CORE_INCLUDE_DIR} ${TILEDB_EXPORT_HEADER_DIR})
+target_link_libraries(tdb_catch_tracing PUBLIC Catch2::Catch2)
 if (TILEDB_TRACING)
   find_package(opentelemetry-cpp COMPONENTS ostream_span_exporter trace)
   target_link_libraries(tdb_catch_tracing
-    INTERFACE
+    PUBLIC
       opentelemetry-cpp::ostream_span_exporter
       opentelemetry-cpp::trace
     )
