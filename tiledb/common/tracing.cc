@@ -67,4 +67,8 @@ opentelemetry::nostd::shared_ptr<opentelemetry::trace::Tracer> get_tracer() {
       "tiledb");
 }
 
+void event(const char* description, const AttributeSet& attributes) {
+  get_tracer()->GetCurrentSpan()->AddEvent(description, attributes);
+}
+
 }  // namespace tiledb::tracing

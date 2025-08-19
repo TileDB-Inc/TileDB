@@ -277,22 +277,6 @@ Status FragmentConsolidator::consolidate(
       return st;
     }
 
-#ifdef HAVE_TRACING
-    for (const auto& target : to_consolidate) {
-      trace->AddEvent(
-          "compute_next_to_consolidate",
-          tiledb::tracing::AttributeSet().add("uri", target.uri().to_string()));
-      // TODO: we would like some details here including domain?
-    }
-    for (size_t d = 0; d < rschema.dim_num(); d++) {
-      const auto dimension = rschema.domain().shared_dimension(d);
-      trace->SetAttribute(
-          "target_domain." + dimension->name(),
-          tiledb::type::range_str(
-              union_non_empty_domains[d], dimension->type()));
-    }
-#endif
-
     // Check if there is anything to consolidate
     if (to_consolidate.size() <= 1) {
       break;
@@ -945,6 +929,24 @@ Status FragmentConsolidator::compute_next_to_consolidate(
     for (size_t f = min_col; f <= min_col + i; ++f) {
       to_consolidate->emplace_back(
           fragments[f].uri(), fragments[f].timestamp_range());
+
+      if constexpr (tiledb::tracing::compiled) {
+        auto uri = fragments[f].uri().to_string();
+
+        tracing::AttributeSet attrs;
+        attrs.add("index", f).add("uri", uri);
+
+        std::vector<std::string> dim_range_strs;  // for lifetime
+        dim_range_strs.reserve(array_schema.dim_num());
+        for (size_t d = 0; d < array_schema.dim_num(); d++) {
+          const auto dimension = array_schema.domain().shared_dimension(d);
+          dim_range_strs.push_back(tiledb::type::range_str(
+              fragments[f].non_empty_domain()[d], dimension->type()));
+          attrs.add("domain." + dimension->name(), dim_range_strs.back());
+        }
+
+        tiledb::tracing::event("compute_next_to_consolidate", attrs);
+      }
     }
     *union_non_empty_domains = m_union[i][min_col];
     break;
