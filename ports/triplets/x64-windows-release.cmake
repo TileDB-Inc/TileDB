@@ -5,3 +5,6 @@ set(VCPKG_LIBRARY_LINKAGE static)
 set(X_VCPKG_APPLOCAL_DEPS_INSTALL ON)
 
 set(VCPKG_BUILD_TYPE release)
+
+# Fix CMake 4.0 errors in ports supporting very old CMake verions.
+set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
