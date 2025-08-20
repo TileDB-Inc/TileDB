@@ -46,7 +46,7 @@ GlobalStats all_stats;
 /* ****************************** */
 
 GlobalStats::GlobalStats()
-    : enabled_(false) {
+    : enabled_(true) {
 }
 
 /* ****************************** */
