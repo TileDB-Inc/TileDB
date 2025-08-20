@@ -2635,11 +2635,12 @@ CAPI_INTERFACE(
       ctx, array_schema_evolution, expanded_domain);
 }
 
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+CAPI_INTERFACE(
+    array_schema_evolution_set_timestamp_range,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
-    uint64_t hi) noexcept {
+    uint64_t hi) {
   return api_entry<
       tiledb::api::tiledb_array_schema_evolution_set_timestamp_range>(
       ctx, array_schema_evolution, lo, hi);

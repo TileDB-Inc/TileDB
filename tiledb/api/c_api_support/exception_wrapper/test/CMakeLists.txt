@@ -64,24 +64,29 @@ commence(unit_test capi_ew_without_hook)
 conclude(unit_test)
 
 # Hook tests with the hook included.
-commence(unit_test capi_ew_with_hook)
-  this_target_sources(
-      unit_capi_hook.cc
-      unit_capi_hook_with.cc
-      ../../../c_api/config/config_api.cc
-      ../../../c_api/context/context_api.cc
-      ../../../c_api/error/error_api.cc
-      ../../../../sm/storage_manager/context.cc
-      ../../../../sm/storage_manager/context_resources.cc
-  )
-  this_target_link_libraries(export)
-  this_target_object_libraries(
-      exception_wrapper
-      rest_client
-      storage_manager_stub
-      vfs
-  )
-  target_compile_definitions(unit_capi_ew_with_hook PUBLIC WITH_HOOK)
-  target_include_directories(
-      unit_capi_ew_with_hook PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hook)
-conclude(unit_test)
+function (hook_test hookdef)
+  commence(unit_test capi_ew_with_${hookdef})
+    this_target_sources(
+        unit_capi_hook.cc
+        unit_capi_hook_with_${hookdef}.cc
+        ../../../c_api/config/config_api.cc
+        ../../../c_api/context/context_api.cc
+        ../../../c_api/error/error_api.cc
+        ../../../../sm/storage_manager/context.cc
+        ../../../../sm/storage_manager/context_resources.cc
+    )
+    this_target_link_libraries(export)
+    this_target_object_libraries(
+        exception_wrapper
+        rest_client
+        storage_manager_stub
+        vfs
+    )
+    target_compile_options(unit_capi_ew_with_${hookdef} PUBLIC "-DWITH_HOOK=\"${hookdef}\"")
+    target_include_directories(
+        unit_capi_ew_with_${hookdef} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hook)
+  conclude(unit_test)
+endfunction ()
+
+hook_test(logger)
+hook_test(tracer)
