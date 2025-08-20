@@ -38,9 +38,6 @@
 #include "../filter_list/filter_list_api_external.h"
 #include "../string/string_api_external.h"
 
-// For the `FILE *` argument in `tiledb_dimension_dump`
-#include <stdio.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -270,30 +267,6 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     const void** tile_extent) TILEDB_NOEXCEPT;
-
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-/**
- * Dumps the contents of a dimension in ASCII form to some output (e.g.,
- * file or stdout).
- *
- * **Example:**
- *
- * The following prints the dimension dump to standard output.
- *
- * @code{.c}
- * tiledb_dimension_dump(ctx, dim, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_dimension_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    FILE* out) TILEDB_NOEXCEPT;
-#endif
 
 /**
  * Dumps the contents of a dimension in ASCII form to the selected string

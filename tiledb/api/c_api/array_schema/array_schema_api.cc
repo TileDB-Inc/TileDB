@@ -30,7 +30,6 @@
  * This file defines C API functions for the array schema section.
  */
 
-#include "array_schema_api_deprecated.h"
 #include "array_schema_api_experimental.h"
 #include "array_schema_api_internal.h"
 
@@ -376,23 +375,6 @@ capi_return_t tiledb_array_schema_get_attribute_num(
   ensure_array_schema_is_valid(array_schema);
   ensure_output_pointer_is_valid(attribute_num);
   *attribute_num = array_schema->attribute_num();
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_schema_dump(
-    const tiledb_array_schema_t* array_schema, FILE* out) {
-  // Note: this API is deprecated.
-  ensure_array_schema_is_valid(array_schema);
-  ensure_cstream_handle_is_valid(out);
-
-  std::stringstream ss;
-  ss << *array_schema->array_schema();
-  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  if (r != ss.str().size()) {
-    throw CAPIException(
-        "Error writing array schema " + array_schema->array_uri().to_string() +
-        " to file");
-  }
   return TILEDB_OK;
 }
 
@@ -783,15 +765,6 @@ CAPI_INTERFACE(
     uint32_t* attribute_num) {
   return api_entry_context<tiledb::api::tiledb_array_schema_get_attribute_num>(
       ctx, array_schema, attribute_num);
-}
-
-CAPI_INTERFACE(
-    array_schema_dump,
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    FILE* out) {
-  return api_entry_context<tiledb::api::tiledb_array_schema_dump>(
-      ctx, array_schema, out);
 }
 
 CAPI_INTERFACE(
