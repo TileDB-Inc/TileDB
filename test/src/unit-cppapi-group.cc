@@ -1117,7 +1117,7 @@ TEST_CASE(
   {
     auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
-    if (vfs_test_setup.is_rest()) {
+    if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
           Catch::Matchers::ContainsSubstring(

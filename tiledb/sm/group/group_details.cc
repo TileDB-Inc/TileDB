@@ -97,15 +97,31 @@ void GroupDetails::mark_member_for_addition(
       absolute_group_member_uri =
           group_uri_.join_path(group_member_uri.to_string());
     }
+    // After ENG-112 we support adding members that are not registered on REST.
+    // For tiledb URIs the object type is INVALID if the asset is not
+    // registered. For backend storage URIs the type is INVALID if the asset
+    // does not exist.
     obj_type = object_type(resources, absolute_group_member_uri);
-  }
 
-  if (obj_type == ObjectType::INVALID) {
-    throw GroupDetailsException(
-        "Cannot add group member " + group_member_uri.to_string() +
-        ", type is INVALID. The member likely does not exist.");
+    // Check that given a tiledb+s3 or similar URI the asset exists on storage.
+    // We could do this in object_type, but it would redefine what an INVALID
+    // object is for the public API, potentially breaking clients.
+    if (absolute_group_member_uri.is_tiledb() &&
+        obj_type == ObjectType::INVALID) {
+      URI::RESTURIComponents components;
+      throw_if_not_ok(absolute_group_member_uri.get_rest_components(
+          resources.rest_client()->rest_legacy(), &components));
+      if (!components.asset_storage.empty()) {
+        URI storage_uri = URI(components.asset_storage);
+        if (!is_array(resources, storage_uri) &&
+            !is_group(resources, storage_uri)) {
+          throw GroupDetailsException(
+              "Cannot add group member at " + components.asset_storage +
+              "; The member does not exist at the backend storage location.");
+        }
+      }
+    }
   }
-
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, obj_type, relative, name, false);
 
