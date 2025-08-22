@@ -1106,16 +1106,35 @@ TEST_CASE(
     "[cppapi][group][relative][rest]") {
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
-  auto group_name{vfs_test_setup.array_uri("groups_relative")};
-  auto subgroup_name = group_name + "/subgroup";
+  auto group_uri{vfs_test_setup.array_uri("groups_relative")};
+  auto subgroup_uri = group_uri + "/subgroup";
 
   // Create groups
-  tiledb::create_group(ctx, group_name);
-  tiledb::create_group(ctx, subgroup_name);
+  tiledb::create_group(ctx, group_uri);
+
+  // For 3.0 REST, construct an asset path relative to the parent created above.
+  if (vfs_test_setup.is_rest() && !vfs_test_setup.is_legacy_rest()) {
+    tiledb::sm::URI::RESTURIComponents components;
+    tiledb::sm::URI sub_uri(subgroup_uri);
+    CHECK(sub_uri
+              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+              .ok());
+    // Append the child group to the server asset path in the URI.
+    components.server_path.resize(components.server_path.find('/'));
+    components.server_path += "/groups_relative/";
+    subgroup_uri = "tiledb://" + components.server_namespace + "/" +
+                   components.server_path + components.asset_storage;
+  }
+  // For 3.0 REST this will create a child asset under the parent group's asset
+  // path _and_ register `subgroup` as a member of `groups_relative`.
+  // TODO: Test create_group standalone S3 URI with subsequent add_member.
+  //   The parent group should use a tiledb URI, calling add_member on the S3
+  //   URI should register the S3 URI group on REST, and add it as a member.
+  tiledb::create_group(ctx, subgroup_uri);
 
   // Open group in write mode
   {
-    auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
+    auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
     if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
@@ -1128,7 +1147,7 @@ TEST_CASE(
   }
 
   if (!vfs_test_setup.is_rest()) {
-    auto group = tiledb::Group(ctx, group_name, TILEDB_READ);
+    auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
 
     auto subgroup_member = group.member("subgroup");
 
