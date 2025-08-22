@@ -1102,7 +1102,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Group with Relative URI members, write/read, rest",
+    "C++ API: Group with relative URI members, write/read, rest",
     "[cppapi][group][create][relative][rest]") {
   VFSTestSetup vfs_test_setup;
   if (!vfs_test_setup.is_rest()) {
@@ -1150,7 +1150,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Group add_member with Relative URI members, write/read, rest",
+    "C++ API: Group add_member with relative URI members, write/read, rest",
     "[cppapi][group][add_member][relative][rest]") {
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
@@ -1164,7 +1164,14 @@ TEST_CASE(
   // Create parent group using tiledb URI.
   tiledb::create_group(ctx, group_uri);
   // Create child group using S3 URI.
-  tiledb::create_group(ctx, components.asset_storage);
+  SECTION("Create the child group using S3 URI") {
+    // Checks that we handle a not registered group correctly.
+    REQUIRE_NOTHROW(tiledb::create_group(ctx, components.asset_storage));
+  }
+  SECTION("Create the child group on REST using tiledb URI") {
+    // Checks that we handle a pre-registered group correctly.
+    REQUIRE_NOTHROW(tiledb::create_group(ctx, subgroup_uri));
+  }
 
   // Open group in write mode and add the relative member.
   {
