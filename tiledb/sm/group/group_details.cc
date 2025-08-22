@@ -111,10 +111,15 @@ void GroupDetails::mark_member_for_addition(
       URI::RESTURIComponents components;
       throw_if_not_ok(absolute_group_member_uri.get_rest_components(
           resources.rest_client()->rest_legacy(), &components));
+      // The asset is not registered on REST, so we set the object type using
+      // the asset storage location.
       if (!components.asset_storage.empty()) {
         URI storage_uri = URI(components.asset_storage);
-        if (!is_array(resources, storage_uri) &&
-            !is_group(resources, storage_uri)) {
+        if (is_array(resources, storage_uri)) {
+          obj_type = ObjectType::ARRAY;
+        } else if (is_group(resources, storage_uri)) {
+          obj_type = ObjectType::GROUP;
+        } else {
           throw GroupDetailsException(
               "Cannot add group member at " + components.asset_storage +
               "; The member does not exist at the backend storage location.");
