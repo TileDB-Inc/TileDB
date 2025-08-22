@@ -1103,8 +1103,13 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Group with Relative URI members, write/read, rest",
-    "[cppapi][group][relative][rest]") {
+    "[cppapi][group][create][relative][rest]") {
   VFSTestSetup vfs_test_setup;
+  if (!vfs_test_setup.is_rest()) {
+    // 3.0 REST must add the child asset as a group member for this to pass.
+    // Legacy REST must return an error for this to pass.
+    SKIP("This test relies on serverside REST logic");
+  }
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
   auto subgroup_uri = group_uri + "/subgroup";
@@ -1112,8 +1117,16 @@ TEST_CASE(
   // Create groups
   tiledb::create_group(ctx, group_uri);
 
-  // For 3.0 REST, construct an asset path relative to the parent created above.
-  if (vfs_test_setup.is_rest() && !vfs_test_setup.is_legacy_rest()) {
+  if (vfs_test_setup.is_legacy_rest()) {
+    // Legacy REST does not support relative group members.
+    auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+    CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
+    CHECK_THROWS_WITH(
+        group.close(),
+        Catch::Matchers::ContainsSubstring(
+            "relative paths are not yet supported for cloud groups"));
+  } else {
+    // For 3.0 REST construct an asset path relative to the parent path above.
     tiledb::sm::URI::RESTURIComponents components;
     tiledb::sm::URI sub_uri(subgroup_uri);
     CHECK(sub_uri
@@ -1124,15 +1137,36 @@ TEST_CASE(
     components.server_path += "/groups_relative/";
     subgroup_uri = "tiledb://" + components.server_namespace + "/" +
                    components.server_path + components.asset_storage;
-  }
-  // For 3.0 REST this will create a child asset under the parent group's asset
-  // path _and_ register `subgroup` as a member of `groups_relative`.
-  // TODO: Test create_group standalone S3 URI with subsequent add_member.
-  //   The parent group should use a tiledb URI, calling add_member on the S3
-  //   URI should register the S3 URI group on REST, and add it as a member.
-  tiledb::create_group(ctx, subgroup_uri);
+    // 3.0 REST will create a child asset under the parent group's asset path
+    // _and_ register `subgroup` as a member of `groups_relative`.
+    tiledb::create_group(ctx, subgroup_uri);
 
-  // Open group in write mode
+    auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
+    auto subgroup_member = group.member("subgroup");
+    CHECK(subgroup_member.type() == tiledb::Object::Type::Group);
+    CHECK(subgroup_member.name() == "subgroup");
+    CHECK(group.is_relative("subgroup"));
+  }
+}
+
+TEST_CASE(
+    "C++ API: Group add_member with Relative URI members, write/read, rest",
+    "[cppapi][group][add_member][relative][rest]") {
+  VFSTestSetup vfs_test_setup;
+  tiledb::Context ctx{vfs_test_setup.ctx()};
+  auto group_uri{vfs_test_setup.array_uri("groups_relative")};
+  auto subgroup_uri = group_uri + "/subgroup";
+  tiledb::sm::URI::RESTURIComponents components;
+  tiledb::sm::URI sub_uri(subgroup_uri);
+  CHECK(
+      sub_uri.get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+          .ok());
+  // Create parent group using tiledb URI.
+  tiledb::create_group(ctx, group_uri);
+  // Create child group using S3 URI.
+  tiledb::create_group(ctx, components.asset_storage);
+
+  // Open group in write mode and add the relative member.
   {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
@@ -1146,11 +1180,9 @@ TEST_CASE(
     }
   }
 
-  if (!vfs_test_setup.is_rest()) {
+  if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-
     auto subgroup_member = group.member("subgroup");
-
     CHECK(subgroup_member.type() == tiledb::Object::Type::Group);
     CHECK(subgroup_member.name() == "subgroup");
     CHECK(group.is_relative("subgroup"));
