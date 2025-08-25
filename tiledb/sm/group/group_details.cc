@@ -322,7 +322,8 @@ GroupDetails::member_by_name(const std::string& name) {
 
   auto member = it->second;
   std::string uri = member->uri().to_string();
-  if (member->relative()) {
+  // Relative tiledb URIs are returned in the expected format from REST.
+  if (!member->uri().is_tiledb() && member->relative()) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
