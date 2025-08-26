@@ -1102,60 +1102,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Group create with relative URI array members, write/read, rest",
-    "[cppapi][group][create][relative][rest]") {
-  VFSTestSetup vfs_test_setup;
-  if (!vfs_test_setup.is_rest()) {
-    // 3.0 REST must add the child asset as a group member for this to pass.
-    // Legacy REST must return an error for this to pass.
-    SKIP("This test relies on serverside REST logic");
-  }
-  tiledb::Context ctx{vfs_test_setup.ctx()};
-  auto group_uri{vfs_test_setup.array_uri("groups_relative")};
-  auto subgroup_uri = group_uri + "/array_member";
-
-  // Create groups
-  tiledb::create_group(ctx, group_uri);
-
-  if (vfs_test_setup.is_legacy_rest()) {
-    // Legacy REST does not support relative group members.
-    auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
-    CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
-    CHECK_THROWS_WITH(
-        group.close(),
-        Catch::Matchers::ContainsSubstring(
-            "relative paths are not yet supported for cloud groups"));
-  } else {
-    // For 3.0 REST construct an asset path relative to the parent path above.
-    tiledb::sm::URI::RESTURIComponents components;
-    tiledb::sm::URI sub_uri(subgroup_uri);
-    CHECK(sub_uri
-              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
-              .ok());
-    // Append the child array to the server asset path in the URI.
-    components.server_path.resize(components.server_path.find('/'));
-    components.server_path += "/groups_relative/";
-    subgroup_uri = "tiledb://" + components.server_namespace + "/" +
-                   components.server_path + components.asset_storage;
-
-    tiledb::Domain domain(ctx);
-    domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 10}}, 10));
-    tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
-    schema.set_domain(domain);
-    schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a1"));
-    tiledb::Array::create(ctx, subgroup_uri, schema);
-
-    auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    auto member = group.member("array_member");
-    CHECK(member.type() == tiledb::Object::Type::Array);
-    CHECK(member.name() == "array_member");
-    CHECK(member.uri() == subgroup_uri);
-    CHECK(group.is_relative("array_member"));
-  }
-}
-
-TEST_CASE(
     "C++ API: Group with relative URI members, write/read, rest",
     "[cppapi][group][create][relative][rest]") {
   VFSTestSetup vfs_test_setup;
@@ -1166,7 +1112,6 @@ TEST_CASE(
   }
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
-  auto subgroup_uri = group_uri + "/subgroup";
 
   // Create groups
   tiledb::create_group(ctx, group_uri);
@@ -1181,26 +1126,64 @@ TEST_CASE(
             "relative paths are not yet supported for cloud groups"));
   } else {
     // For 3.0 REST construct an asset path relative to the parent path above.
+    // 3.0 REST will create a child asset under the parent group's asset path
+    // _and_ register the asset as a member of `groups_relative`.
     tiledb::sm::URI::RESTURIComponents components;
-    tiledb::sm::URI sub_uri(subgroup_uri);
-    CHECK(sub_uri
+    SECTION("Creating a group member as a child asset") {
+      auto member_uri = group_uri + "/relative_group";
+      tiledb::sm::URI sub_uri(member_uri);
+      CHECK(
+          sub_uri
               .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
               .ok());
-    // Append the child group to the server asset path in the URI.
-    components.server_path.resize(components.server_path.find('/'));
-    components.server_path += "/groups_relative/";
-    subgroup_uri = "tiledb://" + components.server_namespace + "/" +
-                   components.server_path + components.asset_storage;
-    // 3.0 REST will create a child asset under the parent group's asset path
-    // _and_ register `subgroup` as a member of `groups_relative`.
-    tiledb::create_group(ctx, subgroup_uri);
+      // Append the child group to the server asset path in the URI.
+      components.server_path.resize(components.server_path.find('/'));
+      components.server_path += "/groups_relative";
+      member_uri = "tiledb://" + components.server_namespace + "/" +
+                   components.server_path + "/" + components.asset_storage;
 
-    auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    auto member = group.member("subgroup");
-    CHECK(member.type() == tiledb::Object::Type::Group);
-    CHECK(member.name() == "subgroup");
-    CHECK(member.uri() == subgroup_uri);
-    CHECK(group.is_relative("subgroup"));
+      tiledb::create_group(ctx, member_uri);
+
+      auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
+      auto member = group.member("relative_group");
+      CHECK(member.type() == tiledb::Object::Type::Group);
+      CHECK(member.name() == "relative_group");
+      std::string expected_uri =
+          build_tiledb_uri(sub_uri, "groups_relative/relative_group");
+      CHECK(member.uri() == expected_uri);
+      CHECK(group.is_relative("relative_group"));
+    }
+
+    SECTION("Creating an array member as a child asset") {
+      auto member_uri = group_uri + "/relative_array";
+      tiledb::sm::URI sub_uri(member_uri);
+      CHECK(
+          sub_uri
+              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+              .ok());
+      // Append the child group to the server asset path in the URI.
+      components.server_path.resize(components.server_path.find('/'));
+      components.server_path += "/groups_relative";
+      member_uri = "tiledb://" + components.server_namespace + "/" +
+                   components.server_path + "/" + components.asset_storage;
+
+      tiledb::Domain domain(ctx);
+      domain.add_dimension(
+          tiledb::Dimension::create<int>(ctx, "rows", {{1, 10}}, 10));
+      tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+      schema.set_domain(domain);
+      schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a1"));
+      tiledb::Array::create(ctx, member_uri, schema);
+
+      auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
+      auto member = group.member("relative_array");
+      CHECK(member.type() == tiledb::Object::Type::Array);
+      CHECK(member.name() == "relative_array");
+      std::string expected_uri =
+          build_tiledb_uri(sub_uri, "groups_relative/relative_array");
+      CHECK(member.uri() == expected_uri);
+      CHECK(group.is_relative("relative_array"));
+    }
   }
 }
 
@@ -1210,7 +1193,7 @@ TEST_CASE(
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
-  auto subgroup_uri = group_uri + "/subgroup";
+  auto subgroup_uri = group_uri + "/relative_group";
   tiledb::sm::URI::RESTURIComponents components;
   tiledb::sm::URI sub_uri(subgroup_uri);
   CHECK(
@@ -1231,7 +1214,7 @@ TEST_CASE(
   // Open group in write mode and add the relative member.
   {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
-    CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
+    CHECK_NOTHROW(group.add_member("relative_group", true, "relative_group"));
     if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
@@ -1244,11 +1227,13 @@ TEST_CASE(
 
   if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    auto member = group.member("subgroup");
+    auto member = group.member("relative_group");
     CHECK(member.type() == tiledb::Object::Type::Group);
-    CHECK(member.name() == "subgroup");
-    CHECK(member.uri() == subgroup_uri);
-    CHECK(group.is_relative("subgroup"));
+    CHECK(member.name() == "relative_group");
+    std::string expected_uri =
+        build_tiledb_uri(sub_uri, "groups_relative/relative_group");
+    CHECK(member.uri() == expected_uri);
+    CHECK(group.is_relative("relative_group"));
   }
 }
 
@@ -1259,7 +1244,7 @@ TEST_CASE(
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
-  auto array_member_uri = group_uri + "/array_member";
+  auto array_member_uri = group_uri + "/relative_array";
   tiledb::sm::URI::RESTURIComponents components;
   tiledb::sm::URI sub_uri(array_member_uri);
   CHECK(
@@ -1288,7 +1273,7 @@ TEST_CASE(
   // Open group in write mode and add the relative member.
   {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
-    CHECK_NOTHROW(group.add_member("array_member", true, "array_member"));
+    CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
     if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
@@ -1301,10 +1286,12 @@ TEST_CASE(
 
   if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    auto member = group.member("array_member");
+    auto member = group.member("relative_array");
     CHECK(member.type() == tiledb::Object::Type::Array);
-    CHECK(member.name() == "array_member");
-    CHECK(member.uri() == array_member_uri);
-    CHECK(group.is_relative("array_member"));
+    CHECK(member.name() == "relative_array");
+    std::string expected_uri =
+        build_tiledb_uri(sub_uri, "groups_relative/relative_array");
+    CHECK(member.uri() == expected_uri);
+    CHECK(group.is_relative("relative_array"));
   }
 }
