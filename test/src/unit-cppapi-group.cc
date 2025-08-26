@@ -1215,6 +1215,8 @@ TEST_CASE(
   {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("relative_group", true, "relative_group"));
+    CHECK_NOTHROW(
+        group.add_member("relative_group", true, "relative_group_rename"));
     if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
@@ -1227,13 +1229,16 @@ TEST_CASE(
 
   if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    auto member = group.member("relative_group");
-    CHECK(member.type() == tiledb::Object::Type::Group);
-    CHECK(member.name() == "relative_group");
-    std::string expected_uri =
-        build_tiledb_uri(sub_uri, "groups_relative/relative_group");
-    CHECK(member.uri() == expected_uri);
-    CHECK(group.is_relative("relative_group"));
+    CHECK(group.member_count() == 2);
+    for (const auto& name : {"relative_group", "relative_group_rename"}) {
+      auto member = group.member(name);
+      CHECK(member.type() == tiledb::Object::Type::Group);
+      CHECK(member.name() == name);
+      std::string expected_uri =
+          build_tiledb_uri(sub_uri, std::string("groups_relative/") + name);
+      CHECK(member.uri() == expected_uri);
+      CHECK(group.is_relative(name));
+    }
   }
 }
 
@@ -1274,6 +1279,8 @@ TEST_CASE(
   {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
+    CHECK_NOTHROW(
+        group.add_member("relative_array", true, "relative_array_rename"));
     if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
@@ -1286,12 +1293,15 @@ TEST_CASE(
 
   if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
     auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    auto member = group.member("relative_array");
-    CHECK(member.type() == tiledb::Object::Type::Array);
-    CHECK(member.name() == "relative_array");
-    std::string expected_uri =
-        build_tiledb_uri(sub_uri, "groups_relative/relative_array");
-    CHECK(member.uri() == expected_uri);
-    CHECK(group.is_relative("relative_array"));
+    CHECK(group.member_count() == 2);
+    for (const auto& name : {"relative_array", "relative_array_rename"}) {
+      auto member = group.member(name);
+      CHECK(member.type() == tiledb::Object::Type::Array);
+      CHECK(member.name() == name);
+      std::string expected_uri =
+          build_tiledb_uri(sub_uri, std::string("groups_relative/") + name);
+      CHECK(member.uri() == expected_uri);
+      CHECK(group.is_relative(name));
+    }
   }
 }
