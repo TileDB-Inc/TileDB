@@ -1210,6 +1210,12 @@ TEST_CASE(
     // Checks that we handle a pre-registered group correctly.
     REQUIRE_NOTHROW(tiledb::create_group(ctx, subgroup_uri));
   }
+  SECTION("Adding the same relative member multiple times") {
+    REQUIRE_NOTHROW(tiledb::create_group(ctx, subgroup_uri));
+    auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+    CHECK_NOTHROW(group.add_member("relative_group", true));
+    CHECK_NOTHROW(group.close());
+  }
 
   // Open group in write mode and add the relative member.
   {
@@ -1273,6 +1279,12 @@ TEST_CASE(
   SECTION("Create the child array on REST using tiledb URI") {
     // Checks that we handle a pre-registered array correctly.
     REQUIRE_NOTHROW(tiledb::Array::create(ctx, array_member_uri, schema));
+  }
+  SECTION("Adding the same relative member multiple times") {
+    REQUIRE_NOTHROW(tiledb::Array::create(ctx, array_member_uri, schema));
+    auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+    CHECK_NOTHROW(group.add_member("relative_array", true));
+    CHECK_NOTHROW(group.close());
   }
 
   // Open group in write mode and add the relative member.
