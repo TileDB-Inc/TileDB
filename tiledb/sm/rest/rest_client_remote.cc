@@ -1436,6 +1436,15 @@ Status RestClientRemote::post_group_create_to_rest(
   RETURN_NOT_OK(serialization::group_create_serialize(
       group, serialization_type_, buff, rest_legacy()));
 
+  // Credential used for creating a group as a child of an existing REST group.
+  const auto creation_access_credentials_name{
+      config_->get<std::string>("rest.creation_access_credentials_name")};
+  if (creation_access_credentials_name.has_value()) {
+    add_header(
+        "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
+        creation_access_credentials_name.value());
+  }
+
   // Init curl and form the URL
   Curl curlc(logger_);
   URI::RESTURIComponents rest_uri;
@@ -1515,6 +1524,15 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
   auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(
       serialization::group_update_serialize(group, serialization_type_, buff));
+
+  // Credential name for adding group members that are not registered on REST.
+  const auto creation_access_credentials_name{
+      config_->get<std::string>("rest.creation_access_credentials_name")};
+  if (creation_access_credentials_name.has_value()) {
+    add_header(
+        "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
+        creation_access_credentials_name.value());
+  }
 
   // Init curl and form the URL
   Curl curlc(logger_);
