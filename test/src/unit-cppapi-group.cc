@@ -1059,9 +1059,8 @@ TEST_CASE(
   tiledb::create_group(ctx, "my_group/my_subgroup");
   auto schema =
       tiledb::ArraySchema(ctx, TILEDB_DENSE)
-          .set_domain(
-              tiledb::Domain(ctx).add_dimension(
-                  tiledb::Dimension::create<int32_t>(ctx, "d1", {0, 100}, 10)))
+          .set_domain(tiledb::Domain(ctx).add_dimension(
+              tiledb::Dimension::create<int32_t>(ctx, "d1", {0, 100}, 10)))
           .add_attribute(tiledb::Attribute(ctx, "a1", TILEDB_INT32));
   tiledb::Array::create("my_group/my_array", schema);
 
@@ -1304,7 +1303,7 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
     CHECK_NOTHROW(
         group.add_member("relative_array", true, "relative_array_rename"));
-    if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
+    if (vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
           Catch::Matchers::ContainsSubstring(
