@@ -1059,8 +1059,9 @@ TEST_CASE(
   tiledb::create_group(ctx, "my_group/my_subgroup");
   auto schema =
       tiledb::ArraySchema(ctx, TILEDB_DENSE)
-          .set_domain(tiledb::Domain(ctx).add_dimension(
-              tiledb::Dimension::create<int32_t>(ctx, "d1", {0, 100}, 10)))
+          .set_domain(
+              tiledb::Domain(ctx).add_dimension(
+                  tiledb::Dimension::create<int32_t>(ctx, "d1", {0, 100}, 10)))
           .add_attribute(tiledb::Attribute(ctx, "a1", TILEDB_INT32));
   tiledb::Array::create("my_group/my_array", schema);
 
@@ -1112,8 +1113,6 @@ TEST_CASE(
   }
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
-
-  // Create groups
   tiledb::create_group(ctx, group_uri);
 
   if (vfs_test_setup.is_legacy_rest()) {
@@ -1130,42 +1129,41 @@ TEST_CASE(
     // _and_ register the asset as a member of `groups_relative`.
     tiledb::sm::URI::RESTURIComponents components;
     SECTION("Creating a group member as a child asset") {
-      auto member_uri = group_uri + "/relative_group";
-      tiledb::sm::URI sub_uri(member_uri);
+      auto member_uri_str = group_uri + "/relative_group";
+      tiledb::sm::URI member_uri(member_uri_str);
       CHECK(
-          sub_uri
+          member_uri
               .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
               .ok());
       // Append the child group to the server asset path in the URI.
       components.server_path.resize(components.server_path.find('/'));
       components.server_path += "/groups_relative";
-      member_uri = "tiledb://" + components.server_namespace + "/" +
-                   components.server_path + "/" + components.asset_storage;
-
-      tiledb::create_group(ctx, member_uri);
+      member_uri_str = "tiledb://" + components.server_namespace + "/" +
+                       components.server_path + "/" + components.asset_storage;
+      tiledb::create_group(ctx, member_uri_str);
 
       auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
       auto member = group.member("relative_group");
       CHECK(member.type() == tiledb::Object::Type::Group);
       CHECK(member.name() == "relative_group");
       std::string expected_uri =
-          build_tiledb_uri(sub_uri, "groups_relative/relative_group");
+          build_tiledb_uri(member_uri, "groups_relative/relative_group");
       CHECK(member.uri() == expected_uri);
       CHECK(group.is_relative("relative_group"));
     }
 
     SECTION("Creating an array member as a child asset") {
-      auto member_uri = group_uri + "/relative_array";
-      tiledb::sm::URI sub_uri(member_uri);
+      auto member_uri_str = group_uri + "/relative_array";
+      tiledb::sm::URI member_uri(member_uri_str);
       CHECK(
-          sub_uri
+          member_uri
               .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
               .ok());
       // Append the child group to the server asset path in the URI.
       components.server_path.resize(components.server_path.find('/'));
       components.server_path += "/groups_relative";
-      member_uri = "tiledb://" + components.server_namespace + "/" +
-                   components.server_path + "/" + components.asset_storage;
+      member_uri_str = "tiledb://" + components.server_namespace + "/" +
+                       components.server_path + "/" + components.asset_storage;
 
       tiledb::Domain domain(ctx);
       domain.add_dimension(
@@ -1173,14 +1171,14 @@ TEST_CASE(
       tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
       schema.set_domain(domain);
       schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a1"));
-      tiledb::Array::create(ctx, member_uri, schema);
+      tiledb::Array::create(ctx, member_uri_str, schema);
 
       auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
       auto member = group.member("relative_array");
       CHECK(member.type() == tiledb::Object::Type::Array);
       CHECK(member.name() == "relative_array");
       std::string expected_uri =
-          build_tiledb_uri(sub_uri, "groups_relative/relative_array");
+          build_tiledb_uri(member_uri, "groups_relative/relative_array");
       CHECK(member.uri() == expected_uri);
       CHECK(group.is_relative("relative_array"));
     }
@@ -1194,15 +1192,20 @@ TEST_CASE(
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
   auto subgroup_uri = group_uri + "/relative_group";
-  tiledb::sm::URI::RESTURIComponents components;
-  tiledb::sm::URI sub_uri(subgroup_uri);
-  CHECK(
-      sub_uri.get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
-          .ok());
   // Create parent group using tiledb URI.
   tiledb::create_group(ctx, group_uri);
-  // Create child group using S3 URI.
+
+  tiledb::sm::URI member_uri(subgroup_uri);
   SECTION("Create the child group using S3 URI") {
+    tiledb::sm::URI::RESTURIComponents components;
+    // Use the full backend storage URI if not in tiledb format.
+    components.asset_storage = subgroup_uri;
+    if (member_uri.is_tiledb()) {
+      CHECK(
+          member_uri
+              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+              .ok());
+    }
     // Checks that we handle a not registered group correctly.
     REQUIRE_NOTHROW(tiledb::create_group(ctx, components.asset_storage));
   }
@@ -1223,7 +1226,7 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_group", true, "relative_group"));
     CHECK_NOTHROW(
         group.add_member("relative_group", true, "relative_group_rename"));
-    if (vfs_test_setup.is_rest() && vfs_test_setup.is_legacy_rest()) {
+    if (vfs_test_setup.is_legacy_rest()) {
       CHECK_THROWS_WITH(
           group.close(),
           Catch::Matchers::ContainsSubstring(
@@ -1240,8 +1243,11 @@ TEST_CASE(
       auto member = group.member(name);
       CHECK(member.type() == tiledb::Object::Type::Group);
       CHECK(member.name() == name);
-      std::string expected_uri =
-          build_tiledb_uri(sub_uri, std::string("groups_relative/") + name);
+      std::string expected_uri = member_uri.to_string();
+      if (vfs_test_setup.is_rest()) {
+        expected_uri = build_tiledb_uri(
+            member_uri, std::string("groups_relative/") + name);
+      }
       CHECK(member.uri() == expected_uri);
       CHECK(group.is_relative(name));
     }
@@ -1256,11 +1262,6 @@ TEST_CASE(
   tiledb::Context ctx{vfs_test_setup.ctx()};
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
   auto array_member_uri = group_uri + "/relative_array";
-  tiledb::sm::URI::RESTURIComponents components;
-  tiledb::sm::URI sub_uri(array_member_uri);
-  CHECK(
-      sub_uri.get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
-          .ok());
   // Create parent group using tiledb URI.
   tiledb::create_group(ctx, group_uri);
 
@@ -1271,8 +1272,18 @@ TEST_CASE(
   schema.set_domain(domain);
   schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a1"));
   // Create the group member using an S3 URI.
+  tiledb::sm::URI member_uri(array_member_uri);
   SECTION("Create the child array using S3 URI") {
-    // Checks that we handle a not registered array correctly.
+    tiledb::sm::URI::RESTURIComponents components;
+    // Use the full backend storage URI if not in tiledb format.
+    components.asset_storage = array_member_uri;
+    if (member_uri.is_tiledb()) {
+      CHECK(
+          member_uri
+              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+              .ok());
+    }
+    // Checks that we handle an unregistered array correctly.
     REQUIRE_NOTHROW(
         tiledb::Array::create(ctx, components.asset_storage, schema));
   }
@@ -1287,8 +1298,8 @@ TEST_CASE(
     CHECK_NOTHROW(group.close());
   }
 
-  // Open group in write mode and add the relative member.
   {
+    // Open group in write mode and add the relative member.
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
     CHECK_NOTHROW(
@@ -1310,8 +1321,11 @@ TEST_CASE(
       auto member = group.member(name);
       CHECK(member.type() == tiledb::Object::Type::Array);
       CHECK(member.name() == name);
-      std::string expected_uri =
-          build_tiledb_uri(sub_uri, std::string("groups_relative/") + name);
+      std::string expected_uri = member_uri.to_string();
+      if (vfs_test_setup.is_rest()) {
+        expected_uri = build_tiledb_uri(
+            member_uri, std::string("groups_relative/") + name);
+      }
       CHECK(member.uri() == expected_uri);
       CHECK(group.is_relative(name));
     }
