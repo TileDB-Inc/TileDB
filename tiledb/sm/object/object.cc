@@ -104,10 +104,10 @@ ObjectType object_type(ContextResources& resources, const URI& uri) {
     }
   }
 
-  if (is_array(resources, uri)) {
+  if (is_array(resources, dir_uri)) {
     return ObjectType::ARRAY;
   }
-  if (is_group(resources, uri)) {
+  if (is_group(resources, dir_uri)) {
     return ObjectType::GROUP;
   }
 
