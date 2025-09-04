@@ -1114,9 +1114,11 @@ TEST_CASE(
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
   tiledb::create_group(ctx, group_uri);
 
+  auto member_uri_str = group_uri + "/relative_group";
   if (vfs_test_setup.is_legacy_rest()) {
     // Legacy REST does not support relative group members.
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+    tiledb::create_group(ctx, member_uri_str);
     CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
     CHECK_THROWS_WITH(
         group.close(),
@@ -1128,7 +1130,6 @@ TEST_CASE(
     // _and_ register the asset as a member of `groups_relative`.
     tiledb::sm::URI::RESTURIComponents components;
     SECTION("Creating a group member as a child asset") {
-      auto member_uri_str = group_uri + "/relative_group";
       tiledb::sm::URI member_uri(member_uri_str);
       CHECK(
           member_uri
@@ -1152,7 +1153,6 @@ TEST_CASE(
     }
 
     SECTION("Creating an array member as a child asset") {
-      auto member_uri_str = group_uri + "/relative_array";
       tiledb::sm::URI member_uri(member_uri_str);
       CHECK(
           member_uri
@@ -1189,6 +1189,9 @@ TEST_CASE(
     "[cppapi][group][add_member][relative][rest]") {
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
+  if (vfs_test_setup.is_legacy_rest()) {
+    SKIP("Relative group URIs are not supported in legacy REST servers");
+  }
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
   auto subgroup_uri = group_uri + "/relative_group";
   // Create parent group using tiledb URI.
@@ -1205,7 +1208,7 @@ TEST_CASE(
               .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
               .ok());
     }
-    // Checks that we handle a not registered group correctly.
+    // Checks that we handle an unregistered group correctly.
     REQUIRE_NOTHROW(tiledb::create_group(ctx, components.asset_storage));
   }
   SECTION("Create the child group on REST using tiledb URI") {
@@ -1225,31 +1228,22 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_group", true, "relative_group"));
     CHECK_NOTHROW(
         group.add_member("relative_group", true, "relative_group_rename"));
-    if (vfs_test_setup.is_legacy_rest()) {
-      CHECK_THROWS_WITH(
-          group.close(),
-          Catch::Matchers::ContainsSubstring(
-              "relative paths are not yet supported for cloud groups"));
-    } else {
-      CHECK_NOTHROW(group.close());
-    }
+    CHECK_NOTHROW(group.close());
   }
 
-  if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
-    auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    CHECK(group.member_count() == 2);
-    for (const auto& name : {"relative_group", "relative_group_rename"}) {
-      auto member = group.member(name);
-      CHECK(member.type() == tiledb::Object::Type::Group);
-      CHECK(member.name() == name);
-      std::string expected_uri = member_uri.to_string();
-      if (vfs_test_setup.is_rest()) {
-        expected_uri = build_tiledb_uri(
-            member_uri, std::string("groups_relative/") + name);
-      }
-      CHECK(member.uri() == expected_uri);
-      CHECK(group.is_relative(name));
+  auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
+  CHECK(group.member_count() == 2);
+  for (const auto& name : {"relative_group", "relative_group_rename"}) {
+    auto member = group.member(name);
+    CHECK(member.type() == tiledb::Object::Type::Group);
+    CHECK(member.name() == name);
+    std::string expected_uri = member_uri.to_string();
+    if (vfs_test_setup.is_rest()) {
+      expected_uri = build_tiledb_uri(
+          member_uri, std::string("groups_relative/") + name);
     }
+    CHECK(member.uri() == expected_uri);
+    CHECK(group.is_relative(name));
   }
 }
 
@@ -1259,6 +1253,9 @@ TEST_CASE(
     "[cppapi][group][add_member][relative][rest]") {
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
+  if (vfs_test_setup.is_legacy_rest()) {
+    SKIP("Relative group URIs are not supported in legacy REST servers");
+  }
   auto group_uri{vfs_test_setup.array_uri("groups_relative")};
   auto array_member_uri = group_uri + "/relative_array";
   // Create parent group using tiledb URI.
@@ -1303,30 +1300,21 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
     CHECK_NOTHROW(
         group.add_member("relative_array", true, "relative_array_rename"));
-    if (vfs_test_setup.is_legacy_rest()) {
-      CHECK_THROWS_WITH(
-          group.close(),
-          Catch::Matchers::ContainsSubstring(
-              "relative paths are not yet supported for cloud groups"));
-    } else {
-      CHECK_NOTHROW(group.close());
-    }
+    CHECK_NOTHROW(group.close());
   }
 
-  if (!vfs_test_setup.is_rest() || !vfs_test_setup.is_legacy_rest()) {
-    auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
-    CHECK(group.member_count() == 2);
-    for (const auto& name : {"relative_array", "relative_array_rename"}) {
-      auto member = group.member(name);
-      CHECK(member.type() == tiledb::Object::Type::Array);
-      CHECK(member.name() == name);
-      std::string expected_uri = member_uri.to_string();
-      if (vfs_test_setup.is_rest()) {
-        expected_uri = build_tiledb_uri(
-            member_uri, std::string("groups_relative/") + name);
-      }
-      CHECK(member.uri() == expected_uri);
-      CHECK(group.is_relative(name));
+  auto group = tiledb::Group(ctx, group_uri, TILEDB_READ);
+  CHECK(group.member_count() == 2);
+  for (const auto& name : {"relative_array", "relative_array_rename"}) {
+    auto member = group.member(name);
+    CHECK(member.type() == tiledb::Object::Type::Array);
+    CHECK(member.name() == name);
+    std::string expected_uri = member_uri.to_string();
+    if (vfs_test_setup.is_rest()) {
+      expected_uri =
+          build_tiledb_uri(member_uri, std::string("groups_relative/") + name);
     }
+    CHECK(member.uri() == expected_uri);
+    CHECK(group.is_relative(name));
   }
 }
