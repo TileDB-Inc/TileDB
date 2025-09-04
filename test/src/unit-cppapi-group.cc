@@ -1239,8 +1239,8 @@ TEST_CASE(
     CHECK(member.name() == name);
     std::string expected_uri = member_uri.to_string();
     if (vfs_test_setup.is_rest()) {
-      expected_uri = build_tiledb_uri(
-          member_uri, std::string("groups_relative/") + name);
+      expected_uri =
+          build_tiledb_uri(member_uri, std::string("groups_relative/") + name);
     }
     CHECK(member.uri() == expected_uri);
     CHECK(group.is_relative(name));

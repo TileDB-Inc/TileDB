@@ -93,10 +93,9 @@ Status group_member_to_capnp(
 
   group_member_builder->setRelative(group_member->relative());
 
-  auto name = group_member->name();
-  if (name.has_value()) {
-    group_member_builder->setName(name.value());
-  }
+  // Avoids sending a request to add a member with no name.
+  group_member_builder->setName(
+      group_member->name().value_or(group_member->uri().last_path_part()));
 
   return Status::Ok();
 }

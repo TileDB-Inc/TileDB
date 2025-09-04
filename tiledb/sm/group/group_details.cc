@@ -114,7 +114,7 @@ void GroupDetails::mark_member_for_addition(
       // The asset is not registered on REST, so we set the object type using
       // the asset storage location.
       if (!components.asset_storage.empty()) {
-        URI storage_uri = URI(components.asset_storage);
+        URI storage_uri(components.asset_storage);
         if (is_array(resources, storage_uri)) {
           obj_type = ObjectType::ARRAY;
         } else if (is_group(resources, storage_uri)) {
