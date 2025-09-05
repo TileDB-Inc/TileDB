@@ -43,30 +43,30 @@ if (lz4_FOUND)
   if(TARGET LZ4::lz4 AND NOT TARGET lz4::lz4)
     add_library(lz4::lz4 ALIAS LZ4::lz4)
   endif()
-  return()
-endif()
-
-# Package not found, search in system paths.
-find_library(LZ4_LIBRARIES
-  NAMES
-    lz4 liblz4
-  PATH_SUFFIXES lib bin
-)
-
-find_path(LZ4_INCLUDE_DIR
-  NAMES lz4.h
-  PATH_SUFFIXES include
-)
-
-include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(LZ4
-  REQUIRED_VARS LZ4_LIBRARIES LZ4_INCLUDE_DIR
-)
-
-if (LZ4_FOUND AND NOT TARGET lz4::lz4)
-  add_library(lz4::lz4 UNKNOWN IMPORTED)
-  set_target_properties(lz4::lz4 PROPERTIES
-    IMPORTED_LOCATION "${LZ4_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${LZ4_INCLUDE_DIR}"
+  set(LZ4_FOUND TRUE)
+else()
+  # Package not found, search in system paths.
+  find_library(LZ4_LIBRARIES
+    NAMES
+      lz4 liblz4
+    PATH_SUFFIXES lib bin
   )
+
+  find_path(LZ4_INCLUDE_DIR
+    NAMES lz4.h
+    PATH_SUFFIXES include
+  )
+
+  include(FindPackageHandleStandardArgs)
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(LZ4
+    REQUIRED_VARS LZ4_LIBRARIES LZ4_INCLUDE_DIR
+  )
+
+  if (LZ4_FOUND AND NOT TARGET lz4::lz4)
+    add_library(lz4::lz4 UNKNOWN IMPORTED)
+    set_target_properties(lz4::lz4 PROPERTIES
+      IMPORTED_LOCATION "${LZ4_LIBRARIES}"
+      INTERFACE_INCLUDE_DIRECTORIES "${LZ4_INCLUDE_DIR}"
+    )
+  endif()
 endif()
