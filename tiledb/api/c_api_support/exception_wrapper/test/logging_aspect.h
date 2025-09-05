@@ -47,15 +47,14 @@ struct CAPIFunctionNameTrait;
  * Base class for the logging aspect class template.
  *
  * This class mimics a global logger. It's rudimentary but suffices for testing.
- * Instead of a growing log, it has a single "log entry". It's not C.41, but it
- * doesn't need to be, since it has an extremely limited purpose.
+ * The log is simply a static list of messages.
  */
 class LABase {
  protected:
   /**
-   * The "log entry". There's only one.
+   * The "log entries".
    */
-  static std::string msg_;
+  static std::vector<std::string> msg_;
   /**
    * Whether `call` has been called since the last reset.
    */
@@ -67,11 +66,19 @@ class LABase {
    * lieu of a real construct, we have a reset function.
    */
   static void reset() {
-    msg_ = "";
+    msg_.clear();
     touched_ = false;
   }
+
+  /**
+   * Append a message to the log
+   */
+  static void log(std::string_view message) {
+    msg_.push_back(std::string(message));
+  }
+
   /** Accessor for the "log entry" */
-  static inline std::string message() {
+  static inline const std::vector<std::string>& message() {
     return msg_;
   }
   /** Accessor for the call history flag */
@@ -105,8 +112,40 @@ class LoggingAspect<f> : public LABase {
    * @param ... Arguments are ignored
    */
   static void call(Args...) {
-    msg_ = CAPIFunctionNameTrait<f>::name;
+    log(std::string(CAPIFunctionNameTrait<f>::name));
     touched_ = true;
+  }
+};
+
+/**
+ * Tracing aspect for the exception wrapper from a C API function.
+ * Records entry and exit from the function.
+ *
+ * @tparam f C API implementation function
+ */
+template <auto f>
+class TracingAspect;
+
+template <class R, class... Args, R (*f)(Args...)>
+class TracingAspect<f> : public LABase {
+ public:
+  struct Scope {
+    ~Scope() {
+      TracingAspect<f>::log(
+          std::string(CAPIFunctionNameTrait<f>::name) + "::exit");
+    }
+  };
+
+  /**
+   * Record an entry into the function and return a handle
+   * which will record exit from it
+   *
+   * @param ... Arguments are ignored
+   */
+  static std::unique_ptr<Scope> call(Args...) {
+    touched_ = true;
+    log(std::string(CAPIFunctionNameTrait<f>::name) + "::entry");
+    return std::make_unique<Scope>();
   }
 };
 

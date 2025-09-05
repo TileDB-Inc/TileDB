@@ -38,7 +38,7 @@ using namespace tiledb::api;
 using namespace tiledb::api::detail;
 
 // from `logging_aspect.h`
-std::string LABase::msg_{};
+std::vector<std::string> LABase::msg_{};
 bool LABase::touched_{false};
 
 template <auto f>
@@ -63,6 +63,7 @@ namespace tiledb::api {
  * API implementation function that does nothing.
  */
 capi_return_t tiledb_capi_nil(int) {
+  LABase::log("tiledb_capi_nil::body");
   return 0;
 }
 }  // namespace tiledb::api
@@ -79,12 +80,20 @@ CAPI_INTERFACE(capi_nil, int x) {
  */
 using null_always_wrapped_for_logging = tiledb::api::
     CAPIFunction<tf_null, tiledb::api::ExceptionAction, LoggingAspect<tf_null>>;
+
+/**
+ * The wrapped function with an unconditional invocation of the logging
+ * aspect as an explicit template argument.
+ */
+using null_always_wrapped_for_tracing = tiledb::api::
+    CAPIFunction<tf_null, tiledb::api::ExceptionAction, TracingAspect<tf_null>>;
+
 /**
  * The wrapped function conditional upon an override as to whether the
  * logging aspect is compiled in or not. The aspect argument is omitted, the
  * default applies, and overriding is possible.
  */
-using null_maybe_wrapped_for_logging =
+using null_maybe_wrapped_with_hook =
     tiledb::api::CAPIFunction<tf_null, tiledb::api::ExceptionAction>;
 
 TEST_CASE("Compile consistency") {
@@ -93,27 +102,36 @@ TEST_CASE("Compile consistency") {
    * the hook is not enabled.
    */
   CHECK(
-      compiled_with_hook != std::same_as<
-                                selector_type<tf_null>::aspect_type,
-                                CAPIFunctionNullAspect<tf_null>>);
-  if constexpr (compiled_with_hook) {
-    /*
-     * In the case "with hook", check that the aspect is what the test defines.
-     */
-    CHECK(std::same_as<
+      (which_hook == WhichHook::None) ==
+      std::same_as<
           selector_type<tf_null>::aspect_type,
-          LoggingAspect<tf_null>>);
-  }
+          CAPIFunctionNullAspect<tf_null>>);
+
+  /*
+   * In the case "with hook", check that the aspect is what the test defines.
+   */
+  CHECK(
+      (which_hook == WhichHook::Logger) ==
+      std::
+          same_as<selector_type<tf_null>::aspect_type, LoggingAspect<tf_null>>);
+
+  /*
+   * In the case "with hook", check that the aspect is what the test defines.
+   */
+  CHECK(
+      (which_hook == WhichHook::Tracer) ==
+      std::
+          same_as<selector_type<tf_null>::aspect_type, TracingAspect<tf_null>>);
 }
 
 TEST_CASE("Hook unconditional") {
   LABase::reset();
   CHECK(LABase::touched() == false);
-  CHECK(LABase::message() == "");
+  CHECK(LABase::message().empty());
   tiledb::api::ExceptionAction h;
   null_always_wrapped_for_logging().function(h);
   CHECK(LABase::touched() == true);
-  CHECK(LABase::message() == "tf_null");
+  CHECK(LABase::message() == std::vector<std::string>{"tf_null"});
 }
 
 /*
@@ -124,30 +142,55 @@ TEST_CASE("Hook conditional for touch") {
   LABase::reset();
   CHECK(LABase::touched() == false);
   tiledb::api::ExceptionAction h;
-  null_maybe_wrapped_for_logging().function(h);
-  CHECK(LABase::touched() == compiled_with_hook);
+  null_maybe_wrapped_with_hook().function(h);
+  CHECK(LABase::touched() == (which_hook != WhichHook::None));
 }
 
 TEST_CASE("Hook conditional with text 1") {
   LABase::reset();
-  CHECK(LABase::message() == "");
+  CHECK(LABase::message().empty());
   tiledb::api::ExceptionAction h;
-  null_maybe_wrapped_for_logging().function(h);
-  if constexpr (compiled_with_hook) {
-    CHECK(LABase::message() == "tf_null");
-  } else {
-    CHECK(LABase::message() == "");
+  null_maybe_wrapped_with_hook().function(h);
+  switch (which_hook) {
+    case WhichHook::None:
+    default:
+      CHECK(LABase::message().empty());
+      break;
+    case WhichHook::Logger:
+      CHECK(LABase::message() == std::vector<std::string>{"tf_null"});
+      break;
+    case WhichHook::Tracer:
+      CHECK(
+          LABase::message() ==
+          std::vector<std::string>{"tf_null::entry", "tf_null::exit"});
+      break;
   }
 }
 
 TEST_CASE("Hook conditional with text 2") {
   LABase::reset();
-  CHECK(LABase::message() == "");
+  CHECK(LABase::message().empty());
   tiledb::api::ExceptionAction h;
   ::tiledb_capi_nil(0);
-  if constexpr (compiled_with_hook) {
-    CHECK(LABase::message() == "tiledb_capi_nil");
-  } else {
-    CHECK(LABase::message() == "");
+
+  switch (which_hook) {
+    case WhichHook::None:
+    default:
+      CHECK(
+          LABase::message() ==
+          std::vector<std::string>{"tiledb_capi_nil::body"});
+      break;
+    case WhichHook::Logger:
+      CHECK(
+          LABase::message() ==
+          std::vector<std::string>{"tiledb_capi_nil", "tiledb_capi_nil::body"});
+      break;
+    case WhichHook::Tracer:
+      CHECK(
+          LABase::message() == std::vector<std::string>{
+                                   "tiledb_capi_nil::entry",
+                                   "tiledb_capi_nil::body",
+                                   "tiledb_capi_nil::exit"});
+      break;
   }
 }
