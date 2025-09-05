@@ -924,20 +924,17 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       std::to_string(tiledb::sm::constants::current_domain_version) + "\n" +
       "- Empty: 1" + "\n";
 
-  FILE* gold_fout = fopen("gold_fout.txt", "w");
-  const char* dump = dump_str.c_str();
-  fwrite(dump, sizeof(char), strlen(dump), gold_fout);
-  fclose(gold_fout);
-  FILE* fout = fopen("fout.txt", "w");
-  tiledb_array_schema_dump(ctx_, array_schema, fout);
-  fclose(fout);
-#ifdef _WIN32
-  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
-#else
-  CHECK(!system("diff gold_fout.txt fout.txt"));
-#endif
-  CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "gold_fout.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "fout.txt") == TILEDB_OK);
+  tiledb_string_t* tdb_string = nullptr;
+  REQUIRE(
+      tiledb_array_schema_dump_str(ctx_, array_schema, &tdb_string) ==
+      TILEDB_OK);
+  const char* schema_dump_cstr = nullptr;
+  size_t schema_dump_len = 0;
+  REQUIRE(
+      tiledb_string_view(tdb_string, &schema_dump_cstr, &schema_dump_len) ==
+      TILEDB_OK);
+  CHECK(std::string(schema_dump_cstr, schema_dump_len) == dump_str);
+  tiledb_string_free(&tdb_string);
 
   // Clean up
   tiledb_attribute_free(&attr);

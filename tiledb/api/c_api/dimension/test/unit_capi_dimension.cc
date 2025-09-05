@@ -338,7 +338,8 @@ TEST_CASE(
 #include <cstdio>
 
 TEST_CASE(
-    "C API: tiledb_dimension_dump argument validation", "[capi][dimension]") {
+    "C API: tiledb_dimension_dump_str argument validation",
+    "[capi][dimension]") {
   ordinary_dimension_1 dim;
   // SECTION("success") omitted to avoid log noise
   SECTION("null context") {
