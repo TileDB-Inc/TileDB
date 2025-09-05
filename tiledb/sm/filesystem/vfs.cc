@@ -381,18 +381,105 @@ void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
+void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
+  auto& src_fs = get_fs(src);
+  auto& dest_fs = get_fs(dest);
+
+  /**
+   * The ProducerConsumerQueue will contain 10 buffers of size 10 MB (10737419).
+   * The total size may not exceed 100 MB (107374182).
+   */
+  uint64_t src_file_size = src_fs.file_size(src);
+  uint64_t memory_budget = 107374182;  // 100 MB
+  if (src_file_size > memory_budget) {
+    throw VFSException(
+        "Cannot perform chunked buffer I/O; source file is too large.");
+  }
+
+  // need to account for very small reads (file_size < memory_budget / 10)
+  // #NTS - may need simpler logic for single read in this case as well
+  uint64_t buffer_size =
+      std::min(src_file_size, (uint64_t)std::ceil(memory_budget / 10));
+  // 10MB == 10737419
+  int buffer_count = 0;  // track number of buffers alloc'd by read
+  uint64_t read_offset{0}, bytes_read{0}, bytes_written{0};
+
+  // Queue which stores the buffers passed between the readers and writer.
+  ProducerConsumerQueue<shared_ptr<char*>, std::queue<shared_ptr<char*>>>
+      task_queue;
+
+  // char* buffer = new char[buffer_size];
+  while (true) {
+    // Read
+    if (buffer_count < 10) {
+      char* buffer = new char[buffer_size];
+      bytes_read += src_fs.read(src, read_offset, buffer, buffer_size);
+      task_queue.push(make_shared<char*>(HERE(), buffer));
+      buffer_count++;
+      read_offset += bytes_read;
+    }
+
+    // Write
+    if (buffer_count <= 10) {
+      //  assuming in-order chunks
+      try {
+        dest_fs.write(dest, (task_queue.pop())->get(), buffer_size);
+        buffer_count--;
+      } catch (...) {
+        // #TODO
+        throw;
+      }
+      bytes_written += bytes_read;  // not sure accurate with write latency
+    }
+
+    std::cerr << "filesize: " << src_file_size << " bytes_read: " << bytes_read
+              << " bytes_written: " << bytes_written << std::endl;
+
+    // Stop once we've reached the end of the file and written the final chunk
+    if (bytes_read >= src_file_size) {
+      std::cerr << "src_fs.file_size(src): " << src_fs.file_size(src)
+                << std::endl;
+      std::cerr << "bytes_read: " << bytes_read << std::endl;
+      std::cerr << "buffer_count: " << buffer_count << std::endl;
+      break;
+    }
+  }
+
+  // Finish reading the remaining buffers
+  while (buffer_count > 0) {
+    if (buffer_count == 1) {
+      // Resize buffer_size to ensure no overflow
+      buffer_size = bytes_read % buffer_size;
+    }
+    try {
+      dest_fs.write(dest, (task_queue.pop())->get(), buffer_size);
+      buffer_count--;
+    } catch (...) {
+      // #TODO
+      throw;
+    }
+    bytes_written += bytes_read;  // again, maybe not accurate
+  }
+
+  dest_fs.flush(dest);
+}
+
+void VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
   if (&old_fs == &new_fs) {
     old_fs.copy_file(old_uri, new_uri);
+    return;
   } else {
-    throw UnsupportedOperation("copy_file");
+    // perform a chunked buffer copy.
+    chunked_buffer_io(old_uri, new_uri);
+    return;
   }
+  throw UnsupportedOperation("copy_file");
 }
 
-void VFS::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
