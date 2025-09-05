@@ -253,7 +253,7 @@ class MemFilesystem : public FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI&, const URI&) const override {
+  void copy_dir(const URI&, const URI&) override {
     // No-op for MemFS; stub function for other filesystems.
   }
 
@@ -263,7 +263,7 @@ class MemFilesystem : public FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI&, const URI&) const override {
+  void copy_file(const URI&, const URI&) override {
     // No-op for MemFS; stub function for other filesystems.
   }
 

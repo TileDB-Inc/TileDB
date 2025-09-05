@@ -721,7 +721,7 @@ std::vector<directory_entry> Azure::ls_with_sizes(
   return entries;
 }
 
-void Azure::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void Azure::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto paths = ls(old_uri, "");
   for (auto& path : paths) {
     std::string filename = path.substr(old_uri.to_string().length());
@@ -729,7 +729,7 @@ void Azure::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void Azure::copy_file(const URI& old_uri, const URI& new_uri) const {
+void Azure::copy_file(const URI& old_uri, const URI& new_uri) {
   auto& c = client();
   if (!old_uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + old_uri.to_string());

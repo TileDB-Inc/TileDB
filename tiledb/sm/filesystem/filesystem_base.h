@@ -207,7 +207,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_file(const URI& old_uri, const URI& new_uri) const;
+  virtual void copy_file(const URI& old_uri, const URI& new_uri);
 
   /**
    * Copies directory.
@@ -216,7 +216,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri);
 
   /**
    * Whether or not to use the read-ahead cache.

@@ -202,6 +202,91 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
+// First-pass test. Validate transfer between local and S3.
+TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
+  /*std::string s;
+  SECTION ("small string") {
+    s = "abcdef";
+  }
+
+  SECTION ("large string (max filesize)") {
+    s = std::string(107374182, 'a'); //10737419 - buffer size
+    REQUIRE(s.size() == 107374182);
+  }*/
+
+  // std::string s(100, 'a');
+  // REQUIRE(s.size() == 100); // this is 97?
+  std::string s =
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+  LocalFsTest local_fs({0});
+  S3Test cloud_fs({0});
+  if (!(cloud_fs.is_supported() && local_fs.is_supported())) {
+    std::cerr << "not supported!" << std::endl;
+    return;
+  }
+  URI local_path = local_fs.temp_dir_.add_trailing_slash();
+  URI cloud_path = cloud_fs.temp_dir_.add_trailing_slash();
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params();
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+
+  // Set up
+  if (vfs.is_bucket(cloud_path)) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(cloud_path));
+  }
+  REQUIRE_NOTHROW(vfs.create_bucket(cloud_path));
+  if (vfs.is_dir(local_path)) {
+    REQUIRE_NOTHROW(vfs.remove_dir(local_path));
+  }
+  REQUIRE_NOTHROW(vfs.create_dir(local_path));
+
+  // Create local_file1 and write some data to it.
+  auto local_file1 = URI(local_path.to_string() + "file1");
+  REQUIRE_NOTHROW(vfs.touch(local_file1));
+  auto s_size = s.size();
+  REQUIRE_NOTHROW(vfs.write(local_file1, s.data(), s_size));
+  require_tiledb_ok(vfs.close_file(local_file1));
+
+  // Copy local -> object store
+  // Note: doesn't matter if file created or not - copy (write) will create it
+  auto cloud_file1 = URI(cloud_path.to_string() + "file1");
+  REQUIRE_NOTHROW(vfs.copy_file(local_file1, cloud_file1));
+  CHECK(vfs.is_file(local_file1));
+  CHECK(vfs.is_file(cloud_file1));
+
+  // Validate the contents are the same
+  char* cloud_file1_data = new char[s_size];
+  uint64_t cloud_file1_size =
+      vfs.read(cloud_file1, 0, cloud_file1_data, s_size);
+  std::string cloud_file1_str(cloud_file1_data, cloud_file1_size);
+  CHECK(cloud_file1_str == s);
+
+  // Remove local file and copy back into it from s3
+  /*REQUIRE_NOTHROW(vfs.remove_file(local_file1));
+  CHECK(!vfs.is_file(local_file1));
+  REQUIRE_NOTHROW(vfs.touch(local_file1));
+  CHECK(vfs.is_file(local_file1));
+  REQUIRE_NOTHROW(vfs.copy_file(cloud_file1, local_file1));
+
+  // Validate the contents are the same
+  char* local_file1_data = new char[s_size];
+  uint64_t local_file1_size = vfs.read(
+    local_file1, 0, local_file1_data, s_size);
+  std::string local_file1_str(local_file1_data, local_file1_size);
+  CHECK(local_file1_str == s);*/
+
+  // Clean up
+  REQUIRE_NOTHROW(vfs.remove_bucket(cloud_path));
+  REQUIRE(!vfs.is_bucket(cloud_path));
+  REQUIRE_NOTHROW(vfs.remove_dir(local_path));
+  REQUIRE(!vfs.is_dir(local_path));
+}
+
 using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
@@ -322,11 +407,30 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(children[0].file_size() == s.size());
     CHECK(children[1].file_size() == 0);  // Directories don't get a size
 
-    // Move file
+    // Copy file
     auto file6 = URI(path.to_string() + "file6");
-    REQUIRE_NOTHROW(vfs.move_file(file5, file6));
-    CHECK(!vfs.is_file(file5));
+    std::string cf_str = "copy_file test_contents";
+    REQUIRE_NOTHROW(vfs.write(file5, cf_str.data(), cf_str.size()));
+    require_tiledb_ok(vfs.close_file(file5));
+    REQUIRE_NOTHROW(vfs.copy_file(file5, file6));
+    CHECK(vfs.is_file(file5));
     CHECK(vfs.is_file(file6));
+    char file6_data;
+    uint64_t file6_size = vfs.read(file6, 0, &file6_data, cf_str.size());
+    std::string file6_str(&file6_data, file6_size);
+    // validate the contents are the same
+    CHECK(file6_str == cf_str);
+    paths.clear();
+
+    // #TODO copy_file across filesystems
+
+    // #TODO Copy dir
+
+    // Move file
+    auto file7 = URI(path.to_string() + "file7");
+    REQUIRE_NOTHROW(vfs.move_file(file6, file7));
+    CHECK(!vfs.is_file(file6));
+    CHECK(vfs.is_file(file7));
     paths.clear();
 
     // Move directory
@@ -339,8 +443,10 @@ TEMPLATE_LIST_TEST_CASE(
     // Remove files
     REQUIRE_NOTHROW(vfs.remove_file(file4));
     CHECK(!vfs.is_file(file4));
-    REQUIRE_NOTHROW(vfs.remove_file(file6));
-    CHECK(!vfs.is_file(file6));
+    REQUIRE_NOTHROW(vfs.remove_file(file5));
+    CHECK(!vfs.is_file(file5));
+    REQUIRE_NOTHROW(vfs.remove_file(file7));
+    CHECK(!vfs.is_file(file7));
 
     // Remove directories
     REQUIRE_NOTHROW(vfs.remove_dir(dir2));
