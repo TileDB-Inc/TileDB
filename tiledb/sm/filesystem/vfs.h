@@ -65,6 +65,10 @@
 #include "tiledb/sm/filesystem/gcs.h"
 #endif  // HAVE_GCS
 
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif  // HAVE_S3
+
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -288,8 +292,6 @@ class GCS_within_VFS {
 /** The S3 filesystem. */
 #ifdef HAVE_S3
 
-class S3;
-
 class S3_within_VFS {
   /** Private member variable */
   tdb_unique_ptr<S3> s3_;
@@ -300,7 +302,7 @@ class S3_within_VFS {
       : s3_(tdb_unique_ptr<S3>(tdb_new(S3, std::forward<Args>(args)...))) {
   }
 
-  ~S3_within_VFS();
+  ~S3_within_VFS() = default;
 
   /** Protected accessor for the S3 object. */
   inline S3& s3() {
@@ -678,12 +680,22 @@ class VFS : FilesystemBase,
   void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
+   * Performs chunked buffer I/O, reading from src and writing to dest.
+   *
+   * @invariant The source file cannot be larger than 10 MB.
+   *
+   * @param src The source URI to read from.
+   * @param dest The destination URI to write to.
+   */
+  void chunked_buffer_io(const URI& src, const URI& dest);
+
+  /**
    * Copies a file.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies directory.
@@ -691,7 +703,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads from a file.
