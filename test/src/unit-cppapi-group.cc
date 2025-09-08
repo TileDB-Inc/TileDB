@@ -1119,7 +1119,7 @@ TEST_CASE(
     // Legacy REST does not support relative group members.
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     tiledb::create_group(ctx, member_uri_str);
-    CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
+    CHECK_NOTHROW(group.add_member("relative_group", true, "subgroup"));
     CHECK_THROWS_WITH(
         group.close(),
         Catch::Matchers::ContainsSubstring(
@@ -1153,7 +1153,7 @@ TEST_CASE(
     }
 
     SECTION("Creating an array member as a child asset") {
-      tiledb::sm::URI member_uri(member_uri_str);
+      tiledb::sm::URI member_uri(group_uri + "/relative_array");
       CHECK(
           member_uri
               .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
