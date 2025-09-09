@@ -153,12 +153,10 @@ class Context {
   /** The class logger. */
   shared_ptr<Logger> logger_;
 
-  /** The class unique logger prefix */
-  inline static std::string logger_prefix_ =
-      std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count()) +
-      "-Context: ";
+  /**
+   * Returns the shared logger prefix string (constant for all Context instances).
+   */
+  static const std::string& logger_prefix_();
 
   /**
    * Counter for generating unique identifiers for `Logger` objects.
