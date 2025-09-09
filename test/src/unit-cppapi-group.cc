@@ -1221,6 +1221,23 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_group", true));
     CHECK_NOTHROW(group.close());
   }
+  SECTION("Create the child group using default storage") {
+    tiledb::sm::URI::RESTURIComponents components;
+    if (member_uri.is_tiledb()) {
+      tiledb::VFS vfs(ctx);
+      auto default_bucket = vfs_test_setup.default_bucket();
+      if (!vfs.is_bucket(default_bucket)) {
+        CHECK_NOTHROW(vfs.create_bucket(default_bucket));
+        REQUIRE(vfs.is_bucket(default_bucket));
+      }
+      CHECK(
+          member_uri
+              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+              .ok());
+      auto default_storage = build_tiledb_uri(member_uri, "relative_array");
+      REQUIRE_NOTHROW(tiledb::create_group(ctx, default_storage));
+    }
+  }
 
   // Open group in write mode and add the relative member.
   {
@@ -1292,6 +1309,23 @@ TEST_CASE(
     auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
     CHECK_NOTHROW(group.add_member("relative_array", true));
     CHECK_NOTHROW(group.close());
+  }
+  SECTION("Create the child array using default storage") {
+    tiledb::sm::URI::RESTURIComponents components;
+    if (member_uri.is_tiledb()) {
+      tiledb::VFS vfs(ctx);
+      auto default_bucket = vfs_test_setup.default_bucket();
+      if (!vfs.is_bucket(default_bucket)) {
+        CHECK_NOTHROW(vfs.create_bucket(default_bucket));
+        REQUIRE(vfs.is_bucket(default_bucket));
+      }
+      CHECK(
+          member_uri
+              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+              .ok());
+      auto default_storage = build_tiledb_uri(member_uri, "relative_array");
+      REQUIRE_NOTHROW(tiledb::Array::create(ctx, default_storage, schema));
+    }
   }
 
   {

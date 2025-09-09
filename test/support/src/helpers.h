@@ -978,7 +978,8 @@ void schema_equiv(
  *    directory.
  * @return The tiledb URI built from the provided asset path.
  */
-std::string build_tiledb_uri(const sm::URI& uri, const std::string& path);
+std::string build_tiledb_uri(
+    const sm::URI& uri, const std::string& path, bool include_storage = false);
 
 }  // namespace tiledb::test
 

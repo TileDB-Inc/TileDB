@@ -869,6 +869,22 @@ struct VFSTestSetup {
     }
   }
 
+  /**
+   * Returns the bucket used as the default storage location for REST tests.
+   * The default storage location is configured when the REST user is created.
+   * This is the bucket name used in REST CI within the TileDB-Internal
+   * repository.
+   *
+   * Each asset is stored under a prefix corresponding with the object type.
+   * For example, arrays are stored at `default_bucket()/arrays`, and groups at
+   * `default_bucket()/groups`.
+   *
+   * @return Backend storage location used for default storage.
+   */
+  std::string default_bucket() const {
+    return sm::URI(temp_dir).backend_name() + "://" + "default-bucket";
+  }
+
   Context ctx() {
     return Context(ctx_c, false);
   }
