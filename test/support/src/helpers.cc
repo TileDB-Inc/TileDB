@@ -1655,7 +1655,8 @@ std::string build_tiledb_uri(
     const URI& uri, const std::string& path, bool include_storage) {
   URI::RESTURIComponents components;
   CHECK(uri.get_rest_components(false, &components).ok());
-  components.server_path.resize(components.server_path.find_first_of('/'));
+  const auto trim = components.server_path.find_first_of('/');
+  components.server_path.resize(trim == std::string::npos ? 0 : trim);
   components.server_path += path.starts_with('/') ? path : "/" + path;
   std::string result =
       "tiledb://" + components.server_namespace + "/" + components.server_path;
