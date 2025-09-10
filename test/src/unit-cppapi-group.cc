@@ -1221,23 +1221,6 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_group", true));
     CHECK_NOTHROW(group.close());
   }
-  SECTION("Create the child group using default storage") {
-    tiledb::sm::URI::RESTURIComponents components;
-    if (member_uri.is_tiledb()) {
-      tiledb::VFS vfs(ctx);
-      auto default_bucket = vfs_test_setup.default_bucket();
-      if (!vfs.is_bucket(default_bucket)) {
-        CHECK_NOTHROW(vfs.create_bucket(default_bucket));
-        REQUIRE(vfs.is_bucket(default_bucket));
-      }
-      CHECK(
-          member_uri
-              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
-              .ok());
-      auto default_storage = build_tiledb_uri(member_uri, "relative_array");
-      REQUIRE_NOTHROW(tiledb::create_group(ctx, default_storage));
-    }
-  }
 
   // Open group in write mode and add the relative member.
   {
@@ -1310,23 +1293,6 @@ TEST_CASE(
     CHECK_NOTHROW(group.add_member("relative_array", true));
     CHECK_NOTHROW(group.close());
   }
-  SECTION("Create the child array using default storage") {
-    tiledb::sm::URI::RESTURIComponents components;
-    if (member_uri.is_tiledb()) {
-      tiledb::VFS vfs(ctx);
-      auto default_bucket = vfs_test_setup.default_bucket();
-      if (!vfs.is_bucket(default_bucket)) {
-        CHECK_NOTHROW(vfs.create_bucket(default_bucket));
-        REQUIRE(vfs.is_bucket(default_bucket));
-      }
-      CHECK(
-          member_uri
-              .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
-              .ok());
-      auto default_storage = build_tiledb_uri(member_uri, "relative_array");
-      REQUIRE_NOTHROW(tiledb::Array::create(ctx, default_storage, schema));
-    }
-  }
 
   {
     // Open group in write mode and add the relative member.
@@ -1351,4 +1317,49 @@ TEST_CASE(
     CHECK(member.uri() == expected_uri);
     CHECK(group.is_relative(name));
   }
+}
+
+TEST_CASE(
+    "C++ API: Group add_member with relative URI members, default storage",
+    "[cppapi][group][add_member][relative][rest][default-storage]") {
+  VFSTestSetup vfs_test_setup;
+  tiledb::Context ctx{vfs_test_setup.ctx()};
+  if (vfs_test_setup.is_legacy_rest()) {
+    SKIP("Relative group URIs are not supported in legacy REST servers");
+  }
+  auto group_uri{vfs_test_setup.default_storage_uri("groups_relative")};
+  // Create parent group using tiledb URI.
+  tiledb::create_group(ctx, group_uri);
+
+  // Avoid asset path collisions in REST by using a random label.
+  std::string group_member_name = "relative_group_" + random_label();
+  auto subgroup_uri = group_uri + "/" + group_member_name;
+  tiledb::sm::URI group_member_uri(subgroup_uri);
+  tiledb::sm::URI::RESTURIComponents components;
+  CHECK(group_member_uri
+            .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+            .ok());
+  auto default_storage = build_tiledb_uri(group_member_uri, group_member_name);
+  REQUIRE_NOTHROW(tiledb::create_group(ctx, default_storage));
+
+  std::string array_member_name = "relative_array_" + random_label();
+  auto subarray_uri = group_uri + "/" + array_member_name;
+  tiledb::sm::URI array_member_uri(subarray_uri);
+  CHECK(array_member_uri
+            .get_rest_components(vfs_test_setup.is_legacy_rest(), &components)
+            .ok());
+  default_storage = build_tiledb_uri(array_member_uri, array_member_name);
+  tiledb::Domain domain(ctx);
+  domain.add_dimension(
+      tiledb::Dimension::create<int>(ctx, "rows", {{1, 10}}, 10));
+  tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a1"));
+  REQUIRE_NOTHROW(tiledb::Array::create(ctx, default_storage, schema));
+
+  auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  // These fail because the default storage location is a top-level bucket.
+  CHECK_THROWS(group.add_member(group_member_name, true));
+  CHECK_THROWS(group.add_member(array_member_name, true));
+  CHECK_NOTHROW(group.close());
 }

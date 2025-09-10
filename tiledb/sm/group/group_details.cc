@@ -88,7 +88,7 @@ void GroupDetails::mark_member_for_addition(
     std::optional<std::string>& name,
     std::optional<ObjectType> type) {
   std::lock_guard<std::mutex> lck(mtx_);
-  ObjectType obj_type;
+  ObjectType obj_type = ObjectType::INVALID;
   if (type.has_value()) {
     obj_type = type.value();
   } else {
@@ -97,33 +97,35 @@ void GroupDetails::mark_member_for_addition(
       absolute_group_member_uri =
           group_uri_.join_path(group_member_uri.to_string());
     }
-    // After ENG-112 we support adding members that are not registered on REST.
-    // For tiledb URIs the object type is INVALID if the asset is not
-    // registered. For backend storage URIs the type is INVALID if the asset
-    // does not exist.
-    obj_type = object_type(resources, absolute_group_member_uri);
 
-    // Check that given a tiledb+s3 or similar URI the asset exists on storage.
-    // We could do this in object_type, but it would redefine what an INVALID
-    // object is for the public API, potentially breaking clients.
-    if (absolute_group_member_uri.is_tiledb() &&
-        obj_type == ObjectType::INVALID) {
+    if (!absolute_group_member_uri.is_tiledb() ||
+        resources.rest_client()->rest_legacy()) {
+      // 3.0 REST can't determine if an asset exists at an explicit storage
+      // location. The only information passed to endpoints used by the object
+      // type APIs is the asset path.
+      obj_type = object_type(resources, absolute_group_member_uri);
+    } else {
       URI::RESTURIComponents components;
       throw_if_not_ok(absolute_group_member_uri.get_rest_components(
           resources.rest_client()->rest_legacy(), &components));
-      // The asset is not registered on REST, so we set the object type using
-      // the asset storage location.
-      if (!components.asset_storage.empty()) {
+      if (components.asset_storage.empty()) {
+        // Check the asset exists on REST given a tiledb URI.
+        obj_type = object_type(resources, absolute_group_member_uri);
+      } else {
+        // Check the asset exists on storage given a tiledb+s3 URI.
         URI storage_uri(components.asset_storage);
         if (is_array(resources, storage_uri)) {
           obj_type = ObjectType::ARRAY;
         } else if (is_group(resources, storage_uri)) {
           obj_type = ObjectType::GROUP;
-        } else {
-          throw GroupDetailsException(
-              "Cannot add group member at " + components.asset_storage +
-              "; The member does not exist at the backend storage location.");
         }
+      }
+
+      if (obj_type == ObjectType::INVALID) {
+        throw GroupDetailsException(
+            "Cannot add group member '" +
+            absolute_group_member_uri.to_string() +
+            "'; The member does not exist at the backend storage location.");
       }
     }
   }
