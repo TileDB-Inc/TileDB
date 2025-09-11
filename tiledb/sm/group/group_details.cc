@@ -98,35 +98,10 @@ void GroupDetails::mark_member_for_addition(
           group_uri_.join_path(group_member_uri.to_string());
     }
 
+    // 3.0 REST will identify the object type server side.
     if (!absolute_group_member_uri.is_tiledb() ||
         resources.rest_client()->rest_legacy()) {
-      // 3.0 REST can't determine if an asset exists at an explicit storage
-      // location. The only information passed to endpoints used by the object
-      // type APIs is the asset path.
       obj_type = object_type(resources, absolute_group_member_uri);
-    } else {
-      URI::RESTURIComponents components;
-      throw_if_not_ok(absolute_group_member_uri.get_rest_components(
-          resources.rest_client()->rest_legacy(), &components));
-      if (components.asset_storage.empty()) {
-        // Check the asset exists on REST given a tiledb URI.
-        obj_type = object_type(resources, absolute_group_member_uri);
-      } else {
-        // Check the asset exists on storage given a tiledb+s3 URI.
-        URI storage_uri(components.asset_storage);
-        if (is_array(resources, storage_uri)) {
-          obj_type = ObjectType::ARRAY;
-        } else if (is_group(resources, storage_uri)) {
-          obj_type = ObjectType::GROUP;
-        }
-      }
-
-      if (obj_type == ObjectType::INVALID) {
-        throw GroupDetailsException(
-            "Cannot add group member '" +
-            absolute_group_member_uri.to_string() +
-            "'; The member does not exist at the backend storage location.");
-      }
     }
   }
   auto group_member = tdb::make_shared<GroupMemberV2>(
