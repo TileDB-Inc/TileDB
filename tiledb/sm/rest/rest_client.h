@@ -297,6 +297,16 @@ class RestClient {
     return rest_server_;
   }
 
+  /**
+   * Provides context to the caller if this RestClient is enabled for remote
+   * operations without throwing an exception.
+   *
+   * @return False for instances of RestClient, true in RestClientRemote.
+   */
+  bool rest_enabled() const {
+    return false;
+  }
+
   /// Operation disabled in base class.
   inline virtual const std::optional<TileDBVersion>& rest_tiledb_version()
       const {
