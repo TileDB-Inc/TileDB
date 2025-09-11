@@ -100,7 +100,8 @@ void GroupDetails::mark_member_for_addition(
 
     // 3.0 REST will identify the object type server side.
     if (!absolute_group_member_uri.is_tiledb() ||
-        resources.rest_client()->rest_legacy()) {
+        (resources.rest_client()->rest_enabled() &&
+         resources.rest_client()->rest_legacy())) {
       obj_type = object_type(resources, absolute_group_member_uri);
     }
   }
