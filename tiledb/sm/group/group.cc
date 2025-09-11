@@ -89,13 +89,9 @@ void Group::create(ContextResources& resources, const URI& uri) {
         "Cannot create group '" + uri.to_string() + "'; Invalid group URI");
 
   // Check if group exists
-  if (!uri.is_tiledb() || (resources.rest_client()->rest_enabled() &&
-                           resources.rest_client()->rest_legacy())) {
-    if (is_group(resources, uri)) {
-      throw GroupException(
-          "Cannot create group; Group '" + uri.to_string() +
-          "' already exists");
-    }
+  if (is_group(resources, uri)) {
+    throw GroupException(
+        "Cannot create group; Group '" + uri.to_string() + "' already exists");
   }
 
   std::lock_guard<std::mutex> lock{object_mtx};
