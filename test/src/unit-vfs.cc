@@ -202,7 +202,8 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
-using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
+using AllBackends =
+    std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, TileDBFSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
   TestType fs({0});
@@ -634,7 +635,8 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 }
 
 // Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
-using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest>;
+using TestBackends =
+    std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest, TileDBFSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: ls_filtered recursion enabled",
     "[vfs][ls_filtered][ls_filtered_v2][recursion]",
