@@ -890,21 +890,15 @@ struct VFSTestSetup {
 
   /**
    * Generates a tiledb URI for testing using the default storage location.
-   * @return
    */
   std::string default_storage_uri(
-      const std::string& name, bool strip_tiledb_prefix = false) {
-    // The order allows for stripping prefix from a REST URI.
-    if (strip_tiledb_prefix || !is_rest()) {
-      return default_storage() + "/" + name;
-    }
-
+      const std::string& name, bool include_backend = false) {
     const std::string label = "_" + random_label();
+    const std::string backend = include_backend ? default_storage() + "/" : "";
     if (is_legacy_rest()) {
-      return "tiledb://unit/" + default_storage() + "/" + name + label;
+      return "tiledb://unit/" + backend + name + label;
     }
-    return "tiledb://unit-workspace/unit-teamspace/" + default_storage() + "/" +
-           name + label;
+    return "tiledb://unit-workspace/unit-teamspace/" + backend + name + label;
   }
 
   Context ctx() {
