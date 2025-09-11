@@ -303,7 +303,7 @@ class RestClient {
    *
    * @return False for instances of RestClient, true in RestClientRemote.
    */
-  bool rest_enabled() const {
+  virtual bool rest_enabled() const {
     return false;
   }
 
