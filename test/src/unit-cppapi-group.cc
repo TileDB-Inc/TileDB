@@ -1106,7 +1106,7 @@ TEST_CASE(
     "[cppapi][group][add_member][relative][rest]") {
   VFSTestSetup vfs_test_setup;
   tiledb::Context ctx{vfs_test_setup.ctx()};
-  if (vfs_test_setup.is_local() || vfs_test_setup.is_legacy_rest()) {
+  if (!vfs_test_setup.is_rest() || vfs_test_setup.is_legacy_rest()) {
     SKIP("Relative group URIs are not supported in legacy REST servers");
   }
   auto group_uri{vfs_test_setup.default_storage_uri("groups_relative")};
