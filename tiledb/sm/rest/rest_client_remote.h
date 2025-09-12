@@ -123,7 +123,7 @@ class RestClientRemote : public RestClient {
    *
    * @return True in RestClientRemote, false for instances of RestClient.
    */
-  bool rest_enabled() const {
+  bool rest_enabled() const override {
     return true;
   }
 
