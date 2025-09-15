@@ -80,8 +80,10 @@ jobs:
       - name: Checkout TileDB
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v3
-      - name: 'Homebrew setup'
-        run: brew install automake ninja
+      - name: 'Homebrew and SDKROOT setup on macOS'
+        run: |
+          brew install automake ninja
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
       - name: Set variables
         id: get-values

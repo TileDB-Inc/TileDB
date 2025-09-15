@@ -108,6 +108,11 @@ jobs:
         with:
           arch: x64
 
+      - name: 'Set SDKROOT on macOS'
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+        run: |
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@v5
 

@@ -118,6 +118,16 @@ class RestClientRemote : public RestClient {
   static bool use_refactored_query(const Config& config);
 
   /**
+   * Provides context to the caller if this RestClient is enabled for remote
+   * operations without throwing an exception.
+   *
+   * @return True in RestClientRemote, false for instances of RestClient.
+   */
+  bool rest_enabled() const override {
+    return true;
+  }
+
+  /**
    * @return TileDB core version currently deployed to the REST server.
    */
   inline const std::optional<TileDBVersion>& rest_tiledb_version()
