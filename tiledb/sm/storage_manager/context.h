@@ -154,7 +154,8 @@ class Context {
   shared_ptr<Logger> logger_;
 
   /**
-   * Returns the shared logger prefix string (constant for all Context instances).
+   * Returns the shared logger prefix string (constant for all Context
+   * instances).
    */
   static const std::string& logger_prefix_();
 

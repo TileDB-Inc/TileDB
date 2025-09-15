@@ -58,15 +58,15 @@ static common::Logger::Level get_log_level(const Config& config);
 Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
-      HERE(),
-      logger_prefix_() + std::to_string(++logger_id_),
-      get_log_level(config)))
+          HERE(),
+          logger_prefix_() + std::to_string(++logger_id_),
+          get_log_level(config)))
     , resources_(
-      config,
-      logger_,
-      get_compute_thread_count(config),
-      get_io_thread_count(config),
-      "Context")
+          config,
+          logger_,
+          get_compute_thread_count(config),
+          get_io_thread_count(config),
+          "Context")
     , storage_manager_{resources_, logger_, config} {
   /*
    * Logger class is not yet C.41-compliant
