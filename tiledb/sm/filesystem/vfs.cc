@@ -48,6 +48,7 @@
 #include <sstream>
 #include <type_traits>
 #include <unordered_map>
+#include <variant>
 
 using namespace tiledb::common;
 using namespace tiledb::sm::filesystem;
@@ -382,83 +383,77 @@ void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
-  auto& src_fs = get_fs(src);
-  auto& dest_fs = get_fs(dest);
+  auto &src_fs{get_fs(src)}, &dest_fs{get_fs(dest)};
+  std::condition_variable cv;
+  std::mutex mtx;
 
-  /**
-   * The ProducerConsumerQueue will contain 10 buffers of size 10 MB (10737419).
-   * The total size may not exceed 100 MB (107374182).
-   */
-  uint64_t src_file_size = src_fs.file_size(src);
-  uint64_t memory_budget = 107374182;  // 100 MB
-  if (src_file_size > memory_budget) {
-    throw VFSException(
-        "Cannot perform chunked buffer I/O; source file is too large.");
-  }
+  // Deque which stores the buffers passed between the readers and writer.
+  ProducerConsumerQueue<std::variant<std::string, std::exception_ptr>>
+      buffer_queue;
 
-  // need to account for very small reads (file_size < memory_budget / 10)
-  // #NTS - may need simpler logic for single read in this case as well
-  uint64_t buffer_size =
-      std::min(src_file_size, (uint64_t)std::ceil(memory_budget / 10));
-  // 10MB == 10737419
-  int buffer_count = 0;  // track number of buffers alloc'd by read
-  uint64_t read_offset{0}, bytes_read{0}, bytes_written{0};
+  // By default, the buffer size is 10 MB, unless the filesize is smaller.
+  uint64_t filesize = src_fs.file_size(src);
+  uint64_t buffer_size = std::min(filesize, (uint64_t)10737419);  // 10 MB
 
-  // Queue which stores the buffers passed between the readers and writer.
-  ProducerConsumerQueue<shared_ptr<char*>, std::queue<shared_ptr<char*>>>
-      task_queue;
+  // Atomic counter of the buffers allocated by the reader. May not exceed 10.
+  std::atomic<int> buffer_count = 0;
+  std::vector<char> buffer(buffer_size);
+  std::atomic<uint64_t> offset = 0;
 
-  // char* buffer = new char[buffer_size];
-  while (true) {
-    // Read
-    if (buffer_count < 10) {
-      char* buffer = new char[buffer_size];
-      bytes_read += src_fs.read(src, read_offset, buffer, buffer_size);
-      task_queue.push(make_shared<char*>(HERE(), buffer));
-      buffer_count++;
-      read_offset += bytes_read;
-    }
-
-    // Write
-    if (buffer_count <= 10) {
-      //  assuming in-order chunks
+  // Readers
+  ThreadPool::Task read_task = io_tp_->execute([&] {
+    while (true) {
+      std::unique_lock<std::mutex> lock(mtx);
+      cv.wait(lock, [&]() { return buffer_count < 10; });
       try {
-        dest_fs.write(dest, (task_queue.pop())->get(), buffer_size);
-        buffer_count--;
+        uint64_t bytes_read =
+            src_fs.read(src, offset, buffer.data(), buffer.size());
+        buffer_queue.push(std::string(buffer.data(), bytes_read));
+        offset += bytes_read;
+
+        // Once the read is complete, drain the queue and exit the reader.
+        if (offset >= filesize) {
+          buffer_queue.drain();
+          break;
+        }
       } catch (...) {
-        // #TODO
-        throw;
+        // Enqueue caught-exceptions to be handled by the writer.
+        buffer_queue.push(std::current_exception());
       }
-      bytes_written += bytes_read;  // not sure accurate with write latency
+      buffer_count++;
+      cv.notify_all();
     }
+    return Status::Ok();
+  });
 
-    std::cerr << "filesize: " << src_file_size << " bytes_read: " << bytes_read
-              << " bytes_written: " << bytes_written << std::endl;
-
-    // Stop once we've reached the end of the file and written the final chunk
-    if (bytes_read >= src_file_size) {
-      std::cerr << "src_fs.file_size(src): " << src_fs.file_size(src)
-                << std::endl;
-      std::cerr << "bytes_read: " << bytes_read << std::endl;
-      std::cerr << "buffer_count: " << buffer_count << std::endl;
+  // Writer
+  uint64_t bytes_written = 0;
+  while (true) {
+    // Allow the ProducerConsumerQueue to wait for an element to be enqueued.
+    auto buffer_queue_element = buffer_queue.pop_back();
+    if (!buffer_queue_element.has_value()) {
+      // Stop writing once the queue is empty (reader finished reading file).
       break;
     }
-  }
 
-  // Finish reading the remaining buffers
-  while (buffer_count > 0) {
-    if (buffer_count == 1) {
-      // Resize buffer_size to ensure no overflow
-      buffer_size = bytes_read % buffer_size;
+    auto buffer = buffer_queue_element.value();
+    // Rethrow exceptions enqueued by read.
+    if (std::holds_alternative<std::exception_ptr>(buffer)) {
+      throw buffer;
     }
+
+    auto writebuf = std::get<std::string>(buffer);
     try {
-      dest_fs.write(dest, (task_queue.pop())->get(), buffer_size);
+      dest_fs.write(dest, writebuf.data(), writebuf.size());
       buffer_count--;
     } catch (...) {
-      // #TODO
       throw;
     }
-    bytes_written += bytes_read;  // again, maybe not accurate
+    bytes_written += writebuf.size();
+  }
+
+  if (bytes_written != filesize) {
+    throw VFSException("Failed to copy file due to internal error.");
   }
 
   dest_fs.flush(dest);
@@ -470,13 +465,9 @@ void VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   auto& new_fs = get_fs(new_uri);
   if (&old_fs == &new_fs) {
     old_fs.copy_file(old_uri, new_uri);
-    return;
   } else {
-    // perform a chunked buffer copy.
     chunked_buffer_io(old_uri, new_uri);
-    return;
   }
-  throw UnsupportedOperation("copy_file");
 }
 
 void VFS::copy_dir(const URI& old_uri, const URI& new_uri) {

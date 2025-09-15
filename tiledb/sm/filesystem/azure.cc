@@ -804,7 +804,7 @@ void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
     return;
   }
 
-  copy_file(old_uri, new_uri);
+  const_cast<tiledb::sm::Azure*>(this)->copy_file(old_uri, new_uri);
   remove_file(old_uri);
 }
 
