@@ -37,6 +37,8 @@
 #include "tiledb/sm/cpp_api/profile_experimental.h"
 #include "tiledb/sm/rest/rest_profile.h"
 
+#include <nlohmann/json.hpp>
+
 using namespace tiledb;
 using namespace tiledb::test;
 
@@ -50,7 +52,7 @@ struct ProfileCPPFx {
   }
 
   bool profile_exists(std::string filepath, std::string name) {
-    json data;
+    nlohmann::json data;
     if (std::filesystem::exists(filepath)) {
       std::ifstream file(filepath);
       file >> data;

@@ -245,7 +245,7 @@ Status FilterPipeline::filter_chunks_forward(
     // First filter's input is the original chunk.
     uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
     void* chunk_buffer = tile.data_as<char>() + offset;
-    uint32_t chunk_buffer_size =
+    uint64_t chunk_buffer_size =
         i == nchunks - 1 ? last_buffer_size :
         var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
                            chunk_size;
@@ -337,7 +337,7 @@ Status FilterPipeline::filter_chunks_forward(
     auto& final_stage_output_metadata = final_stage_io[i].first.first;
     auto& final_stage_output_data = final_stage_io[i].first.second;
     auto filtered_size = (uint32_t)final_stage_output_data.size();
-    uint32_t orig_chunk_size =
+    uint64_t orig_chunk_size =
         i == final_stage_io.size() - 1 ? last_buffer_size :
         var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] :
                     chunk_size;

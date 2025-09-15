@@ -536,7 +536,7 @@ fn to_datafusion_impl(
                 }
             }
             QueryConditionOp::ALWAYS_FALSE => Ok(Expr::Literal(ScalarValue::Boolean(Some(false)))),
-            invalid => return Err(InternalError::InvalidOp(invalid.repr.into()).into()),
+            invalid => Err(InternalError::InvalidOp(invalid.repr.into()).into()),
         }
     }
 }

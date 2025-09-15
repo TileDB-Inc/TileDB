@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -75,7 +75,7 @@ TEST_CASE("VFS Read Log Modes", "[vfs][read-logging-modes]") {
     for (auto& uri : uris_to_read) {
       // None of these files exist, so we expect every read to fail.
       REQUIRE_THROWS(
-          throw_if_not_ok(res.vfs().read(URI(uri), 123, buffer, 456)));
+          throw_if_not_ok(res.vfs().read_exactly(URI(uri), 123, buffer, 456)));
     }
   }
 }

@@ -134,6 +134,10 @@ Posix::Posix(const Config& config) {
   directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
 }
 
+bool Posix::supports_uri(const URI& uri) const {
+  return uri.is_file();
+}
+
 void Posix::create_dir(const URI& uri) const {
   // If the directory does not exist, create it
   auto path = uri.to_path();
@@ -234,50 +238,8 @@ void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
   move_file(old_uri, new_uri);
 }
 
-void Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
-  std::ifstream src(old_uri.to_path(), std::ios::binary);
-  auto new_uri_path = new_uri.to_path();
-  throw_if_not_ok(ensure_directory(new_uri_path));
-  std::ofstream dst(new_uri_path, std::ios::binary);
-  dst << src.rdbuf();
-}
-
-void Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
-  auto old_path = old_uri.to_path();
-  auto new_path = new_uri.to_path();
-  create_dir(new_uri);
-  std::vector<std::string> paths;
-  throw_if_not_ok(ls(old_path, &paths));
-
-  std::queue<std::string> path_queue;
-  for (auto& path : paths)
-    path_queue.emplace(std::move(path));
-
-  while (!path_queue.empty()) {
-    const std::string file_name_abs = path_queue.front();
-    const std::string file_name = file_name_abs.substr(old_path.length());
-    path_queue.pop();
-
-    if (is_dir(URI(file_name_abs))) {
-      create_dir(URI(new_path + "/" + file_name));
-      std::vector<std::string> child_paths;
-      throw_if_not_ok(ls(file_name_abs, &child_paths));
-      for (auto& path : child_paths)
-        path_queue.emplace(std::move(path));
-    } else {
-      passert(is_file(URI(file_name_abs)), "file_name_abs = {}", file_name_abs);
-      copy_file(
-          URI(old_path + "/" + file_name), URI(new_path + "/" + file_name));
-    }
-  }
-}
-
-void Posix::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    [[maybe_unused]] bool use_read_ahead) const {
+uint64_t Posix::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   // Checks
   auto path = uri.to_path();
   uint64_t file_size = this->file_size(URI(path));
@@ -288,7 +250,7 @@ void Posix::read(
         offset,
         nbytes,
         file_size,
-        uri.to_path()));
+        path));
   }
 
   // Open file
@@ -312,6 +274,7 @@ void Posix::read(
     LOG_STATUS_NO_RETURN_VALUE(
         Status_IOError(std::string("Cannot close file; ") + strerror(errno)));
   }
+  return nbytes;
 }
 
 void Posix::flush(const URI& uri, bool) {

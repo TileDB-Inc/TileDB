@@ -34,7 +34,7 @@
 #ifndef TILEDB_SUPPORT_H
 #define TILEDB_SUPPORT_H
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 

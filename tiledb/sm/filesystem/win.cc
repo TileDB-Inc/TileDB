@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <cassert>
 #include <codecvt>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -144,6 +145,10 @@ std::string Win::abs_path(const std::string& path) {
     str_result = result;
   }
   return str_result;
+}
+
+bool Win::supports_uri(const URI& uri) const {
+  return uri.is_file();
 }
 
 void Win::create_dir(const URI& uri) const {
@@ -343,15 +348,6 @@ bool Win::is_file(const URI& uri) const {
   return PathFileExists(path.c_str()) && !PathIsDirectory(path.c_str());
 }
 
-void Win::copy_file(const URI&, const URI&) const {
-  throw WindowsException("Copying files on Windows is not yet supported.");
-}
-
-void Win::copy_dir(const URI&, const URI&) const {
-  throw WindowsException(
-      "Copying directories on Windows is not yet supported.");
-}
-
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
   for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
@@ -387,7 +383,7 @@ std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
-      if (is_dir(URI(file_path))) {
+      if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
         entries.emplace_back(file_path, 0, true);
       } else {
         ULARGE_INTEGER size;
@@ -440,12 +436,8 @@ void Win::move_file(const URI& old_uri, const URI& new_uri) const {
   move_path(old_uri, new_uri);
 }
 
-void Win::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    bool) const {
+uint64_t Win::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   auto path = uri.to_path();
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
@@ -464,6 +456,7 @@ void Win::read(
   }
 
   char* byte_buffer = reinterpret_cast<char*>(buffer);
+  uint64_t length_returned = 0;
   do {
     LARGE_INTEGER offset_lg_int;
     offset_lg_int.QuadPart = offset;
@@ -500,12 +493,14 @@ void Win::read(
     byte_buffer += num_bytes_read;
     offset += num_bytes_read;
     nbytes -= num_bytes_read;
+    length_returned += num_bytes_read;
   } while (nbytes > 0);
   if (CloseHandle(file_h) == 0) {
     throw WindowsException(
         "Cannot read from file '" + path + "'; File closing error " +
         get_last_error_msg("CloseHandle"));
   }
+  return length_returned;
 }
 
 void Win::flush(const URI& uri, bool) {

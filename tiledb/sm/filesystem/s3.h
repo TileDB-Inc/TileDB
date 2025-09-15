@@ -407,18 +407,14 @@ class TileDBS3Client : public Aws::S3::S3Client {
  *      with the iterator returned by the previous request. Batch number can be
  *      tracked by the total number of times we submit a ListObjectsV2 request
  *      within fetch_results().
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-class S3Scanner : public LsScanner<F, D> {
+class S3Scanner : public LsScanner {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
   template <class scanner_type, class T, class Allocator>
   friend class LsScanIterator;
   using Iterator = LsScanIterator<
-      S3Scanner<F, D>,
+      S3Scanner,
       Aws::S3::Model::Object,
       Aws::Allocator<Aws::S3::Model::Object>>;
 
@@ -426,8 +422,15 @@ class S3Scanner : public LsScanner<F, D> {
   S3Scanner(
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
-      F file_filter,
-      D dir_filter = accept_all_dirs,
+      ResultFilter&& result_filter,
+      bool recursive = false,
+      int max_keys = 1000);
+
+  /** Constructor. */
+  S3Scanner(
+      const std::shared_ptr<TileDBS3Client>& client,
+      const URI& prefix,
+      ResultFilterV2&& result_filter,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -474,7 +477,7 @@ class S3Scanner : public LsScanner<F, D> {
   void advance(typename Iterator::pointer& ptr) {
     ptr++;
     if (ptr == end_) {
-      if (more_to_fetch()) {
+      if (more_to_fetch() || !collected_prefixes_.empty()) {
         // Fetch results and reset the iterator.
         ptr = fetch_results();
       } else {
@@ -490,6 +493,17 @@ class S3Scanner : public LsScanner<F, D> {
   }
 
   /**
+   * Builds a prefix vector matching the expected Iterator type for filtering,
+   * and initializes begin_ and end_ iterators to scan the common prefixes.
+   *
+   * When collected_prefixes_ is empty and there are no results to fetch from S3
+   * the scan is complete.
+   *
+   * @returns Iterator to the beginning of the prefix vector.
+   */
+  typename Iterator::pointer& build_prefix_vector();
+
+  /**
    * Fetch the next batch of results from S3. This also handles setting the
    * continuation token for the next request, if the results were truncated.
    *
@@ -500,46 +514,7 @@ class S3Scanner : public LsScanner<F, D> {
    * @sa LsScanIterator::operator++()
    * @sa S3Scanner::next(typename Iterator::pointer&)
    */
-  typename Iterator::pointer fetch_results() {
-    // If this is our first request, GetIsTruncated() will be false.
-    if (more_to_fetch()) {
-      // If results are truncated on a subsequent request, we set the next
-      // continuation token before resubmitting our request.
-      Aws::String next_marker =
-          list_objects_outcome_.GetResult().GetNextContinuationToken();
-      if (next_marker.empty()) {
-        throw S3Exception(
-            "Failed to retrieve next continuation token for ListObjectsV2 "
-            "request.");
-      }
-      list_objects_request_.SetContinuationToken(std::move(next_marker));
-    } else if (list_objects_outcome_.IsSuccess()) {
-      // If we have previously submitted a successful request and there are no
-      // more results, we've reached the end of the scan.
-      begin_ = end_ = typename Iterator::pointer();
-      return end_;
-    }
-
-    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
-    if (!list_objects_outcome_.IsSuccess()) {
-      throw S3Exception(
-          std::string("Error while listing with prefix '") +
-          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter() + "'" + outcome_error_message(list_objects_outcome_));
-    }
-    // Update pointers to the newly fetched results.
-    begin_ = list_objects_outcome_.GetResult().GetContents().begin();
-    end_ = list_objects_outcome_.GetResult().GetContents().end();
-
-    if (list_objects_outcome_.GetResult().GetContents().empty()) {
-      // If the request returned no results, we've reached the end of the scan.
-      // We hit this case when the number of objects in the bucket is a multiple
-      // of the current max_keys.
-      return end_;
-    }
-
-    return begin_;
-  }
+  typename Iterator::pointer fetch_results();
 
   /** Pointer to the S3 client initialized by VFS. */
   shared_ptr<TileDBS3Client> client_;
@@ -550,6 +525,10 @@ class S3Scanner : public LsScanner<F, D> {
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
   /** The current request outcome being scanned. */
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+  bool response_contains_prefixes_ = false;
+
+  /** Move prefixes to this vector usable with Iterator type for filtering. */
+  std::vector<Iterator::value_type> common_prefixes_;
 };
 
 /**
@@ -561,7 +540,7 @@ class S3Scanner : public LsScanner<F, D> {
  * All internal methods have been renamed to use the "file" verbiage in
  * compliance with the FilesystemBase class.
  */
-class S3 : FilesystemBase {
+class S3 : public FilesystemBase {
  private:
   /** Forward declaration */
   struct MultiPartUploadState;
@@ -589,6 +568,14 @@ class S3 : FilesystemBase {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
 
   /**
    * Creates a bucket.
@@ -654,14 +641,9 @@ class S3 : FilesystemBase {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
    */
-  void read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead) const override;
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Deletes a bucket.
@@ -865,29 +847,54 @@ class S3 : FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const {
+      ResultFilter f,
+      bool recursive = false) const override {
     throw_if_not_ok(init_client());
-    S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+    S3Scanner s3_scanner = scanner(parent, std::move(f), recursive);
     // Prepend each object key with the bucket URI.
     auto prefix = parent.to_string();
     prefix = prefix.substr(0, prefix.find('/', 5));
 
     LsObjects objects;
-    for (auto object : s3_scanner) {
+    for (const auto& object : s3_scanner) {
+      objects.emplace_back(
+          prefix + "/" + std::string(object.GetKey()), object.GetSize());
+    }
+    return objects;
+  }
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 f,
+      bool recursive = false) const override {
+    throw_if_not_ok(init_client());
+    S3Scanner s3_scanner = scanner_v2(parent, f, recursive);
+    // Prepend each object key with the bucket URI.
+    auto prefix = parent.to_string();
+    prefix = prefix.substr(0, prefix.find('/', 5));
+
+    LsObjects objects;
+    for (const auto& object : s3_scanner) {
       objects.emplace_back(
           prefix + "/" + std::string(object.GetKey()), object.GetSize());
     }
@@ -900,22 +907,38 @@ class S3 : FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed S3Scanner object.
    */
-  template <FilePredicate F, DirectoryPredicate D>
-  S3Scanner<F, D> scanner(
+  S3Scanner scanner(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
+      ResultFilter f,
       bool recursive = false,
       int max_keys = 1000) const {
     throw_if_not_ok(init_client());
-    return S3Scanner<F, D>(client_, parent, f, d, recursive, max_keys);
+    return S3Scanner(client_, parent, std::move(f), recursive, max_keys);
+  }
+
+  /**
+   * Constructs a scanner for listing S3 objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilterV2 to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed S3Scanner object.
+   */
+  S3Scanner scanner_v2(
+      const URI& parent,
+      ResultFilterV2 f,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    throw_if_not_ok(init_client());
+    return S3Scanner(client_, parent, std::move(f), recursive, max_keys);
   }
 
   /**
@@ -934,25 +957,6 @@ class S3 : FilesystemBase {
    * @return The size of the object in bytes.
    */
   uint64_t file_size(const URI& uri) const override;
-
-  /**
-   * Reads data from an object into a buffer.
-   *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param read_ahead_length The additional length to read ahead.
-   * @param length_returned Returns the total length read into `buffer`.
-   * @return Status
-   */
-  Status read_impl(
-      const URI& uri,
-      const off_t offset,
-      void* const buffer,
-      const uint64_t length,
-      const uint64_t read_ahead_length,
-      uint64_t* const length_returned) const;
 
   /**
    * Writes the input buffer to an S3 object. This function buffers in memory
@@ -1255,8 +1259,7 @@ class S3 : FilesystemBase {
   };
 
   /**
-   * Used to stream results from the GetObject request into
-   * a pre-allocated buffer.
+   * Used to stream in-memoty data from/to S3.
    */
   class PreallocatedIOStream : public Aws::IOStream {
    public:
@@ -1267,9 +1270,10 @@ class S3 : FilesystemBase {
      * @param buffer The pre-allocated underlying buffer.
      * @param size The maximum size of the underlying buffer.
      */
-    PreallocatedIOStream(void* const buffer, const size_t size)
+    PreallocatedIOStream(const void* buffer, const size_t size)
         : Aws::IOStream(new Aws::Utils::Stream::PreallocatedStreamBuf(
-              reinterpret_cast<unsigned char*>(buffer), size)) {
+              reinterpret_cast<unsigned char*>(const_cast<void*>(buffer)),
+              size)) {
     }
 
     /** Destructor. */
@@ -1592,62 +1596,6 @@ class S3 : FilesystemBase {
   URI generate_chunk_uri(
       const URI& attribute_uri, const std::string& chunk_name);
 };
-
-template <FilePredicate F, DirectoryPredicate D>
-S3Scanner<F, D>::S3Scanner(
-    const shared_ptr<TileDBS3Client>& client,
-    const URI& prefix,
-    F file_filter,
-    D dir_filter,
-    bool recursive,
-    int max_keys)
-    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
-    , client_(client) {
-  const auto prefix_dir = prefix.add_trailing_slash();
-  auto prefix_str = prefix_dir.to_string();
-  Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
-
-  list_objects_request_.SetBucket(aws_uri.GetAuthority());
-  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
-  // Empty delimiter returns recursive results from S3.
-  list_objects_request_.SetDelimiter(delimiter());
-  // The default max_keys for ListObjects is 1000.
-  list_objects_request_.SetMaxKeys(max_keys);
-
-  if (client_->requester_pays()) {
-    list_objects_request_.SetRequestPayer(
-        Aws::S3::Model::RequestPayer::requester);
-  }
-  fetch_results();
-  next(begin_);
-}
-
-template <FilePredicate F, DirectoryPredicate D>
-void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
-  if (ptr == end_) {
-    ptr = fetch_results();
-  }
-
-  while (ptr != end_) {
-    auto object = *ptr;
-    uint64_t size = object.GetSize();
-    std::string path = "s3://" +
-                       std::string(list_objects_request_.GetBucket()) +
-                       S3::add_front_slash(std::string(object.GetKey()));
-
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(path, size)) {
-      // Iterator is at the next object within results accepted by the filters.
-      return;
-    } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
-      advance(ptr);
-    }
-  }
-}
 
 }  // namespace tiledb::sm
 

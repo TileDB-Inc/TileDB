@@ -37,6 +37,6 @@ gather_sources(${SOURCES})
 # Maturity Note: We can't make a proper group unit library until we've
 # removed its dependence on StorageManager.
 #
-add_library(capi_group OBJECT ${SOURCES})
+add_library(capi_group OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 target_link_libraries(capi_group PUBLIC export)
 target_link_libraries(capi_group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
