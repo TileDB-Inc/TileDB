@@ -78,7 +78,8 @@ static F make_global_order(
   std::iota(idxs.begin(), idxs.end(), 0);
 
   // sort in global order
-  sm::GlobalCellCmp globalcmp(array.schema().ptr()->array_schema()->domain());
+  auto array_schema = array.schema().ptr()->array_schema();
+  sm::GlobalCellCmp globalcmp(array_schema->domain());
 
   auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
     return std::apply(
@@ -459,9 +460,11 @@ TEST_CASE(
   const templates::Dimension<Datatype::INT32> d2(
       templates::Domain<int32_t>(-256, 256), 4);
 
+  Context ctx = vfs_test_setup.ctx();
+
   templates::ddl::create_array<Datatype::INT32, Datatype::INT32>(
       array_uri,
-      vfs_test_setup.ctx(),
+      ctx,
       std::tie(d1, d2),
       std::vector<std::tuple<Datatype, uint32_t, bool>>{},
       TILEDB_ROW_MAJOR,
@@ -469,8 +472,7 @@ TEST_CASE(
       8,
       allow_dups);
 
-  DeleteArrayGuard delarray(
-      vfs_test_setup.ctx().ptr().get(), array_uri.c_str());
+  DeleteArrayGuard delarray(ctx.ptr().get(), array_uri.c_str());
 
   using Fragment = templates::Fragment2D<int32_t, int32_t>;
   using TileBounds =
@@ -496,29 +498,60 @@ TEST_CASE(
   const sm::Layout layout =
       GENERATE(sm::Layout::UNORDERED, sm::Layout::GLOBAL_ORDER);
 
-  if (layout == sm::Layout::UNORDERED) {
-    for (uint64_t i = 0; i < row_num_cells; i++) {
-      row.d1()[i] = 0;
-      row.d2()[i] = i;
-    }
+  for (uint64_t i = 0; i < row_num_cells; i++) {
+    row.d1()[i] = 0;
+    row.d2()[i] = i;
+  }
 
-    for (uint64_t i = 0; i < col_num_cells; i++) {
-      col.d1()[i] = i;
-      col.d2()[i] = 0;
-    }
+  for (uint64_t i = 0; i < col_num_cells; i++) {
+    col.d1()[i] = i;
+    col.d2()[i] = 0;
+  }
 
-    const uint64_t square_row_length = std::sqrt(square_num_cells);
-    for (uint64_t i = 0; i < square_num_cells; i++) {
-      square.d1()[i] = i / square_row_length;
-      square.d2()[i] = i % square_row_length;
-    }
-    for (uint64_t i = 0; i < square_num_cells; i++) {
-      square_offset.d1()[i] = 2 + (i / square_row_length);
-      square_offset.d2()[i] = 2 + (i % square_row_length);
-    }
-  } else {
-    SKIP("TODO");
-    // TODO
+  const uint64_t square_row_length = std::sqrt(square_num_cells);
+  for (uint64_t i = 0; i < square_num_cells; i++) {
+    square.d1()[i] = i / square_row_length;
+    square.d2()[i] = i % square_row_length;
+  }
+  for (uint64_t i = 0; i < square_num_cells; i++) {
+    square_offset.d1()[i] = 2 + (i / square_row_length);
+    square_offset.d2()[i] = 2 + (i % square_row_length);
+  }
+
+  if (layout == sm::Layout::GLOBAL_ORDER) {
+    Array forread(ctx, array_uri, TILEDB_READ);
+
+    // row, col are in global order already
+    square = make_global_order(forread, square, tiledb::sm::Layout::UNORDERED);
+    REQUIRE(
+        square.d1() == std::vector<int32_t>{
+                           0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+                           0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+                           4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
+                           4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
+                       });
+    REQUIRE(
+        square.d2() == std::vector<int32_t>{
+                           0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3,
+                           4, 5, 6, 7, 4, 5, 6, 7, 4, 5, 6, 7, 4, 5, 6, 7,
+                           0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3,
+                           4, 5, 6, 7, 4, 5, 6, 7, 4, 5, 6, 7, 4, 5, 6, 7,
+                       });
+
+    square_offset = make_global_order(
+        forread, square_offset, tiledb::sm::Layout::UNORDERED);
+    REQUIRE(
+        square_offset.d1().values_ ==
+        std::vector<int32_t>{2, 2, 3, 3, 2, 2, 2, 2, 3, 3, 3, 3, 2, 2, 3, 3,
+                             4, 4, 5, 5, 6, 6, 7, 7, 4, 4, 4, 4, 5, 5, 5, 5,
+                             6, 6, 6, 6, 7, 7, 7, 7, 4, 4, 5, 5, 6, 6, 7, 7,
+                             8, 8, 9, 9, 8, 8, 8, 8, 9, 9, 9, 9, 8, 8, 9, 9});
+    REQUIRE(
+        square_offset.d2().values_ ==
+        std::vector<int32_t>{2, 3, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7, 8, 9, 8, 9,
+                             2, 3, 2, 3, 2, 3, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7,
+                             4, 5, 6, 7, 4, 5, 6, 7, 8, 9, 8, 9, 8, 9, 8, 9,
+                             2, 3, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7, 8, 9, 8, 9});
   }
 
   const std::vector<TileBounds> expect_row_bounds = {
@@ -571,15 +604,12 @@ TEST_CASE(
     std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
     SECTION("Global Order") {
       fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          vfs_test_setup.ctx(), array_uri, std::vector<Fragment>{f});
+          ctx, array_uri, std::vector<Fragment>{f});
     }
 
     SECTION("Unordered") {
       fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          vfs_test_setup.ctx(),
-          array_uri,
-          std::vector<Fragment>{f},
-          sm::Layout::UNORDERED);
+          ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
     }
 
     std::vector<TileBounds> expect_bounds = {{{0, 0}, {0, 0}}};
@@ -590,10 +620,7 @@ TEST_CASE(
   DYNAMIC_SECTION("Row (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
         instance<tiledb::test::AsserterCatch, Fragment>(
-            vfs_test_setup.ctx(),
-            array_uri,
-            std::vector<Fragment>{row},
-            layout);
+            ctx, array_uri, std::vector<Fragment>{row}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_row_bounds);
   }
@@ -601,10 +628,7 @@ TEST_CASE(
   DYNAMIC_SECTION("Column (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
         instance<tiledb::test::AsserterCatch, Fragment>(
-            vfs_test_setup.ctx(),
-            array_uri,
-            std::vector<Fragment>{col},
-            layout);
+            ctx, array_uri, std::vector<Fragment>{col}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_col_bounds);
   }
@@ -612,10 +636,7 @@ TEST_CASE(
   DYNAMIC_SECTION("Square (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
         instance<tiledb::test::AsserterCatch, Fragment>(
-            vfs_test_setup.ctx(),
-            array_uri,
-            std::vector<Fragment>{square},
-            layout);
+            ctx, array_uri, std::vector<Fragment>{square}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_square_bounds);
   }
@@ -623,10 +644,7 @@ TEST_CASE(
   DYNAMIC_SECTION("Square offset (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
         instance<tiledb::test::AsserterCatch, Fragment>(
-            vfs_test_setup.ctx(),
-            array_uri,
-            std::vector<Fragment>{square_offset},
-            layout);
+            ctx, array_uri, std::vector<Fragment>{square_offset}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_square_offset_bounds);
   }
@@ -635,7 +653,7 @@ TEST_CASE(
     const std::vector<Fragment> fragments = {col, square_offset, row, square};
     const auto fragment_bounds =
         instance<tiledb::test::AsserterCatch, Fragment>(
-            vfs_test_setup.ctx(), array_uri, fragments, layout);
+            ctx, array_uri, fragments, layout);
     CHECK(fragment_bounds.size() >= 1);
     if (fragment_bounds.size() >= 1) {
       CHECK(fragment_bounds[0] == expect_col_bounds);
