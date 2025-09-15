@@ -681,7 +681,7 @@ class VFS : FilesystemBase,
   /**
    * Performs chunked buffer I/O, reading from src and writing to dest.
    *
-   * @invariant The source file cannot be larger than 10 MB.
+   * @note To reduce latency, we suggest copying files no larger than 100 MB.
    *
    * @param src The source URI to read from.
    * @param dest The destination URI to write to.

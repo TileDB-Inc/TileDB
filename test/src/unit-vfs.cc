@@ -202,32 +202,41 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
-// First-pass test. Validate transfer between local and S3.
-TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
-  /*std::string s;
-  SECTION ("small string") {
-    s = "abcdef";
-  }
-
-  SECTION ("large string (max filesize)") {
-    s = std::string(107374182, 'a'); //10737419 - buffer size
-    REQUIRE(s.size() == 107374182);
-  }*/
-
-  // std::string s(100, 'a');
-  // REQUIRE(s.size() == 100); // this is 97?
-  std::string s =
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
-  LocalFsTest local_fs({0});
-  S3Test cloud_fs({0});
-  if (!(cloud_fs.is_supported() && local_fs.is_supported())) {
-    std::cerr << "not supported!" << std::endl;
+// Test copying a 1MB file among and across all filesystems.
+using BackendPairs = std::tuple<
+    std::pair<LocalFsTest, LocalFsTest>,
+    std::pair<GCSTest, GCSTest>,
+    std::pair<GSTest, GSTest>,
+    std::pair<S3Test, S3Test>,
+    std::pair<AzureTest, AzureTest>,
+    std::pair<LocalFsTest, GCSTest>,
+    std::pair<LocalFsTest, GSTest>,
+    std::pair<LocalFsTest, S3Test>,
+    std::pair<LocalFsTest, AzureTest>,
+    std::pair<GCSTest, LocalFsTest>,
+    std::pair<GCSTest, GSTest>,
+    std::pair<GCSTest, S3Test>,
+    std::pair<GCSTest, AzureTest>,
+    std::pair<GSTest, LocalFsTest>,
+    std::pair<GSTest, GCSTest>,
+    std::pair<GSTest, S3Test>,
+    std::pair<GSTest, AzureTest>,
+    std::pair<S3Test, LocalFsTest>,
+    std::pair<S3Test, GCSTest>,
+    std::pair<S3Test, GSTest>,
+    std::pair<S3Test, AzureTest>,
+    std::pair<AzureTest, LocalFsTest>,
+    std::pair<AzureTest, GCSTest>,
+    std::pair<AzureTest, GSTest>,
+    std::pair<AzureTest, S3Test>>;
+TEMPLATE_LIST_TEST_CASE("VFS: copy_file", "[vfs][copy_file]", BackendPairs) {
+  typename TestType::first_type src_fs({0});
+  typename TestType::second_type dst_fs({0});
+  if (!(src_fs.is_supported() && dst_fs.is_supported())) {
     return;
   }
-  URI local_path = local_fs.temp_dir_.add_trailing_slash();
-  URI cloud_path = cloud_fs.temp_dir_.add_trailing_slash();
+  URI src_path = src_fs.temp_dir_.add_trailing_slash();
+  URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
 
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
@@ -235,56 +244,68 @@ TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
   VFS vfs{
       &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
-  // Set up
-  if (vfs.is_bucket(cloud_path)) {
-    REQUIRE_NOTHROW(vfs.remove_bucket(cloud_path));
+  // Set up.
+  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
+    if (vfs.is_bucket(src_path)) {
+      REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
+    }
+    REQUIRE_NOTHROW(vfs.create_bucket(src_path));
+  } else {
+    if (vfs.is_dir(src_path)) {
+      REQUIRE_NOTHROW(vfs.remove_dir(src_path));
+    }
+    REQUIRE_NOTHROW(vfs.create_dir(src_path));
   }
-  REQUIRE_NOTHROW(vfs.create_bucket(cloud_path));
-  if (vfs.is_dir(local_path)) {
-    REQUIRE_NOTHROW(vfs.remove_dir(local_path));
+  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
+    if (vfs.is_bucket(dst_path)) {
+      REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
+    }
+    REQUIRE_NOTHROW(vfs.create_bucket(dst_path));
+  } else {
+    if (vfs.is_dir(dst_path)) {
+      REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
+    }
+    REQUIRE_NOTHROW(vfs.create_dir(dst_path));
   }
-  REQUIRE_NOTHROW(vfs.create_dir(local_path));
 
-  // Create local_file1 and write some data to it.
-  auto local_file1 = URI(local_path.to_string() + "file1");
-  REQUIRE_NOTHROW(vfs.touch(local_file1));
-  auto s_size = s.size();
-  REQUIRE_NOTHROW(vfs.write(local_file1, s.data(), s_size));
-  require_tiledb_ok(vfs.close_file(local_file1));
+  // Create src_file and write 1MB of data to it.
+  std::string test_str(10737419, 'a');
+  REQUIRE(test_str.size() == (size_t)10737419);
+  auto src_file = URI(src_path.to_string() + "src_file");
+  REQUIRE_NOTHROW(vfs.touch(src_file));
+  auto test_str_size = test_str.size();
+  REQUIRE_NOTHROW(vfs.write(src_file, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(src_file));
 
-  // Copy local -> object store
-  // Note: doesn't matter if file created or not - copy (write) will create it
-  auto cloud_file1 = URI(cloud_path.to_string() + "file1");
-  REQUIRE_NOTHROW(vfs.copy_file(local_file1, cloud_file1));
-  CHECK(vfs.is_file(local_file1));
-  CHECK(vfs.is_file(cloud_file1));
+  // Copy src -> dst.
+  // Note: doesn't matter if the dst file exists; copy will create on write.
+  auto dst_file = URI(dst_path.to_string() + "dst_file");
+  REQUIRE_NOTHROW(vfs.copy_file(src_file, dst_file));
+  CHECK(vfs.is_file(src_file));
+  CHECK(vfs.is_file(dst_file));
 
-  // Validate the contents are the same
-  char* cloud_file1_data = new char[s_size];
-  uint64_t cloud_file1_size =
-      vfs.read(cloud_file1, 0, cloud_file1_data, s_size);
-  std::string cloud_file1_str(cloud_file1_data, cloud_file1_size);
-  CHECK(cloud_file1_str == s);
+  // Validate the contents are the same.
+  std::string dst_file_str;
+  dst_file_str.resize(test_str_size);
+  require_tiledb_ok(
+      vfs.read_exactly(dst_file, 0, (char*)dst_file_str.data(), test_str_size));
+  CHECK(dst_file_str == test_str);
 
-  // Remove local file and copy back into it from s3
-  /*REQUIRE_NOTHROW(vfs.remove_file(local_file1));
-  CHECK(!vfs.is_file(local_file1));
-  REQUIRE_NOTHROW(vfs.touch(local_file1));
-  CHECK(vfs.is_file(local_file1));
-  REQUIRE_NOTHROW(vfs.copy_file(cloud_file1, local_file1));
-
-  // Validate the contents are the same
-  char* local_file1_data = new char[s_size];
-  uint64_t local_file1_size = vfs.read(
-    local_file1, 0, local_file1_data, s_size);
-  std::string local_file1_str(local_file1_data, local_file1_size);
-  CHECK(local_file1_str == s);*/
-
-  // Clean up
-  REQUIRE_NOTHROW(vfs.remove_bucket(cloud_path));
-  REQUIRE(!vfs.is_bucket(cloud_path));
-  REQUIRE_NOTHROW(vfs.remove_dir(local_path));
-  REQUIRE(!vfs.is_dir(local_path));
+  // Clean up.
+  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
+    REQUIRE(!vfs.is_bucket(src_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(src_path));
+    REQUIRE(!vfs.is_dir(src_path));
+  }
+  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
+    REQUIRE(!vfs.is_bucket(dst_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
+    REQUIRE(!vfs.is_dir(dst_path));
+  }
 }
 
 using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
