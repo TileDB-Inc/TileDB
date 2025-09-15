@@ -150,11 +150,12 @@ jobs:
         if: inputs.cmake_generator == 'Ninja'
         uses: seanmiddleditch/gha-setup-ninja@v4
 
-      - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
+      - name: 'Homebrew and SDKROOT setup on macOS' # x-ref c8e49ba8f8b9ce
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
         run: |
           set -e pipefail
           brew install automake
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 
       - name: 'Configure libtiledb'
         id: configure
