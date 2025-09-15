@@ -108,11 +108,12 @@ struct query_buffers {};
  * Constrains types which can be used as the physical type of a dimension.
  */
 template <typename D>
-concept DimensionType = requires(const D& coord) {
-  typename std::is_signed<D>;
-  { coord < coord } -> std::same_as<bool>;
-  { D(int64_t(coord)) } -> std::same_as<D>;
-};
+concept DimensionType =
+    std::is_same_v<D, std::vector<uint8_t>> or requires(const D& coord) {
+      typename std::is_signed<D>;
+      { coord < coord } -> std::same_as<bool>;
+      { D(int64_t(coord)) } -> std::same_as<D>;
+    };
 
 /**
  * Constrains types which can be used as the physical type of an attribute.
@@ -206,6 +207,11 @@ struct Dimension {
 
   Domain<value_type> domain;
   value_type extent;
+};
+
+template <>
+struct Dimension<tiledb::sm::Datatype::STRING_ASCII> {
+  using value_type = std::vector<uint8_t>;
 };
 
 template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
@@ -427,7 +433,7 @@ struct query_buffers<T> {
 
   std::vector<T> values_;
 
-  query_buffers() {
+  constexpr query_buffers() {
   }
 
   query_buffers(const self_type& other)
@@ -586,7 +592,7 @@ struct query_buffers<std::optional<T>> {
   std::vector<T> values_;
   std::vector<uint8_t> validity_;
 
-  query_buffers() {
+  constexpr query_buffers() {
   }
 
   query_buffers(const self_type& other) = default;
@@ -813,7 +819,7 @@ struct query_buffers<std::vector<T>> {
   std::vector<T> values_;
   std::vector<uint64_t> offsets_;
 
-  query_buffers() {
+  constexpr query_buffers() {
   }
 
   query_buffers(const self_type& other) = default;
@@ -976,7 +982,7 @@ struct query_buffers<std::optional<std::vector<T>>> {
   std::vector<uint64_t> offsets_;
   std::vector<uint8_t> validity_;
 
-  query_buffers() {
+  constexpr query_buffers() {
   }
 
   query_buffers(const self_type& other) = default;
@@ -1531,9 +1537,14 @@ void create_array(
     using CoordType = templates::Dimension<D>::value_type;
     dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
     dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
-    dimension_ranges.push_back(
-        const_cast<CoordType*>(&dimension.domain.lower_bound));
-    dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
+    if constexpr (std::is_same_v<CoordType, std::vector<uint8_t>>) {
+      dimension_ranges.push_back(nullptr);
+      dimension_extents.push_back(nullptr);
+    } else {
+      dimension_ranges.push_back(
+          const_cast<CoordType*>(&dimension.domain.lower_bound));
+      dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
+    }
   };
   std::apply(
       [&]<Datatype... Ds>(const templates::Dimension<Ds>&... dimension) {

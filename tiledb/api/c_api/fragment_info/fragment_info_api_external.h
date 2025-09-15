@@ -733,6 +733,9 @@ TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_var_from_name(
  *                                                   &dimensions[0]);
  * @endcode
  *
+ * If any dimension is `NULL` then only the size is returned. This enables
+ * asking for the size of the bounds of variable-length dimensions.
+ *
  * @param[in] ctx The TileDB context
  * @param[in] fragment_info The fragment info object.
  * @param[in] fragment_id The index of the fragment of interest

@@ -45,6 +45,8 @@ using namespace tiledb::test;
 using Fragment1DFixed = templates::Fragment1D<uint64_t>;
 using Fragment2DFixed = templates::Fragment2D<int32_t, int32_t>;
 
+using Fragment1DVar = templates::Fragment1D<std::vector<uint8_t>>;
+
 void showValue(const Fragment1DFixed& value, std::ostream& os) {
   rc::showFragment(value, os);
 }
@@ -121,13 +123,53 @@ template <templates::FragmentType F>
 using CoordsTuple = decltype(tuple_index(
     std::declval<F>().dimensions(), std::declval<uint64_t>()));
 
+/**
+ * Stores pointers to the fields of `bufs` in `ptrs` for use
+ * with the fragment bound functions.
+ */
 template <templates::FragmentType F>
 static void prepare_bound_buffers(
     DimensionTuple<F>& bufs, std::array<void*, F::NUM_DIMENSIONS>& ptrs) {
+  auto prepare_bound_buffer =
+      [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
+        if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+          if (qbuf.values_.empty()) {
+            ptrs[i] = nullptr;
+          } else {
+            ptrs[i] = qbuf.values_.data();
+          }
+        } else {
+          ptrs[i] = static_cast<void*>(&qbuf[0]);
+        }
+      };
+
   uint64_t i = 0;
   std::apply(
       [&]<typename... Ts>(templates::query_buffers<Ts>&... qbufs) {
-        ([&]() { ptrs[i++] = static_cast<void*>(&qbufs[0]); }(), ...);
+        (prepare_bound_buffer(i++, qbufs), ...);
+      },
+      bufs);
+}
+
+/**
+ * Reserves space in the variable-length dimensions of `bufs`
+ * for global order bounds of the provided `sizes`.
+ */
+template <templates::FragmentType F>
+static void allocate_var_bound_buffers(
+    DimensionTuple<F>& bufs, size_t sizes[]) {
+  auto allocate_var_bound_buffer =
+      [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
+        if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+          qbuf.values_.reserve(sizes[i]);
+          qbuf.offsets_ = {0};
+        }
+      };
+
+  uint64_t i = 0;
+  std::apply(
+      [&]<typename... Ts>(templates::query_buffers<Ts>&... qbufs) {
+        (allocate_var_bound_buffer(i++, qbufs), ...);
       },
       bufs);
 }
@@ -160,32 +202,50 @@ static Bounds<F> global_order_bounds(
 
   size_t lb_sizes[num_fields];
   std::array<void*, num_fields> lb_dimensions;
-  prepare_bound_buffers<F>(lb, lb_dimensions);
 
   size_t ub_sizes[num_fields];
   std::array<void*, num_fields> ub_dimensions;
+
+  prepare_bound_buffers<F>(lb, lb_dimensions);
   prepare_bound_buffers<F>(ub, ub_dimensions);
 
   auto ctx_c = finfo.context().ptr().get();
 
-  // FIXME: add C++ API
-  auto rc = tiledb_fragment_info_get_global_order_lower_bound(
-      ctx_c,
-      finfo.ptr().get(),
-      fragment,
-      tile,
-      &lb_sizes[0],
-      &lb_dimensions[0]);
-  throw_if_error(ctx_c, rc);
+  auto call = [&]() {
+    // FIXME: add C++ API
+    auto rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx_c,
+        finfo.ptr().get(),
+        fragment,
+        tile,
+        &lb_sizes[0],
+        &lb_dimensions[0]);
+    throw_if_error(ctx_c, rc);
 
-  rc = tiledb_fragment_info_get_global_order_upper_bound(
-      ctx_c,
-      finfo.ptr().get(),
-      fragment,
-      tile,
-      &ub_sizes[0],
-      &ub_dimensions[0]);
-  throw_if_error(ctx_c, rc);
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx_c,
+        finfo.ptr().get(),
+        fragment,
+        tile,
+        &ub_sizes[0],
+        &ub_dimensions[0]);
+    throw_if_error(ctx_c, rc);
+  };
+
+  static constexpr bool has_var_dimension = std::apply(
+      []<typename... Ts>(const templates::query_buffers<Ts>&...) {
+        return std::disjunction_v<std::is_same<std::vector<uint8_t>, Ts>...>;
+      },
+      lb);
+  if constexpr (has_var_dimension) {
+    // determine length, then allocate, then call again
+    call();
+    allocate_var_bound_buffers<F>(lb, lb_sizes);
+    allocate_var_bound_buffers<F>(ub, ub_sizes);
+    call();
+  } else {
+    call();
+  }
 
   return std::make_pair(tuple_index(lb, 0), tuple_index(ub, 0));
 }
@@ -671,5 +731,123 @@ TEST_CASE(
       CHECK(fragment_bounds[3] == expect_square_bounds);
     }
     REQUIRE(fragment_bounds.size() == 4);
+  }
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 2D fixed rapidcheck",
+    "[fragment_info][global-order][rapidcheck]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_fixed_rapidcheck");
+
+  static constexpr int32_t LB = -256;
+  static constexpr int32_t UB = 256;
+
+  const templates::Domain<int32_t> domain(LB, UB);
+  const templates::Dimension<Datatype::INT32> d1(domain, 4);
+  const templates::Dimension<Datatype::INT32> d2(domain, 4);
+
+  Context ctx = vfs_test_setup.ctx();
+
+  auto temp_array = [&](bool allow_dups) {
+    templates::ddl::create_array<Datatype::INT32, Datatype::INT32>(
+        array_uri,
+        ctx,
+        std::tuple<
+            const templates::Dimension<Datatype::INT32>&,
+            const templates::Dimension<Datatype::INT32>&>{d1, d2},
+        std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        8,
+        allow_dups);
+
+    return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  };
+
+  rc::prop("global order", [&](bool allow_dups) {
+    auto fragments = *rc::gen::container<std::vector<Fragment2DFixed>>(
+        rc::make_fragment_2d<int32_t, int32_t>(allow_dups, domain, domain));
+    auto arrayguard = temp_array(allow_dups);
+    Array forread(ctx, array_uri, TILEDB_READ);
+    std::vector<Fragment2DFixed> global_order_fragments;
+    for (const auto& fragment : fragments) {
+      global_order_fragments.push_back(make_global_order<Fragment2DFixed>(
+          forread, fragment, sm::Layout::UNORDERED));
+    }
+
+    instance<tiledb::test::AsserterRapidcheck, Fragment2DFixed>(
+        vfs_test_setup.ctx(),
+        array_uri,
+        global_order_fragments,
+        sm::Layout::GLOBAL_ORDER);
+  });
+
+  rc::prop("unordered", [&]() {
+    const bool allow_dups = false;  // FIXME: not working correctly
+    auto fragments = *rc::gen::container<std::vector<Fragment2DFixed>>(
+        rc::make_fragment_2d<int32_t, int32_t>(allow_dups, domain, domain));
+    auto arrayguard = temp_array(allow_dups);
+    Array forread(ctx, array_uri, TILEDB_READ);
+
+    instance<tiledb::test::AsserterRapidcheck, Fragment2DFixed>(
+        vfs_test_setup.ctx(), array_uri, fragments, sm::Layout::UNORDERED);
+  });
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D var",
+    "[fragment_info][global-order]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri =
+      vfs_test_setup.array_uri("fragment_metadata_global_order_bounds_1d_var");
+
+  const bool allow_dups = GENERATE(true, false);
+
+  const templates::Dimension<Datatype::STRING_ASCII> dimension;
+
+  templates::ddl::create_array<Datatype::STRING_ASCII>(
+      array_uri,
+      vfs_test_setup.ctx(),
+      std::tuple<const templates::Dimension<Datatype::STRING_ASCII>&>{
+          dimension},
+      std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      8,
+      allow_dups);
+
+  DeleteArrayGuard delarray(
+      vfs_test_setup.ctx().ptr().get(), array_uri.c_str());
+
+  using Fragment = Fragment1DVar;
+
+  SECTION("Minimum write") {
+    const std::vector<uint8_t> value = {'f', 'o', 'o'};
+
+    Fragment f;
+    f.resize(1);
+    f.dimension().push_back(value);
+
+    std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
+    SECTION("Global Order") {
+      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
+          vfs_test_setup.ctx(), array_uri, std::vector<Fragment>{f});
+    }
+
+    SECTION("Unordered") {
+      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
+          vfs_test_setup.ctx(),
+          array_uri,
+          std::vector<Fragment>{f},
+          sm::Layout::UNORDERED);
+    }
+    REQUIRE(fragment_bounds.size() == 1);
+
+    CHECK(
+        fragment_bounds[0] ==
+        std::vector<Bounds<Fragment>>{
+            std::make_pair(std::make_tuple(value), std::make_tuple(value))});
   }
 }
