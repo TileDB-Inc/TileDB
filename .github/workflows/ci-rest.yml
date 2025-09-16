@@ -16,7 +16,9 @@ on:
 
 jobs:
   rest-ci:
-    runs-on: tiledb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       # For easy access to lookup dispatched CI job.
@@ -27,16 +29,12 @@ jobs:
       - name: Workflow dispatch to REST CI
         id: trigger-step
         uses: aurelien-baudet/workflow-dispatch@v2
-        env:
-          TILEDB_REST_CI_TOKEN: ${{ secrets.GH_TOKEN }}
-        # Skip if no PAT is set (e.g. for PRs from forks).
-        if: env.TILEDB_REST_CI_TOKEN != null
         with:
           repo: TileDB-Inc/TileDB-Internal
           # Trigger workflow on TileDB-Internal at this ref.
           ref: "smr/sc-64563/test-tiledb-server"
           workflow: rest-ci.yml
-          token: ${{ env.TILEDB_REST_CI_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           # Pass TileDB core ref to test against REST.
           # github.head_ref will only be set for PRs, so fallback to github.ref_name if triggered via push event.
           inputs: '{ "tiledb_ref": "${{ github.event.inputs.ref || github.head_ref || github.ref_name }}"}'
