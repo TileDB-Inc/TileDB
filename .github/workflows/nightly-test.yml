@@ -40,6 +40,11 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
 
+      - name: 'Set SDKROOT on macOS'
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+        run: |
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
