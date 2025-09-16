@@ -390,6 +390,15 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
   }
 }
 
+/**
+ * Writes the variable-length part of the global order bounds into the fragment
+ * metadata.
+ *
+ * The seqeunce of calls is
+ * 1) set_tile_global_order_bounds_fixed
+ * 2) convert_tile_global_order_bounds_sizes_to_offsets
+ * 3) this
+ */
 void FragmentMetadata::set_tile_global_order_bounds_var(
     const std::string& dim_name, uint64_t tile, const WriterTileTuple& data) {
   const auto dim = array_schema_->domain().get_dimension_index(dim_name);
@@ -403,33 +412,27 @@ void FragmentMetadata::set_tile_global_order_bounds_var(
   const auto& tile_max = data.global_order_max();
   iassert(tile_max.has_value());
 
-  const uint64_t* min_sizes = reinterpret_cast<const uint64_t*>(
+  const uint64_t* min_offsets = reinterpret_cast<const uint64_t*>(
       loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
-  const uint64_t* max_sizes = reinterpret_cast<const uint64_t*>(
+  const uint64_t* max_offsets = reinterpret_cast<const uint64_t*>(
       loaded_metadata_ptr_->tile_global_order_max_buffer()[dim].data());
 
-  const uint64_t* data_offsets = data.offset_tile().data_as<uint64_t>();
-  const uint64_t min_var_start = data_offsets[0];
-  const uint64_t min_var_size = min_sizes[0];
-  const uint64_t max_var_start = data_offsets[data.cell_num() - 1];
-  const uint64_t max_var_size = max_sizes[data.cell_num() - 1];
+  const uint64_t min_var_start = min_offsets[tile];
+  const uint64_t max_var_start = max_offsets[tile];
 
-  iassert(tile_min.value().size() == min_var_size);
-  iassert(tile_max.value().size() == max_var_size);
-
-  if (min_var_size) {
+  if (tile_min.value().size()) {
     memcpy(
         &loaded_metadata_ptr_
              ->tile_global_order_min_var_buffer()[tile][min_var_start],
         tile_min.value().data(),
-        min_var_size);
+        tile_min.value().size());
   }
-  if (max_var_size) {
+  if (tile_max.value().size()) {
     memcpy(
         &loaded_metadata_ptr_
              ->tile_global_order_max_var_buffer()[tile][max_var_start],
         tile_max.value().data(),
-        max_var_size);
+        tile_max.value().size());
   }
 }
 

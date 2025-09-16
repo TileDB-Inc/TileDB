@@ -751,8 +751,10 @@ static Status read_global_order_bound_to_user_buffers(
         dimension_sizes[d] = offsets[which_tile + 1] - offsets[which_tile];
       }
 
-      const void* coord = &varPart[d][offsets[which_tile]];
-      memcpy(dimensions[d], coord, dimension_sizes[d]);
+      if (dimensions[d]) {
+        const void* coord = &varPart[d][offsets[which_tile]];
+        memcpy(dimensions[d], coord, dimension_sizes[d]);
+      }
     } else {
       const uint64_t dimFixedSize = ds[d]->cell_size();
       if (dimFixedSize * which_tile >= fixedPart[d].size()) {
@@ -760,8 +762,12 @@ static Status read_global_order_bound_to_user_buffers(
             "Cannot get MBR global order bound: Invalid mbr index");
       }
 
-      const void* coord = &fixedPart[d].data()[which_tile * dimFixedSize];
-      memcpy(dimensions[d], coord, dimFixedSize);
+      dimension_sizes[d] = dimFixedSize;
+
+      if (dimensions[d]) {
+        const void* coord = &fixedPart[d].data()[which_tile * dimFixedSize];
+        memcpy(dimensions[d], coord, dimFixedSize);
+      }
     }
   }
 

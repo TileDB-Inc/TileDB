@@ -112,10 +112,22 @@ template <templates::FragmentType F>
 using DimensionTuple =
     stdx::decay_tuple<decltype(std::declval<F>().dimensions())>;
 
+template <stdx::is_fundamental T>
+T to_owned(T value) {
+  return value;
+}
+
+template <stdx::is_fundamental T>
+std::vector<T> to_owned(std::span<const T> value) {
+  return std::vector<T>(value.begin(), value.end());
+}
+
 template <typename T>
 auto tuple_index(const T& tuple, uint64_t idx) {
   return std::apply(
-      [&](const auto&... field) { return std::make_tuple(field[idx]...); },
+      [&](const auto&... field) {
+        return std::make_tuple(to_owned(field[idx])...);
+      },
       tuple);
 }
 
@@ -161,8 +173,10 @@ static void allocate_var_bound_buffers(
   auto allocate_var_bound_buffer =
       [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
         if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-          qbuf.values_.reserve(sizes[i]);
+          qbuf.values_.resize(sizes[i]);
           qbuf.offsets_ = {0};
+        } else {
+          qbuf.resize(1);
         }
       };
 
@@ -189,16 +203,6 @@ static Bounds<F> global_order_bounds(
   // Otherwise it is unsafe to call this API with variable-length dimensions
 
   DimensionTuple<F> lb, ub;
-  std::apply(
-      []<typename... Ts>(templates::query_buffers<Ts>&... field) {
-        (field.resize(1), ...);
-      },
-      lb);
-  std::apply(
-      []<typename... Ts>(templates::query_buffers<Ts>&... field) {
-        (field.resize(1), ...);
-      },
-      ub);
 
   size_t lb_sizes[num_fields];
   std::array<void*, num_fields> lb_dimensions;
@@ -206,12 +210,12 @@ static Bounds<F> global_order_bounds(
   size_t ub_sizes[num_fields];
   std::array<void*, num_fields> ub_dimensions;
 
-  prepare_bound_buffers<F>(lb, lb_dimensions);
-  prepare_bound_buffers<F>(ub, ub_dimensions);
-
   auto ctx_c = finfo.context().ptr().get();
 
   auto call = [&]() {
+    prepare_bound_buffers<F>(lb, lb_dimensions);
+    prepare_bound_buffers<F>(ub, ub_dimensions);
+
     // FIXME: add C++ API
     auto rc = tiledb_fragment_info_get_global_order_lower_bound(
         ctx_c,
@@ -232,20 +236,11 @@ static Bounds<F> global_order_bounds(
     throw_if_error(ctx_c, rc);
   };
 
-  static constexpr bool has_var_dimension = std::apply(
-      []<typename... Ts>(const templates::query_buffers<Ts>&...) {
-        return std::disjunction_v<std::is_same<std::vector<uint8_t>, Ts>...>;
-      },
-      lb);
-  if constexpr (has_var_dimension) {
-    // determine length, then allocate, then call again
-    call();
-    allocate_var_bound_buffers<F>(lb, lb_sizes);
-    allocate_var_bound_buffers<F>(ub, ub_sizes);
-    call();
-  } else {
-    call();
-  }
+  // determine length, then allocate, then call again
+  call();
+  allocate_var_bound_buffers<F>(lb, lb_sizes);
+  allocate_var_bound_buffers<F>(ub, ub_sizes);
+  call();
 
   return std::make_pair(tuple_index(lb, 0), tuple_index(ub, 0));
 }
@@ -827,7 +822,6 @@ TEST_CASE(
     const std::vector<uint8_t> value = {'f', 'o', 'o'};
 
     Fragment f;
-    f.resize(1);
     f.dimension().push_back(value);
 
     std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;

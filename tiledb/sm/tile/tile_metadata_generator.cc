@@ -570,15 +570,29 @@ void TileMetadataGenerator::process_cell_range_var(
   const auto& offset_tile = tile.offset_tile();
   const auto& var_tile = tile.var_tile();
 
-  // Handle empty tile.
-  if (!has_min_max_ || offset_tile.size() == 0) {
-    return;
-  }
-
   // Get pointers to the data and cell num.
   auto offset_value = offset_tile.data_as<offsets_t>() + start;
   auto var_data = var_tile.data_as<char>();
   auto cell_num = tile.cell_num();
+
+  if (is_dim_) {
+    iassert(end > start);
+    global_order_min_ = var_tile.data();
+    global_order_min_size_ =
+        (start == cell_num - 1 ? (var_tile.size() - offset_value[0]) :
+                                 (offset_value[1] - offset_value[0]));
+
+    const uint64_t imax = end - start - 1;
+    global_order_max_ = var_tile.data_u8() + offset_value[imax];
+    global_order_max_size_ =
+        (end == cell_num ? (var_tile.size() - offset_value[imax]) :
+                           (offset_value[imax + 1] - offset_value[imax]));
+  }
+
+  // Handle empty tile.
+  if (!has_min_max_ || offset_tile.size() == 0) {
+    return;
+  }
 
   // Var size attribute, non nullable.
   if (!tile.nullable()) {
