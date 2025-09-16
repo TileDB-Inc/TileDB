@@ -28,7 +28,7 @@ jobs:
       # If this workflow fails on the remote repository, this CI job will also fail.
       - name: Workflow dispatch to REST CI
         id: trigger-step
-        uses: aurelien-baudet/workflow-dispatch@v2
+        uses: the-actions-org/workflow-dispatch@v4
         with:
           repo: TileDB-Inc/TileDB-Internal
           # Trigger workflow on TileDB-Internal at this ref.
