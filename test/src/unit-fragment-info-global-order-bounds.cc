@@ -819,7 +819,8 @@ TEST_CASE(
   using Fragment = Fragment1DVar;
 
   SECTION("Minimum write") {
-    const std::vector<uint8_t> value = {'f', 'o', 'o'};
+    std::string svalue = GENERATE("foo", "", "long-ish string");
+    const std::vector<uint8_t> value(svalue.begin(), svalue.end());
 
     Fragment f;
     f.dimension().push_back(value);
