@@ -80,10 +80,13 @@ jobs:
             triplet: x64-windows
           - os: macos-13
             triplet: x64-osx
+            deployment-target: 13
           - os: macos-latest
             triplet: arm64-osx
       fail-fast: false
     name: ${{ matrix.os }} - Static Linkage
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment-target }}
 
     steps:
       - name: Print env
