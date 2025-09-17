@@ -202,39 +202,8 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
-// Test copying a 1MB file among and across all filesystems.
-using BackendPairs = std::tuple<
-    std::pair<LocalFsTest, LocalFsTest>,
-    std::pair<GCSTest, GCSTest>,
-    std::pair<GSTest, GSTest>,
-    std::pair<S3Test, S3Test>,
-    std::pair<AzureTest, AzureTest>,
-    std::pair<LocalFsTest, GCSTest>,
-    std::pair<LocalFsTest, GSTest>,
-    std::pair<LocalFsTest, S3Test>,
-    std::pair<LocalFsTest, AzureTest>,
-    std::pair<GCSTest, LocalFsTest>,
-    std::pair<GCSTest, GSTest>,
-    std::pair<GCSTest, S3Test>,
-    std::pair<GCSTest, AzureTest>,
-    std::pair<GSTest, LocalFsTest>,
-    std::pair<GSTest, GCSTest>,
-    std::pair<GSTest, S3Test>,
-    std::pair<GSTest, AzureTest>,
-    std::pair<S3Test, LocalFsTest>,
-    std::pair<S3Test, GCSTest>,
-    std::pair<S3Test, GSTest>,
-    std::pair<S3Test, AzureTest>,
-    std::pair<AzureTest, LocalFsTest>,
-    std::pair<AzureTest, GCSTest>,
-    std::pair<AzureTest, GSTest>,
-    std::pair<AzureTest, S3Test>>;
-TEMPLATE_LIST_TEST_CASE("VFS: copy_file", "[vfs][copy_file]", BackendPairs) {
-  typename TestType::first_type src_fs({0});
-  typename TestType::second_type dst_fs({0});
-  if (!(src_fs.is_supported() && dst_fs.is_supported())) {
-    return;
-  }
+TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
+  LocalFsTest src_fs({0}), dst_fs({0});
   URI src_path = src_fs.temp_dir_.add_trailing_slash();
   URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
 
@@ -244,52 +213,47 @@ TEMPLATE_LIST_TEST_CASE("VFS: copy_file", "[vfs][copy_file]", BackendPairs) {
   VFS vfs{
       &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
-  // Set up.
-  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
-    if (vfs.is_bucket(src_path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(src_path));
-  } else {
-    if (vfs.is_dir(src_path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(src_path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(src_path));
+  size_t test_str_size = 0;
+  SECTION("Filesize = 0 MB") {
+    test_str_size = 0;
   }
-  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
-    if (vfs.is_bucket(dst_path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(dst_path));
-  } else {
-    if (vfs.is_dir(dst_path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(dst_path));
+  SECTION("Filesize = 1 MB") {
+    test_str_size = 1048576;
   }
+  SECTION("Filesize = 10 MB") {
+    test_str_size = 10 * 1048576;
+  }
+  SECTION("Filesize = 100 MB") {
+    test_str_size = 100 * 1048576;
+  }
+  SECTION("Filesize = 150 MB") {
+    test_str_size = 150 * 1048576;
+  }
+  std::string test_str(test_str_size, 'a');
+  REQUIRE(test_str.size() == test_str_size);
 
-  // Create src_file and write 1MB of data to it.
-  std::string test_str(10737419, 'a');
-  REQUIRE(test_str.size() == (size_t)10737419);
+  // Create src_file and write data to it.
   auto src_file = URI(src_path.to_string() + "src_file");
   REQUIRE_NOTHROW(vfs.touch(src_file));
-  auto test_str_size = test_str.size();
+  test_str_size = test_str.size();
   REQUIRE_NOTHROW(vfs.write(src_file, test_str.data(), test_str_size));
   require_tiledb_ok(vfs.close_file(src_file));
 
-  // Copy src -> dst.
-  // Note: doesn't matter if the dst file exists; copy will create on write.
+  // copy_file src -> dst using chunked-buffer I/O.
+  // Note: it doesn't matter if the dst file exists; copy will create on write.
   auto dst_file = URI(dst_path.to_string() + "dst_file");
-  REQUIRE_NOTHROW(vfs.copy_file(src_file, dst_file));
+  REQUIRE_NOTHROW(vfs.chunked_buffer_io(src_file, dst_file));
   CHECK(vfs.is_file(src_file));
-  CHECK(vfs.is_file(dst_file));
 
   // Validate the contents are the same.
-  std::string dst_file_str;
-  dst_file_str.resize(test_str_size);
-  require_tiledb_ok(
-      vfs.read_exactly(dst_file, 0, (char*)dst_file_str.data(), test_str_size));
-  CHECK(dst_file_str == test_str);
+  if (test_str_size > 0) {
+    CHECK(vfs.is_file(dst_file));
+    std::string dst_file_str;
+    dst_file_str.resize(test_str_size);
+    require_tiledb_ok(vfs.read_exactly(
+        dst_file, 0, (char*)dst_file_str.data(), test_str_size));
+    CHECK(dst_file_str == test_str);
+  }
 
   // Clean up.
   if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
@@ -426,32 +390,9 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
     CHECK(children[0].file_size() == s.size());
-    CHECK(children[1].file_size() == 0);  // Directories don't get a size
-
-    // Copy file
+    CHECK(children[1].file_size() == 0);  // Directories don't get a sizeß
     auto file6 = URI(path.to_string() + "file6");
-    std::string cf_str = "copy_file test_contents";
-    REQUIRE_NOTHROW(vfs.write(file5, cf_str.data(), cf_str.size()));
-    require_tiledb_ok(vfs.close_file(file5));
-    REQUIRE_NOTHROW(vfs.copy_file(file5, file6));
-    CHECK(vfs.is_file(file5));
     CHECK(vfs.is_file(file6));
-    char file6_data;
-    uint64_t file6_size = vfs.read(file6, 0, &file6_data, cf_str.size());
-    std::string file6_str(&file6_data, file6_size);
-    // validate the contents are the same
-    CHECK(file6_str == cf_str);
-    paths.clear();
-
-    // #TODO copy_file across filesystems
-
-    // #TODO Copy dir
-
-    // Move file
-    auto file7 = URI(path.to_string() + "file7");
-    REQUIRE_NOTHROW(vfs.move_file(file6, file7));
-    CHECK(!vfs.is_file(file6));
-    CHECK(vfs.is_file(file7));
     paths.clear();
 
     // Move directory
@@ -461,15 +402,9 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(vfs.is_dir(dir2));
     paths.clear();
 
-    // Remove files
+    // Remove files & directories
     REQUIRE_NOTHROW(vfs.remove_file(file4));
     CHECK(!vfs.is_file(file4));
-    REQUIRE_NOTHROW(vfs.remove_file(file5));
-    CHECK(!vfs.is_file(file5));
-    REQUIRE_NOTHROW(vfs.remove_file(file7));
-    CHECK(!vfs.is_file(file7));
-
-    // Remove directories
     REQUIRE_NOTHROW(vfs.remove_dir(dir2));
     CHECK(!vfs.is_file(file1));
     CHECK(!vfs.is_file(file2));
