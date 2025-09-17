@@ -423,14 +423,14 @@ void FragmentMetadata::set_tile_global_order_bounds_var(
   if (tile_min.value().size()) {
     memcpy(
         &loaded_metadata_ptr_
-             ->tile_global_order_min_var_buffer()[tile][min_var_start],
+             ->tile_global_order_min_var_buffer()[dim][min_var_start],
         tile_min.value().data(),
         tile_min.value().size());
   }
   if (tile_max.value().size()) {
     memcpy(
         &loaded_metadata_ptr_
-             ->tile_global_order_max_var_buffer()[tile][max_var_start],
+             ->tile_global_order_max_var_buffer()[dim][max_var_start],
         tile_max.value().data(),
         tile_max.value().size());
   }
