@@ -802,19 +802,20 @@ TEST_CASE(
 
   const templates::Dimension<Datatype::STRING_ASCII> dimension;
 
+  Context ctx = vfs_test_setup.ctx();
+
   templates::ddl::create_array<Datatype::STRING_ASCII>(
       array_uri,
-      vfs_test_setup.ctx(),
+      ctx,
       std::tuple<const templates::Dimension<Datatype::STRING_ASCII>&>{
           dimension},
       std::vector<std::tuple<Datatype, uint32_t, bool>>{},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      8,
+      32,
       allow_dups);
 
-  DeleteArrayGuard delarray(
-      vfs_test_setup.ctx().ptr().get(), array_uri.c_str());
+  DeleteArrayGuard delarray(ctx.ptr().get(), array_uri.c_str());
 
   using Fragment = Fragment1DVar;
 
@@ -828,15 +829,12 @@ TEST_CASE(
     std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
     SECTION("Global Order") {
       fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          vfs_test_setup.ctx(), array_uri, std::vector<Fragment>{f});
+          ctx, array_uri, std::vector<Fragment>{f});
     }
 
     SECTION("Unordered") {
       fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          vfs_test_setup.ctx(),
-          array_uri,
-          std::vector<Fragment>{f},
-          sm::Layout::UNORDERED);
+          ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
     }
     REQUIRE(fragment_bounds.size() == 1);
 
@@ -844,5 +842,96 @@ TEST_CASE(
         fragment_bounds[0] ==
         std::vector<Bounds<Fragment>>{
             std::make_pair(std::make_tuple(value), std::make_tuple(value))});
+  }
+
+  SECTION("Single fragment") {
+    const std::vector<std::string> words = {
+        "foo", "bar", "baz", "quux", "corge", "grault", "gub"};
+
+    Fragment f;
+    for (const auto& s1 : words) {
+      for (const auto& s2 : words) {
+        for (const auto& s3 : words) {
+          std::vector<uint8_t> coord(s1.begin(), s1.end());
+          coord.insert(coord.end(), s2.begin(), s2.end());
+          coord.insert(coord.end(), s3.begin(), s3.end());
+
+          f.dimension().push_back(coord);
+        }
+      }
+    }
+
+    const sm::Layout layout =
+        GENERATE(sm::Layout::UNORDERED, sm::Layout::GLOBAL_ORDER);
+
+    if (layout == sm::Layout::GLOBAL_ORDER) {
+      Array forread(ctx, array_uri, TILEDB_READ);
+      f = make_global_order(forread, f, tiledb::sm::Layout::UNORDERED);
+    }
+
+    DYNAMIC_SECTION(
+        "allow_dups = " + std::to_string(allow_dups) +
+        ", layout = " + sm::layout_str(layout)) {
+      const auto fragment_bounds =
+          instance<tiledb::test::AsserterCatch, Fragment>(
+              ctx, array_uri, std::vector<Fragment>{f}, layout);
+      REQUIRE(fragment_bounds.size() == 1);
+      CHECK(fragment_bounds[0].size() == 11);
+
+      auto lbstr = [](const Bounds<Fragment>& bound) {
+        const auto& value = std::get<0>(std::get<0>(bound));
+        return std::string(value.begin(), value.end());
+      };
+      auto ubstr = [](const Bounds<Fragment>& bound) {
+        const auto& value = std::get<0>(std::get<1>(bound));
+        return std::string(value.begin(), value.end());
+      };
+
+      CHECK(fragment_bounds[0].size() == 11);
+      if (fragment_bounds[0].size() > 0) {
+        CHECK(lbstr(fragment_bounds[0][0]) == "barbarbar");
+        CHECK(ubstr(fragment_bounds[0][0]) == "bargraultfoo");
+      }
+      if (fragment_bounds[0].size() > 1) {
+        CHECK(lbstr(fragment_bounds[0][1]) == "bargraultgrault");
+        CHECK(ubstr(fragment_bounds[0][1]) == "bazcorgebar");
+      }
+      if (fragment_bounds[0].size() > 2) {
+        CHECK(lbstr(fragment_bounds[0][2]) == "bazcorgebaz");
+        CHECK(ubstr(fragment_bounds[0][2]) == "bazquuxgrault");
+      }
+      if (fragment_bounds[0].size() > 3) {
+        CHECK(lbstr(fragment_bounds[0][3]) == "bazquuxgub");
+        CHECK(ubstr(fragment_bounds[0][3]) == "corgegraultbaz");
+      }
+      if (fragment_bounds[0].size() > 4) {
+        CHECK(lbstr(fragment_bounds[0][4]) == "corgegraultcorge");
+        CHECK(ubstr(fragment_bounds[0][4]) == "foobazgub");
+      }
+      if (fragment_bounds[0].size() > 5) {
+        CHECK(lbstr(fragment_bounds[0][5]) == "foobazquux");
+        CHECK(ubstr(fragment_bounds[0][5]) == "fooquuxcorge");
+      }
+      if (fragment_bounds[0].size() > 6) {
+        CHECK(lbstr(fragment_bounds[0][6]) == "fooquuxfoo");
+        CHECK(ubstr(fragment_bounds[0][6]) == "graultfooquux");
+      }
+      if (fragment_bounds[0].size() > 7) {
+        CHECK(lbstr(fragment_bounds[0][7]) == "graultgraultbar");
+        CHECK(ubstr(fragment_bounds[0][7]) == "gubbazfoo");
+      }
+      if (fragment_bounds[0].size() > 8) {
+        CHECK(lbstr(fragment_bounds[0][8]) == "gubbazgrault");
+        CHECK(ubstr(fragment_bounds[0][8]) == "gubquuxbar");
+      }
+      if (fragment_bounds[0].size() > 9) {
+        CHECK(lbstr(fragment_bounds[0][9]) == "gubquuxbaz");
+        CHECK(ubstr(fragment_bounds[0][9]) == "quuxfoograult");
+      }
+      if (fragment_bounds[0].size() > 10) {
+        CHECK(lbstr(fragment_bounds[0][10]) == "quuxfoogub");
+        CHECK(ubstr(fragment_bounds[0][10]) == "quuxquuxquux");
+      }
+    }
   }
 }
