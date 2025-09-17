@@ -12,6 +12,8 @@
 ## New features
 
 * Add support for `Profiles` onto the `Config`. [#5498](https://github.com/TileDB-Inc/TileDB/pull/5498)
+* Add support for relative URI remote group members. [#5635](https://github.com/TileDB-Inc/TileDB/pull/5635)
+* Introduce `ls_recursive_v2` that includes directories in results for all backends. [#5602](https://github.com/TileDB-Inc/TileDB/pull/5602)
 
 
 ## Improvements
@@ -31,7 +33,10 @@
 * Class `VFS` inherits base class `FilesystemBase`. [#5584](https://github.com/TileDB-Inc/TileDB/pull/5584)
 * Fix empty array name for URIs with trailing slash. [#5591](https://github.com/TileDB-Inc/TileDB/pull/5591)
 * Refactor `class VFS` to remove `#ifdef`s. [#5589](https://github.com/TileDB-Inc/TileDB/pull/5589)
-* Added support for `tiledb_vfs_copy_file` and `tiledb_vfs_copy_dir` on Windows. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
+* Add support for `tiledb_vfs_copy_file` and `tiledb_vfs_copy_dir` on Windows. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
+* Allow adding relative group members to remote groups. [#5623](https://github.com/TileDB-Inc/TileDB/pull/5623)
+* Always check return codes in Curl::get_data and throw [#5640](https://github.com/TileDB-Inc/TileDB/pull/5640)
+* Do not retry most SSL-related failures in the REST client. [#5638](https://github.com/TileDB-Inc/TileDB/pull/5638)
 
 
 ## Deprecations
@@ -58,6 +63,8 @@
 * Correctly reset bugdet when initial data already loadad. [#5599](https://github.com/TileDB-Inc/TileDB/pull/5599)
 * Fixed incorrect documentation of `tiledb_vfs_copy_dir`. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
 * Fix build errors with `--disable-stats` from unused variable warnings. [#5603](https://github.com/TileDB-Inc/TileDB/pull/5603)
+* Fix `zip_view` default constructor for C++20 concepts compliance. [#5613](https://github.com/TileDB-Inc/TileDB/pull/5613)
+* Fixed compile errors in compilers defaulting to C23. [#5639](https://github.com/TileDB-Inc/TileDB/pull/5639)
 
 
 ## API changes
