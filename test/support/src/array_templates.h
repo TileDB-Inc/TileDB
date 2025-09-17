@@ -69,26 +69,42 @@ struct global_cell_cmp_std_tuple {
       : tup_(tup) {
   }
 
+ private:
+  template <typename T>
+  static constexpr tiledb::common::UntypedDatumView static_coord_datum(
+      const T& field) {
+    static_assert(
+        stdx::is_fundamental<T> ||
+        std::is_same_v<T, std::span<const uint8_t>> ||
+        std::is_same_v<T, std::vector<uint8_t>>);
+    if constexpr (stdx::is_fundamental<T>) {
+      return UntypedDatumView(&field, sizeof(T));
+    } else {
+      return UntypedDatumView(field.data(), field.size());
+    }
+  }
+
+  template <unsigned I>
+  static tiledb::common::UntypedDatumView try_dimension_datum(
+      const StdTuple& tup, unsigned dim) {
+    if (dim == I) {
+      return static_coord_datum(std::get<I>(tup));
+    } else if constexpr (I + 1 < std::tuple_size_v<StdTuple>) {
+      return try_dimension_datum<I + 1>(tup, dim);
+    } else {
+      // NB: probably not reachable in practice
+      throw std::logic_error("Out of bounds access to dimension tuple");
+    }
+  }
+
+ public:
   tiledb::common::UntypedDatumView dimension_datum(
       const tiledb::sm::Dimension&, unsigned dim_idx) const {
-    return std::apply(
-        [&](const auto&... field) {
-          size_t sizes[] = {sizeof(std::decay_t<decltype(field)>)...};
-          const void* const ptrs[] = {
-              static_cast<const void*>(std::addressof(field))...};
-          return UntypedDatumView(ptrs[dim_idx], sizes[dim_idx]);
-        },
-        tup_);
+    return try_dimension_datum<0>(tup_, dim_idx);
   }
 
   const void* coord(unsigned dim) const {
-    return std::apply(
-        [&](const auto&... field) {
-          const void* const ptrs[] = {
-              static_cast<const void*>(std::addressof(field))...};
-          return ptrs[dim];
-        },
-        tup_);
+    return try_dimension_datum<0>(tup_, dim).content();
   }
 
   StdTuple tup_;
