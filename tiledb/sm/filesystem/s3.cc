@@ -352,11 +352,6 @@ bool S3::supports_uri(const URI& uri) const {
 void S3::create_bucket(const URI& bucket) const {
   throw_if_not_ok(init_client());
 
-  if (!bucket.is_s3()) {
-    throw S3Exception(
-        std::string("URI is not an S3 URI: " + bucket.to_string()));
-  }
-
   Aws::Http::URI aws_uri = bucket.c_str();
   Aws::S3::Model::CreateBucketRequest create_bucket_request;
   create_bucket_request.SetBucket(aws_uri.GetAuthority());
@@ -424,10 +419,6 @@ bool S3::is_empty_bucket(const URI& bucket) const {
 bool S3::is_bucket(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
-  }
-
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::HeadBucketRequest head_bucket_request;
   head_bucket_request.SetBucket(aws_uri.GetAuthority());
@@ -479,10 +470,6 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
 uint64_t S3::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
 
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::GetObjectRequest get_object_request;
@@ -570,11 +557,6 @@ void S3::remove_dir(const URI& uri) const {
 void S3::touch(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string(
-        "Cannot create file; URI is not an S3 URI: " + uri.to_string()));
-  }
-
   if (uri.to_string().back() == '/') {
     throw S3Exception(std::string(
         "Cannot create file; URI is a directory: " + uri.to_string()));
@@ -623,10 +605,6 @@ void S3::write(
     uint64_t length,
     bool remote_global_order_write) {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
-  }
 
   if (remote_global_order_write) {
     global_order_write_buffered(uri, buffer, length);
@@ -681,10 +659,6 @@ void S3::write(
 
 void S3::remove_file(const URI& uri) const {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
   Aws::S3::Model::DeleteObjectRequest delete_object_request;
@@ -787,9 +761,6 @@ void S3::flush(const URI& uri, bool finalize) {
   if (!s3_params_.use_multipart_upload_) {
     throw_if_not_ok(flush_direct(uri));
     return;
-  }
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
   }
 
   // Flush and delete file buffer. For multipart requests, we must
@@ -960,10 +931,6 @@ bool S3::is_dir(const URI& uri) const {
 bool S3::is_file(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
-
   bool exists = false;
   Aws::Http::URI aws_uri = uri.c_str();
   throw_if_not_ok(
@@ -1030,10 +997,6 @@ std::vector<directory_entry> S3::ls_with_sizes(
   const auto prefix_dir = prefix.add_trailing_slash();
 
   auto prefix_str = prefix_dir.to_string();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
-
   Aws::Http::URI aws_uri = prefix_str.c_str();
   std::string aws_auth(aws_uri.GetAuthority());
   Aws::S3::Model::ListObjectsV2Request list_objects_request;
@@ -1108,10 +1071,6 @@ Status S3::move_object(const URI& old_uri, const URI& new_uri) const {
 
 uint64_t S3::file_size(const URI& uri) const {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
 
@@ -2089,9 +2048,6 @@ S3Scanner::S3Scanner(
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
 
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
   list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
@@ -2119,9 +2075,6 @@ S3Scanner::S3Scanner(
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
 
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
   list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
