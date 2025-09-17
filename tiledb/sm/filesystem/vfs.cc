@@ -388,28 +388,41 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
   std::mutex mtx;
 
   // Deque which stores the buffers passed between the readers and writer.
-  ProducerConsumerQueue<std::variant<std::string, std::exception_ptr>>
+  ProducerConsumerQueue<std::variant<std::vector<char>, std::exception_ptr>>
       buffer_queue;
 
   // By default, the buffer size is 10 MB, unless the filesize is smaller.
   uint64_t filesize = src_fs.file_size(src);
-  uint64_t buffer_size = std::min(filesize, (uint64_t)10737419);  // 10 MB
+  uint64_t buffer_size = std::min(filesize, (uint64_t)10485760);  // 10 MB
+  tdb_unique_ptr<std::vector<char>> buffer(new std::vector<char>(buffer_size));
 
-  // Atomic counter of the buffers allocated by the reader. May not exceed 10.
+  // The maximum number of buffers the reader may allocate.
+  const int max_buffer_count = 10;
+
+  // Atomic counter of the buffers allocated by the reader.
+  // May not exceed `max_buffer_count`.
   std::atomic<int> buffer_count = 0;
-  std::vector<char> buffer(buffer_size);
-  std::atomic<uint64_t> offset = 0;
 
-  // Readers
+  // Flag to stop the reader when set to true.
+  std::atomic<bool> stop_reader = false;
+
+  // Reader
   ThreadPool::Task read_task = io_tp_->execute([&] {
+    uint64_t offset = 0;
     while (true) {
+      if (stop_reader) {
+        break;
+      }
       std::unique_lock<std::mutex> lock(mtx);
-      cv.wait(lock, [&]() { return buffer_count < 10; });
+      cv.wait(lock, [&]() { return buffer_count < max_buffer_count; });
       try {
         uint64_t bytes_read =
-            src_fs.read(src, offset, buffer.data(), buffer.size());
-        buffer_queue.push(std::string(buffer.data(), bytes_read));
-        offset += bytes_read;
+            src_fs.read(src, offset, buffer->data(), buffer->size());
+        if (bytes_read > 0) {
+          buffer->resize(bytes_read);
+          buffer_queue.push(std::move(*buffer.get()));
+          offset += bytes_read;
+        }
 
         // Once the read is complete, drain the queue and exit the reader.
         if (offset >= filesize) {
@@ -421,7 +434,6 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
         buffer_queue.push(std::current_exception());
       }
       buffer_count++;
-      cv.notify_all();
     }
     return Status::Ok();
   });
@@ -436,18 +448,22 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
       break;
     }
 
+    // Signal the reader to start reading again.
+    cv.notify_one();
+
     auto buffer = buffer_queue_element.value();
     // Rethrow exceptions enqueued by read.
     if (std::holds_alternative<std::exception_ptr>(buffer)) {
-      throw buffer;
+      std::rethrow_exception(std::get<std::exception_ptr>(buffer));
     }
 
-    auto writebuf = std::get<std::string>(buffer);
+    auto writebuf = std::get<0>(buffer);
     try {
       dest_fs.write(dest, writebuf.data(), writebuf.size());
       buffer_count--;
     } catch (...) {
       throw;
+      stop_reader = true;
     }
     bytes_written += writebuf.size();
   }
