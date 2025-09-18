@@ -1083,7 +1083,7 @@ TEST_CASE(
 
   using Fragment = templates::Fragment1D<uint64_t>;
 
-  SECTION("Single tile") {
+  SECTION("Non-overlapping") {
     std::vector<Fragment> fs;
     for (uint64_t f = 0; f < 8; f++) {
       Fragment input;
@@ -1194,6 +1194,75 @@ TEST_CASE(
                                      fragment_bounds[5][0],
                                      fragment_bounds[6][0],
                                      fragment_bounds[7][0]});
+    }
+  }
+
+  auto tile = [](uint64_t lb, uint64_t ub) -> Bounds<Fragment> {
+    return std::make_pair(std::make_tuple(lb), std::make_tuple(ub));
+  };
+
+  SECTION("Interleaving") {
+    std::vector<Fragment> fs;
+    for (uint64_t f = 0; f < 8; f++) {
+      Fragment input;
+      input.resize(8);
+      for (uint64_t c = 0; c < 8; c++) {
+        input.dimension()[c] = (8 * c + 1 + f);
+      }
+      fs.push_back(input);
+    }
+
+    const auto fragment_bounds =
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+            vfs_test_setup.ctx(), array_uri, fs);
+    REQUIRE(fragment_bounds.size() == fs.size());
+
+    CHECK(
+        fragment_bounds == std::vector<std::vector<Bounds<Fragment>>>{
+                               {tile(1, 57)},
+                               {tile(2, 58)},
+                               {tile(3, 59)},
+                               {tile(4, 60)},
+                               {tile(5, 61)},
+                               {tile(6, 62)},
+                               {tile(7, 63)},
+                               {tile(8, 64)}});
+
+    SECTION("Pairs") {
+      const auto pairwise =
+          assert_consolidate_n_wise_bounds<test::AsserterCatch, Fragment>(
+              ctx, array_uri, fs, 2);
+
+      CHECK(
+          pairwise.bounds_ == std::vector<std::vector<Bounds<Fragment>>>{
+                                  {tile(1, 26), tile(33, 58)},
+                                  {tile(3, 28), tile(35, 60)},
+                                  {tile(5, 30), tile(37, 62)},
+                                  {tile(7, 32), tile(39, 64)}});
+
+      const auto quadwise =
+          assert_consolidate_n_wise_bounds<test::AsserterCatch, Fragment>(
+              ctx, array_uri, pairwise.fragment_data_, 2);
+      CHECK(
+          quadwise.bounds_ ==
+          std::vector<std::vector<Bounds<Fragment>>>{
+              {tile(1, 12), tile(17, 28), tile(33, 44), tile(49, 60)},
+              {tile(5, 16), tile(21, 32), tile(37, 48), tile(53, 64)},
+          });
+
+      const auto octwise =
+          assert_consolidate_n_wise_bounds<test::AsserterCatch, Fragment>(
+              ctx, array_uri, quadwise.fragment_data_, 2);
+      CHECK(
+          octwise.bounds_ == std::vector<std::vector<Bounds<Fragment>>>{
+                                 {tile(1, 8),
+                                  tile(9, 16),
+                                  tile(17, 24),
+                                  tile(25, 32),
+                                  tile(33, 40),
+                                  tile(41, 48),
+                                  tile(49, 56),
+                                  tile(57, 64)}});
     }
   }
 }
