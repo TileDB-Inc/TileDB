@@ -151,7 +151,11 @@ static void prepare_bound_buffers(
             ptrs[i] = qbuf.values_.data();
           }
         } else {
-          ptrs[i] = static_cast<void*>(&qbuf[0]);
+          if (qbuf.num_cells() == 0) {
+            ptrs[i] = nullptr;
+          } else {
+            ptrs[i] = static_cast<void*>(&qbuf[0]);
+          }
         }
       };
 
