@@ -423,7 +423,9 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
 }
 
 VFSTestBase::VFSTestBase(
-    const std::vector<size_t>& test_tree, const std::string& prefix)
+    const std::vector<size_t>& test_tree,
+    const std::string& prefix,
+    const std::string& vfs_backend)
     : test_tree_(test_tree)
     , compute_(4)
     , io_(4)
@@ -436,7 +438,9 @@ VFSTestBase::VFSTestBase(
     , prefix_(prefix)
     , temp_dir_(tiledb::test::test_dir(prefix_))
     , is_supported_(vfs_.supports_uri_scheme(temp_dir_)) {
-  // TODO: Throw when we can provide a list of supported filesystems to Catch2.
+  if (!is_g_vfs_enabled(vfs_backend)) {
+    SKIP("backend disabled by command line");
+  }
 }
 
 VFSTestBase::~VFSTestBase() {
@@ -471,37 +475,8 @@ tiledb::sm::Config VFSTestBase::create_test_config() {
   return cfg;
 }
 
-VFSTest::VFSTest(
-    const std::vector<size_t>& test_tree, const std::string& prefix)
-    : VFSTestBase(test_tree, prefix) {
-  if (!is_supported()) {
-    return;
-  }
-
-  if (temp_dir_.is_file() || temp_dir_.is_memfs()) {
-    REQUIRE_NOTHROW(vfs_.create_dir(temp_dir_));
-  } else {
-    REQUIRE_NOTHROW(vfs_.create_bucket(temp_dir_));
-  }
-  for (size_t i = 1; i <= test_tree_.size(); i++) {
-    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
-    // VFS::create_dir is a no-op for S3.
-    REQUIRE_NOTHROW(vfs_.create_dir(path));
-    for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
-      auto object_uri = path.join_path("test_file_" + std::to_string(j));
-      REQUIRE_NOTHROW(vfs_.touch(object_uri));
-      std::string data(j * 10, 'a');
-      vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
-      REQUIRE_NOTHROW(vfs_.write(object_uri, data.data(), data.size()));
-      vfs_.close_file(object_uri).ok();
-      expected_results_.emplace_back(object_uri.to_string(), data.size());
-    }
-  }
-  std::sort(expected_results_.begin(), expected_results_.end());
-}
-
 S3Test::S3Test(const std::vector<size_t>& test_tree)
-    : VFSTestBase(test_tree, "s3://")
+    : VFSTestBase(test_tree, "s3://", "s3")
     , S3_within_VFS(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
 #ifdef HAVE_S3
   s3().create_bucket(temp_dir_);
@@ -528,7 +503,7 @@ S3Test::S3Test(const std::vector<size_t>& test_tree)
 }
 
 LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
-    : VFSTestBase(test_tree, "file://") {
+    : VFSTestBase(test_tree, "file://", "native") {
 #ifdef _WIN32
   temp_dir_ =
       tiledb::test::test_dir(prefix_ + tiledb::sm::Win::current_dir() + "/");

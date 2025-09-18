@@ -704,9 +704,11 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-TEST_CASE("VFS: Throwing filters for ls_recursive", "[vfs][ls_recursive]") {
-  std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
-  VFSTest vfs_test({0}, prefix);
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: Throwing filters for ls_recursive",
+    "[vfs][ls_recursive]",
+    TestBackends) {
+  TestType vfs_test({0});
   if (!vfs_test.is_supported()) {
     return;
   }
