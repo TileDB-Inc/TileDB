@@ -250,6 +250,34 @@ static Bounds<F> global_order_bounds(
 }
 
 /**
+ * @return the global order bounds of all tiles in all fragments; [f][t]
+ * contains the bounds of the t'th tile of fragment f
+ */
+template <templates::FragmentType F>
+std::vector<std::vector<Bounds<F>>> get_all_bounds(
+    const Context& ctx, const std::string& array_uri) {
+  FragmentInfo finfo(ctx, array_uri);
+  finfo.load();
+
+  std::vector<std::vector<Bounds<F>>> bounds;
+  bounds.reserve(finfo.fragment_num());
+
+  for (uint64_t f = 0; f < finfo.fragment_num(); f++) {
+    const uint64_t num_tiles = finfo.mbr_num(f);
+
+    std::vector<Bounds<F>> this_fragment_bounds;
+    this_fragment_bounds.reserve(num_tiles);
+    for (uint64_t t = 0; t < num_tiles; t++) {
+      this_fragment_bounds.push_back(global_order_bounds<F>(finfo, f, t));
+    }
+
+    bounds.push_back(this_fragment_bounds);
+  }
+
+  return bounds;
+}
+
+/**
  * Asserts that when a set of fragments are written, the fragment metadata
  * accurately reflects the expected global order bounds of the input.
  *
@@ -261,7 +289,7 @@ static Bounds<F> global_order_bounds(
  * @return the global order bounds for each tile per fragment
  */
 template <typename Asserter, templates::FragmentType F>
-std::vector<std::vector<Bounds<F>>> instance(
+std::vector<std::vector<Bounds<F>>> assert_written_bounds(
     const Context& ctx,
     const std::string& array_uri,
     const std::vector<F>& fragments,
@@ -276,20 +304,19 @@ std::vector<std::vector<Bounds<F>>> instance(
   }
 
   // check bounds
-  std::vector<std::vector<std::pair<CoordsTuple<F>, CoordsTuple<F>>>> bounds;
-  Array forread(ctx, array_uri, TILEDB_READ);
+  std::vector<std::vector<Bounds<F>>> bounds =
+      get_all_bounds<F>(ctx, array_uri);
 
+  Array forread(ctx, array_uri, TILEDB_READ);
   const uint64_t tile_stride = forread.schema().capacity();
 
-  FragmentInfo finfo(ctx, array_uri);
-  finfo.load();
-
+  ASSERTER(bounds.size() == fragments.size());
   for (size_t f = 0; f < fragments.size(); f++) {
     const auto fragment = make_global_order(forread, fragments[f], layout);
 
-    std::decay_t<decltype(bounds[0])> fragment_bounds;
+    const uint64_t num_tiles = bounds[f].size();
+    ASSERTER(num_tiles == (fragment.size() + tile_stride - 1) / tile_stride);
 
-    const uint64_t num_tiles = finfo.mbr_num(f);
     for (size_t t = 0; t < num_tiles; t++) {
       const uint64_t lbi = t * tile_stride;
       const uint64_t ubi = std::min((t + 1) * tile_stride, fragment.size()) - 1;
@@ -297,14 +324,10 @@ std::vector<std::vector<Bounds<F>>> instance(
       const auto lbexpect = tuple_index(fragment.dimensions(), lbi);
       const auto ubexpect = tuple_index(fragment.dimensions(), ubi);
 
-      const auto [lbactual, ubactual] = global_order_bounds<F>(finfo, f, t);
+      const auto [lbactual, ubactual] = bounds[f][t];
       ASSERTER(lbexpect == lbactual);
       ASSERTER(ubexpect == ubactual);
-
-      fragment_bounds.push_back(std::make_pair(lbactual, ubactual));
     }
-
-    bounds.push_back(fragment_bounds);
   }
 
   return bounds;
@@ -355,16 +378,18 @@ TEST_CASE(
 
     std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
     SECTION("Global Order") {
-      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
-          vfs_test_setup.ctx(), array_uri, std::vector<Fragment1DFixed>{f});
+      fragment_bounds =
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment1DFixed>(
+              vfs_test_setup.ctx(), array_uri, std::vector<Fragment1DFixed>{f});
     }
 
     SECTION("Unordered") {
-      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
-          vfs_test_setup.ctx(),
-          array_uri,
-          std::vector<Fragment1DFixed>{f},
-          sm::Layout::UNORDERED);
+      fragment_bounds =
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment1DFixed>(
+              vfs_test_setup.ctx(),
+              array_uri,
+              std::vector<Fragment1DFixed>{f},
+              sm::Layout::UNORDERED);
     }
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(
@@ -390,7 +415,7 @@ TEST_CASE(
     SECTION("Global Order") {
       std::iota(f.dimension().begin(), f.dimension().end(), 1);
       const auto fragment_bounds =
-          instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment1DFixed>(
               vfs_test_setup.ctx(), array_uri, std::vector<Fragment1DFixed>{f});
       REQUIRE(fragment_bounds.size() == 1);
       CHECK(fragment_bounds[0] == expect);
@@ -402,7 +427,7 @@ TEST_CASE(
       }
 
       const auto fragment_bounds =
-          instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment1DFixed>(
               vfs_test_setup.ctx(),
               array_uri,
               std::vector<Fragment1DFixed>{f},
@@ -421,7 +446,7 @@ TEST_CASE(
         f.dimension() = {0, 0, 0, 0, 0, 0, 0, 0, 1};
 
         const auto fragment_bounds =
-            instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+            assert_written_bounds<tiledb::test::AsserterCatch, Fragment1DFixed>(
                 vfs_test_setup.ctx(),
                 array_uri,
                 std::vector<Fragment1DFixed>{f},
@@ -435,7 +460,7 @@ TEST_CASE(
         f.dimension() = {0, 0, 0, 1, 0, 0, 0, 0, 0};
 
         const auto fragment_bounds =
-            instance<tiledb::test::AsserterCatch, Fragment1DFixed>(
+            assert_written_bounds<tiledb::test::AsserterCatch, Fragment1DFixed>(
                 vfs_test_setup.ctx(),
                 array_uri,
                 std::vector<Fragment1DFixed>{f},
@@ -486,7 +511,7 @@ TEST_CASE(
           forread, fragment, sm::Layout::UNORDERED));
     }
 
-    instance<tiledb::test::AsserterRapidcheck, Fragment1DFixed>(
+    assert_written_bounds<tiledb::test::AsserterRapidcheck, Fragment1DFixed>(
         vfs_test_setup.ctx(),
         array_uri,
         global_order_fragments,
@@ -500,7 +525,7 @@ TEST_CASE(
     auto arrayguard = temp_array(allow_dups);
     Array forread(ctx, array_uri, TILEDB_READ);
 
-    instance<tiledb::test::AsserterRapidcheck, Fragment1DFixed>(
+    assert_written_bounds<tiledb::test::AsserterRapidcheck, Fragment1DFixed>(
         vfs_test_setup.ctx(), array_uri, fragments, sm::Layout::UNORDERED);
   });
 }
@@ -662,13 +687,15 @@ TEST_CASE(
 
     std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
     SECTION("Global Order") {
-      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          ctx, array_uri, std::vector<Fragment>{f});
+      fragment_bounds =
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+              ctx, array_uri, std::vector<Fragment>{f});
     }
 
     SECTION("Unordered") {
-      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
+      fragment_bounds =
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+              ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
     }
 
     std::vector<TileBounds> expect_bounds = {{{0, 0}, {0, 0}}};
@@ -678,7 +705,7 @@ TEST_CASE(
 
   DYNAMIC_SECTION("Row (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
-        instance<tiledb::test::AsserterCatch, Fragment>(
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
             ctx, array_uri, std::vector<Fragment>{row}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_row_bounds);
@@ -686,7 +713,7 @@ TEST_CASE(
 
   DYNAMIC_SECTION("Column (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
-        instance<tiledb::test::AsserterCatch, Fragment>(
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
             ctx, array_uri, std::vector<Fragment>{col}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_col_bounds);
@@ -694,7 +721,7 @@ TEST_CASE(
 
   DYNAMIC_SECTION("Square (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
-        instance<tiledb::test::AsserterCatch, Fragment>(
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
             ctx, array_uri, std::vector<Fragment>{square}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_square_bounds);
@@ -702,7 +729,7 @@ TEST_CASE(
 
   DYNAMIC_SECTION("Square offset (layout = " + sm::layout_str(layout) + ")") {
     const auto fragment_bounds =
-        instance<tiledb::test::AsserterCatch, Fragment>(
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
             ctx, array_uri, std::vector<Fragment>{square_offset}, layout);
     REQUIRE(fragment_bounds.size() == 1);
     CHECK(fragment_bounds[0] == expect_square_offset_bounds);
@@ -711,7 +738,7 @@ TEST_CASE(
   DYNAMIC_SECTION("Multi-fragment (layout = " + sm::layout_str(layout) + ")") {
     const std::vector<Fragment> fragments = {col, square_offset, row, square};
     const auto fragment_bounds =
-        instance<tiledb::test::AsserterCatch, Fragment>(
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
             ctx, array_uri, fragments, layout);
     CHECK(fragment_bounds.size() >= 1);
     if (fragment_bounds.size() >= 1) {
@@ -776,7 +803,7 @@ TEST_CASE(
           forread, fragment, sm::Layout::UNORDERED));
     }
 
-    instance<tiledb::test::AsserterRapidcheck, Fragment2DFixed>(
+    assert_written_bounds<tiledb::test::AsserterRapidcheck, Fragment2DFixed>(
         vfs_test_setup.ctx(),
         array_uri,
         global_order_fragments,
@@ -790,7 +817,7 @@ TEST_CASE(
     auto arrayguard = temp_array(allow_dups);
     Array forread(ctx, array_uri, TILEDB_READ);
 
-    instance<tiledb::test::AsserterRapidcheck, Fragment2DFixed>(
+    assert_written_bounds<tiledb::test::AsserterRapidcheck, Fragment2DFixed>(
         vfs_test_setup.ctx(), array_uri, fragments, sm::Layout::UNORDERED);
   });
 }
@@ -832,13 +859,15 @@ TEST_CASE(
 
     std::vector<std::vector<Bounds<Fragment>>> fragment_bounds;
     SECTION("Global Order") {
-      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          ctx, array_uri, std::vector<Fragment>{f});
+      fragment_bounds =
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+              ctx, array_uri, std::vector<Fragment>{f});
     }
 
     SECTION("Unordered") {
-      fragment_bounds = instance<tiledb::test::AsserterCatch, Fragment>(
-          ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
+      fragment_bounds =
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+              ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
     }
     REQUIRE(fragment_bounds.size() == 1);
 
@@ -877,7 +906,7 @@ TEST_CASE(
         "allow_dups = " + std::to_string(allow_dups) +
         ", layout = " + sm::layout_str(layout)) {
       const auto fragment_bounds =
-          instance<tiledb::test::AsserterCatch, Fragment>(
+          assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
               ctx, array_uri, std::vector<Fragment>{f}, layout);
       REQUIRE(fragment_bounds.size() == 1);
       CHECK(fragment_bounds[0].size() == 11);
@@ -936,6 +965,235 @@ TEST_CASE(
         CHECK(lbstr(fragment_bounds[0][10]) == "quuxfoogub");
         CHECK(ubstr(fragment_bounds[0][10]) == "quuxquuxquux");
       }
+    }
+  }
+}
+
+template <templates::FragmentType F>
+std::vector<std::vector<Bounds<F>>> consolidate_n_wise(
+    const Context& ctx, const std::string& uri, uint64_t fan_in) {
+  // step 0: consolidation config
+  // NB: this ideally would not be needed but in debug builds
+  // a huge amount of memory is allocated and initialized which is very slow
+  Config cfg;
+  cfg["sm.mem.total_budget"] = std::to_string(128 * 1024 * 1024);
+
+  // step 1: n-wise consolidate
+  std::vector<std::string> s_fragment_uris;
+  {
+    FragmentInfo fi(ctx, uri);
+    fi.load();
+
+    for (uint32_t f = 0; f < fi.fragment_num(); f++) {
+      s_fragment_uris.push_back(fi.fragment_uri(f));
+    }
+  }
+  for (uint32_t f = 0; f < s_fragment_uris.size(); f += fan_in) {
+    std::vector<const char*> fragment_uris;
+    for (uint32_t ff = f; ff < std::min(f + fan_in, s_fragment_uris.size());
+         ff++) {
+      fragment_uris.push_back(s_fragment_uris[ff].c_str());
+    }
+
+    Array::consolidate(
+        ctx, uri, fragment_uris.data(), fragment_uris.size(), &cfg);
+  }
+
+  // step 2: retrieve bounds of new fragments
+  return get_all_bounds<F>(ctx, uri);
+}
+
+template <templates::FragmentType F>
+struct ConsolidateOutput {
+  std::vector<F> fragment_data_;
+  std::vector<std::vector<Bounds<F>>> bounds_;
+};
+
+template <typename Asserter, templates::FragmentType F>
+ConsolidateOutput<F> assert_consolidate_n_wise_bounds(
+    const Context& ctx,
+    const std::string& array_uri,
+    const std::vector<F>& input_fragment_data,
+    uint64_t fan_in) {
+  const auto actual_bounds = consolidate_n_wise<F>(ctx, array_uri, fan_in);
+
+  Array forread(ctx, array_uri, TILEDB_READ);
+  const uint64_t tile_stride = forread.schema().capacity();
+
+  std::vector<F> output_fragments;
+  for (uint64_t f = 0; f < input_fragment_data.size(); f += fan_in) {
+    F output_fragment;
+    for (uint64_t ff = f; ff < std::min(f + fan_in, input_fragment_data.size());
+         ff++) {
+      output_fragment.extend(input_fragment_data[ff]);
+    }
+
+    output_fragments.push_back(
+        make_global_order<F>(forread, output_fragment, sm::Layout::UNORDERED));
+  }
+
+  ASSERTER(output_fragments.size() == actual_bounds.size());
+  for (uint64_t f = 0; f < output_fragments.size(); f++) {
+    const uint64_t num_tiles = actual_bounds[f].size();
+    ASSERTER(
+        num_tiles ==
+        (output_fragments[f].size() + tile_stride - 1) / tile_stride);
+
+    for (size_t t = 0; t < num_tiles; t++) {
+      const uint64_t lbi = t * tile_stride;
+      const uint64_t ubi =
+          std::min((t + 1) * tile_stride, output_fragments[f].size()) - 1;
+
+      const auto lbexpect = tuple_index(output_fragments[f].dimensions(), lbi);
+      const auto ubexpect = tuple_index(output_fragments[f].dimensions(), ubi);
+
+      const auto [lbactual, ubactual] = actual_bounds[f][t];
+      ASSERTER(lbexpect == lbactual);
+      ASSERTER(ubexpect == ubactual);
+    }
+  }
+
+  return ConsolidateOutput<F>{
+      .fragment_data_ = output_fragments, .bounds_ = actual_bounds};
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D fixed consolidation",
+    "[fragment_info][global-order]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_fixed_consolidation");
+
+  const templates::Dimension<Datatype::UINT64> dimension(
+      templates::Domain<uint64_t>(0, 1024 * 8), 16);
+
+  Context ctx = vfs_test_setup.ctx();
+
+  templates::ddl::create_array<Datatype::UINT64>(
+      array_uri,
+      ctx,
+      std::tuple<const templates::Dimension<Datatype::UINT64>&>{dimension},
+      std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      8,
+      false);
+
+  DeleteArrayGuard delarray(ctx.ptr().get(), array_uri.c_str());
+
+  using Fragment = templates::Fragment1D<uint64_t>;
+
+  SECTION("Single tile") {
+    std::vector<Fragment> fs;
+    for (uint64_t f = 0; f < 8; f++) {
+      Fragment input;
+      input.resize(8);
+      std::iota(input.dimension().begin(), input.dimension().end(), 1 + f * 8);
+      fs.push_back(input);
+    }
+
+    const auto fragment_bounds =
+        assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+            vfs_test_setup.ctx(), array_uri, fs);
+    REQUIRE(fragment_bounds.size() == fs.size());
+
+    SECTION("Pairs") {
+      const auto pairwise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, fs, 2);
+      CHECK(pairwise.bounds_.size() == fs.size() / 2);
+
+      // each new fragment should have two tiles each,
+      // and since they are ascending they should just be a concatenation
+      CHECK(
+          pairwise.bounds_[0] ==
+          std::vector<Bounds<Fragment>>{
+              fragment_bounds[0][0], fragment_bounds[1][0]});
+      CHECK(
+          pairwise.bounds_[1] ==
+          std::vector<Bounds<Fragment>>{
+              fragment_bounds[2][0], fragment_bounds[3][0]});
+      CHECK(
+          pairwise.bounds_[2] ==
+          std::vector<Bounds<Fragment>>{
+              fragment_bounds[4][0], fragment_bounds[5][0]});
+      CHECK(
+          pairwise.bounds_[3] ==
+          std::vector<Bounds<Fragment>>{
+              fragment_bounds[6][0], fragment_bounds[7][0]});
+
+      // run another round, now each should have four tiles
+      const auto quadwise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, pairwise.fragment_data_, 2);
+      CHECK(quadwise.bounds_.size() == 2);
+      CHECK(
+          quadwise.bounds_[0] == std::vector<Bounds<Fragment>>{
+                                     fragment_bounds[0][0],
+                                     fragment_bounds[1][0],
+                                     fragment_bounds[2][0],
+                                     fragment_bounds[3][0]});
+      CHECK(
+          quadwise.bounds_[1] == std::vector<Bounds<Fragment>>{
+                                     fragment_bounds[4][0],
+                                     fragment_bounds[5][0],
+                                     fragment_bounds[6][0],
+                                     fragment_bounds[7][0]});
+
+      // run final round
+      const auto octwise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, quadwise.fragment_data_, 2);
+      CHECK(octwise.bounds_.size() == 1);
+      CHECK(
+          octwise.bounds_[0] == std::vector<Bounds<Fragment>>{
+                                    fragment_bounds[0][0],
+                                    fragment_bounds[1][0],
+                                    fragment_bounds[2][0],
+                                    fragment_bounds[3][0],
+                                    fragment_bounds[4][0],
+                                    fragment_bounds[5][0],
+                                    fragment_bounds[6][0],
+                                    fragment_bounds[7][0]});
+    }
+
+    SECTION("Triples") {
+      const auto triwise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, fs, 3);
+      CHECK(triwise.bounds_.size() == 3);
+
+      // see notes above
+      CHECK(
+          triwise.bounds_[0] == std::vector<Bounds<Fragment>>{
+                                    fragment_bounds[0][0],
+                                    fragment_bounds[1][0],
+                                    fragment_bounds[2][0]});
+      CHECK(
+          triwise.bounds_[1] == std::vector<Bounds<Fragment>>{
+                                    fragment_bounds[3][0],
+                                    fragment_bounds[4][0],
+                                    fragment_bounds[5][0]});
+      CHECK(
+          triwise.bounds_[2] ==
+          std::vector<Bounds<Fragment>>{
+              fragment_bounds[6][0], fragment_bounds[7][0]});
+
+      const auto ninewise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, triwise.fragment_data_, 3);
+
+      CHECK(ninewise.bounds_.size() == 1);
+      CHECK(
+          ninewise.bounds_[0] == std::vector<Bounds<Fragment>>{
+                                     fragment_bounds[0][0],
+                                     fragment_bounds[1][0],
+                                     fragment_bounds[2][0],
+                                     fragment_bounds[3][0],
+                                     fragment_bounds[4][0],
+                                     fragment_bounds[5][0],
+                                     fragment_bounds[6][0],
+                                     fragment_bounds[7][0]});
     }
   }
 }
