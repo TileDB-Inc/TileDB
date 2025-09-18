@@ -33,5 +33,5 @@
 #include "hook_common.h"
 
 TEST_CASE("Compile definition - with hook logger") {
-  CHECK(which_hook == WhichHook::Logger);
+  STATIC_REQUIRE(which_hook == WhichHook::Logger);
 }

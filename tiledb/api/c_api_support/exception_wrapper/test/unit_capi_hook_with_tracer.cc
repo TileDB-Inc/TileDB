@@ -33,5 +33,5 @@
 #include "hook_common.h"
 
 TEST_CASE("Compile definition - with tracer") {
-  CHECK(which_hook == WhichHook::Tracer);
+  STATIC_REQUIRE(which_hook == WhichHook::Tracer);
 }
