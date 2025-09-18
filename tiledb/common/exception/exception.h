@@ -233,7 +233,7 @@ class BudgetUnavailable : public StatusException {
   /**
    * Ordinary constructor has same signature as `BudgetExceeded`.
    */
-  BudgetUnavailable(const std::string origin, const std::string message)
+  BudgetUnavailable(const std::string_view origin, const std::string message)
       : StatusException(origin, message) {
   }
 };
@@ -247,7 +247,7 @@ class BudgetExceeded : public StatusException {
   /**
    * Ordinary constructor has same signature as `BudgetUnavailable`.
    */
-  BudgetExceeded(const std::string origin, const std::string message)
+  BudgetExceeded(const std::string_view origin, const std::string message)
       : StatusException(origin, message) {
   }
 };
