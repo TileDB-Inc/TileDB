@@ -1207,6 +1207,8 @@ struct Fragment {
       decltype(f_qb_const_ref(std::declval<T>()));
 
  public:
+  using self_type = Fragment<DimensionTuple, AttributeTuple>;
+
   using DimensionBuffers = value_tuple_query_buffers<DimensionTuple>;
   using DimensionBuffersRef = ref_tuple_query_buffers<DimensionTuple>;
   using DimensionBuffersConstRef =
@@ -1270,6 +1272,16 @@ struct Fragment {
     std::apply(
         [num_cells]<typename... Ts>(Ts&... field) {
           (field.resize(num_cells), ...);
+        },
+        std::tuple_cat(dimensions(), attributes()));
+  }
+
+  void extend(const self_type& other) {
+    std::apply(
+        [&]<typename... Ts>(Ts&... dst) {
+          std::apply(
+              [&]<typename... Us>(const Us&... src) { (dst.extend(src), ...); },
+              std::tuple_cat(other.dimensions(), other.attributes()));
         },
         std::tuple_cat(dimensions(), attributes()));
   }
