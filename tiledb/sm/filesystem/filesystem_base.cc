@@ -55,11 +55,11 @@ void FilesystemBase::move_dir(const URI&, const URI&) const {
   throw UnsupportedOperation("move_dir");
 }
 
-void FilesystemBase::copy_file(const URI&, const URI&) const {
+void FilesystemBase::copy_file(const URI&, const URI&) {
   throw UnsupportedOperation("copy_file");
 }
 
-void FilesystemBase::copy_dir(const URI&, const URI&) const {
+void FilesystemBase::copy_dir(const URI&, const URI&) {
   throw UnsupportedOperation("copy_dir");
 }
 
