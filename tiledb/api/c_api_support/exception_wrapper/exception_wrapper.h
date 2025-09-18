@@ -546,6 +546,9 @@ template <>
 struct AspectReturnAdapter<void> {
   AspectReturnAdapter() {
   }
+
+  ~AspectReturnAdapter() {
+  }
 };
 
 /**
@@ -628,7 +631,7 @@ class CAPIFunction<f, H, A> {
        * Note that we don't need std::forward here because all the arguments
        * must have "C" linkage.
        */
-      [[maybe_unused]] const auto bind = AspectWrapper<A>::call(args...);
+      const auto bind = AspectWrapper<A>::call(args...);
       if constexpr (std::same_as<R, void>) {
         f(args...);
         h.action_on_success();
