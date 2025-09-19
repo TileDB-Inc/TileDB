@@ -241,7 +241,7 @@ TEST_CASE_METHOD(
   std::filesystem::create_directories(custom_dir);
 
   // Set the TILEDB_PROFILE_DIR environment variable
-  setenv("TILEDB_PROFILE_DIR", custom_dir.c_str(), 1);
+  setenv_local("TILEDB_PROFILE_DIR", custom_dir.c_str(), 1);
 
   // Create a RestProfile without specifying a directory - it should use the env
   // var
@@ -279,5 +279,5 @@ TEST_CASE_METHOD(
       "https://explicit.server");
 
   // Clean up: Unset the environment variable
-  unsetenv("TILEDB_PROFILE_DIR");
+  setenv_local("TILEDB_PROFILE_DIR", "");
 }
