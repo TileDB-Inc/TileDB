@@ -195,6 +195,12 @@ static void allocate_var_bound_buffers(
 template <templates::FragmentType F>
 using Bounds = std::pair<CoordsTuple<F>, CoordsTuple<F>>;
 
+template <templates::FragmentType F>
+using FragmentBounds = std::vector<Bounds<F>>;
+
+template <templates::FragmentType F>
+using ArrayBounds = std::vector<FragmentBounds<F>>;
+
 /**
  * @return the lower and upper bounds of tile `(f, t)` in the fragment info
  */
@@ -1264,5 +1270,277 @@ TEST_CASE(
                                   tile(49, 56),
                                   tile(57, 64)}});
     }
+
+    SECTION("Triples") {
+      const auto triwise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, fs, 3);
+
+      CHECK(
+          triwise.bounds_ == ArrayBounds<Fragment>{
+                                 {tile(1, 18), tile(19, 41), tile(42, 58)},
+                                 {tile(4, 21), tile(22, 44), tile(45, 61)},
+                                 {tile(7, 32), tile(39, 64)}});
+
+      const auto ninewise = assert_consolidate_n_wise_bounds<
+          tiledb::test::AsserterCatch,
+          Fragment>(ctx, array_uri, triwise.fragment_data_, 3);
+
+      CHECK(
+          ninewise.bounds_ == std::vector<std::vector<Bounds<Fragment>>>{
+                                  {tile(1, 8),
+                                   tile(9, 16),
+                                   tile(17, 24),
+                                   tile(25, 32),
+                                   tile(33, 40),
+                                   tile(41, 48),
+                                   tile(49, 56),
+                                   tile(57, 64)}});
+    }
   }
+}
+
+template <templates::FragmentType F>
+void rapidcheck_instance_consolidation(
+    const Context& ctx,
+    const std::string& array_uri,
+    uint64_t fan_in,
+    const std::vector<F>& input) {
+  Array forread(ctx, array_uri, TILEDB_READ);
+  std::vector<F> global_order_fragments;
+  for (const auto& fragment : input) {
+    global_order_fragments.push_back(
+        make_global_order<F>(forread, fragment, sm::Layout::UNORDERED));
+  }
+
+  ConsolidateOutput<F> state;
+  state.fragment_data_ = global_order_fragments;
+  state.bounds_ = assert_written_bounds<tiledb::test::AsserterRapidcheck, F>(
+      ctx, array_uri, global_order_fragments, sm::Layout::GLOBAL_ORDER);
+
+  while (state.bounds_.size() > 1) {
+    state =
+        assert_consolidate_n_wise_bounds<tiledb::test::AsserterRapidcheck, F>(
+            ctx, array_uri, state.fragment_data_, fan_in);
+  }
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D var consolidation",
+    "[fragment_info][global-order]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_var_consolidation");
+
+  const bool allow_dups = GENERATE(true, false);
+
+  const templates::Dimension<Datatype::STRING_ASCII> dimension;
+
+  Context ctx = vfs_test_setup.ctx();
+
+  templates::ddl::create_array<Datatype::STRING_ASCII>(
+      array_uri,
+      ctx,
+      std::tuple<const templates::Dimension<Datatype::STRING_ASCII>&>{
+          dimension},
+      std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      8,
+      allow_dups);
+
+  DeleteArrayGuard delarray(ctx.ptr().get(), array_uri.c_str());
+
+  using Fragment = Fragment1DVar;
+
+  const uint64_t num_cells_per_fragment = 16;
+  std::vector<Fragment> input;
+  for (uint64_t f = 0; f < 8; f++) {
+    Fragment fdata;
+    for (uint64_t c = 0; c < num_cells_per_fragment; c++) {
+      const std::string value = std::to_string(c + f * num_cells_per_fragment);
+      fdata.dimension().push_back(std::span<const uint8_t>(
+          reinterpret_cast<const uint8_t*>(value.data()), value.size()));
+    }
+    input.push_back(fdata);
+  }
+
+  auto tile = [](std::string_view lb, std::string_view ub) -> Bounds<Fragment> {
+    return std::make_pair(
+        std::make_tuple(std::vector<uint8_t>(lb.begin(), lb.end())),
+        std::make_tuple(std::vector<uint8_t>(ub.begin(), ub.end())));
+  };
+
+  const auto fragment_bounds =
+      assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+          ctx, array_uri, input, sm::Layout::UNORDERED);
+
+  REQUIRE(
+      fragment_bounds == ArrayBounds<Fragment>{
+                             {tile("0", "15"), tile("2", "9")},
+                             {tile("16", "23"), tile("24", "31")},
+                             {tile("32", "39"), tile("40", "47")},
+                             {tile("48", "55"), tile("56", "63")},
+                             {tile("64", "71"), tile("72", "79")},
+                             {tile("80", "87"), tile("88", "95")},
+                             {tile("100", "107"), tile("108", "99")},
+                             {tile("112", "119"), tile("120", "127")}});
+
+  SECTION("Pairs") {
+    const auto pairwise =
+        assert_consolidate_n_wise_bounds<tiledb::test::AsserterCatch, Fragment>(
+            ctx, array_uri, input, 2);
+
+    CHECK(
+        pairwise.bounds_ == ArrayBounds<Fragment>{
+                                {tile("0", "15"),
+                                 tile("16", "22"),
+                                 tile("23", "3"),
+                                 tile("30", "9")},
+                                {tile("32", "39"),
+                                 tile("40", "47"),
+                                 tile("48", "55"),
+                                 tile("56", "63")},
+                                {tile("64", "71"),
+                                 tile("72", "79"),
+                                 tile("80", "87"),
+                                 tile("88", "95")},
+                                {tile("100", "107"),
+                                 tile("108", "115"),
+                                 tile("116", "123"),
+                                 tile("124", "99")}});
+
+    const auto quadwise =
+        assert_consolidate_n_wise_bounds<tiledb::test::AsserterCatch, Fragment>(
+            ctx, array_uri, pairwise.fragment_data_, 2);
+
+    CHECK(
+        quadwise.bounds_ == ArrayBounds<Fragment>{
+                                {tile("0", "15"),
+                                 tile("16", "22"),
+                                 tile("23", "3"),
+                                 tile("30", "37"),
+                                 tile("38", "44"),
+                                 tile("45", "51"),
+                                 tile("52", "59"),
+                                 tile("6", "9")},
+                                {tile("100", "107"),
+                                 tile("108", "115"),
+                                 tile("116", "123"),
+                                 tile("124", "67"),
+                                 tile("68", "75"),
+                                 tile("76", "83"),
+                                 tile("84", "91"),
+                                 tile("92", "99")}});
+
+    const auto octwise =
+        assert_consolidate_n_wise_bounds<tiledb::test::AsserterCatch, Fragment>(
+            ctx, array_uri, quadwise.fragment_data_, 2);
+
+    CHECK(
+        octwise.bounds_ == ArrayBounds<Fragment>{
+                               {tile("0", "104"),
+                                tile("105", "111"),
+                                tile("112", "119"),
+                                tile("12", "126"),
+                                tile("127", "19"),
+                                tile("2", "26"),
+                                tile("27", "33"),
+                                tile("34", "40"),
+                                tile("41", "48"),
+                                tile("49", "55"),
+                                tile("56", "62"),
+                                tile("63", "7"),
+                                tile("70", "77"),
+                                tile("78", "84"),
+                                tile("85", "91"),
+                                tile("92", "99")}});
+  }
+
+  SECTION("Triples") {
+    const auto triwise =
+        assert_consolidate_n_wise_bounds<tiledb::test::AsserterCatch, Fragment>(
+            ctx, array_uri, input, 3);
+
+    CHECK(
+        triwise.bounds_ == ArrayBounds<Fragment>{
+                               {tile("0", "15"),
+                                tile("16", "22"),
+                                tile("23", "3"),
+                                tile("30", "37"),
+                                tile("38", "44"),
+                                tile("45", "9")},
+                               {tile("48", "55"),
+                                tile("56", "63"),
+                                tile("64", "71"),
+                                tile("72", "79"),
+                                tile("80", "87"),
+                                tile("88", "95")},
+                               {tile("100", "107"),
+                                tile("108", "115"),
+                                tile("116", "123"),
+                                tile("124", "99")}});
+
+    const auto ninewise =
+        assert_consolidate_n_wise_bounds<tiledb::test::AsserterCatch, Fragment>(
+            ctx, array_uri, triwise.fragment_data_, 3);
+
+    CHECK(
+        ninewise.bounds_ == ArrayBounds<Fragment>{
+                                {tile("0", "104"),
+                                 tile("105", "111"),
+                                 tile("112", "119"),
+                                 tile("12", "126"),
+                                 tile("127", "19"),
+                                 tile("2", "26"),
+                                 tile("27", "33"),
+                                 tile("34", "40"),
+                                 tile("41", "48"),
+                                 tile("49", "55"),
+                                 tile("56", "62"),
+                                 tile("63", "7"),
+                                 tile("70", "77"),
+                                 tile("78", "84"),
+                                 tile("85", "91"),
+                                 tile("92", "99")}});
+  }
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D fixed consolidation rapidcheck",
+    "[fragment_info][global-order][rapidcheck]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_fixed_consolidation");
+
+  const templates::Dimension<Datatype::UINT64> dimension(
+      templates::Domain<uint64_t>(0, 1024 * 8), 16);
+
+  Context ctx = vfs_test_setup.ctx();
+
+  auto temp_array = [&](bool allow_dups) {
+    templates::ddl::create_array<Datatype::UINT64>(
+        array_uri,
+        ctx,
+        std::tuple<const templates::Dimension<Datatype::UINT64>&>{dimension},
+        std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        8,
+        allow_dups);
+
+    return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  };
+
+  rc::prop("1D fixed consolidation", [&](bool allow_dups) {
+    uint64_t fan_in = *rc::gen::inRange(2, 8);
+    auto fragments = *rc::gen::suchThat(
+        rc::gen::container<std::vector<Fragment1DFixed>>(
+            rc::make_fragment_1d<uint64_t>(allow_dups, dimension.domain)),
+        [](auto value) { return value.size() > 1; });
+
+    auto arrayguard = temp_array(allow_dups);
+    rapidcheck_instance_consolidation<Fragment1DFixed>(
+        ctx, array_uri, fan_in, fragments);
+  });
 }
