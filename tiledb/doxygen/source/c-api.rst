@@ -563,7 +563,7 @@ Group
 -----
 .. doxygenfunction:: tiledb_group_create
     :project: TileDB-C
-.. doxygenfunction:: tiledb_group_dump_str
+.. doxygenfunction:: tiledb_group_dump_str_v2
     :project: TileDB-C
 
 Buffer

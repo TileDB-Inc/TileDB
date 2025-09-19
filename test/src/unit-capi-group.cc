@@ -1577,34 +1577,18 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   std::string group_dump;
-  // Test both the new and the deprecated API. Remove the else part when the
-  // deprecated API gets removed.
-  bool use_dump_v2 = GENERATE(true, false);
-  if (use_dump_v2) {
-    tiledb_string_t* group_dump_handle;
-    rc = tiledb_group_dump_str_v2(ctx_, group1, &group_dump_handle, 1);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(group_dump_handle != nullptr);
-    const char* group_dump_ptr;
-    size_t group_dump_size;
-    rc = tiledb_string_view(
-        group_dump_handle, &group_dump_ptr, &group_dump_size);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(group_dump_ptr != nullptr);
-    group_dump = std::string(group_dump_ptr, group_dump_size);
-    rc = tiledb_string_free(&group_dump_handle);
-    REQUIRE(rc == TILEDB_OK);
-  } else {
-    char* group_dump_ptr;
-    rc = tiledb_group_dump_str(ctx_, group1, &group_dump_ptr, 1);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(group_dump_ptr != nullptr);
-    group_dump = std::string(group_dump_ptr);
-    // Usually it's not safe to call free() on this pointer, but since we are
-    // building everything at the same time, tiledb's and tiledb_unit's
-    // allocators are the same.
-    free(group_dump_ptr);
-  }
+  tiledb_string_t* group_dump_handle;
+  rc = tiledb_group_dump_str_v2(ctx_, group1, &group_dump_handle, 1);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(group_dump_handle != nullptr);
+  const char* group_dump_ptr;
+  size_t group_dump_size;
+  rc = tiledb_string_view(group_dump_handle, &group_dump_ptr, &group_dump_size);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(group_dump_ptr != nullptr);
+  group_dump = std::string(group_dump_ptr, group_dump_size);
+  rc = tiledb_string_free(&group_dump_handle);
+  REQUIRE(rc == TILEDB_OK);
   REQUIRE(group_dump == "group1 GROUP\n|-- group2 GROUP (does not exist)\n");
 
   rc = tiledb_group_close(ctx_, group1);
