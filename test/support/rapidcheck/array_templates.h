@@ -178,9 +178,7 @@ Gen<templates::Domain<D>> make_range(const templates::Domain<D>& domain) {
 
 template <DimensionType D, typename... Att>
 Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
-    bool allow_duplicates, const Domain<D>& d) {
-  auto coord = make_coordinate(d);
-
+    bool allow_duplicates, Gen<D> coord) {
   auto cell = gen::tuple(coord, gen::arbitrary<typename Att::cell_type>()...);
 
   using Cell = std::tuple<D, typename Att::cell_type...>;
@@ -213,6 +211,19 @@ Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
     return Fragment1D<D, typename Att::cell_type...>{
         std::make_tuple(coords), atts};
   });
+}
+
+template <DimensionType D, typename... Att>
+Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
+    bool allow_duplicates) {
+  return make_fragment_1d<D, Att...>(allow_duplicates, gen::arbitrary<D>());
+}
+
+template <DimensionType D, typename... Att>
+Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
+    bool allow_duplicates, const Domain<D>& d) {
+  auto coord = make_coordinate(d);
+  return make_fragment_1d<D, Att...>(allow_duplicates, coord);
 }
 
 template <DimensionType D1, DimensionType D2, AttributeType... Att>

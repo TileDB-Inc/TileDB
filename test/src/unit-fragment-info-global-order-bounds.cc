@@ -996,10 +996,7 @@ TEST_CASE(
   const auto array_uri = vfs_test_setup.array_uri(
       "fragment_metadata_global_order_bounds_1d_var_rapidcheck");
 
-  const templates::StringDimensionCoordType LB = {'a'};
-  const templates::StringDimensionCoordType UB = {'z'};
-  const templates::Domain<templates::StringDimensionCoordType> domain(LB, UB);
-  const templates::Dimension<Datatype::STRING_ASCII> dimension(domain);
+  const templates::Dimension<Datatype::STRING_ASCII> dimension;
 
   Context ctx = vfs_test_setup.ctx();
 
@@ -1039,8 +1036,7 @@ TEST_CASE(
 
   rc::prop("1D var rapidcheck", [&](bool allow_dups) {
     auto fragments = *rc::gen::container<std::vector<F>>(
-        rc::make_fragment_1d<templates::StringDimensionCoordType>(
-            allow_dups, domain));
+        rc::make_fragment_1d<templates::StringDimensionCoordType>(allow_dups));
 
     instance(allow_dups, fragments);
   });
@@ -1630,5 +1626,46 @@ TEST_CASE(
     auto arrayguard = temp_array(allow_dups);
     rapidcheck_instance_consolidation<Fragment1DFixed>(
         ctx, array_uri, fan_in, fragments);
+  });
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D var consolidation rapidcheck",
+    "[fragment_info][global-order][rapidcheck]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_fixed_consolidation");
+
+  const templates::Dimension<Datatype::STRING_ASCII> dimension;
+
+  Context ctx = vfs_test_setup.ctx();
+
+  auto temp_array = [&](bool allow_dups) {
+    templates::ddl::create_array<Datatype::STRING_ASCII>(
+        array_uri,
+        ctx,
+        std::tuple<const templates::Dimension<Datatype::STRING_ASCII>&>{
+            dimension},
+        std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        8,
+        allow_dups);
+
+    return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  };
+
+  using F = Fragment1DVar;
+
+  rc::prop("1D var consolidation", [&](bool allow_dups) {
+    uint64_t fan_in = *rc::gen::inRange(2, 8);
+    auto fragments = *rc::gen::suchThat(
+        rc::gen::container<std::vector<F>>(
+            rc::make_fragment_1d<templates::StringDimensionCoordType>(
+                allow_dups)),
+        [](auto value) { return value.size() > 1; });
+
+    auto arrayguard = temp_array(allow_dups);
+    rapidcheck_instance_consolidation<F>(ctx, array_uri, fan_in, fragments);
   });
 }
