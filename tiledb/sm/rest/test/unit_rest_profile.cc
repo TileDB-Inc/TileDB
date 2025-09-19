@@ -30,6 +30,7 @@
  * Tests the `RestProfile` class.
  */
 
+#include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
 #include "tiledb/sm/rest/rest_profile.h"
 
