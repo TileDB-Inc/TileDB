@@ -400,11 +400,13 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
  * 3) this
  */
 void FragmentMetadata::set_tile_global_order_bounds_var(
-    const std::string& dim_name, uint64_t tile, const WriterTileTuple& data) {
+    const std::string& dim_name, uint64_t wtile, const WriterTileTuple& data) {
   const auto dim = array_schema_->domain().get_dimension_index(dim_name);
   if (!array_schema_->domain().dimensions()[dim]->var_size()) {
     return;
   }
+
+  const uint64_t tile = tile_index_base_ + wtile;
 
   const auto& tile_min = data.global_order_min();
   iassert(tile_min.has_value());
