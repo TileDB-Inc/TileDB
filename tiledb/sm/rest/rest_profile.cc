@@ -125,6 +125,13 @@ RestProfile::RestProfile(
               RestProfile::DEFAULT_PROFILE_NAME) {
   if (dir.has_value() && !dir.value().empty()) {
     dir_ = ensure_trailing_slash(dir.value());
+  } else if (getenv("TILEDB_PROFILE_DIR") != nullptr) {
+    // If the user has set the TILEDB_PROFILE_DIR environmental variable,
+    // use that as the directory to store the profiles file.
+    // Note: the TILEDB_ prefix is just the default and can change on a config
+    // level. Since a Profile object is not tied to a Config object, we use this
+    // hardcoded value here.
+    dir_ = ensure_trailing_slash(std::string(getenv("TILEDB_PROFILE_DIR")));
   } else {
     // We don't want to directly interact with the home directory of the user,
     // so we create a folder in the user's home directory.
