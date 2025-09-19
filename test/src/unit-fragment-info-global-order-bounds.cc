@@ -975,19 +975,6 @@ TEST_CASE(
       }
     }
   }
-
-  SECTION("Shrinking") {
-    Fragment f;
-    f.dimension().push_back(templates::StringDimensionCoordType{'o', 'a'});
-    f.dimension().push_back(templates::StringDimensionCoordType{'o', '\324'});
-
-    {
-      Array forread(ctx, array_uri, TILEDB_READ);
-      f = make_global_order(forread, f, sm::Layout::UNORDERED);
-    }
-    assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
-        ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
-  }
 }
 
 TEST_CASE(
@@ -1021,10 +1008,8 @@ TEST_CASE(
 
   using F = Fragment1DVar;
 
-  rc::prop("1D var rapidcheck", [&](bool allow_dups) {
-    auto fragments = *rc::gen::container<std::vector<F>>(
-        rc::make_fragment_1d<templates::StringDimensionCoordType>(
-            allow_dups, domain));
+  auto instance = [&]<typename Asserter = tiledb::test::AsserterRapidcheck>(
+                      bool allow_dups, const std::vector<F>& fragments) {
     auto arrayguard = temp_array(allow_dups);
     Array forread(ctx, array_uri, TILEDB_READ);
     std::vector<F> global_order_fragments;
@@ -1033,12 +1018,35 @@ TEST_CASE(
           make_global_order<F>(forread, fragment, sm::Layout::UNORDERED));
     }
 
-    assert_written_bounds<tiledb::test::AsserterRapidcheck, F>(
+    assert_written_bounds<Asserter, F>(
         vfs_test_setup.ctx(),
         array_uri,
         global_order_fragments,
         sm::Layout::GLOBAL_ORDER);
+  };
+
+  rc::prop("1D var rapidcheck", [&](bool allow_dups) {
+    auto fragments = *rc::gen::container<std::vector<F>>(
+        rc::make_fragment_1d<templates::StringDimensionCoordType>(
+            allow_dups, domain));
+
+    instance(allow_dups, fragments);
   });
+
+  SECTION("Shrinking") {
+    F f;
+    f.dimension().push_back(templates::StringDimensionCoordType{'a'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'b'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'c'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'w'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'n'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'a', 'a'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'d'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'g'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'v'});
+
+    instance.operator()<tiledb::test::AsserterCatch>(false, std::vector<F>{f});
+  }
 }
 
 template <templates::FragmentType F>
