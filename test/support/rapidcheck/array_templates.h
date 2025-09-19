@@ -139,7 +139,19 @@ Gen<D> make_coordinate(const templates::Domain<D>& domain) {
   // whereas the domain upper bound is inclusive.
   // As a result some contortion is required to deal
   // with numeric_limits.
-  if (std::is_signed<D>::value) {
+  if constexpr (std::is_same_v<D, StringDimensionCoordType>) {
+    // NB: poor performance with small domains for sure
+    return gen::suchThat(
+        gen::map(
+            gen::string<std::string>(),
+            [](std::string s) {
+              StringDimensionCoordType v(s.begin(), s.end());
+              return v;
+            }),
+        [domain](const StringDimensionCoordType& s) {
+          return domain.lower_bound <= s && s <= domain.upper_bound;
+        });
+  } else if constexpr (std::is_signed<D>::value) {
     if (int64_t(domain.upper_bound) < std::numeric_limits<int64_t>::max()) {
       return gen::cast<D>(gen::inRange(
           int64_t(domain.lower_bound), int64_t(domain.upper_bound + 1)));
@@ -185,7 +197,11 @@ Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
 
     std::apply(
         [&](std::vector<D> tup_d1, auto... tup_atts) {
-          coords.values_ = tup_d1;
+          if constexpr (std::is_same_v<D, StringDimensionCoordType>) {
+            coords = query_buffers<D>(tup_d1);
+          } else {
+            coords.values_ = tup_d1;
+          }
           atts = std::apply(
               [&]<typename... Ts>(std::vector<Ts>... att) {
                 return std::make_tuple(query_buffers<Ts>(att)...);

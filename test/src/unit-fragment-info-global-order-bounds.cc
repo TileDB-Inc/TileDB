@@ -45,7 +45,8 @@ using namespace tiledb::test;
 using Fragment1DFixed = templates::Fragment1D<uint64_t>;
 using Fragment2DFixed = templates::Fragment2D<int32_t, int32_t>;
 
-using Fragment1DVar = templates::Fragment1D<std::vector<uint8_t>>;
+using Fragment1DVar =
+    templates::Fragment1D<templates::StringDimensionCoordType>;
 
 void showValue(const Fragment1DFixed& value, std::ostream& os) {
   rc::showFragment(value, os);
@@ -144,7 +145,7 @@ static void prepare_bound_buffers(
     DimensionTuple<F>& bufs, std::array<void*, F::NUM_DIMENSIONS>& ptrs) {
   auto prepare_bound_buffer =
       [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
-        if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+        if constexpr (std::is_same_v<T, templates::StringDimensionCoordType>) {
           if (qbuf.values_.empty()) {
             ptrs[i] = nullptr;
           } else {
@@ -176,7 +177,7 @@ static void allocate_var_bound_buffers(
     DimensionTuple<F>& bufs, size_t sizes[]) {
   auto allocate_var_bound_buffer =
       [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
-        if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+        if constexpr (std::is_same_v<T, templates::StringDimensionCoordType>) {
           qbuf.values_.resize(sizes[i]);
           qbuf.offsets_ = {0};
         } else {
@@ -858,7 +859,8 @@ TEST_CASE(
 
   SECTION("Minimum write") {
     std::string svalue = GENERATE("foo", "", "long-ish string");
-    const std::vector<uint8_t> value(svalue.begin(), svalue.end());
+    const templates::StringDimensionCoordType value(
+        svalue.begin(), svalue.end());
 
     Fragment f;
     f.dimension().push_back(value);
@@ -891,7 +893,7 @@ TEST_CASE(
     for (const auto& s1 : words) {
       for (const auto& s2 : words) {
         for (const auto& s3 : words) {
-          std::vector<uint8_t> coord(s1.begin(), s1.end());
+          templates::StringDimensionCoordType coord(s1.begin(), s1.end());
           coord.insert(coord.end(), s2.begin(), s2.end());
           coord.insert(coord.end(), s3.begin(), s3.end());
 
@@ -973,6 +975,70 @@ TEST_CASE(
       }
     }
   }
+
+  SECTION("Shrinking") {
+    Fragment f;
+    f.dimension().push_back(templates::StringDimensionCoordType{'o', 'a'});
+    f.dimension().push_back(templates::StringDimensionCoordType{'o', '\324'});
+
+    {
+      Array forread(ctx, array_uri, TILEDB_READ);
+      f = make_global_order(forread, f, sm::Layout::UNORDERED);
+    }
+    assert_written_bounds<tiledb::test::AsserterCatch, Fragment>(
+        ctx, array_uri, std::vector<Fragment>{f}, sm::Layout::UNORDERED);
+  }
+}
+
+TEST_CASE(
+    "Fragment metadata global order bounds: 1D var rapidcheck",
+    "[fragment_info][global-order][rapidcheck]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_1d_var_rapidcheck");
+
+  const templates::StringDimensionCoordType LB = {'a'};
+  const templates::StringDimensionCoordType UB = {'z'};
+  const templates::Domain<templates::StringDimensionCoordType> domain(LB, UB);
+  const templates::Dimension<Datatype::STRING_ASCII> dimension(domain);
+
+  Context ctx = vfs_test_setup.ctx();
+
+  auto temp_array = [&](bool allow_dups) {
+    templates::ddl::create_array<Datatype::STRING_ASCII>(
+        array_uri,
+        ctx,
+        std::tuple<const templates::Dimension<Datatype::STRING_ASCII>&>{
+            dimension},
+        std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        8,
+        allow_dups);
+
+    return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  };
+
+  using F = Fragment1DVar;
+
+  rc::prop("1D var rapidcheck", [&](bool allow_dups) {
+    auto fragments = *rc::gen::container<std::vector<F>>(
+        rc::make_fragment_1d<templates::StringDimensionCoordType>(
+            allow_dups, domain));
+    auto arrayguard = temp_array(allow_dups);
+    Array forread(ctx, array_uri, TILEDB_READ);
+    std::vector<F> global_order_fragments;
+    for (const auto& fragment : fragments) {
+      global_order_fragments.push_back(
+          make_global_order<F>(forread, fragment, sm::Layout::UNORDERED));
+    }
+
+    assert_written_bounds<tiledb::test::AsserterRapidcheck, F>(
+        vfs_test_setup.ctx(),
+        array_uri,
+        global_order_fragments,
+        sm::Layout::GLOBAL_ORDER);
+  });
 }
 
 template <templates::FragmentType F>
@@ -1359,16 +1425,18 @@ TEST_CASE(
     Fragment fdata;
     for (uint64_t c = 0; c < num_cells_per_fragment; c++) {
       const std::string value = std::to_string(c + f * num_cells_per_fragment);
-      fdata.dimension().push_back(std::span<const uint8_t>(
-          reinterpret_cast<const uint8_t*>(value.data()), value.size()));
+      fdata.dimension().push_back(
+          templates::StringDimensionCoordView(value.data(), value.size()));
     }
     input.push_back(fdata);
   }
 
   auto tile = [](std::string_view lb, std::string_view ub) -> Bounds<Fragment> {
     return std::make_pair(
-        std::make_tuple(std::vector<uint8_t>(lb.begin(), lb.end())),
-        std::make_tuple(std::vector<uint8_t>(ub.begin(), ub.end())));
+        std::make_tuple(
+            templates::StringDimensionCoordType(lb.begin(), lb.end())),
+        std::make_tuple(
+            templates::StringDimensionCoordType(ub.begin(), ub.end())));
   };
 
   const auto fragment_bounds =

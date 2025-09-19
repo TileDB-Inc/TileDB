@@ -59,6 +59,9 @@ class Dimension;
 
 namespace tiledb::test::templates {
 
+using StringDimensionCoordType = std::vector<char>;
+using StringDimensionCoordView = std::span<const char>;
+
 /**
  * Adapts a `std::tuple` whose fields are all `GlobalCellCmp`
  * to itself be `GlobalCellCmp`.
@@ -75,8 +78,8 @@ struct global_cell_cmp_std_tuple {
       const T& field) {
     static_assert(
         stdx::is_fundamental<T> ||
-        std::is_same_v<T, std::span<const uint8_t>> ||
-        std::is_same_v<T, std::vector<uint8_t>>);
+        std::is_same_v<T, StringDimensionCoordView> ||
+        std::is_same_v<T, StringDimensionCoordType>);
     if constexpr (stdx::is_fundamental<T>) {
       return UntypedDatumView(&field, sizeof(T));
     } else {
@@ -125,7 +128,7 @@ struct query_buffers {};
  */
 template <typename D>
 concept DimensionType =
-    std::is_same_v<D, std::vector<uint8_t>> or requires(const D& coord) {
+    std::is_same_v<D, StringDimensionCoordType> or requires(const D& coord) {
       typename std::is_signed<D>;
       { coord < coord } -> std::same_as<bool>;
       { D(int64_t(coord)) } -> std::same_as<D>;
@@ -227,7 +230,16 @@ struct Dimension {
 
 template <>
 struct Dimension<tiledb::sm::Datatype::STRING_ASCII> {
-  using value_type = std::vector<uint8_t>;
+  using value_type = StringDimensionCoordType;
+
+  Dimension() {
+  }
+
+  Dimension(const Domain<value_type>& domain)
+      : domain(domain) {
+  }
+
+  std::optional<Domain<value_type>> domain;
 };
 
 template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
@@ -1565,7 +1577,7 @@ void create_array(
     using CoordType = templates::Dimension<D>::value_type;
     dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
     dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
-    if constexpr (std::is_same_v<CoordType, std::vector<uint8_t>>) {
+    if constexpr (std::is_same_v<CoordType, StringDimensionCoordType>) {
       dimension_ranges.push_back(nullptr);
       dimension_extents.push_back(nullptr);
     } else {
