@@ -189,7 +189,7 @@ jobs:
         shell: bash
         env:
           ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
-          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.6' || '' }}
+          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.8' || '' }}
           VCPKG_TARGET_TRIPLET: ${{ runner.os == 'Linux' && 'x64-linux' || 'x64-osx' }}
         run: |
           set -e pipefail
