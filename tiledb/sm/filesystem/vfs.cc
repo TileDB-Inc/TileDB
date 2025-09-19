@@ -78,7 +78,7 @@ tdb_unique_ptr<FilesystemBase> make_tiledbfs(
   throw_if_not_ok(
       new_config.set("vfs.s3.endpoint_override", rest_server + "/v4/files"));
   auto token = config.get<std::string>("rest.token");
-  if (!token) {
+  if (token) {
     throw_if_not_ok(new_config.set("vfs.s3.aws_access_key_id", *token));
     throw_if_not_ok(new_config.set("vfs.s3.aws_secret_access_key", "unused"));
   }
