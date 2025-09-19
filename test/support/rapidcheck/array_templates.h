@@ -266,8 +266,23 @@ struct ShowDefault<templates::query_buffers<T>, A, B> {
   }
 };
 
+template <bool A, bool B>
+struct ShowDefault<templates::query_buffers<std::vector<char>>, A, B> {
+  static void show(
+      const query_buffers<std::vector<char>>& value, std::ostream& os) {
+    std::vector<std::string> values;
+    for (uint64_t c = 0; c < value.num_cells(); c++) {
+      values.push_back(std::string(value[c].begin(), value[c].end()));
+    }
+    ::rc::show<decltype(values)>(values, os);
+  }
+};
+
 }  // namespace detail
 
+/**
+ * Generic logic to for showing a `templates::FragmentType`.
+ */
 template <typename DimensionTuple, typename AttributeTuple>
 void showFragment(
     const templates::Fragment<DimensionTuple, AttributeTuple>& value,

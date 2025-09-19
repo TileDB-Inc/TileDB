@@ -52,14 +52,26 @@ void showValue(const Fragment1DFixed& value, std::ostream& os) {
   rc::showFragment(value, os);
 }
 
+void showValue(const Fragment1DVar& value, std::ostream& os) {
+  rc::showFragment(value, os);
+}
+
 void showValue(const Fragment2DFixed& value, std::ostream& os) {
   rc::showFragment(value, os);
 }
 
 namespace rc::detail {
+
 template <bool A, bool B>
 struct ShowDefault<Fragment1DFixed, A, B> {
   static void show(const Fragment1DFixed& value, std::ostream& os) {
+    rc::showFragment(value, os);
+  }
+};
+
+template <bool A, bool B>
+struct ShowDefault<Fragment1DVar, A, B> {
+  static void show(const Fragment1DVar& value, std::ostream& os) {
     rc::showFragment(value, os);
   }
 };
