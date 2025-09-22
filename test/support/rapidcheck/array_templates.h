@@ -253,9 +253,109 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
   });
 }
 
-template <>
-void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os) {
-  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
+template <
+    DimensionType D1,
+    DimensionType D2,
+    DimensionType D3,
+    AttributeType... Att>
+Gen<Fragment3D<D1, D2, D3, Att...>> make_fragment_3d(
+    bool allow_duplicates,
+    std::optional<Domain<D1>> d1,
+    std::optional<Domain<D2>> d2,
+    std::optional<Domain<D3>> d3) {
+  auto coord_d1 =
+      (d1.has_value() ? make_coordinate(d1.value()) : gen::arbitrary<D1>());
+  auto coord_d2 =
+      (d2.has_value() ? make_coordinate(d2.value()) : gen::arbitrary<D2>());
+  auto coord_d3 =
+      (d3.has_value() ? make_coordinate(d3.value()) : gen::arbitrary<D3>());
+
+  using Cell = std::tuple<D1, D2, D3, Att...>;
+
+  auto cell =
+      gen::tuple(coord_d1, coord_d2, coord_d3, gen::arbitrary<Att>()...);
+
+  auto uniqueCoords = [](const Cell& cell) {
+    return std::make_tuple(
+        std::get<0>(cell), std::get<1>(cell), std::get<2>(cell));
+  };
+
+  auto cells = gen::nonEmpty(
+      allow_duplicates ? gen::container<std::vector<Cell>>(cell) :
+                         gen::uniqueBy<std::vector<Cell>>(cell, uniqueCoords));
+
+  return gen::map(cells, [](std::vector<Cell> cells) {
+    std::vector<D1> coords_d1;
+    std::vector<D2> coords_d2;
+    std::vector<D3> coords_d3;
+    std::tuple<std::vector<Att>...> atts;
+
+    std::apply(
+        [&](std::vector<D1> tup_d1,
+            std::vector<D2> tup_d2,
+            std::vector<D3> tup_d3,
+            auto... tup_atts) {
+          coords_d1 = tup_d1;
+          coords_d2 = tup_d2;
+          coords_d3 = tup_d3;
+          atts = std::make_tuple(tup_atts...);
+        },
+        stdx::transpose(cells));
+
+    return Fragment3D<D1, D2, D3, Att...>{
+        std::make_tuple(coords_d1, coords_d2, coords_d3), atts};
+  });
+}
+
+void showValue(const templates::Domain<int>& domain, std::ostream& os);
+void showValue(const templates::Domain<int64_t>& domain, std::ostream& os);
+void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os);
+
+namespace detail {
+
+template <stdx::is_fundamental T, bool A, bool B>
+struct ShowDefault<templates::query_buffers<T>, A, B> {
+  static void show(const query_buffers<T>& value, std::ostream& os) {
+    ::rc::show<decltype(value.values_)>(value.values_, os);
+  }
+};
+
+template <bool A, bool B>
+struct ShowDefault<templates::query_buffers<std::vector<char>>, A, B> {
+  static void show(
+      const query_buffers<std::vector<char>>& value, std::ostream& os) {
+    std::vector<std::string> values;
+    for (uint64_t c = 0; c < value.num_cells(); c++) {
+      values.push_back(std::string(value[c].begin(), value[c].end()));
+    }
+    ::rc::show<decltype(values)>(values, os);
+  }
+};
+
+}  // namespace detail
+
+/**
+ * Generic logic to for showing a `templates::FragmentType`.
+ */
+template <typename DimensionTuple, typename AttributeTuple>
+void showFragment(
+    const templates::Fragment<DimensionTuple, AttributeTuple>& value,
+    std::ostream& os) {
+  auto showField = [&]<typename T>(const query_buffers<T>& field) {
+    os << "\t\t";
+    show(field, os);
+    os << std::endl;
+  };
+  os << "{" << std::endl << "\t\"dimensions\": [" << std::endl;
+  std::apply(
+      [&](const auto&... dimension) { (showField(dimension), ...); },
+      value.dimensions());
+  os << "\t]" << std::endl;
+  os << "\t\"attributes\": [" << std::endl;
+  std::apply(
+      [&](const auto&... attribute) { (showField(attribute), ...); },
+      value.attributes());
+  os << "\t]" << std::endl << "}" << std::endl;
 }
 
 }  // namespace rc

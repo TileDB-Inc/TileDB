@@ -1326,6 +1326,37 @@ struct Fragment2D : public Fragment<std::tuple<D1, D2>, std::tuple<Att...>> {
 };
 
 /**
+ * Data for a three-dimensional array
+ */
+template <DimensionType D1, DimensionType D2, DimensionType D3, typename... Att>
+struct Fragment3D
+    : public Fragment<std::tuple<D1, D2, D3>, std::tuple<Att...>> {
+  const query_buffers<D1>& d1() const {
+    return std::get<0>(this->dimensions());
+  }
+
+  const query_buffers<D2>& d2() const {
+    return std::get<1>(this->dimensions());
+  }
+
+  const query_buffers<D3>& d3() const {
+    return std::get<2>(this->dimensions());
+  }
+
+  query_buffers<D1>& d1() {
+    return std::get<0>(this->dimensions());
+  }
+
+  query_buffers<D2>& d2() {
+    return std::get<1>(this->dimensions());
+  }
+
+  query_buffers<D3>& d3() {
+    return std::get<2>(this->dimensions());
+  }
+};
+
+/**
  * Binds variadic field data to a tiledb query
  */
 template <typename Asserter, typename... Ts>
