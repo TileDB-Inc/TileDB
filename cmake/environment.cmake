@@ -121,11 +121,11 @@ message(${TileDB_Environment_Log_Level} ">>> environment.cmake begin >>>")
 # something like a block-local variable, but are more often used to implement
 # environments.
 #
-# Environmental names are identifiers for environments, properties, and for
-# names that specific environments require. Valid environmental names consist
+# Environment names are identifiers for environments, properties, and for
+# names that specific environments require. Valid environment names consist
 # only of those characters valid in CMake variable names, namely, alphanumeric
 # characters and the underscore. This is a technical limitation, because we
-# incorporate environmental names into the names of CMake variables.
+# incorporate environment names into the names of CMake variables.
 
 # -------------------------------------------------------
 # Defining new environments
@@ -137,7 +137,7 @@ message(${TileDB_Environment_Log_Level} ">>> environment.cmake begin >>>")
 #
 # commence( define_environment <environment-name> )
 # - [in] <environment-name>
-# - Precondition: <environment-name> must be a valid environmental name
+# - Precondition: <environment-name> must be a valid environment name
 #
 # Environments have three data:
 # - Environment name. This is the argument to `define_environment`. This
