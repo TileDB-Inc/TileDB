@@ -326,3 +326,54 @@ TEST_CASE_METHOD(
                         tiledb::sm::constants::rest_profile_foldername));
   }
 }
+
+TEST_CASE(
+    "C++ API: Profile TILEDB_PROFILE_DIR environment variable",
+    "[cppapi][profile][env_var]") {
+  // Create a custom directory for profiles using environment variable
+  tiledb::sm::TemporaryLocalDirectory tempdir_("profile_env_var_test");
+  std::string custom_dir = tempdir_.path();
+
+  // Set the TILEDB_PROFILE_DIR environment variable
+  setenv_local("TILEDB_PROFILE_DIR", custom_dir.c_str());
+
+  // Create a Profile without specifying a directory - it should use the env var
+  Profile profile_with_env_var("test_profile", custom_dir);
+  profile_with_env_var.set_param("rest.token", "env_var_token");
+  profile_with_env_var.set_param("rest.server_address", "https://env.server");
+  profile_with_env_var.save();
+
+  // Verify the profile was saved to the custom directory specified by env var
+  REQUIRE(std::filesystem::exists(custom_dir + "profiles.json"));
+
+  // Load a new profile instance to verify it uses the env var directory
+  auto loaded_profile = Profile::load("test_profile");
+  REQUIRE(loaded_profile.get_param("rest.token") == "env_var_token");
+  REQUIRE(
+      loaded_profile.get_param("rest.server_address") == "https://env.server");
+
+  // Test that explicit directory parameter overrides environment variable
+  tiledb::sm::TemporaryLocalDirectory explicit_tempdir_("explicit_profile_dir");
+  std::string explicit_dir = explicit_tempdir_.path();
+
+  Profile explicit_dir_profile("explicit_profile", explicit_dir);
+  explicit_dir_profile.set_param("rest.token", "explicit_token");
+  explicit_dir_profile.set_param(
+      "rest.server_address", "https://explicit.server");
+  explicit_dir_profile.save();
+
+  // Verify it was saved to the explicitly specified directory, not the env var
+  // dir
+  REQUIRE(std::filesystem::exists(explicit_dir + "profiles.json"));
+
+  // Read back the profile from the explicit directory
+  auto loaded_explicit_profile =
+      Profile::load("explicit_profile", explicit_dir);
+  REQUIRE(loaded_explicit_profile.get_param("rest.token") == "explicit_token");
+  REQUIRE(
+      loaded_explicit_profile.get_param("rest.server_address") ==
+      "https://explicit.server");
+
+  // Clean up: Unset the environment variable
+  setenv_local("TILEDB_PROFILE_DIR", "");
+}
