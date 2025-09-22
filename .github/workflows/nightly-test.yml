@@ -40,6 +40,11 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
 
+      - name: 'Set SDKROOT on macOS'
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+        run: |
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
@@ -75,10 +80,13 @@ jobs:
             triplet: x64-windows
           - os: macos-13
             triplet: x64-osx
+            deployment-target: 13
           - os: macos-latest
             triplet: arm64-osx
       fail-fast: false
     name: ${{ matrix.os }} - Static Linkage
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment-target }}
 
     steps:
       - name: Print env
@@ -107,6 +115,11 @@ jobs:
         if: runner.os == 'Windows'
         with:
           arch: x64
+
+      - name: 'Set SDKROOT on macOS'
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+        run: |
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@v5

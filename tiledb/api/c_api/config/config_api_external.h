@@ -686,7 +686,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    signals.
  *    **Default**: "true"
  * - `config.env_var_prefix` <br>
- *    Prefix of environmental variables for reading configuration
+ *    Prefix of environment variables for reading configuration
  *    parameters. <br>
  *    **Default**: "TILEDB_"
  * - `config.logging_level` <br>

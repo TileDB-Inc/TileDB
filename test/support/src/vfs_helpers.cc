@@ -557,7 +557,7 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
 }
 
 bool VFSTestSetup::is_legacy_rest() {
-  return ctx_c->rest_client().rest_legacy();
+  return is_rest() && ctx_c->rest_client().rest_legacy();
 }
 
 }  // namespace tiledb::test

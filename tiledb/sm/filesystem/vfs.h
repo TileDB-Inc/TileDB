@@ -65,6 +65,10 @@
 #include "tiledb/sm/filesystem/gcs.h"
 #endif  // HAVE_GCS
 
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif  // HAVE_S3
+
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -287,9 +291,6 @@ class GCS_within_VFS {
 
 /** The S3 filesystem. */
 #ifdef HAVE_S3
-
-class S3;
-
 class S3_within_VFS {
   /** Private member variable */
   tdb_unique_ptr<S3> s3_;
@@ -300,7 +301,7 @@ class S3_within_VFS {
       : s3_(tdb_unique_ptr<S3>(tdb_new(S3, std::forward<Args>(args)...))) {
   }
 
-  ~S3_within_VFS();
+  ~S3_within_VFS() = default;
 
   /** Protected accessor for the S3 object. */
   inline S3& s3() {

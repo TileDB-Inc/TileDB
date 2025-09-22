@@ -34,6 +34,7 @@
 #ifndef TILEDB_EXCEPTION_WRAPPER_TEST_CAPI_FUNCTION_OVERRIDE_H
 #define TILEDB_EXCEPTION_WRAPPER_TEST_CAPI_FUNCTION_OVERRIDE_H
 
+#include "../hook_common.h"
 #include "../logging_aspect.h"
 
 /*
@@ -42,7 +43,7 @@
  * implementation function. The trait class is a specialization of an otherwise
  * undefined class template. Each trait class contains the name of its
  * implementation function; the name is subsequently picked up by `class
- * LoggingAspect`.
+ * LoggingAspect` and `class TracingAspect`.
  */
 #undef CAPI_PREFIX
 #define CAPI_PREFIX(root)                                    \
@@ -51,13 +52,28 @@
     static constexpr std::string_view name{"tiledb_" #root}; \
   };
 
+template <WhichHook hook>
+struct WhichHookAspect;
+
+template <>
+struct WhichHookAspect<WhichHook::Logger> {
+  template <auto f>
+  using aspect_type = LoggingAspect<f>;
+};
+
+template <>
+struct WhichHookAspect<WhichHook::Tracer> {
+  template <auto f>
+  using aspect_type = TracingAspect<f>;
+};
+
 /**
  * Specialization of the aspect selector to `void` overrides the default (the
  * null aspect) to compile with the logging aspect instead.
  */
 template <auto f>
 struct tiledb::api::CAPIFunctionSelector<f, void> {
-  using aspect_type = LoggingAspect<f>;
+  using aspect_type = WhichHookAspect<which_hook>::aspect_type<f>;
 };
 
 #endif  // TILEDB_EXCEPTION_WRAPPER_TEST_CAPI_FUNCTION_OVERRIDE_H

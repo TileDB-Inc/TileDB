@@ -1,12 +1,11 @@
 /**
- * @file
- * tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook_without.cc
+ * @file tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook_with.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +32,6 @@
 
 #include "hook_common.h"
 
-TEST_CASE("Compile definition - no hook") {
-  STATIC_REQUIRE(which_hook == WhichHook::None);
+TEST_CASE("Compile definition - with tracer") {
+  STATIC_REQUIRE(which_hook == WhichHook::Tracer);
 }
