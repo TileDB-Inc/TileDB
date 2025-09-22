@@ -126,7 +126,7 @@ RestProfile::RestProfile(
   if (dir.has_value() && !dir.value().empty()) {
     dir_ = ensure_trailing_slash(dir.value());
   } else if (getenv("TILEDB_PROFILE_DIR") != nullptr) {
-    // If the user has set the TILEDB_PROFILE_DIR environmental variable,
+    // If the user has set the TILEDB_PROFILE_DIR environment variable,
     // use that as the directory to store the profiles file.
     // Note: the TILEDB_ prefix is just the default and can change on a config
     // level. Since a Profile object is not tied to a Config object, we use this
