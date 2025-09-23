@@ -1671,3 +1671,56 @@ TEST_CASE(
     rapidcheck_instance_consolidation<F>(ctx, array_uri, fan_in, fragments);
   });
 }
+
+/**
+ * Rapidcheck bounds consolidation test using the VCF 2025 data model
+ * (3D sparse array with chromosome/position/sample dimensions)
+ */
+TEST_CASE(
+    "Fragment metadata global order bounds: 3D vcf consolidation rapidcheck",
+    "[fragment_info][global-order][rapidcheck]") {
+  VFSTestSetup vfs_test_setup;
+  const auto array_uri = vfs_test_setup.array_uri(
+      "fragment_metadata_global_order_bounds_3d_vcf_consolidation");
+
+  const templates::Domain<uint32_t> domain_sample(0, 10000);
+
+  const templates::Dimension<Datatype::STRING_ASCII> d_chromosome;
+  const templates::Dimension<Datatype::UINT32> d_position(domain_sample, 32);
+  const templates::Dimension<Datatype::STRING_ASCII> d_sample;
+
+  Context ctx = vfs_test_setup.ctx();
+
+  auto temp_array = [&](bool allow_dups) {
+    templates::ddl::create_array<
+        Datatype::STRING_ASCII,
+        Datatype::UINT32,
+        Datatype::STRING_ASCII>(
+        array_uri,
+        ctx,
+        std::tie(d_chromosome, d_position, d_sample),
+        std::vector<std::tuple<Datatype, uint32_t, bool>>{},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        8,
+        allow_dups);
+
+    return DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  };
+
+  using F = FragmentVcf2025;
+
+  rc::prop("3D vcf2025 consolidation", [&](bool allow_dups) {
+    uint64_t fan_in = *rc::gen::inRange(2, 8);
+    auto fragments = *rc::gen::suchThat(
+        rc::gen::container<std::vector<F>>(rc::make_fragment_3d<
+                                           templates::StringDimensionCoordType,
+                                           uint32_t,
+                                           templates::StringDimensionCoordType>(
+            allow_dups, std::nullopt, domain_sample, std::nullopt)),
+        [](auto value) { return value.size() > 1; });
+
+    auto arrayguard = temp_array(allow_dups);
+    rapidcheck_instance_consolidation<F>(ctx, array_uri, fan_in, fragments);
+  });
+}
