@@ -1965,7 +1965,7 @@ TEST_CASE(
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Schema name: " + schema_name + "\n" + "  > Type: sparse\n" +
-      "  > Non-empty domain: [a, ddd]\n" + "  > Size: 3439\n" +
+      "  > Non-empty domain: [a, ddd]\n" + "  > Size: 3674\n" +
       "  > Cell num: 4\n" + "  > Timestamp range: [1, 1]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
