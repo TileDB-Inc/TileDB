@@ -273,7 +273,8 @@ std::vector<std::vector<Bounds<F>>> assert_written_bounds(
 
     for (size_t t = 0; t < num_tiles; t++) {
       const uint64_t lbi = t * tile_stride;
-      const uint64_t ubi = std::min((t + 1) * tile_stride, fragment.size()) - 1;
+      const uint64_t ubi =
+          std::min<uint64_t>((t + 1) * tile_stride, fragment.size()) - 1;
 
       const auto lbexpect = tuple_index(fragment.dimensions(), lbi);
       const auto ubexpect = tuple_index(fragment.dimensions(), ubi);
@@ -1080,7 +1081,8 @@ std::vector<std::vector<Bounds<F>>> consolidate_n_wise(
   }
   for (uint32_t f = 0; f < s_fragment_uris.size(); f += fan_in) {
     std::vector<const char*> fragment_uris;
-    for (uint32_t ff = f; ff < std::min(f + fan_in, s_fragment_uris.size());
+    for (uint64_t ff = f;
+         ff < std::min<uint64_t>(f + fan_in, s_fragment_uris.size());
          ff++) {
       fragment_uris.push_back(s_fragment_uris[ff].c_str());
     }
@@ -1113,7 +1115,8 @@ ConsolidateOutput<F> assert_consolidate_n_wise_bounds(
   std::vector<F> output_fragments;
   for (uint64_t f = 0; f < input_fragment_data.size(); f += fan_in) {
     F output_fragment;
-    for (uint64_t ff = f; ff < std::min(f + fan_in, input_fragment_data.size());
+    for (uint64_t ff = f;
+         ff < std::min<uint64_t>(f + fan_in, input_fragment_data.size());
          ff++) {
       output_fragment.extend(input_fragment_data[ff]);
     }
@@ -1132,7 +1135,9 @@ ConsolidateOutput<F> assert_consolidate_n_wise_bounds(
     for (size_t t = 0; t < num_tiles; t++) {
       const uint64_t lbi = t * tile_stride;
       const uint64_t ubi =
-          std::min((t + 1) * tile_stride, output_fragments[f].size()) - 1;
+          std::min<uint64_t>(
+              (t + 1) * tile_stride, output_fragments[f].size()) -
+          1;
 
       const auto lbexpect = tuple_index(output_fragments[f].dimensions(), lbi);
       const auto ubexpect = tuple_index(output_fragments[f].dimensions(), ubi);
