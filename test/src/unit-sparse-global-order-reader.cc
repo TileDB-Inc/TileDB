@@ -723,7 +723,8 @@ void CSparseGlobalOrderFx::write_fragment(
   }
 
   CApiArray& array = *existing;
-  Array cpparray(vfs_test_setup_.ctx(), array, false);
+  Context cppctx = vfs_test_setup_.ctx();
+  Array cpparray(cppctx, array, false);
 
   templates::query::write_fragment<Asserter, Fragment>(
       fragment, cpparray, TILEDB_UNORDERED);
