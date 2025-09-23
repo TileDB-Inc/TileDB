@@ -736,11 +736,9 @@ TEST_CASE_METHOD(
   std::vector<int> a(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
-  std::vector<uint64_t> timestamps(10);
-  // We are not using GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr,
-  // &timestamps) because of ASAN errors.
-  bool use_timestamps = GENERATE(false, true);
-  auto timestamps_ptr = use_timestamps ? &timestamps : nullptr;
+  static std::vector<uint64_t> timestamps(10);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read after all writes") {
     // Read after both writes - should see everything.
@@ -824,11 +822,9 @@ TEST_CASE_METHOD(
   std::vector<int> a(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
-  std::vector<uint64_t> timestamps(10);
-  // We are not using GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr,
-  // &timestamps) because of ASAN errors.
-  bool use_timestamps = GENERATE(false, true);
-  auto timestamps_ptr = use_timestamps ? &timestamps : nullptr;
+  static std::vector<uint64_t> timestamps(10);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read after all writes") {
     read_sparse(a, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 4, timestamps_ptr);
@@ -907,11 +903,9 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
-  // We are not using GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr,
-  // &timestamps) because of ASAN errors.
-  bool use_timestamps = GENERATE(false, true);
-  auto timestamps_ptr = use_timestamps ? &timestamps : nullptr;
+  static std::vector<uint64_t> timestamps(16);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read after all writes") {
     // Read after both writes - should see everything.
@@ -1048,11 +1042,9 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
-  // We are not using GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr,
-  // &timestamps) because of ASAN errors.
-  bool use_timestamps = GENERATE(false, true);
-  auto timestamps_ptr = use_timestamps ? &timestamps : nullptr;
+  static std::vector<uint64_t> timestamps(16);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read in the middle") {
     // Read between 2 and 4.
@@ -1155,11 +1147,9 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
-  // We are not using GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr,
-  // &timestamps) because of ASAN errors.
-  bool use_timestamps = GENERATE(false, true);
-  auto timestamps_ptr = use_timestamps ? &timestamps : nullptr;
+  static std::vector<uint64_t> timestamps(16);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read in the middle") {
     // Read between 2 and 4
@@ -1368,11 +1358,9 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
-  // We are not using GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr,
-  // &timestamps) because of ASAN errors.
-  bool use_timestamps = GENERATE(false, true);
-  auto timestamps_ptr = use_timestamps ? &timestamps : nullptr;
+  static std::vector<uint64_t> timestamps(16);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read in the middle") {
     // Read between 2 and 4.
