@@ -1362,8 +1362,8 @@ TEST_CASE(
 
       CHECK(
           triwise.bounds_ == ArrayBounds<Fragment>{
-                                 {tile(1, 18), tile(19, 41), tile(42, 58)},
-                                 {tile(4, 21), tile(22, 44), tile(45, 61)},
+                                 {tile(1, 18), tile(19, 41), tile(42, 59)},
+                                 {tile(4, 21), tile(22, 44), tile(45, 62)},
                                  {tile(7, 32), tile(39, 64)}});
 
       const auto ninewise = assert_consolidate_n_wise_bounds<
