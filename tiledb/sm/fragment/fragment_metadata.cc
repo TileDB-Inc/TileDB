@@ -1286,7 +1286,7 @@ void FragmentMetadata::store_v15_or_higher(
     offset += nbytes;
   }
 
-  if (!array_schema_->dense() &&
+  if (!dense_ &&
       version_ >= constants::fragment_metadata_global_order_bounds_version) {
     const auto num_dims = array_schema_->dim_num();
     // Store global order mins
@@ -2542,7 +2542,8 @@ void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
   gt_offsets_.tile_max_offsets_.resize(num);
   deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
 
-  if (version_ >= constants::fragment_metadata_global_order_bounds_version) {
+  if (!dense_ &&
+      version_ >= constants::fragment_metadata_global_order_bounds_version) {
     // Load offsets for the tile global order bounds
     const auto num_dims = array_schema_->dim_num();
     gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
@@ -2796,7 +2797,8 @@ void FragmentMetadata::write_generic_tile_offsets(
     serializer.write(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
   }
 
-  if (version_ >= constants::fragment_metadata_global_order_bounds_version) {
+  if (!dense_ &&
+      version_ >= constants::fragment_metadata_global_order_bounds_version) {
     // Write the tile global order bound offsets
     const auto num_dims = array_schema_->dim_num();
     serializer.write(
