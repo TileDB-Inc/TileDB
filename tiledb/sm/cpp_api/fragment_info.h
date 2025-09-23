@@ -291,7 +291,7 @@ class FragmentInfo {
    */
   std::vector<std::vector<uint8_t>> global_order_lower_bound(
       uint32_t fid, uint32_t mid) const {
-    std::vector<uint64_t> dimension_sizes;
+    std::vector<size_t> dimension_sizes;
     std::vector<void*> dimension_ptrs;
     dimension_sizes.resize(array_schema(fid).domain().ndim());
     dimension_ptrs.resize(dimension_sizes.size());
@@ -337,7 +337,7 @@ class FragmentInfo {
    */
   std::vector<std::vector<uint8_t>> global_order_upper_bound(
       uint32_t fid, uint32_t mid) const {
-    std::vector<uint64_t> dimension_sizes;
+    std::vector<size_t> dimension_sizes;
     std::vector<void*> dimension_ptrs;
     dimension_sizes.resize(array_schema(fid).domain().ndim());
     dimension_ptrs.resize(dimension_sizes.size());
