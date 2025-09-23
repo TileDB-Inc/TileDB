@@ -153,63 +153,6 @@ template <templates::FragmentType F>
 using CoordsTuple = decltype(tuple_index(
     std::declval<F>().dimensions(), std::declval<uint64_t>()));
 
-/**
- * Stores pointers to the fields of `bufs` in `ptrs` for use
- * with the fragment bound functions.
- */
-template <templates::FragmentType F>
-static void prepare_bound_buffers(
-    DimensionTuple<F>& bufs, std::array<void*, F::NUM_DIMENSIONS>& ptrs) {
-  auto prepare_bound_buffer =
-      [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
-        if constexpr (std::is_same_v<T, templates::StringDimensionCoordType>) {
-          if (qbuf.values_.empty()) {
-            ptrs[i] = nullptr;
-          } else {
-            ptrs[i] = qbuf.values_.data();
-          }
-        } else {
-          if (qbuf.num_cells() == 0) {
-            ptrs[i] = nullptr;
-          } else {
-            ptrs[i] = static_cast<void*>(&qbuf[0]);
-          }
-        }
-      };
-
-  uint64_t i = 0;
-  std::apply(
-      [&]<typename... Ts>(templates::query_buffers<Ts>&... qbufs) {
-        (prepare_bound_buffer(i++, qbufs), ...);
-      },
-      bufs);
-}
-
-/**
- * Reserves space in the variable-length dimensions of `bufs`
- * for global order bounds of the provided `sizes`.
- */
-template <templates::FragmentType F>
-static void allocate_var_bound_buffers(
-    DimensionTuple<F>& bufs, size_t sizes[]) {
-  auto allocate_var_bound_buffer =
-      [&]<typename T>(uint64_t i, templates::query_buffers<T>& qbuf) {
-        if constexpr (std::is_same_v<T, templates::StringDimensionCoordType>) {
-          qbuf.values_.resize(sizes[i]);
-          qbuf.offsets_ = {0};
-        } else {
-          qbuf.resize(1);
-        }
-      };
-
-  uint64_t i = 0;
-  std::apply(
-      [&]<typename... Ts>(templates::query_buffers<Ts>&... qbufs) {
-        (allocate_var_bound_buffer(i++, qbufs), ...);
-      },
-      bufs);
-}
-
 template <templates::FragmentType F>
 using Bounds = std::pair<CoordsTuple<F>, CoordsTuple<F>>;
 
@@ -225,50 +168,37 @@ using ArrayBounds = std::vector<FragmentBounds<F>>;
 template <templates::FragmentType F>
 static Bounds<F> global_order_bounds(
     const FragmentInfo& finfo, uint64_t fragment, uint64_t tile) {
-  constexpr size_t num_fields = std::tuple_size<DimensionTuple<F>>::value;
-
-  // FIXME: there needs to be another API to ask about maximum variable-length.
-  // Otherwise it is unsafe to call this API with variable-length dimensions
-
   DimensionTuple<F> lb, ub;
 
-  size_t lb_sizes[num_fields];
-  std::array<void*, num_fields> lb_dimensions;
-
-  size_t ub_sizes[num_fields];
-  std::array<void*, num_fields> ub_dimensions;
-
-  auto ctx_c = finfo.context().ptr().get();
-
-  auto call = [&]() {
-    prepare_bound_buffers<F>(lb, lb_dimensions);
-    prepare_bound_buffers<F>(ub, ub_dimensions);
-
-    // FIXME: add C++ API
-    auto rc = tiledb_fragment_info_get_global_order_lower_bound(
-        ctx_c,
-        finfo.ptr().get(),
-        fragment,
-        tile,
-        &lb_sizes[0],
-        &lb_dimensions[0]);
-    throw_if_error(ctx_c, rc);
-
-    rc = tiledb_fragment_info_get_global_order_upper_bound(
-        ctx_c,
-        finfo.ptr().get(),
-        fragment,
-        tile,
-        &ub_sizes[0],
-        &ub_dimensions[0]);
-    throw_if_error(ctx_c, rc);
+  auto bound_vec_to_tuple = [](DimensionTuple<F>& out,
+                               std::vector<std::vector<uint8_t>> bounds) {
+    auto handle_field = [&]<typename T>(
+                            templates::query_buffers<T>& qb, uint64_t d) {
+      static_assert(
+          stdx::is_fundamental<T> ||
+          std::is_same_v<T, templates::StringDimensionCoordType>);
+      if constexpr (stdx::is_fundamental<T>) {
+        qb.resize(1);
+        qb[0] = *reinterpret_cast<T*>(bounds[d].data());
+      } else {
+        qb.values_.resize(bounds[d].size());
+        memcpy(qb.values_.data(), bounds[d].data(), bounds[d].size());
+        qb.offsets_ = {0};
+      }
+    };
+    uint64_t d = 0;
+    std::apply(
+        [&]<typename... Ts>(templates::query_buffers<Ts>&... qb) {
+          (handle_field(qb, d++), ...);
+        },
+        out);
   };
 
-  // determine length, then allocate, then call again
-  call();
-  allocate_var_bound_buffers<F>(lb, lb_sizes);
-  allocate_var_bound_buffers<F>(ub, ub_sizes);
-  call();
+  auto lbvec = finfo.global_order_lower_bound(fragment, tile);
+  bound_vec_to_tuple(lb, lbvec);
+
+  auto ubvec = finfo.global_order_upper_bound(fragment, tile);
+  bound_vec_to_tuple(ub, ubvec);
 
   return std::make_pair(tuple_index(lb, 0), tuple_index(ub, 0));
 }
