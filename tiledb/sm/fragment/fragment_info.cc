@@ -762,7 +762,9 @@ static Status read_global_order_bound_to_user_buffers(
             "Cannot get MBR global order bound: Invalid mbr index");
       }
 
-      dimension_sizes[d] = dimFixedSize;
+      if (dimension_sizes) {
+        dimension_sizes[d] = dimFixedSize;
+      }
 
       if (dimensions[d]) {
         const void* coord = &fixedPart[d].data()[which_tile * dimFixedSize];
