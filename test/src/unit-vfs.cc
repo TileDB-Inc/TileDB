@@ -211,11 +211,7 @@ TEMPLATE_LIST_TEST_CASE(
     return;
   }
 
-  ThreadPool compute_tp(4);
-  ThreadPool io_tp(4);
-  Config config = set_config_params();
-  VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+  auto& vfs = fs.vfs_;
 
   URI path = fs.temp_dir_.add_trailing_slash();
 
@@ -849,7 +845,7 @@ TEST_CASE(
     "Validate GCS service account impersonation",
     "[gcs][credentials][impersonation]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   std::string impersonate_service_account, target_service_account;
   std::vector<std::string> delegates;
 
@@ -893,7 +889,7 @@ TEST_CASE(
     "Validate GCS service account credentials",
     "[gcs][credentials][service-account]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string service_account_key = "{\"foo\": \"bar\"}";
@@ -916,7 +912,7 @@ TEST_CASE(
     "Validate GCS service account credentials with impersonation",
     "[gcs][credentials][service-account-and-impersonation]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string service_account_key = "{\"foo\": \"bar\"}";
@@ -951,7 +947,7 @@ TEST_CASE(
     "Validate GCS external account credentials",
     "[gcs][credentials][external-account]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
