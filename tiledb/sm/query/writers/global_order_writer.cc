@@ -202,7 +202,7 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto& domain{array_schema_.domain()};
     const auto capacity = array_schema_.capacity();
     const auto cell_num_per_tile =
-        coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
+        dense() ? domain.cell_num_per_tile() : capacity;
     auto last_tiles_it = global_write_state_->last_tiles_.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(name),
@@ -388,7 +388,7 @@ Status GlobalOrderWriter::check_global_order() const {
   }
 
   // Applicable only to sparse writes - exit if coordinates do not exist
-  if (!coords_info_.has_coords_ || coords_info_.coords_num_ == 0) {
+  if (dense() || coords_info_.coords_num_ == 0) {
     return Status::Ok();
   }
 
@@ -656,7 +656,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   }
 
   // Check if the total number of cells written is equal to the subarray size
-  if (!coords_info_.has_coords_) {  // This implies a dense array
+  if (dense()) {
     auto& domain{array_schema_.domain()};
     auto expected_cell_num = domain.cell_num(subarray_.ndrange(0));
 
@@ -727,8 +727,8 @@ Status GlobalOrderWriter::global_write() {
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_) {
     RETURN_CANCEL_OR_ERROR(alloc_global_write_state());
-    RETURN_CANCEL_OR_ERROR(create_fragment(
-        !coords_info_.has_coords_, global_write_state_->frag_meta_));
+    RETURN_CANCEL_OR_ERROR(
+        create_fragment(dense(), global_write_state_->frag_meta_));
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   }
 
@@ -821,8 +821,7 @@ Status GlobalOrderWriter::global_write() {
 Status GlobalOrderWriter::global_write_handle_last_tile() {
   auto capacity = array_schema_.capacity();
   auto& domain = array_schema_.domain();
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
+  auto cell_num_per_tile = dense() ? domain.cell_num_per_tile() : capacity;
   auto cell_num_last_tiles =
       global_write_state_->cells_written_[buffers_.begin()->first] %
       cell_num_per_tile;
@@ -906,8 +905,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   auto capacity = array_schema_.capacity();
   auto cell_num = *buffer_size / cell_size;
   auto& domain{array_schema_.domain()};
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
+  auto cell_num_per_tile = dense() ? domain.cell_num_per_tile() : capacity;
 
   // Do nothing if there are no cells to write
   if (cell_num == 0) {
@@ -1087,8 +1085,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   auto capacity = array_schema_.capacity();
   auto cell_num = buffer_size / constants::cell_var_offset_size;
   auto& domain{array_schema_.domain()};
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
+  auto cell_num_per_tile = dense() ? domain.cell_num_per_tile() : capacity;
   auto attr_datatype_size = datatype_size(array_schema_.type(name));
 
   // Do nothing if there are no cells to write
@@ -1455,8 +1452,7 @@ Status GlobalOrderWriter::start_new_fragment() {
 
   // Create a new fragment.
   current_fragment_size_ = 0;
-  RETURN_NOT_OK(create_fragment(
-      !coords_info_.has_coords_, global_write_state_->frag_meta_));
+  RETURN_NOT_OK(create_fragment(dense(), global_write_state_->frag_meta_));
 
   return Status::Ok();
 }
