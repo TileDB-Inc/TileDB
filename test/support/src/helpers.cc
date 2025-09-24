@@ -1651,6 +1651,19 @@ void schema_equiv(
   CHECK(schema1.array_uri().to_string() == schema2.array_uri().to_string());
 }
 
+std::string build_tiledb_uri(
+    const URI& uri, const std::string& path, bool include_storage) {
+  URI::RESTURIComponents components;
+  CHECK(uri.get_rest_components(false, &components).ok());
+  const auto trim = components.server_path.find_first_of('/');
+  components.server_path.resize(trim == std::string::npos ? 0 : trim);
+  components.server_path += path.starts_with('/') ? path : "/" + path;
+  std::string result =
+      "tiledb://" + components.server_namespace + "/" + components.server_path;
+
+  return include_storage ? result + "/" + components.asset_storage : result;
+}
+
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(

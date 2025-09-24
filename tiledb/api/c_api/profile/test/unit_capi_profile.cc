@@ -30,6 +30,7 @@
 
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
+#include <filesystem>
 
 #include "../profile_api_internal.h"
 #include "test/support/src/temporary_local_directory.h"

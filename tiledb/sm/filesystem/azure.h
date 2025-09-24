@@ -149,24 +149,27 @@ class Azure;
  *      with the iterator returned by the previous request. Batch number can be
  *      tracked by the total number of times we submit a ListBlobs request
  *      within fetch_results().
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-class AzureScanner : public LsScanner<F, D> {
+class AzureScanner : public LsScanner {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
   template <class scanner_type, class T, class Allocator>
   friend class LsScanIterator;
-  using Iterator = LsScanIterator<AzureScanner<F, D>, LsObjects::value_type>;
+  using Iterator = LsScanIterator<AzureScanner, LsObjects::value_type>;
 
   /** Constructor. */
   AzureScanner(
       const Azure& client,
       const URI& prefix,
-      F file_filter,
-      D dir_filter = accept_all_dirs,
+      ResultFilter&& result_filter,
+      bool recursive = false,
+      int max_keys = 1000);
+
+  /** Constructor. */
+  AzureScanner(
+      const Azure& client,
+      const URI& prefix,
+      ResultFilterV2&& result_filter,
       bool recursive = false,
       int max_keys = 1000);
 
@@ -213,7 +216,7 @@ class AzureScanner : public LsScanner<F, D> {
   void advance(typename Iterator::pointer& ptr) {
     ptr++;
     if (ptr == end_) {
-      if (more_to_fetch()) {
+      if (more_to_fetch() || !collected_prefixes_.empty()) {
         // Fetch results and reset the iterator.
         ptr = fetch_results();
       } else {
@@ -222,6 +225,17 @@ class AzureScanner : public LsScanner<F, D> {
       }
     }
   }
+
+  /**
+   * Builds a prefix vector matching the expected Iterator type for filtering,
+   * and initializes begin_ and end_ iterators to scan the common prefixes.
+   *
+   * When collected_prefixes_ is empty and there are no results to fetch from
+   * Azure the scan is complete.
+   *
+   * @returns Iterator to the beginning of the prefix vector.
+   */
+  typename Iterator::pointer& build_prefix_vector();
 
   /**
    * Fetch the next batch of results from Azure. This also handles setting the
@@ -256,6 +270,9 @@ class AzureScanner : public LsScanner<F, D> {
    */
   std::optional<std::string> continuation_token_;
   LsObjects blobs_;
+
+  /** Move prefixes to this vector usable with Iterator type for filtering. */
+  std::vector<Iterator::value_type> common_prefixes_;
 };
 
 /**
@@ -265,8 +282,7 @@ class AzureScanner : public LsScanner<F, D> {
  * same. All internal methods have been renamed to use the "bucket" and "file"
  * verbiage in compliance with the FilesystemBase class.
  */
-class Azure : FilesystemBase {
-  template <FilePredicate, DirectoryPredicate>
+class Azure : public FilesystemBase {
   friend class AzureScanner;
 
  public:
@@ -296,14 +312,22 @@ class Azure : FilesystemBase {
   /* ********************************* */
 
   /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
+
+  /**
    * Creates a container.
    *
    * @param container The name of the container to be created.
    */
-  void create_bucket(const URI& container) const;
+  void create_bucket(const URI& container) const override;
 
   /** Removes the contents of an Azure container. */
-  void empty_bucket(const URI& container) const;
+  void empty_bucket(const URI& container) const override;
 
   /**
    * Flushes a blob to Azure, finalizing the upload.
@@ -311,7 +335,7 @@ class Azure : FilesystemBase {
    * @param uri The URI of the blob to be flushed.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool finalize);
+  void flush(const URI& uri, bool finalize) override;
 
   /**
    * Check if a container is empty.
@@ -319,7 +343,7 @@ class Azure : FilesystemBase {
    * @param container The name of the container.
    * @return `true` if the container is empty, `false` otherwise.
    */
-  bool is_empty_bucket(const URI& uri) const;
+  bool is_empty_bucket(const URI& uri) const override;
 
   /**
    * Check if a container exists.
@@ -327,7 +351,7 @@ class Azure : FilesystemBase {
    * @param container The name of the container.
    * @return `true` if `uri` is a container, `false` otherwise.
    */
-  bool is_bucket(const URI& uri) const;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -346,7 +370,7 @@ class Azure : FilesystemBase {
    * @param uri The URI to check.
    * @return `true` if the above mentioned condition holds, `false` otherwise.
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if the given URI is an existing Azure blob.
@@ -354,7 +378,7 @@ class Azure : FilesystemBase {
    * @param uri The URI of the object to be checked.
    * @return `true` if `uri` is an existing blob, `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -390,7 +414,7 @@ class Azure : FilesystemBase {
    * @return All entries that are contained in the prefix URI.
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri) const;
+      const URI& uri) const override;
 
   /**
    * Lists objects and object information that start with `uri`.
@@ -405,26 +429,48 @@ class Azure : FilesystemBase {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
+   * the ResultFilter on each entry collected.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    */
-  template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const {
-    AzureScanner<F, D> azure_scanner(*this, parent, f, d, recursive);
+      ResultFilter f,
+      bool recursive = false) const override {
+    AzureScanner azure_scanner = scanner(parent, std::move(f), recursive);
 
     LsObjects objects;
-    for (auto object : azure_scanner) {
-      objects.push_back(std::move(object));
+    for (const auto& object : azure_scanner) {
+      objects.emplace_back(
+          Azure::remove_trailing_slash(object.first), object.second);
+    }
+    return objects;
+  }
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the ResultFilterV2 on each entry collected. Both objects and common
+   * prefixes will be collected.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param result_filter The ResultFilterV2 to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_v2(
+      const URI& parent,
+      ResultFilterV2 f,
+      bool recursive = false) const override {
+    AzureScanner azure_scanner = scanner_v2(parent, std::move(f), recursive);
+
+    LsObjects objects;
+    for (const auto& object : azure_scanner) {
+      objects.emplace_back(
+          Azure::remove_trailing_slash(object.first), object.second);
     }
     return objects;
   }
@@ -435,21 +481,36 @@ class Azure : FilesystemBase {
    * or STL constructors supporting initialization via input iterators.
    *
    * @param parent The parent prefix to list sub-paths.
-   * @param f The FilePredicate to invoke on each object for filtering.
-   * @param d The DirectoryPredicate to invoke on each common prefix for
-   *    pruning. This is currently unused, but is kept here for future support.
+   * @param f The ResultFilter to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
    * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed AzureScanner object.
    */
-  template <FilePredicate F, DirectoryPredicate D>
-  AzureScanner<F, D> scanner(
+  AzureScanner scanner(
       const URI& parent,
-      F f,
-      D d = accept_all_dirs,
+      ResultFilter&& f,
       bool recursive = false,
       int max_keys = 1000) const {
-    return AzureScanner<F, D>(*this, parent, f, d, recursive, max_keys);
+    return AzureScanner(*this, parent, std::move(f), recursive, max_keys);
+  }
+
+  /**
+   * Constructs a scanner for listing Azure objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The ResultFilterV2 to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed AzureScanner object.
+   */
+  AzureScanner scanner_v2(
+      const URI& parent,
+      ResultFilterV2&& f,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    return AzureScanner(*this, parent, std::move(f), recursive, max_keys);
   }
 
   /**
@@ -457,7 +518,7 @@ class Azure : FilesystemBase {
    *
    * @param uri The directory's URI.
    */
-  void create_dir(const URI&) const {
+  void create_dir(const URI&) const override {
     // No-op. Stub function for other filesystems.
   }
 
@@ -467,7 +528,7 @@ class Azure : FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) const;
+  void copy_dir(const URI&, const URI&) const override;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -475,7 +536,7 @@ class Azure : FilesystemBase {
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames an object.
@@ -483,7 +544,7 @@ class Azure : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -494,7 +555,7 @@ class Azure : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Returns the size of the input blob with a given URI in bytes.
@@ -502,53 +563,32 @@ class Azure : FilesystemBase {
    * @param uri The URI of the blob.
    * @return The size of the input blob, in bytes
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
-   * Reads data from an object into a buffer.
+   * Reads from a file.
    *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param read_ahead_length The additional length to read ahead.
-   * @param length_returned Returns the total length read into `buffer`.
-   * @return Status
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
    */
-  Status read_impl(
-      const URI& uri,
-      off_t offset,
-      void* buffer,
-      uint64_t length,
-      uint64_t read_ahead_length,
-      uint64_t* length_returned) const;
-
-  /**
-   * Reads data from an object into a buffer.
-   *
-   * @param uri The URI of the object to be read.
-   * @param offset The offset in the object from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the object.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   */
-  void read(const URI&, uint64_t, void*, uint64_t, bool) const {
-    // #TODO. Currently a no-op until read refactor.
-  }
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Deletes a container.
    *
    * @param uri The URI of the container to be deleted.
    */
-  void remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const override;
 
   /**
    * Deletes an blob with a given URI.
    *
    * @param uri The URI of the blob to be deleted.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -574,14 +614,14 @@ class Azure : FilesystemBase {
    *
    * @param uri The prefix uri of the objects to be deleted.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Creates an empty blob.
    *
    * @param uri The URI of the blob to be created.
    */
-  void touch(const URI& uri) const;
+  void touch(const URI& uri) const override;
 
   /**
    * Writes the input buffer to an Azure object. Note that this is essentially
@@ -596,7 +636,7 @@ class Azure : FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t length,
-      bool remote_global_order_write);
+      bool remote_global_order_write) override;
 
   /**
    * Initializes the Azure blob service client and returns a reference to it.
@@ -853,71 +893,6 @@ class Azure : FilesystemBase {
   static std::string remove_trailing_slash(const std::string& path);
 };
 
-template <FilePredicate F, DirectoryPredicate D>
-AzureScanner<F, D>::AzureScanner(
-    const Azure& client,
-    const URI& prefix,
-    F file_filter,
-    D dir_filter,
-    bool recursive,
-    int max_keys)
-    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
-    , client_(client)
-    , max_keys_(max_keys)
-    , has_fetched_(false) {
-  if (!prefix.is_azure()) {
-    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
-  }
-
-  auto [container_name, blob_path] =
-      Azure::parse_azure_uri(prefix.add_trailing_slash());
-  container_name_ = container_name;
-  blob_path_ = blob_path;
-  fetch_results();
-  next(begin_);
-}
-
-template <FilePredicate F, DirectoryPredicate D>
-void AzureScanner<F, D>::next(typename Iterator::pointer& ptr) {
-  if (ptr == end_) {
-    ptr = fetch_results();
-  }
-
-  while (ptr != end_) {
-    auto& object = *ptr;
-
-    // TODO: Add support for directory pruning.
-    if (this->file_filter_(object.first, object.second)) {
-      // Iterator is at the next object within results accepted by the filters.
-      return;
-    } else {
-      // Object was rejected by the FilePredicate, do not include it in results.
-      advance(ptr);
-    }
-  }
-}
-
-template <FilePredicate F, DirectoryPredicate D>
-typename AzureScanner<F, D>::Iterator::pointer
-AzureScanner<F, D>::fetch_results() {
-  if (!more_to_fetch()) {
-    begin_ = end_ = typename Iterator::pointer();
-    return end_;
-  }
-
-  blobs_ = client_.list_blobs_impl(
-      container_name_,
-      blob_path_,
-      this->is_recursive_,
-      max_keys_,
-      continuation_token_);
-  has_fetched_ = true;
-  // Update pointers to the newly fetched results.
-  begin_ = blobs_.begin();
-  end_ = blobs_.end();
-
-  return begin_;
-}
 }  // namespace tiledb::sm
 
 #endif  // HAVE_AZURE

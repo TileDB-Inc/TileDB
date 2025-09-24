@@ -965,6 +965,22 @@ void read_sparse_v11(
 void schema_equiv(
     const sm::ArraySchema& schema1, const sm::ArraySchema& schema2);
 
+/**
+ * Helper function to build a tiledb URI using the provided asset path,
+ * following the randomly generated top-level directory used in all 3.0 REST
+ * tests.
+ *
+ * This helper only applies to 3.0 REST, there is no concept of asset paths in
+ * legacy REST.
+ *
+ * @param uri The URI to update.
+ * @param path The new asset path to use after the randomly generated top-level
+ *    directory.
+ * @return The tiledb URI built from the provided asset path.
+ */
+std::string build_tiledb_uri(
+    const sm::URI& uri, const std::string& path, bool include_storage = false);
+
 }  // namespace tiledb::test
 
 #endif

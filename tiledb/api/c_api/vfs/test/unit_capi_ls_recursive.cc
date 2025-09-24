@@ -43,64 +43,14 @@ using namespace tiledb::test;
 using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
 
 TEMPLATE_LIST_TEST_CASE(
-    "C API: ls_recursive callback", "[vfs][ls-recursive]", TestBackends) {
-  using tiledb::sm::LsObjects;
-  TestType test({10, 50});
-  if (!test.is_supported()) {
-    return;
-  }
-  auto expected = test.expected_results();
-
-  vfs_config vfs_config;
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(vfs_config.config, &ctx);
-  tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
-
-  LsObjects data;
-  tiledb_ls_callback_t cb = [](const char* path,
-                               size_t path_len,
-                               uint64_t object_size,
-                               void* data) -> int32_t {
-    auto* ls_data = static_cast<LsObjects*>(data);
-    ls_data->push_back({{path, path_len}, object_size});
-    return 1;
-  };
-
-  // This callback will return 0 exactly once. Traversal should stop immediately
-  // and not continue to the next object.
-  SECTION("callback stops traversal") {
-    cb = [](const char* path,
-            size_t path_len,
-            uint64_t object_size,
-            void* data) -> int32_t {
-      // There's no precheck here to push_back, so the vector size will match
-      // the number of times the callback was executed.
-      auto* ls_data = static_cast<LsObjects*>(data);
-      ls_data->push_back({{path, path_len}, object_size});
-      // Stop traversal after we collect 10 results.
-      return ls_data->size() != 10;
-    };
-    expected.resize(10);
-  }
-
-  CHECK(
-      tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
-      TILEDB_OK);
-  CHECK(data.size() == expected.size());
-  CHECK(data == expected);
-}
-
-TEMPLATE_LIST_TEST_CASE(
-    "C API: ls_recursive throwing callback",
-    "[vfs][ls-recursive]",
+    "C API: ls_recursive callback",
+    "[vfs][ls_recursive][ls_recursive_v2]",
     TestBackends) {
   using tiledb::sm::LsObjects;
   TestType test({10, 50});
   if (!test.is_supported()) {
     return;
   }
-  auto expected = test.expected_results();
 
   vfs_config vfs_config;
   tiledb_ctx_t* ctx;
@@ -109,13 +59,165 @@ TEMPLATE_LIST_TEST_CASE(
   tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
 
   LsObjects data;
-  tiledb_ls_callback_t cb =
-      [](const char*, size_t, uint64_t, void*) -> int32_t {
-    throw std::runtime_error("Throwing callback");
-  };
+  SECTION("ls_recursive") {
+    auto expected = test.expected_results();
+    tiledb_ls_callback_t cb = [](const char* path,
+                                 size_t path_len,
+                                 uint64_t object_size,
+                                 void* data) -> int32_t {
+      auto* ls_data = static_cast<LsObjects*>(data);
+      ls_data->push_back({{path, path_len}, object_size});
+      return 1;
+    };
 
-  CHECK(
-      tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
-      TILEDB_ERR);
-  CHECK(data.empty());
+    SECTION("callback accepts all results") {
+      CHECK(
+          tiledb_vfs_ls_recursive(
+              ctx, vfs, test.temp_dir_.c_str(), cb, &data) == TILEDB_OK);
+      CHECK(data.size() == expected.size());
+      CHECK(data == expected);
+    }
+
+    // This callback will return 0 exactly once. Traversal should stop
+    // immediately and not continue to the next object.
+    SECTION("callback stops traversal") {
+      cb = [](const char* path,
+              size_t path_len,
+              uint64_t object_size,
+              void* data) -> int32_t {
+        // There's no precheck here to push_back, so the vector size will match
+        // the number of times the callback was executed.
+        auto* ls_data = static_cast<LsObjects*>(data);
+        ls_data->push_back({{path, path_len}, object_size});
+        // Stop traversal after we collect 10 results.
+        return ls_data->size() != 10;
+      };
+      expected.resize(10);
+      CHECK(
+          tiledb_vfs_ls_recursive(
+              ctx, vfs, test.temp_dir_.c_str(), cb, &data) == TILEDB_OK);
+      CHECK(data.size() == expected.size());
+      CHECK(data == expected);
+    }
+  }
+
+  SECTION("ls_recursive_v2") {
+    auto expected = test.expected_results_v2();
+    tiledb_ls_callback_v2_t cb = [](const char* path,
+                                    size_t path_len,
+                                    uint64_t object_size,
+                                    uint8_t,
+                                    void* data) -> int32_t {
+      auto* ls_data = static_cast<LsObjects*>(data);
+      ls_data->push_back({{path, path_len}, object_size});
+      return 1;
+    };
+
+    SECTION("callback accepts all results") {
+      CHECK(
+          tiledb_vfs_ls_recursive_v2(
+              ctx, vfs, test.temp_dir_.c_str(), cb, &data) == TILEDB_OK);
+      CHECK(data.size() == expected.size());
+      CHECK(data == expected);
+    }
+
+    // This callback will return 0 exactly once. Traversal should stop
+    // immediately and not continue to the next object.
+    SECTION("callback stops traversal") {
+      cb = [](const char* path,
+              size_t path_len,
+              uint64_t object_size,
+              uint8_t,
+              void* data) -> int32_t {
+        // There's no precheck here to push_back, so the vector size will match
+        // the number of times the callback was executed.
+        auto* ls_data = static_cast<LsObjects*>(data);
+        ls_data->push_back({{path, path_len}, object_size});
+        // Stop traversal after we collect 10 results.
+        return ls_data->size() != 10;
+      };
+      expected.resize(10);
+      CHECK(
+          tiledb_vfs_ls_recursive_v2(
+              ctx, vfs, test.temp_dir_.c_str(), cb, &data) == TILEDB_OK);
+      CHECK(data.size() == expected.size());
+      CHECK(data == expected);
+    }
+  }
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "C API: ls_recursive throwing callback",
+    "[vfs][ls_recursive]",
+    TestBackends) {
+  using tiledb::sm::LsObjects;
+  TestType test({10, 50});
+  if (!test.is_supported()) {
+    return;
+  }
+
+  vfs_config vfs_config;
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(vfs_config.config, &ctx);
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
+
+  LsObjects data;
+  SECTION("ls_recursive") {
+    tiledb_ls_callback_t cb =
+        [](const char*, size_t, uint64_t, void*) -> int32_t {
+      throw std::runtime_error("Throwing callback");
+    };
+    CHECK(
+        tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
+        TILEDB_ERR);
+    CHECK(data.empty());
+  }
+
+  SECTION("ls_recursive_v2") {
+    tiledb_ls_callback_v2_t cb =
+        [](const char*, size_t, uint64_t, uint8_t, void*) -> int32_t {
+      throw std::runtime_error("Throwing callback");
+    };
+    CHECK(
+        tiledb_vfs_ls_recursive_v2(
+            ctx, vfs, test.temp_dir_.c_str(), cb, &data) == TILEDB_ERR);
+    CHECK(data.empty());
+  }
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "C API: ls_recursive null data pointer",
+    "[vfs][ls_recursive]",
+    TestBackends) {
+  using tiledb::sm::LsObjects;
+  TestType test({1});
+  if (!test.is_supported()) {
+    return;
+  }
+
+  vfs_config vfs_config;
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(vfs_config.config, &ctx);
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
+
+  LsObjects data;
+  SECTION("ls_recursive") {
+    tiledb_ls_callback_t cb =
+        [](const char*, size_t, uint64_t, void*) -> int32_t { return true; };
+    CHECK(
+        tiledb_vfs_ls_recursive(
+            ctx, vfs, test.temp_dir_.c_str(), cb, nullptr) == TILEDB_OK);
+  }
+
+  SECTION("ls_recursive_v2") {
+    tiledb_ls_callback_v2_t cb =
+        [](const char*, size_t, uint64_t, uint8_t, void*) -> int32_t {
+      return true;
+    };
+    CHECK(
+        tiledb_vfs_ls_recursive_v2(
+            ctx, vfs, test.temp_dir_.c_str(), cb, nullptr) == TILEDB_OK);
+  }
 }

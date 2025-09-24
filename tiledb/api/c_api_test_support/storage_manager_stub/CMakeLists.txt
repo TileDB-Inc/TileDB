@@ -34,7 +34,7 @@
 # compile or link references to `StorageManagerCanonical`, check that there's
 # a dependency chain back to here.
 #
-add_library(storage_manager_stub OBJECT
+add_library(storage_manager_stub OBJECT EXCLUDE_FROM_ALL
     ${CMAKE_SOURCE_DIR}/tiledb/api/c_api_test_support/storage_manager_stub/storage_manager_stub.cc)
 # Presence of a particular header file causes the override. Add the directory
 # that contains the overriding header to the include search path.

@@ -124,7 +124,7 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
 
   // Read the tile.
-  throw_if_not_ok(resources_.vfs().read(
+  throw_if_not_ok(resources_.vfs().read_exactly(
       uri_,
       file_offset + tile_data_offset,
       tile->filtered_data(),
@@ -144,8 +144,8 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 
   std::vector<uint8_t> base_buf(GenericTileHeader::BASE_SIZE);
 
-  throw_if_not_ok(
-      resources.vfs().read(uri, file_offset, base_buf.data(), base_buf.size()));
+  throw_if_not_ok(resources.vfs().read_exactly(
+      uri, file_offset, base_buf.data(), base_buf.size()));
 
   Deserializer base_deserializer(base_buf.data(), base_buf.size());
 
@@ -159,7 +159,7 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 
   // Read header filter pipeline.
   std::vector<uint8_t> filter_pipeline_buf(header.filter_pipeline_size);
-  throw_if_not_ok(resources.vfs().read(
+  throw_if_not_ok(resources.vfs().read_exactly(
       uri,
       file_offset + GenericTileHeader::BASE_SIZE,
       filter_pipeline_buf.data(),

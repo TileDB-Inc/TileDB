@@ -33,7 +33,7 @@
 
 #include <fstream>
 
-#include "external/include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include "tiledb/common/assert.h"
 #include "tiledb/common/exception/exception.h"

@@ -1,11 +1,11 @@
 /**
- * @file compile_mgc_dict_main.cc
+ * @file tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook_with.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
  */
 
-#include "../mgc_dict.h"
+#include <test/support/tdb_catch.h>
 
-int main() {
-  (void)tiledb::sm::magic_dict::expanded_buffer();
-  return 0;
+#include "hook_common.h"
+
+TEST_CASE("Compile definition - with tracer") {
+  STATIC_REQUIRE(which_hook == WhichHook::Tracer);
 }

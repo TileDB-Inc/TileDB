@@ -33,7 +33,7 @@ include(common NO_POLICY_SCOPE)
 #   This class is at present unable to be part of a standalone object library.
 #   Note that the unit test for this module links in the whole library.
 #
-add_library(query_plan OBJECT query_plan.cc)
+add_library(query_plan OBJECT EXCLUDE_FROM_ALL query_plan.cc)
 target_link_libraries(query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(query_plan PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 

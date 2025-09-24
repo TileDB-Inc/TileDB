@@ -251,8 +251,8 @@ Status URI::get_rest_components(
   const std::string ns_component =
       legacy ? "tiledb://<namespace>" : "tiledb://<workspace>/<teamspace>";
   const auto error_st = Status_RestError(
-      "Invalid array URI for REST service; expected format is " + ns_component +
-      "/<array-name>' or " + ns_component + "/<array-uri>'.");
+      "Invalid array URI for REST service: '" + uri_ +
+      "'; expected format is '" + ns_component + "/<array-name-or-uri>'.");
 
   if (!is_tiledb() || uri_.empty() || uri_.find(prefix) == std::string::npos ||
       uri_.size() <= prefix.size()) {
@@ -299,7 +299,8 @@ Status URI::get_rest_components(
     std::string ws = uri_.substr(prefix.size(), ws_len);
     std::string ts = uri_.substr(ws_slash + 1, ts_len);
     rest_components->server_namespace = ws + "/" + ts;
-    auto asset_name = last_path_part();
+    // If there is a trailing slash in the URI, this returns an empty string.
+    auto asset_name = remove_trailing_slash().last_path_part();
 
     auto storage_component_index = get_storage_component_index(ts_slash + 1);
     if (!storage_component_index.has_value()) {

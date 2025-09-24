@@ -38,7 +38,7 @@ gather_sources(${SOURCES})
 #   `query_aggregate` object library to link to, since at present nothing
 #   involving query is able to link standalone.
 #
-add_library(capi_query_aggregate OBJECT ${SOURCES})
+add_library(capi_query_aggregate OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 target_link_libraries(capi_query_aggregate PUBLIC export)
 target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 

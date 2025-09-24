@@ -43,6 +43,7 @@ namespace tiledb::sm::stats {
 
 class Stats;
 
+#ifdef TILEDB_STATS
 /**
  * This class contains a simple duration instrument.
  */
@@ -80,6 +81,27 @@ class DurationInstrument {
   /** Start time of the duration instrument. */
   std::chrono::high_resolution_clock::time_point start_time_;
 };
+#else
+/**
+ * Dummy duration instrument class when stats are disabled.
+ * This class does nothing but provides the same interface.
+ */
+template <class ParentType, typename StatNameType = std::string>
+class DurationInstrument {
+ public:
+  /* ****************************** */
+  /*   CONSTRUCTORS & DESTRUCTORS   */
+  /* ****************************** */
+
+  /** Constructs a dummy duration instrument object. */
+  DurationInstrument(ParentType&, const StatNameType) {
+  }
+
+  /** Destructor does nothing when stats are disabled. */
+  ~DurationInstrument() {
+  }
+};
+#endif
 
 }  // namespace tiledb::sm::stats
 
