@@ -391,6 +391,13 @@ class GlobalOrderWriter : public WriterBase {
    * be written at once.
    */
   Status start_new_fragment();
+
+  /**
+   * @return true if this write is to a dense fragment
+   */
+  bool dense() const {
+    return !coords_info_.has_coords_;
+  }
 };
 
 }  // namespace sm
