@@ -51,6 +51,22 @@
 #include <string>
 #include <thread>
 
+class [[nodiscard]] SetEnvScope {
+ public:
+  ~SetEnvScope();
+
+ private:
+  friend SetEnvScope setenv_local(const char*, const char*);
+
+  SetEnvScope(const char* name, std::optional<std::string>&& old_value)
+      : name_(name)
+      , old_value_(std::move(old_value)) {
+  }
+
+  const char* name_;
+  const std::optional<std::string> old_value_;
+};
+
 /**
  * Helper function to set environment variables across platforms.
  *
@@ -58,7 +74,7 @@
  * @param __value Value of the environment variable.
  * @return 0 on success, -1 on error.
  */
-int setenv_local(const char* __name, const char* __value);
+SetEnvScope setenv_local(const char* __name, const char* __value);
 
 // A mutex for protecting the thread-unsafe Catch2 macros.
 extern std::mutex catch2_macro_mutex;
