@@ -130,11 +130,13 @@ TEST_CASE(
   std::string rest_server =
       GENERATE("http://localhost:8080/", "http://localhost:8080//");
   tiledb::sm::Config cfg;
+  std::optional<SetEnvScope> env_scope;
   SECTION("rest.server_address set in Config") {
     cfg.set("rest.server_address", rest_server).ok();
   }
   SECTION("rest.server_address set in environment") {
-    setenv_local("TILEDB_REST_SERVER_ADDRESS", rest_server.c_str());
+    env_scope.emplace(
+        setenv_local("TILEDB_REST_SERVER_ADDRESS", rest_server.c_str()));
   }
   SECTION("rest.server_address set by loaded config file") {
     std::string cfg_file = "tiledb_config.txt";
