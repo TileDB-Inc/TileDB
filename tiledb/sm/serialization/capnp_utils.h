@@ -511,7 +511,7 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
         vec[index] = list[index];
       }
 
-      if (non_empty_domain.hasSizes()) {
+      if (non_empty_domain.hasSizes() && non_empty_domain.getSizes().size()) {
         auto sizes = non_empty_domain.getSizes();
         ndRange.emplace_back(vec.data(), vec.size(), sizes[0]);
       } else {
