@@ -113,6 +113,19 @@ void OndemandFragmentMetadata::load_fragment_min_max_sum_null_count(
   loaded_metadata_.fragment_min_max_sum_null_count_ = true;
 }
 
+void OndemandFragmentMetadata::load_fragment_tile_global_order_bounds(
+    const EncryptionKey& encryption_key) {
+  if (parent_fragment_.version_ <
+      constants::fragment_metadata_global_order_bounds_version) {
+    return;
+  }
+
+  for (unsigned d = 0; d < parent_fragment_.array_schema_->dim_num(); d++) {
+    load_tile_global_order_min_values(encryption_key, d);
+    load_tile_global_order_max_values(encryption_key, d);
+  }
+}
+
 void OndemandFragmentMetadata::load_processed_conditions(
     const EncryptionKey& encryption_key) {
   if (loaded_metadata_.processed_conditions_) {
@@ -307,18 +320,12 @@ void OndemandFragmentMetadata::load_tile_validity_offsets(
   }
 }
 
-// ===== FORMAT =====
-// tile_min_values#0_size_buffer (uint64_t)
-// tile_min_values#0_size_buffer_var (uint64_t)
-// tile_min_values#0_buffer
-// tile_min_values#0_buffer_var
-// ...
-// tile_min_values#<attribute_num-1>_size_buffer (uint64_t)
-// tile_min_values#<attribute_num-1>_size_buffer_var (uint64_t)
-// tile_min_values#<attribute_num-1>_buffer
-// tile_min_values#<attribute_num-1>_buffer_var
-void OndemandFragmentMetadata::load_tile_min_values(
-    unsigned idx, Deserializer& deserializer) {
+static void load_tile_bound_values(
+    auto& fixed_buffer,
+    auto& var_buffer,
+    MemoryTracker* memory_tracker,
+    MemoryType mem_type,
+    Deserializer& deserializer) {
   uint64_t buffer_size = 0;
   uint64_t var_buffer_size = 0;
 
@@ -331,24 +338,45 @@ void OndemandFragmentMetadata::load_tile_min_values(
   // Get tile mins
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
-    if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(size, MemoryType::TILE_MIN_VALS)) {
+    if (memory_tracker != nullptr &&
+        !memory_tracker->take_memory(size, mem_type)) {
       throw FragmentMetadataStatusException(
-          "Cannot load min values; Insufficient memory budget; Needed " +
-          std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          "Cannot load " + memory_type_to_str(mem_type) +
+          "; Insufficient memory budget; Needed " + std::to_string(size) +
+          " but only had " +
+          std::to_string(memory_tracker->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget()));
+          std::to_string(memory_tracker->get_memory_budget()));
     }
 
-    tile_min_buffer_[idx].resize(buffer_size);
-    deserializer.read(&tile_min_buffer_[idx][0], buffer_size);
+    fixed_buffer.resize(buffer_size);
+    deserializer.read(&fixed_buffer[0], buffer_size);
 
     if (var_buffer_size) {
-      tile_min_var_buffer_[idx].resize(var_buffer_size);
-      deserializer.read(&tile_min_var_buffer_[idx][0], var_buffer_size);
+      var_buffer.resize(var_buffer_size);
+      deserializer.read(&var_buffer[0], var_buffer_size);
     }
   }
+}
+
+// ===== FORMAT =====
+// tile_min_values#0_size_buffer (uint64_t)
+// tile_min_values#0_size_buffer_var (uint64_t)
+// tile_min_values#0_buffer
+// tile_min_values#0_buffer_var
+// ...
+// tile_min_values#<attribute_num-1>_size_buffer (uint64_t)
+// tile_min_values#<attribute_num-1>_size_buffer_var (uint64_t)
+// tile_min_values#<attribute_num-1>_buffer
+// tile_min_values#<attribute_num-1>_buffer_var
+void OndemandFragmentMetadata::load_tile_min_values(
+    unsigned idx, Deserializer& deserializer) {
+  load_tile_bound_values(
+      tile_min_buffer_[idx],
+      tile_min_var_buffer_[idx],
+      memory_tracker_.get(),
+      MemoryType::TILE_MIN_VALS,
+      deserializer);
 }
 
 // ===== FORMAT =====
@@ -363,36 +391,52 @@ void OndemandFragmentMetadata::load_tile_min_values(
 // tile_max_values#<attribute_num-1>_buffer_var
 void OndemandFragmentMetadata::load_tile_max_values(
     unsigned idx, Deserializer& deserializer) {
-  uint64_t buffer_size = 0;
-  uint64_t var_buffer_size = 0;
+  load_tile_bound_values(
+      tile_max_buffer_[idx],
+      tile_max_var_buffer_[idx],
+      memory_tracker_.get(),
+      MemoryType::TILE_MAX_VALS,
+      deserializer);
+}
 
-  // Get buffer size
-  buffer_size = deserializer.read<uint64_t>();
+// ===== FORMAT =====
+// tile_global_order_min_values#0_size_buffer (uint64_t)
+// tile_global_order_min_values#0_size_buffer_var (uint64_t)
+// tile_global_order_min_values#0_buffer
+// tile_global_order_min_values#0_buffer_var
+// ...
+// tile_global_order_min_values#<attribute_num-1>_size_buffer (uint64_t)
+// tile_global_order_min_values#<attribute_num-1>_size_buffer_var (uint64_t)
+// tile_global_order_min_values#<attribute_num-1>_buffer
+// tile_global_order_min_values#<attribute_num-1>_buffer_var
+void OndemandFragmentMetadata::load_tile_global_order_min_values(
+    unsigned dimension, Deserializer& deserializer) {
+  load_tile_bound_values(
+      tile_global_order_min_buffer_[dimension],
+      tile_global_order_min_var_buffer_[dimension],
+      memory_tracker_.get(),
+      MemoryType::TILE_GLOBAL_ORDER_MIN_VALS,
+      deserializer);
+}
 
-  // Get var buffer size
-  var_buffer_size = deserializer.read<uint64_t>();
-
-  // Get tile maxs
-  if (buffer_size != 0) {
-    auto size = buffer_size + var_buffer_size;
-    if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(size, MemoryType::TILE_MAX_VALS)) {
-      throw FragmentMetadataStatusException(
-          "Cannot load max values; Insufficient memory budget; Needed " +
-          std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
-          " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget()));
-    }
-
-    tile_max_buffer_[idx].resize(buffer_size);
-    deserializer.read(&tile_max_buffer_[idx][0], buffer_size);
-
-    if (var_buffer_size) {
-      tile_max_var_buffer_[idx].resize(var_buffer_size);
-      deserializer.read(&tile_max_var_buffer_[idx][0], var_buffer_size);
-    }
-  }
+// ===== FORMAT =====
+// tile_global_order_max_values#0_size_buffer (uint64_t)
+// tile_global_order_max_values#0_size_buffer_var (uint64_t)
+// tile_global_order_max_values#0_buffer
+// tile_global_order_max_values#0_buffer_var
+// ...
+// tile_global_order_max_values#<attribute_num-1>_size_buffer (uint64_t)
+// tile_global_order_max_values#<attribute_num-1>_size_buffer_var (uint64_t)
+// tile_global_order_max_values#<attribute_num-1>_buffer
+// tile_global_order_max_values#<attribute_num-1>_buffer_var
+void OndemandFragmentMetadata::load_tile_global_order_max_values(
+    unsigned dimension, Deserializer& deserializer) {
+  load_tile_bound_values(
+      tile_global_order_max_buffer_[dimension],
+      tile_global_order_max_var_buffer_[dimension],
+      memory_tracker_.get(),
+      MemoryType::TILE_GLOBAL_ORDER_MAX_VALS,
+      deserializer);
 }
 
 // ===== FORMAT =====
@@ -575,6 +619,56 @@ void OndemandFragmentMetadata::load_tile_max_values(
   load_tile_max_values(idx, deserializer);
 
   loaded_metadata_.tile_max_[idx] = true;
+}
+
+void OndemandFragmentMetadata::load_tile_global_order_min_values(
+    const EncryptionKey& encryption_key, unsigned dimension) {
+  if (parent_fragment_.version_ <
+      constants::fragment_metadata_global_order_bounds_version) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
+
+  if (loaded_metadata_.tile_global_order_min_[dimension]) {
+    return;
+  }
+
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key,
+      parent_fragment_.gt_offsets_.tile_global_order_min_offsets_[dimension]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_global_order_min_size", tile->size());
+
+  Deserializer deserializer(tile->data(), tile->size());
+  load_tile_global_order_min_values(dimension, deserializer);
+
+  loaded_metadata_.tile_global_order_min_[dimension] = true;
+}
+
+void OndemandFragmentMetadata::load_tile_global_order_max_values(
+    const EncryptionKey& encryption_key, unsigned dimension) {
+  if (parent_fragment_.version_ <
+      constants::fragment_metadata_global_order_bounds_version) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
+
+  if (loaded_metadata_.tile_global_order_max_[dimension]) {
+    return;
+  }
+
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key,
+      parent_fragment_.gt_offsets_.tile_global_order_max_offsets_[dimension]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_global_order_max_size", tile->size());
+
+  Deserializer deserializer(tile->data(), tile->size());
+  load_tile_global_order_max_values(dimension, deserializer);
+
+  loaded_metadata_.tile_global_order_max_[dimension] = true;
 }
 
 void OndemandFragmentMetadata::load_tile_sum_values(

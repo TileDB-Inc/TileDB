@@ -100,6 +100,24 @@ void generic_tile_offsets_from_capnp(
       gt_offsets.tile_max_offsets_.emplace_back(tile_max_offset);
     }
   }
+  if (gt_reader.hasTileGlobalOrderMinOffsets()) {
+    auto tile_global_order_min_offsets =
+        gt_reader.getTileGlobalOrderMinOffsets();
+    gt_offsets.tile_global_order_min_offsets_.reserve(
+        tile_global_order_min_offsets.size());
+    for (const auto& offset : tile_global_order_min_offsets) {
+      gt_offsets.tile_global_order_min_offsets_.emplace_back(offset);
+    }
+  }
+  if (gt_reader.hasTileGlobalOrderMaxOffsets()) {
+    auto tile_global_order_max_offsets =
+        gt_reader.getTileGlobalOrderMaxOffsets();
+    gt_offsets.tile_global_order_max_offsets_.reserve(
+        tile_global_order_max_offsets.size());
+    for (const auto& offset : tile_global_order_max_offsets) {
+      gt_offsets.tile_global_order_max_offsets_.emplace_back(offset);
+    }
+  }
   if (gt_reader.hasTileSumOffsets()) {
     auto tile_sum_offsets = gt_reader.getTileSumOffsets();
     gt_offsets.tile_sum_offsets_.reserve(tile_sum_offsets.size());
@@ -118,6 +136,16 @@ void generic_tile_offsets_from_capnp(
       gt_reader.getFragmentMinMaxSumNullCountOffset();
   gt_offsets.processed_conditions_offsets_ =
       gt_reader.getProcessedConditionsOffsets();
+}
+
+static void tile_bounds_from_capnp(const auto& reader, auto& buffers) {
+  for (const auto& t : reader) {
+    auto& last = buffers.emplace_back();
+    last.reserve(t.size());
+    for (const auto& v : t) {
+      last.emplace_back(v);
+    }
+  }
 }
 
 Status fragment_metadata_from_capnp(
@@ -258,49 +286,47 @@ Status fragment_metadata_from_capnp(
   }
   if (frag_meta_reader.hasTileMinBuffer()) {
     auto tileminbuffer_reader = frag_meta_reader.getTileMinBuffer();
-    for (const auto& t : tileminbuffer_reader) {
-      auto& last =
-          frag_meta->loaded_metadata()->tile_min_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
+    tile_bounds_from_capnp(
+        tileminbuffer_reader, frag_meta->loaded_metadata()->tile_min_buffer());
     loaded_metadata.tile_min_.resize(tileminbuffer_reader.size(), false);
   }
   if (frag_meta_reader.hasTileMinVarBuffer()) {
-    auto tileminvarbuffer_reader = frag_meta_reader.getTileMinVarBuffer();
-    for (const auto& t : tileminvarbuffer_reader) {
-      auto& last =
-          frag_meta->loaded_metadata()->tile_min_var_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
+    tile_bounds_from_capnp(
+        frag_meta_reader.getTileMinVarBuffer(),
+        frag_meta->loaded_metadata()->tile_min_var_buffer());
   }
   if (frag_meta_reader.hasTileMaxBuffer()) {
     auto tilemaxbuffer_reader = frag_meta_reader.getTileMaxBuffer();
-    for (const auto& t : tilemaxbuffer_reader) {
-      auto& last =
-          frag_meta->loaded_metadata()->tile_max_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
+    tile_bounds_from_capnp(
+        tilemaxbuffer_reader, frag_meta->loaded_metadata()->tile_max_buffer());
     loaded_metadata.tile_max_.resize(tilemaxbuffer_reader.size(), false);
   }
   if (frag_meta_reader.hasTileMaxVarBuffer()) {
-    auto tilemaxvarbuffer_reader = frag_meta_reader.getTileMaxVarBuffer();
-    for (const auto& t : tilemaxvarbuffer_reader) {
-      auto& last =
-          frag_meta->loaded_metadata()->tile_max_var_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
+    tile_bounds_from_capnp(
+        frag_meta_reader.getTileMaxVarBuffer(),
+        frag_meta->loaded_metadata()->tile_max_var_buffer());
+  }
+  if (frag_meta_reader.hasTileGlobalOrderMinBuffer()) {
+    auto reader = frag_meta_reader.getTileGlobalOrderMinBuffer();
+    tile_bounds_from_capnp(
+        reader, frag_meta->loaded_metadata()->tile_global_order_min_buffer());
+    loaded_metadata.tile_global_order_min_.resize(reader.size(), false);
+  }
+  if (frag_meta_reader.hasTileGlobalOrderMinVarBuffer()) {
+    tile_bounds_from_capnp(
+        frag_meta_reader.getTileGlobalOrderMinVarBuffer(),
+        frag_meta->loaded_metadata()->tile_global_order_min_var_buffer());
+  }
+  if (frag_meta_reader.hasTileGlobalOrderMaxBuffer()) {
+    auto reader = frag_meta_reader.getTileGlobalOrderMaxBuffer();
+    tile_bounds_from_capnp(
+        reader, frag_meta->loaded_metadata()->tile_global_order_max_buffer());
+    loaded_metadata.tile_global_order_max_.resize(reader.size(), false);
+  }
+  if (frag_meta_reader.hasTileGlobalOrderMaxVarBuffer()) {
+    tile_bounds_from_capnp(
+        frag_meta_reader.getTileGlobalOrderMaxVarBuffer(),
+        frag_meta->loaded_metadata()->tile_global_order_max_var_buffer());
   }
   if (frag_meta_reader.hasTileSums()) {
     auto tilesums_reader = frag_meta_reader.getTileSums();
@@ -467,6 +493,24 @@ void generic_tile_offsets_to_capnp(
       builder.set(i, gt_tile_max_offsets[i]);
     }
   }
+  auto& gt_tile_global_order_min_offsets =
+      gt_offsets.tile_global_order_min_offsets_;
+  if (!gt_tile_global_order_min_offsets.empty()) {
+    auto builder = gt_offsets_builder.initTileGlobalOrderMinOffsets(
+        gt_tile_min_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_global_order_min_offsets.size(); ++i) {
+      builder.set(i, gt_tile_global_order_min_offsets[i]);
+    }
+  }
+  auto& gt_tile_global_order_max_offsets =
+      gt_offsets.tile_global_order_max_offsets_;
+  if (!gt_tile_global_order_max_offsets.empty()) {
+    auto builder = gt_offsets_builder.initTileGlobalOrderMaxOffsets(
+        gt_tile_max_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_global_order_max_offsets.size(); ++i) {
+      builder.set(i, gt_tile_global_order_max_offsets[i]);
+    }
+  }
   auto& gt_tile_sum_offsets = gt_offsets.tile_sum_offsets_;
   if (!gt_tile_sum_offsets.empty()) {
     auto builder =
@@ -537,6 +581,32 @@ void fragment_meta_sizes_offsets_to_capnp(
   }
 }
 
+static void tile_bounds_to_capnp(
+    const auto& fixedBuffers,
+    const auto& varBuffers,
+    auto initFixedBuilder,
+    auto initVarBuilder) {
+  if (!fixedBuffers.empty()) {
+    auto builder = initFixedBuilder(fixedBuffers.size());
+    for (uint64_t i = 0; i < fixedBuffers.size(); ++i) {
+      builder.init(i, fixedBuffers[i].size());
+      for (uint64_t j = 0; j < fixedBuffers[i].size(); ++j) {
+        builder[i].set(j, fixedBuffers[i][j]);
+      }
+    }
+  }
+
+  if (!varBuffers.empty()) {
+    auto builder = initVarBuilder(varBuffers.size());
+    for (uint64_t i = 0; i < varBuffers.size(); ++i) {
+      builder.init(i, varBuffers[i].size());
+      for (uint64_t j = 0; j < varBuffers[i].size(); ++j) {
+        builder[i].set(j, varBuffers[i][j]);
+      }
+    }
+  }
+}
+
 Status fragment_metadata_to_capnp(
     const FragmentMetadata& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
@@ -573,50 +643,46 @@ Status fragment_metadata_to_capnp(
     }
   }
 
-  auto& tile_min_buffer = frag_meta.loaded_metadata()->tile_min_buffer();
-  if (!tile_min_buffer.empty()) {
-    auto builder = frag_meta_builder->initTileMinBuffer(tile_min_buffer.size());
-    for (uint64_t i = 0; i < tile_min_buffer.size(); ++i) {
-      builder.init(i, tile_min_buffer[i].size());
-      for (uint64_t j = 0; j < tile_min_buffer[i].size(); ++j) {
-        builder[i].set(j, tile_min_buffer[i][j]);
-      }
-    }
-  }
-  auto& tile_min_var_buffer =
-      frag_meta.loaded_metadata()->tile_min_var_buffer();
-  if (!tile_min_var_buffer.empty()) {
-    auto builder =
-        frag_meta_builder->initTileMinVarBuffer(tile_min_var_buffer.size());
-    for (uint64_t i = 0; i < tile_min_var_buffer.size(); ++i) {
-      builder.init(i, tile_min_var_buffer[i].size());
-      for (uint64_t j = 0; j < tile_min_var_buffer[i].size(); ++j) {
-        builder[i].set(j, tile_min_var_buffer[i][j]);
-      }
-    }
-  }
-  auto& tile_max_buffer = frag_meta.loaded_metadata()->tile_max_buffer();
-  if (!tile_max_buffer.empty()) {
-    auto builder = frag_meta_builder->initTileMaxBuffer(tile_max_buffer.size());
-    for (uint64_t i = 0; i < tile_max_buffer.size(); ++i) {
-      builder.init(i, tile_max_buffer[i].size());
-      for (uint64_t j = 0; j < tile_max_buffer[i].size(); ++j) {
-        builder[i].set(j, tile_max_buffer[i][j]);
-      }
-    }
-  }
-  auto& tile_max_var_buffer =
-      frag_meta.loaded_metadata()->tile_max_var_buffer();
-  if (!tile_max_var_buffer.empty()) {
-    auto builder =
-        frag_meta_builder->initTileMaxVarBuffer(tile_max_var_buffer.size());
-    for (uint64_t i = 0; i < tile_max_var_buffer.size(); ++i) {
-      builder.init(i, tile_max_var_buffer[i].size());
-      for (uint64_t j = 0; j < tile_max_var_buffer[i].size(); ++j) {
-        builder[i].set(j, tile_max_var_buffer[i][j]);
-      }
-    }
-  }
+  const auto& lm = *frag_meta.loaded_metadata();
+
+  tile_bounds_to_capnp(
+      lm.tile_min_buffer(),
+      lm.tile_min_var_buffer(),
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileMinBuffer(size);
+      },
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileMinVarBuffer(size);
+      });
+  tile_bounds_to_capnp(
+      lm.tile_max_buffer(),
+      lm.tile_max_var_buffer(),
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileMaxBuffer(size);
+      },
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileMaxVarBuffer(size);
+      });
+
+  tile_bounds_to_capnp(
+      lm.tile_global_order_min_buffer(),
+      lm.tile_global_order_min_var_buffer(),
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileGlobalOrderMinBuffer(size);
+      },
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileGlobalOrderMinVarBuffer(size);
+      });
+  tile_bounds_to_capnp(
+      lm.tile_global_order_max_buffer(),
+      lm.tile_global_order_min_var_buffer(),
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileGlobalOrderMaxBuffer(size);
+      },
+      [&frag_meta_builder](auto size) {
+        return frag_meta_builder->initTileGlobalOrderMaxVarBuffer(size);
+      });
+
   auto& tile_sums = frag_meta.loaded_metadata()->tile_sums();
   if (!tile_sums.empty()) {
     auto builder = frag_meta_builder->initTileSums(tile_sums.size());

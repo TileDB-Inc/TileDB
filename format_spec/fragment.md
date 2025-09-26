@@ -82,6 +82,12 @@ The fragment metadata file has the following on-disk format:
 | Tile maxes for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized maxes for attribute/dimension 1 |
 | … | … | … |
 | Variable maxes for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized maxes for attribute/dimension N |
+| Tile global order min coordinates for dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 23_ For sparse arrays, the serialized value of dimension 1 of the global order minimum coordinate in each tile. |
+| … | … | … |
+| Variable global order min coordinates for dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 23_ For sparse arrays, the serialized value of dimension N of the global order minimum coordinate in each tile. |
+| Tile global order max coordinates for dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 23_ For sparse arrays, the serialized value of dimension 1 of the global order maximum coordinate in each tile. |
+| … | … | … |
+| Variable global order max coordinates for dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 23_ For sparse arrays, the serialized value of dimension N of the global order maximum coordinate in each tile. |
 | Tile sums for attribute/dimension 1 | [Tile Sums](#tile-sums) | _New in version 11_ The serialized sums for attribute/dimension 1 |
 | … | … | … |
 | Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | _New in version 11_ The serialized sums for attribute/dimension N |
@@ -276,6 +282,12 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile maxes offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile maxes for attribute/dimension 1. |
 | … | … | … |
 | Tile maxes offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile maxes for attribute/dimension N |
+| Tile global order min coordinates offset for dimension 1 | `uint64_t` | _New in version 23_ For sparse arrays, he offset to the generic tile storing the tile global order mins for dimension 1
+| … | … | … |
+| Tile global order min coordinates offset for dimension N | `uint64_t` | _New in version 23_ For sparse arrays, the offset to the generic tile storing the tile global order mins for dimension N
+| Tile global order max coordinates offset for dimension 1 | `uint64_t` | _New in version 23_ For sparse arrays, the offset to the generic tile storing the tile global order maxes for dimension 1
+| … | … | … |
+| Tile global order max coordinates offset for dimension N | `uint64_t` | _New in version 23_ For sparse arrays, the offset to the generic tile storing the tile global order maxes for dimension N
 | Tile sums offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile sums for attribute/dimension 1. |
 | … | … | … |
 | Tile sums offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile sums for attribute/dimension N |

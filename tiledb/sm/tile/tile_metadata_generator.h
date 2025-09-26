@@ -239,6 +239,9 @@ class TileMetadataGenerator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Is this tile for a dimension. */
+  bool is_dim_;
+
   /** Is this a var tile. */
   bool var_size_;
 
@@ -256,6 +259,20 @@ class TileMetadataGenerator {
 
   /** Maximum value size for this tile. */
   uint64_t max_size_;
+
+  /** Value for this dimension of the tile's global order minimum value */
+  const void* global_order_min_;
+
+  /** Size of the value for this dimension of the tile's global order minimum
+   * value */
+  uint64_t global_order_min_size_;
+
+  /** Value for this dimension of the tile's global order maximum value */
+  const void* global_order_max_;
+
+  /** Size of the value for this dimension of the tile's global order maximum
+   * value */
+  uint64_t global_order_max_size_;
 
   /** Sum of values. */
   ByteVec sum_;

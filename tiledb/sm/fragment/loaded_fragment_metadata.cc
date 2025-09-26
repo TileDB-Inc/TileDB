@@ -67,6 +67,14 @@ LoadedFragmentMetadata::LoadedFragmentMetadata(
     , tile_max_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
     , tile_max_var_buffer_(
           memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_global_order_min_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_GLOBAL_ORDER_MIN_VALS))
+    , tile_global_order_max_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_GLOBAL_ORDER_MAX_VALS))
+    , tile_global_order_min_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_GLOBAL_ORDER_MIN_VALS))
+    , tile_global_order_max_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_GLOBAL_ORDER_MAX_VALS))
     , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
     , tile_null_counts_(
           memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS)) {
@@ -221,6 +229,10 @@ void LoadedFragmentMetadata::resize_offsets(uint64_t size) {
   tile_min_var_buffer().resize(size);
   tile_max_buffer().resize(size);
   tile_max_var_buffer().resize(size);
+  tile_global_order_min_buffer().resize(size);
+  tile_global_order_min_var_buffer().resize(size);
+  tile_global_order_max_buffer().resize(size);
+  tile_global_order_max_var_buffer().resize(size);
   tile_sums().resize(size);
   tile_null_counts().resize(size);
   fragment_mins_.resize(size);
@@ -233,6 +245,8 @@ void LoadedFragmentMetadata::resize_offsets(uint64_t size) {
   loaded_metadata_.tile_validity_offsets_.resize(size, false);
   loaded_metadata_.tile_min_.resize(size, false);
   loaded_metadata_.tile_max_.resize(size, false);
+  loaded_metadata_.tile_global_order_min_.resize(size, false);
+  loaded_metadata_.tile_global_order_max_.resize(size, false);
   loaded_metadata_.tile_sum_.resize(size, false);
   loaded_metadata_.tile_null_count_.resize(size, false);
 }
