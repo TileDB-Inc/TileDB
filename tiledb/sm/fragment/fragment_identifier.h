@@ -94,7 +94,7 @@ class FragmentID {
   explicit FragmentID(const URI& uri);
 
   /** Constructor. */
-  explicit FragmentID(const std::string_view& path);
+  explicit FragmentID(const std::string_view path);
 
   /** Destructor. */
   ~FragmentID() = default;
