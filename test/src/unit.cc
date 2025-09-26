@@ -1,4 +1,5 @@
 #define CATCH_CONFIG_RUNNER
+#include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 
 #include <cstdlib>
@@ -10,15 +11,6 @@
 #if defined(_MSC_VER)
 #include <crtdbg.h>
 #endif
-
-namespace tiledb {
-namespace test {
-
-// Command line arguments.
-int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs);
-
-}  // namespace test
-}  // namespace tiledb
 
 int main(const int argc, char** const argv) {
 #if defined(_MSC_VER)

@@ -969,8 +969,13 @@ class VFSTestBase {
    * @param test_tree Vector used to build test directory and objects.
    *    For each element we create a nested directory with N objects.
    * @param prefix The URI prefix to use for the test directory.
+   * @param vfs_backend The value of the "--vfs" command-line option that
+   * enables this backend.
    */
-  VFSTestBase(const std::vector<size_t>& test_tree, const std::string& prefix);
+  VFSTestBase(
+      const std::vector<size_t>& test_tree,
+      const std::string& prefix,
+      const std::string& vfs_backend);
 
  public:
   /** Type definition for objects returned from ls_recursive */
@@ -1026,21 +1031,6 @@ class VFSTestBase {
   bool is_supported_;
 };
 
-/**
- * Test object for tiledb::sm::VFS functionality. When constructed, this test
- * object creates a temporary directory and populates it using the test_tree
- * vector passed to the constructor. For each element in the vector, we create a
- * nested directory with N objects. The constructor also writes `10 * N` bytes
- * of data to each object created for testing returned object sizes are correct.
- *
- * This test object can be used for any valid VFS URI prefix, and is not
- * specific to any one backend.
- */
-class VFSTest : public VFSTestBase {
- public:
-  VFSTest(const std::vector<size_t>& test_tree, const std::string& prefix);
-};
-
 /** Test object for tiledb::sm::S3 functionality. */
 class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
  public:
@@ -1069,7 +1059,7 @@ class LocalFsTest : public VFSTestBase {
 class AzureTest : public VFSTestBase {
  public:
   explicit AzureTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "azure://") {
+      : VFSTestBase(test_tree, "azure://", "azure") {
 #ifdef HAVE_AZURE
     vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
@@ -1099,7 +1089,7 @@ class GCSTest : public VFSTestBase {
   explicit GCSTest(
       const std::vector<size_t>& test_tree,
       const std::string& protocol = "gcs://")
-      : VFSTestBase(test_tree, protocol) {
+      : VFSTestBase(test_tree, protocol, "gcs") {
 #ifdef HAVE_GCS
     vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
@@ -1123,6 +1113,32 @@ class GCSTest : public VFSTestBase {
   }
 };
 
+/** Stub test object for TileDB FS functionality. */
+class TileDBFSTest : public VFSTestBase {
+ public:
+  explicit TileDBFSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(
+            test_tree, "tiledb://unit-workspace/unit-teamspace/", "rest-s3") {
+    for (size_t i = 1; i <= test_tree_.size(); i++) {
+      sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+      // VFS::create_dir is a no-op for Azure; Just create objects.
+      if (test_tree_[i - 1] > 0) {
+        // Do not include an empty prefix in expected results.
+        expected_results_.emplace_back(path.to_string(), 0);
+      }
+      for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+        auto object_uri = path.join_path("test_file_" + std::to_string(j));
+        vfs_.touch(object_uri);
+        std::string data(j * 10, 'a');
+        vfs_.write(object_uri, data.data(), data.size());
+        vfs_.close_file(object_uri).ok();
+        expected_results_.emplace_back(object_uri.to_string(), data.size());
+      }
+    }
+    std::sort(expected_results_.begin(), expected_results_.end());
+  }
+};
+
 /** Stub test object for tiledb::sm::GS functionality. */
 class GSTest : public GCSTest {
  public:
@@ -1135,7 +1151,7 @@ class GSTest : public GCSTest {
 class MemFsTest : public VFSTestBase {
  public:
   explicit MemFsTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "mem://") {
+      : VFSTestBase(test_tree, "mem://", "memfs") {
   }
 };
 }  // namespace tiledb::test
