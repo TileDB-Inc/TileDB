@@ -208,7 +208,7 @@ class GlobalOrderWriter : public WriterBase {
    * The desired fragment size, in bytes. The writer will create a new fragment
    * once this size has been reached.
    */
-  uint64_t fragment_size_;
+  uint64_t max_fragment_size_;
 
   /**
    * Size currently written to the fragment.
@@ -371,19 +371,20 @@ class GlobalOrderWriter : public WriterBase {
       WriterTileTupleVector* tiles) const;
 
   /**
-   * Return the number of tiles to write depending on the desired fragment
-   * size. The tiles passed in as an argument should have already been
-   * filtered.
+   * Identify the manner in which the filtered input tiles map onto target
+   * fragments. If `max_fragment_size_` is much larger than the input, this may
+   * return just one result.
    *
-   * @param start Current tile index.
-   * @param tile_num Number of tiles in the tiles vectors.
+   * Each element of the returned vector is a pair `(fragment_size, start_tile)`
+   * indicating the size of the fragment, and the first tile offset which
+   * corresponds to that fragment.
+   *
    * @param tiles Map of vector of tiles, per attributes.
-   * @return Number of tiles to write.
+   * @return a list of `(fragment_size, start_tile)` pairs ordered on
+   * `start_tile`
    */
-  uint64_t num_tiles_to_write(
-      uint64_t start,
-      uint64_t tile_num,
-      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles);
+  std::vector<std::pair<uint64_t, uint64_t>> identify_fragment_tile_boundaries(
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
 
   /**
    * Close the current fragment and start a new one. The closed fragment will

@@ -91,7 +91,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           remote_query,
           fragment_name)
     , processed_conditions_(processed_conditions)
-    , fragment_size_(fragment_size)
+    , max_fragment_size_(fragment_size)
     , current_fragment_size_(0) {
   // Check the layout is global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
@@ -748,21 +748,7 @@ Status GlobalOrderWriter::global_write() {
       query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
-  // Find number of tiles and gather stats
-  uint64_t tile_num = 0;
-  if (!tiles.empty()) {
-    auto it = tiles.begin();
-    tile_num = it->second.size();
-
-    uint64_t cell_num = 0;
-    for (size_t t = 0; t < tile_num; ++t) {
-      cell_num += it->second[t].cell_num();
-    }
-    stats_->add_counter("cell_num", cell_num);
-    stats_->add_counter("tile_num", tile_num);
-  }
-
-  // No cells to be written
+  const uint64_t tile_num = (tiles.empty() ? 0 : tiles.begin()->second.size());
   if (tile_num == 0) {
     return Status::Ok();
   }
@@ -776,43 +762,44 @@ Status GlobalOrderWriter::global_write() {
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));
 
-  uint64_t idx = 0;
-  while (idx < tile_num) {
+  const auto fragments = identify_fragment_tile_boundaries(tiles);
+
+  for (uint64_t f = 0; f < fragments.size(); f++) {
+    const uint64_t start_tile = fragments[f].second;
+    const uint64_t num_tiles =
+        (f + 1 < fragments.size() ? fragments[f + 1].second : tile_num) -
+        start_tile;
+
     auto frag_meta = global_write_state_->frag_meta_;
+    if (num_tiles == 0) {
+      // this should only happen if there is only one tile of input and we have
+      // to wait for finalize, or if continuing a fragment from a previous write
+      // and there is no more room
+      iassert(f == 0);
+      if (current_fragment_size_ > 0) {
+        RETURN_CANCEL_OR_ERROR(start_new_fragment());
+      } else {
+        iassert(fragments.size() == 1);
+      }
+    } else {
+      if (f > 0) {
+        RETURN_CANCEL_OR_ERROR(start_new_fragment());
+      }
+      // update metadata of current fragment
+      frag_meta->set_num_tiles(frag_meta->tile_index_base() + num_tiles);
 
-    // Compute the number of tiles that will fit in this fragment.
-    auto num = num_tiles_to_write(idx, tile_num, tiles);
+      set_coords_metadata(
+          start_tile, start_tile + num_tiles, tiles, mbrs, frag_meta);
 
-    // If we're resuming a fragment write and the first tile doesn't fit into
-    // the previous fragment, we need to start a new fragment and recalculate
-    // the number of tiles to write.
-    if (current_fragment_size_ > 0 && num == 0) {
-      RETURN_CANCEL_OR_ERROR(start_new_fragment());
-      num = num_tiles_to_write(idx, tile_num, tiles);
+      // write tiles for all attributes
+      RETURN_CANCEL_OR_ERROR(
+          write_tiles(start_tile, start_tile + num_tiles, frag_meta, &tiles));
     }
+    frag_meta->set_tile_index_base(frag_meta->tile_index_base() + num_tiles);
+  }
 
-    // Set new number of tiles in the fragment metadata
-    auto new_num_tiles = frag_meta->tile_index_base() + num;
-    frag_meta->set_num_tiles(new_num_tiles);
-
-    if (new_num_tiles == 0) {
-      throw GlobalOrderWriterException(
-          "Fragment size is too small to write a single tile");
-    }
-
-    set_coords_metadata(idx, idx + num, tiles, mbrs, frag_meta);
-
-    // Write tiles for all attributes
-    RETURN_CANCEL_OR_ERROR(write_tiles(idx, idx + num, frag_meta, &tiles));
-    idx += num;
-
-    // If we didn't write all tiles, close this fragment and start another.
-    if (idx != tile_num) {
-      RETURN_CANCEL_OR_ERROR(start_new_fragment());
-    }
-
-    // Increment the tile index base for the next global order write.
-    frag_meta->set_tile_index_base(new_num_tiles);
+  if (!fragments.empty()) {
+    current_fragment_size_ = fragments.back().first;
   }
 
   return Status::Ok();
@@ -1368,10 +1355,22 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   return Status::Ok();
 }
 
-uint64_t GlobalOrderWriter::num_tiles_to_write(
-    uint64_t start,
-    uint64_t tile_num,
-    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) {
+/**
+ * Identifies the division of input cells into target fragments,
+ * using `max_fragment_size_` as a hard limit on the target fragment size.
+ *
+ * `current_fragment_size_` may be nonzero if continuing a fragment from
+ * a previous `submit()`, so this field is used to initialize the fragment size
+ * before the first tile is examined.
+ *
+ * @param tiles
+ *
+ * @return a list of (fragment size, tile offset) pairs identifying the division
+ * of input data into target fragments
+ */
+std::vector<std::pair<uint64_t, uint64_t>>
+GlobalOrderWriter::identify_fragment_tile_boundaries(
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
   std::vector<bool> var_size;
@@ -1386,8 +1385,28 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
     writer_tile_vectors.emplace_back(&tiles.at(name));
   }
 
+  // Find number of tiles and gather stats
+  uint64_t tile_num = 0;
+  if (!tiles.empty()) {
+    auto it = tiles.begin();
+    tile_num = it->second.size();
+
+    uint64_t cell_num = 0;
+    for (size_t t = 0; t < tile_num; ++t) {
+      cell_num += it->second[t].cell_num();
+    }
+    stats_->add_counter("cell_num", cell_num);
+    stats_->add_counter("tile_num", tile_num);
+  }
+
+  uint64_t fragment_size = current_fragment_size_;
+  uint64_t fragment_start = 0;
+  std::vector<std::pair<uint64_t, uint64_t>> fragments;
+
   // Make sure we don't write more than the desired fragment size.
-  for (uint64_t t = start; t < tile_num; t++) {
+  // FIXME: for dense array this has to be aligned to a "hyper-row"
+  // so that we can have
+  for (uint64_t t = 0; t < tile_num; t++) {
     uint64_t tile_size = 0;
     for (uint64_t a = 0; a < buf_names.size(); a++) {
       if (var_size[a]) {
@@ -1412,14 +1431,22 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
       }
     }
 
-    if (current_fragment_size_ + tile_size > fragment_size_) {
-      return t - start;
+    if (fragment_size + tile_size > max_fragment_size_) {
+      if (fragment_size == 0) {
+        throw GlobalOrderWriterException(
+            "Fragment size is too small to write a single tile");
+      }
+      fragments.push_back(std::make_pair(fragment_size, fragment_start));
+      fragment_size = 0;
+      fragment_start = t;
     }
 
-    current_fragment_size_ += tile_size;
+    fragment_size += tile_size;
   }
 
-  return tile_num - start;
+  fragments.push_back(std::make_pair(fragment_size, fragment_start));
+
+  return fragments;
 }
 
 Status GlobalOrderWriter::start_new_fragment() {
