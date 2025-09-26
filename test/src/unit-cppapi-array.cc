@@ -1716,15 +1716,11 @@ TEST_CASE(
   array_w.close();
 
   // Open for read.
-  Stats::reset();
-  Stats::enable();
   Array array(ctx, array_uri, TILEDB_READ);
   array.close();
-  Stats::disable();
 
   // Check stats.
-  std::string stats;
-  Stats::dump(&stats);
+  std::string stats = ctx.stats();
 
   // Expect read_ops on:
   // cpp_unit_array/
@@ -1772,15 +1768,11 @@ TEST_CASE(
   array_w.close();
 
   // Open for read.
-  Stats::reset();
-  Stats::enable();
   Array array(ctx, array_name, TILEDB_READ);
   array.close();
-  Stats::disable();
 
   // Check stats.
-  std::string stats;
-  Stats::dump(&stats);
+  std::string stats = ctx.stats();
 
   // Expect read_ops on:
   // cpp_unit_array/
