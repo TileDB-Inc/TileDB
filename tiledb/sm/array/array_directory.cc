@@ -1035,14 +1035,14 @@ ArrayDirectory::compute_uris_to_vacuum(
           if (timestamps_overlap(
                   fragment_timestamp_range,
                   !full_overlap_only &&
-                      consolidation_with_timestamps_supported(uri))) {
+                      consolidation_with_timestamps_supported(fragment_id))) {
             overlapping_vac_file_bitmap[i] = 1;
           }
         } else {
           if (!timestamps_overlap(
                   fragment_timestamp_range,
                   !full_overlap_only &&
-                      consolidation_with_timestamps_supported(uri))) {
+                      consolidation_with_timestamps_supported(fragment_id))) {
             non_vac_uri_bitmap[i] = 1;
           }
         }
@@ -1167,7 +1167,7 @@ ArrayDirectory::compute_filtered_uris(
         if (timestamps_overlap(
                 fragment_timestamp_ranges[i],
                 !full_overlap_only &&
-                    consolidation_with_timestamps_supported(uri))) {
+                    consolidation_with_timestamps_supported(fragment_id))) {
           overlaps_bitmap[i] = 1;
         }
         return Status::Ok();
@@ -1311,13 +1311,12 @@ Status ArrayDirectory::is_fragment(
 }
 
 bool ArrayDirectory::consolidation_with_timestamps_supported(
-    const URI& uri) const {
+    const FragmentID& id) const {
   // FragmentID::array_format_version() returns UINT32_MAX for versions <= 2
   // so we should explicitly exclude this case when checking if consolidation
   // with timestamps is supported on a fragment
-  FragmentID fragment_id{uri};
   return mode_ == ArrayDirectoryMode::READ &&
-         fragment_id.array_format_version() >=
+         id.array_format_version() >=
              constants::consolidation_with_timestamps_min_version;
 }
 

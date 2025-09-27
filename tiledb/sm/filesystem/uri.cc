@@ -420,7 +420,7 @@ std::string URI::to_path() const {
   return to_path(uri_);
 }
 
-std::string URI::to_string() const {
+const std::string& URI::to_string() const {
   return uri_;
 }
 

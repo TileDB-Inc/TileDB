@@ -120,7 +120,7 @@ bool FragmentID::has_fragment_name(const URI& uri) {
   return name.find_last_of('_') != std::string::npos;
 }
 
-FragmentID::FragmentID(const std::string_view& path)
+FragmentID::FragmentID(std::string_view path)
     : FragmentID(URI(path)) {
 }
 

@@ -319,7 +319,7 @@ class URI {
   std::string to_path() const;
 
   /** Returns the URI string. */
-  std::string to_string() const;
+  const std::string& to_string() const;
 
   /** Returns the parent dir URI */
   URI parent_path() const;
