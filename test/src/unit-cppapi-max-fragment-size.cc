@@ -581,7 +581,8 @@ instance_dense_global_order(
 
     query.ptr().get()->query_->set_fragment_size(max_fragment_size);
 
-    ASSERTER(query.submit() == Query::Status::COMPLETE);
+    const auto status = query.submit();
+    ASSERTER(status == Query::Status::COMPLETE);
     query.finalize();
   }
 
@@ -653,7 +654,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
 
   Context ctx;
 
-  SECTION("Example") {
+  SECTION("Row tiles") {
     using Dim = templates::Dimension<Datatype::UINT64>;
     using Dom = templates::Domain<uint64_t>;
 
@@ -674,5 +675,39 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
         ctx, 64 * 1024, dimensions, subarray);
 
     CHECK(expect == actual);
+  }
+
+  SECTION("Rectangle tiles") {
+    using Dim = templates::Dimension<Datatype::UINT64>;
+    using Dom = templates::Domain<uint64_t>;
+
+    const uint64_t extent_d1 = GENERATE(8, 4);
+    constexpr size_t span_d2 = 10000;
+    REQUIRE(span_d2 % extent_d1 == 0);
+
+    const std::vector<Dim> dimensions = {
+        Dim(0, std::numeric_limits<uint64_t>::max() - 1, extent_d1),
+        Dim(0, span_d2 - 1, span_d2 / extent_d1)};
+
+    const uint64_t base_d1 = 100;
+    const std::vector<Dom> subarray = {
+        Dom(base_d1 + 0, base_d1 + 7), Dom(0, span_d2 - 1)};
+
+    if (extent_d1 == 8) {
+      const auto expect = Catch::Matchers::ContainsSubstring(
+          "Fragment size is too small to subdivide dense subarray into "
+          "multiple fragments");
+      REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
+          ctx, 64 * 1024, dimensions, subarray));
+    } else {
+      const std::vector<std::vector<Dom>> expect = {
+          {Dom(base_d1 + 0, base_d1 + 0), Dom(0, span_d2 - 1)},
+          {Dom(base_d1 + 1, base_d1 + 1), Dom(0, span_d2 - 1)}};
+
+      const auto actual = instance_dense_global_order<AsserterCatch>(
+          ctx, 64 * 1024, dimensions, subarray);
+
+      CHECK(expect == actual);
+    }
   }
 }
