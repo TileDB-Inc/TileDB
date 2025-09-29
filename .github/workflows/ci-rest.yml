@@ -10,7 +10,7 @@ on:
         description: TileDB core reference to test against REST CI.
   push:
     branches:
-      - dev
+      - main
       - release-*
       - refs/tags/*
 
@@ -41,4 +41,4 @@ jobs:
           # Pass TileDB core ref to test against REST.
           # github.head_ref will only be set for PRs, so fallback to github.ref_name if triggered via push event.
           inputs: '{ "tiledb_ref": "${{ github.event.inputs.ref || github.head_ref || github.ref_name }}"}'
-          wait-for-completion-timeout: 90m
+          wait-for-completion-timeout: 120m
