@@ -30,8 +30,12 @@
  * Tests the C++ API for maximum fragment size.
  */
 
+#include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/array_helpers.h"
+#include "test/support/src/array_templates.h"
 #include "test/support/src/helpers.h"
+#include "tiledb/common/arithmetic.h"
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -41,6 +45,7 @@
 #include <numeric>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 struct CPPMaxFragmentSizeFx {
   const int max_domain = 1000000;
@@ -502,4 +507,172 @@ TEST_CASE(
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name));
 
   array.close();
+}
+
+std::optional<uint64_t> subarray_num_cells(
+    std::span<const templates::Domain<uint64_t>> subarray) {
+  uint64_t num_cells = 1;
+  for (const auto& dim : subarray) {
+    auto maybe = checked_arithmetic<uint64_t>::mul(num_cells, dim.num_cells());
+    if (!maybe.has_value()) {
+      return std::nullopt;
+    }
+    num_cells = maybe.value();
+  }
+  return num_cells;
+}
+
+template <typename Asserter>
+std::vector<std::vector<templates::Domain<uint64_t>>>
+instance_dense_global_order(
+    const Context& ctx,
+    uint64_t max_fragment_size,
+    const std::vector<templates::Dimension<Datatype::UINT64>>& dimensions,
+    const std::vector<templates::Domain<uint64_t>>& subarray) {
+  const std::string array_name = "max_fragment_size_dense_global_order";
+
+  const std::optional<uint64_t> num_cells = subarray_num_cells(subarray);
+  ASSERTER(num_cells.has_value());
+
+  Domain domain(ctx);
+  for (uint64_t d = 0; d < dimensions.size(); d++) {
+    const std::string dname = "d" + std::to_string(d);
+    auto dim = Dimension::create<uint64_t>(
+        ctx,
+        dname,
+        {{dimensions[d].domain.lower_bound, dimensions[d].domain.upper_bound}},
+        dimensions[d].extent);
+    domain.add_dimension(dim);
+  }
+
+  auto a = Attribute::create<int>(ctx, "a");
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a);
+
+  Array::create(array_name, schema);
+  test::DeleteArrayGuard del(ctx.ptr().get(), array_name.c_str());
+
+  const int a_offset = 77;
+  std::vector<int> a_write;
+  a_write.reserve(num_cells.value());
+  for (int i = 0; i < static_cast<int64_t>(num_cells.value()); i++) {
+    a_write.push_back(a_offset + i);
+  }
+
+  std::vector<uint64_t> api_subarray;
+  api_subarray.reserve(2 * subarray.size());
+  for (const auto& sub_dim : subarray) {
+    api_subarray.push_back(sub_dim.lower_bound);
+    api_subarray.push_back(sub_dim.upper_bound);
+  }
+
+  // write data, should be split into multiple fragments
+  {
+    Array array(ctx, array_name, TILEDB_WRITE);
+
+    Subarray sub(ctx, array);
+    sub.set_subarray(api_subarray);
+
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
+    query.set_subarray(sub);
+    query.set_data_buffer("a", a_write);
+
+    query.ptr().get()->query_->set_fragment_size(max_fragment_size);
+
+    ASSERTER(query.submit() == Query::Status::COMPLETE);
+    query.finalize();
+  }
+
+  // then read back
+  std::vector<int> a_read;
+  {
+    a_read.resize(a_write.size());
+
+    Array array(ctx, array_name, TILEDB_READ);
+
+    Subarray sub(ctx, array);
+    sub.set_subarray(api_subarray);
+
+    Query query(ctx, array, TILEDB_READ);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
+    query.set_subarray(sub);
+    query.set_data_buffer("a", a_read);
+
+    auto st = query.submit();
+    ASSERTER(st == Query::Status::COMPLETE);
+  }
+
+  ASSERTER(a_read == a_write);
+
+  FragmentInfo finfo(ctx, array_name);
+  finfo.load();
+
+  // validate fragment size
+  for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
+    const uint64_t fsize = finfo.fragment_size(f);
+    ASSERTER(fsize <= max_fragment_size);
+  }
+
+  // collect fragment domains
+  std::vector<std::vector<templates::Domain<uint64_t>>> fragment_domains;
+  for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
+    std::vector<templates::Domain<uint64_t>> this_fragment_domain;
+    for (uint64_t d = 0; d < dimensions.size(); d++) {
+      uint64_t bounds[2];
+      finfo.get_non_empty_domain(f, d, &bounds[0]);
+      this_fragment_domain.push_back(
+          templates::Domain<uint64_t>(bounds[0], bounds[1]));
+    }
+    fragment_domains.push_back(this_fragment_domain);
+  }
+
+  // validate fragment domains
+  ASSERTER(!fragment_domains.empty());
+  ASSERTER(fragment_domains[0][0].lower_bound == subarray[0].lower_bound);
+  ASSERTER(fragment_domains.back()[0].upper_bound == subarray[0].upper_bound);
+  for (uint32_t f = 0; f < fragment_domains.size(); f++) {
+    if (f > 0) {
+      ASSERTER(
+          fragment_domains[f - 1][0].upper_bound + 1 ==
+          fragment_domains[f][0].lower_bound);
+    }
+    // non-first dimensions should match
+    for (uint64_t d = 1; d < dimensions.size(); d++) {
+      ASSERTER(fragment_domains[f][d] == subarray[d]);
+    }
+  }
+
+  return fragment_domains;
+}
+
+TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
+  const std::string array_name =
+      "cppapi_consolidation_dense_domain_arithmetic_overflow";
+
+  Context ctx;
+
+  SECTION("Example") {
+    using Dim = templates::Dimension<Datatype::UINT64>;
+    using Dom = templates::Domain<uint64_t>;
+
+    constexpr size_t span_d2 = 10000;
+    const std::vector<Dim> dimensions = {
+        Dim(0, std::numeric_limits<uint64_t>::max() - 1, 1),
+        Dim(0, span_d2 - 1, span_d2)};
+
+    const uint64_t base_d1 = 12345;
+    const std::vector<Dom> subarray = {
+        Dom(base_d1 + 0, base_d1 + 1), Dom(0, span_d2 - 1)};
+
+    const std::vector<std::vector<Dom>> expect = {
+        {Dom(base_d1 + 0, base_d1 + 0), Dom(0, span_d2 - 1)},
+        {Dom(base_d1 + 1, base_d1 + 1), Dom(0, span_d2 - 1)}};
+
+    const auto actual = instance_dense_global_order<AsserterCatch>(
+        ctx, 64 * 1024, dimensions, subarray);
+
+    CHECK(expect == actual);
+  }
 }
