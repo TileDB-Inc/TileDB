@@ -291,6 +291,12 @@ class Range {
     return range_.data();
   }
 
+  inline void* start_fixed() {
+    iassert(!var_size_);
+    iassert(range_.size() != 0);
+    return range_.data();
+  }
+
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
   void set_start_fixed(const void* const start) {
     if (var_size_) {
@@ -348,6 +354,13 @@ class Range {
 
   /** Returns a pointer to the end of the range. */
   const void* end_fixed() const {
+    iassert(!var_size_);
+    iassert(range_.size() != 0);
+    auto end_pos = range_.size() / 2;
+    return &range_[end_pos];
+  }
+
+  void* end_fixed() {
     iassert(!var_size_);
     iassert(range_.size() != 0);
     auto end_pos = range_.size() / 2;
