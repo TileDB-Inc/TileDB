@@ -74,11 +74,11 @@ TEST_CASE(
 TEST_CASE(
     "Check serialization correctly handles empty sizes",
     "[nonemptydomain][serialization]") {
-auto dim = make_shared<Dimension>(
-    HERE(),
-    "index",
-    Datatype::UINT32,
-    tiledb::test::get_test_memory_tracker());
+  auto dim = make_shared<Dimension>(
+      HERE(),
+      "index",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker());
   uint32_t domain1[2]{1, 64};
   dim->set_domain(&domain1[0]);
 
@@ -93,12 +93,12 @@ auto dim = make_shared<Dimension>(
   auto nonEmptyDomainListBuilder = builder.initNonEmptyDomains(1);
 
   for (uint64_t dimIdx = 0; dimIdx < nd_list.size(); ++dimIdx) {
-      const auto& dimNonEmptyDomain = nd_list[dimIdx];
+    const auto& dimNonEmptyDomain = nd_list[dimIdx];
 
-      auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
-      dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
+    auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
+    dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
 
-      if (!dimNonEmptyDomain.empty()) {
+    if (!dimNonEmptyDomain.empty()) {
       auto subarray_builder = dim_builder.initNonEmptyDomain();
       st = tiledb::sm::serialization::utils::set_capnp_array_ptr(
           subarray_builder,
@@ -107,9 +107,9 @@ auto dim = make_shared<Dimension>(
           dimNonEmptyDomain.size());
 
       if (dimNonEmptyDomain.start_size() != 0) {
-          // start_size() is non-zero for var-size dimensions
-          auto range_start_sizes = dim_builder.initSizes(1);
-          range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+        // start_size() is non-zero for var-size dimensions
+        auto range_start_sizes = dim_builder.initSizes(1);
+        range_start_sizes.set(0, dimNonEmptyDomain.start_size());
       } else {
         // sizes can be empty for non var-size dimensions
         dim_builder.initSizes(0);
