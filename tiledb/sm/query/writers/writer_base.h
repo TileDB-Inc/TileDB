@@ -293,9 +293,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    *
    * @param dense Whether the fragment is dense or not.
    * @param frag_meta The fragment metadata to be generated.
+   * @param domain Optional domain for the fragment, uses subarray 0th range if
+   *               not provided
    * @return Status
    */
-  Status create_fragment(bool dense, shared_ptr<FragmentMetadata>& frag_meta);
+  Status create_fragment(
+      bool dense,
+      shared_ptr<FragmentMetadata>& frag_meta,
+      const NDRange* domain = nullptr);
 
   /**
    * Runs the input coordinate and attribute tiles through their
