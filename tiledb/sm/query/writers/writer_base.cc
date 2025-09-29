@@ -757,7 +757,9 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, shared_ptr<FragmentMetadata>& frag_meta) {
+    bool dense,
+    shared_ptr<FragmentMetadata>& frag_meta,
+    const NDRange* domain) {
   // Get write version, timestamp array was opened,  and a reference to the
   // array directory.
   auto write_version = array_->array_schema_latest().write_version();
@@ -787,7 +789,7 @@ Status WriterBase::create_fragment(
       has_timestamps,
       has_delete_metadata);
 
-  frag_meta->init(subarray_.ndrange(0));
+  frag_meta->init(domain ? *domain : subarray_.ndrange(0));
   return Status::Ok();
 }
 
