@@ -52,6 +52,7 @@
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -181,11 +182,6 @@ Status GlobalOrderWriter::alloc_global_write_state() {
         Status_WriterError("Cannot initialize global write state; State not "
                            "properly finalized"));
   global_write_state_.reset(tdb_new(GlobalWriteState, query_memory_tracker_));
-
-  // Alloc FragmentMetadata object
-  global_write_state_->frag_meta_ = this->create_fragment_metadata();
-  // Used in serialization when FragmentMetadata is built from ground up
-  global_write_state_->frag_meta_->set_context_resources(&resources_);
 
   return Status::Ok();
 }
@@ -727,8 +723,6 @@ Status GlobalOrderWriter::global_write() {
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_) {
     RETURN_CANCEL_OR_ERROR(alloc_global_write_state());
-    RETURN_CANCEL_OR_ERROR(
-        create_fragment(dense(), global_write_state_->frag_meta_));
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   }
 
@@ -770,21 +764,23 @@ Status GlobalOrderWriter::global_write() {
         (f + 1 < fragments.size() ? fragments[f + 1].second : tile_num) -
         start_tile;
 
-    auto frag_meta = global_write_state_->frag_meta_;
     if (num_tiles == 0) {
       // this should only happen if there is only one tile of input and we have
       // to wait for finalize, or if continuing a fragment from a previous write
       // and there is no more room
       iassert(f == 0);
       if (current_fragment_size_ > 0) {
-        RETURN_CANCEL_OR_ERROR(start_new_fragment());
+        RETURN_CANCEL_OR_ERROR(start_new_fragment(start_tile, num_tiles));
       } else {
         iassert(fragments.size() == 1);
       }
     } else {
-      if (f > 0) {
-        RETURN_CANCEL_OR_ERROR(start_new_fragment());
+      if (f > 0 || !global_write_state_->frag_meta_) {
+        RETURN_CANCEL_OR_ERROR(start_new_fragment(start_tile, num_tiles));
       }
+
+      auto frag_meta = global_write_state_->frag_meta_;
+
       // update metadata of current fragment
       frag_meta->set_num_tiles(frag_meta->tile_index_base() + num_tiles);
 
@@ -795,7 +791,9 @@ Status GlobalOrderWriter::global_write() {
       RETURN_CANCEL_OR_ERROR(
           write_tiles(start_tile, start_tile + num_tiles, frag_meta, &tiles));
     }
-    frag_meta->set_tile_index_base(frag_meta->tile_index_base() + num_tiles);
+
+    global_write_state_->frag_meta_->set_tile_index_base(
+        global_write_state_->frag_meta_->tile_index_base() + num_tiles);
   }
 
   if (!fragments.empty()) {
@@ -1449,23 +1447,78 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   return fragments;
 }
 
-Status GlobalOrderWriter::start_new_fragment() {
-  auto frag_meta = global_write_state_->frag_meta_;
-  auto& uri = frag_meta->fragment_uri();
+/**
+ * Splits a domain at a tile boundary and returns the two halves of the split.
+ *
+ * When writing multiple dense fragments the domain of each fragment
+ * must accurately reflect the coordinates contained in that fragment.
+ * This is called when starting a new fragment to update the domain of the
+ * previous fragment and set the correct starting domain of the new one.
+ *
+ * @precondition `tile_offset` must be an offset which bisects the input
+ * hyper-rectangle into two new hyper-rectangle
+ */
+static NDRange domain_tile_offset(
+    const Domain& arraydomain,
+    const NDRange& domain,
+    uint64_t start_tile,
+    uint64_t num_tiles) {
+  // if a hyper-rectangle is a generalization of a rectangle to N dimensions,
+  // then let's say a "hyper-row" is a generalization of a row to N dimensions,
+  // i.e. a hyper-rectangle whose length is 1 in the outer-most dimension
 
-  // Close all files
-  RETURN_NOT_OK(close_files(frag_meta));
+  // compute difference so we can determine number of tiles per hyper-row
+  const uint64_t domain_num_tiles = arraydomain.tile_num(domain);
 
-  // Set the processed conditions
-  frag_meta->set_processed_conditions(processed_conditions_);
+  NDRange adjusted = domain;
 
-  // Compute fragment min/max/sum/null count
-  frag_meta->compute_fragment_min_max_sum_null_count();
+  // normalize `adjusted` to a single hyper-row so that we can compute number of
+  // tiles per hyper-row, and thus the number of hyper-rows in the domain
+  memcpy(
+      adjusted[0].end_fixed(),
+      adjusted[0].start_fixed(),
+      adjusted[0].size() / 2);
 
-  // Flush fragment metadata to storage
-  frag_meta->store(array_->get_encryption_key());
+  const uint64_t hyperrow_num_tiles = arraydomain.tile_num(adjusted);
+  iassert(domain_num_tiles % hyperrow_num_tiles == 0);
+  iassert(start_tile % hyperrow_num_tiles == 0);
+  iassert(num_tiles % hyperrow_num_tiles == 0);
 
-  frag_uris_to_commit_.emplace_back(uri);
+  const uint64_t start_hyperrow = start_tile / hyperrow_num_tiles;
+  const uint64_t num_hyperrows = num_tiles / hyperrow_num_tiles;
+  iassert(num_hyperrows > 0);
+
+  auto fix_bounds = [&]<typename T>(T) {
+    *static_cast<T*>(adjusted[0].start_fixed()) += start_hyperrow;
+    *static_cast<T*>(adjusted[0].end_fixed()) +=
+        start_hyperrow + num_hyperrows - 1;
+  };
+  apply_with_type(fix_bounds, arraydomain.dimension_ptr(0)->type());
+
+  return adjusted;
+}
+
+Status GlobalOrderWriter::start_new_fragment(
+    uint64_t tile_start, uint64_t num_tiles) {
+  // finish off current fragment if there is one
+  if (global_write_state_->frag_meta_) {
+    auto frag_meta = global_write_state_->frag_meta_;
+    auto& uri = frag_meta->fragment_uri();
+
+    // Close all files
+    RETURN_NOT_OK(close_files(frag_meta));
+
+    // Set the processed conditions
+    frag_meta->set_processed_conditions(processed_conditions_);
+
+    // Compute fragment min/max/sum/null count
+    frag_meta->compute_fragment_min_max_sum_null_count();
+
+    // Flush fragment metadata to storage
+    frag_meta->store(array_->get_encryption_key());
+
+    frag_uris_to_commit_.emplace_back(uri);
+  }
 
   // Make a new fragment URI.
   const auto write_version = array_->array_schema_latest().write_version();
@@ -1477,9 +1530,20 @@ Status GlobalOrderWriter::start_new_fragment() {
       write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
 
+  // Set domain of new fragment if needed
+  std::optional<NDRange> new_fragment_domain;
+  if (dense()) {
+    new_fragment_domain = domain_tile_offset(
+        array_schema_.domain(), subarray_.ndrange(0), tile_start, num_tiles);
+  }
+
   // Create a new fragment.
   current_fragment_size_ = 0;
-  RETURN_NOT_OK(create_fragment(dense(), global_write_state_->frag_meta_));
+  RETURN_NOT_OK(create_fragment(
+      dense(),
+      global_write_state_->frag_meta_,
+      new_fragment_domain.has_value() ? &new_fragment_domain.value() :
+                                        nullptr));
 
   return Status::Ok();
 }

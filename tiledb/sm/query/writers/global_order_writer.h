@@ -390,8 +390,13 @@ class GlobalOrderWriter : public WriterBase {
    * Close the current fragment and start a new one. The closed fragment will
    * be added to `frag_uris_to_commit_` so that all fragments in progress can
    * be written at once.
+   *
+   * @param tile_start the tile offset into the subarray domain where the
+   * fragment starts (dense only)
+   * @param num_tiles the number of tiles which will be written to the new
+   * fragment (dense only)
    */
-  Status start_new_fragment();
+  Status start_new_fragment(uint64_t tile_start, uint64_t num_tiles);
 
   /**
    * @return true if this write is to a dense fragment
