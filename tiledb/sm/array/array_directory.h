@@ -827,10 +827,10 @@ class ArrayDirectory {
   /**
    * Checks if consolidation with timestamps is supported for a fragment
    *
-   * @param uri The fragment URI to be checked.
+   * @param id The fragment ID to be checked.
    * @return True if supported, false otherwise
    */
-  bool consolidation_with_timestamps_supported(const URI& uri) const;
+  bool consolidation_with_timestamps_supported(const FragmentID& id) const;
 };
 
 }  // namespace tiledb::sm
