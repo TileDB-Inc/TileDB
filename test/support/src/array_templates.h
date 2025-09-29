@@ -180,6 +180,8 @@ struct Domain {
       , upper_bound(std::max(d1, d2)) {
   }
 
+  bool operator==(const Domain<D>&) const = default;
+
   uint64_t num_cells() const {
     // FIXME: this is incorrect for 64-bit domains which need to check overflow
     if (std::is_signed<D>::value) {
@@ -222,6 +224,10 @@ struct Dimension {
   Dimension(Domain<value_type> domain, value_type extent)
       : domain(domain)
       , extent(extent) {
+  }
+
+  Dimension(value_type lower_bound, value_type upper_bound, value_type extent)
+      : Dimension(Domain<value_type>(lower_bound, upper_bound), extent) {
   }
 
   Domain<value_type> domain;
