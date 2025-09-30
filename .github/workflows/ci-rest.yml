@@ -34,11 +34,17 @@ jobs:
         if: env.TILEDB_REST_CI_PAT != null
         with:
           repo: TileDB-Inc/TileDB-Internal
-          # Trigger workflow on TileDB-Internal at this ref.
+          # Trigger workflow on TileDB-Internal checked out at this ref.
           ref: "main"
           workflow: rest-ci.yml
           token: ${{ secrets.TILEDB_REST_CI_PAT }}
-          # Pass TileDB core ref to test against REST.
+          # The references set here will be passed to REST CI to checkout for testing.
+          # These can be temporarily modified if you want to test your changes against a specific branch.
           # github.head_ref will only be set for PRs, so fallback to github.ref_name if triggered via push event.
-          inputs: '{ "tiledb_ref": "${{ github.event.inputs.ref || github.head_ref || github.ref_name }}"}'
+          inputs: |
+            {
+              "tiledb_ref": "${{ github.event.inputs.ref || github.head_ref || github.ref_name }}",
+              "tiledb_cloud_rest_ref": "master",
+              "tiledb_server_ref": "main"
+            }
           wait-for-completion-timeout: 120m
