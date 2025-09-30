@@ -280,7 +280,7 @@ GroupDetails::member_by_index(uint64_t index) {
   auto member = members_vec_->at(index);
   std::string uri = member->uri().to_string();
   if (member->relative()) {
-    uri = group_uri_.join_path(member->uri().to_string()).to_string();
+    uri = group_uri_.to_string() + member->name().value();
   }
 
   return {uri, member->type(), member->name()};
@@ -302,7 +302,7 @@ GroupDetails::member_by_name(const std::string& name) {
   std::string uri = member->uri().to_string();
   // Relative tiledb URIs are returned in the expected format from REST.
   if (!member->uri().is_tiledb() && member->relative()) {
-    uri = group_uri_.join_path(member->uri().to_string()).to_string();
+    uri = group_uri_.join_path(member->name().value()).to_string();
   }
 
   return {uri, member->type(), member->name(), member->relative()};
