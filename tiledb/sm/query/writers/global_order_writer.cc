@@ -494,12 +494,14 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 
 void GlobalOrderWriter::clean_up() {
   if (global_write_state_ != nullptr) {
-    const auto& uri = global_write_state_->frag_meta_->fragment_uri();
+    if (global_write_state_->frag_meta_) {
+      const auto& uri = global_write_state_->frag_meta_->fragment_uri();
 
-    // Cleanup the fragment we are currently writing. There is a chance that the
-    // URI is empty if creating the first fragment had failed.
-    if (!uri.empty()) {
-      resources_.vfs().remove_dir(uri);
+      // Cleanup the fragment we are currently writing. There is a chance that
+      // the URI is empty if creating the first fragment had failed.
+      if (!uri.empty()) {
+        resources_.vfs().remove_dir(uri);
+      }
     }
     global_write_state_.reset(nullptr);
 
