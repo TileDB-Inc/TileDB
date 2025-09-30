@@ -629,6 +629,25 @@ instance_dense_global_order(
     fragment_domains.push_back(this_fragment_domain);
   }
 
+  // the fragments are not always emitted in the same order, sort them
+  std::sort(
+      fragment_domains.begin(),
+      fragment_domains.end(),
+      [&](const auto& left, const auto& right) -> bool {
+        for (uint64_t d = 0; d < dimensions.size(); d++) {
+          if (left[d].lower_bound < right[d].lower_bound) {
+            return true;
+          } else if (left[d].lower_bound > right[d].lower_bound) {
+            return false;
+          } else if (left[d].upper_bound < right[d].upper_bound) {
+            return true;
+          } else if (left[d].upper_bound > right[d].upper_bound) {
+            return false;
+          }
+        }
+        return false;
+      });
+
   // validate fragment domains
   ASSERTER(!fragment_domains.empty());
   ASSERTER(fragment_domains[0][0].lower_bound == subarray[0].lower_bound);
