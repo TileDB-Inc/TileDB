@@ -1471,7 +1471,9 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
 
       fragments.push_back(std::make_pair(fragment_size, fragment_start));
 
-      running_tiles_size = 0;
+      iassert(running_tiles_size >= fragment_size);
+      running_tiles_size -= fragment_size;
+
       fragment_start = fragment_end.value();
       fragment_end.reset();
     } else if (((t + 1) - fragment_start) % hyperrow_num_tiles == 0) {
@@ -1518,23 +1520,15 @@ static NDRange domain_tile_offset(
 
   auto fix_bounds = [&]<typename T>(T) {
     const T extent = arraydomain.tile_extent(0).rvalue_as<T>();
+    const T lower_bound = *static_cast<const T*>(domain[0].start_fixed());
+    const T upper_bound = *static_cast<const T*>(domain[0].end_fixed());
     T* start = static_cast<T*>(adjusted[0].start_fixed());
     T* end = static_cast<T*>(adjusted[0].end_fixed());
-    if (start_tile == 0) {
-      // first hyperrow - the start is the same, align the end to the bottom of
-      // the tile
-      *end = ((*start + extent) / extent) * extent - 1;
-    } else if (start_tile + num_tiles < num_tiles) {
-      // intermediate hyperrow - advance hyperrow of tiles and align bounds to
-      // the start/end of the tile
-      *start += ((extent * start_hyperrow) / extent) * extent;
-      *end = *start + extent - 1;
-    } else {
-      // final hyperrow - advance to the final hyperrow of tiles, the start is
-      // tile aligned, the end is not
-      *start += ((extent * start_hyperrow) / extent) * extent;
-      *end = *static_cast<const T*>(domain[0].end_fixed());
-    }
+
+    auto align = [extent](T value) -> T { return (value / extent) * extent; };
+
+    *start = std::max<T>(lower_bound, align(*start + extent * start_hyperrow));
+    *end = std::min<T>(upper_bound, align(*start + extent * num_hyperrows) - 1);
   };
   apply_with_type(fix_bounds, arraydomain.dimension_ptr(0)->type());
 
