@@ -351,6 +351,10 @@ void Group::delete_group(const URI& uri, bool recursive) {
         const auto& member = member_entry.second;
         URI member_uri = member->uri();
         if (member->relative()) {
+          if (!member->name().has_value()) {
+            throw GroupException("[delete_group] There should be a name when relative is true");
+          }
+
           member_uri = group_uri_.join_path(member->name().value());
         }
 
