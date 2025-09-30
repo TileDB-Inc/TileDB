@@ -691,9 +691,10 @@ std::vector<directory_entry> Azure::ls_with_sizes(
         response.MoveToNextPage();
       } while (response.HasPage());
     } else {
-      auto response =
-          client.GetBlobContainerClient(container_name)
-              .ListBlobsByHierarchy(delimiter, {.Prefix = blob_path});
+      ::Azure::Storage::Blobs::ListBlobsOptions options;
+      options.Prefix = blob_path;
+      auto response = client.GetBlobContainerClient(container_name)
+                          .ListBlobsByHierarchy(delimiter, options);
       do {
         for (const auto& blob : response.Blobs) {
           entries.emplace_back(
@@ -768,8 +769,8 @@ void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
     auto [new_container_name, new_blob_path] =
         parse_azure_uri(new_uri.remove_trailing_slash());
 
-    ::Azure::Storage::Files::DataLake::RenameDirectoryOptions options{
-        .DestinationFileSystem = std::move(new_container_name)};
+    ::Azure::Storage::Files::DataLake::RenameDirectoryOptions options;
+    options.DestinationFileSystem = std::move(new_container_name);
     try {
       data_lake_client->GetFileSystemClient(old_container_name)
           .RenameDirectory(old_blob_path, new_blob_path, options);
@@ -796,8 +797,8 @@ void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
     auto [old_container_name, old_blob_path] = parse_azure_uri(old_uri);
     auto [new_container_name, new_blob_path] = parse_azure_uri(new_uri);
 
-    ::Azure::Storage::Files::DataLake::RenameFileOptions options{
-        .DestinationFileSystem = std::move(new_container_name)};
+    ::Azure::Storage::Files::DataLake::RenameFileOptions options;
+    options.DestinationFileSystem = std::move(new_container_name);
     try {
       data_lake_client->GetFileSystemClient(old_container_name)
           .RenameFile(old_blob_path, new_blob_path, options);
@@ -1179,10 +1180,10 @@ LsObjects Azure::list_blobs_impl(
     if (data_lake_client) {
       auto dir_client = data_lake_client->GetFileSystemClient(container_name)
                             .GetDirectoryClient(blob_path);
-      auto response = dir_client.ListPaths(
-          recursive,
-          {.ContinuationToken = to_azure_nullable(continuation_token),
-           .PageSizeHint = max_keys});
+      ::Azure::Storage::Files::DataLake::ListPathsOptions options;
+      options.ContinuationToken = to_azure_nullable(continuation_token);
+      options.PageSizeHint = max_keys;
+      auto response = dir_client.ListPaths(recursive, options);
       continuation_token = from_azure_nullable(response.NextPageToken);
 
       result.reserve(response.Paths.size());
