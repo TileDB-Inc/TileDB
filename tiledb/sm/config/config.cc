@@ -439,7 +439,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
-    std::make_pair("vfs.azure.is_data_lake_endpoint", Config::VFS_AZURE_IS_DATA_LAKE_ENDPOINT),
+    std::make_pair(
+        "vfs.azure.is_data_lake_endpoint",
+        Config::VFS_AZURE_IS_DATA_LAKE_ENDPOINT),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
     std::make_pair(
