@@ -1356,6 +1356,28 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 }
 
 /**
+ * @return the number of tiles in a "hyper-row" of `subarray` within
+ * `arraydomain`
+ *
+ * If a "hyper-rectangle" is a generalization of a rectangle to N dimensions,
+ * then let's define a "hyper-row" to be a generalization of a row to N
+ * dimensions. That is, a "hyper-row" is a hyper-rectangle whose length is 1 in
+ * the outer-most dimension.
+ */
+static uint64_t compute_hyperrow_num_tiles(
+    const Domain& arraydomain, const NDRange& subarray) {
+  NDRange adjusted = subarray;
+
+  // normalize `adjusted` to a single hyper-row
+  memcpy(
+      adjusted[0].end_fixed(),
+      adjusted[0].start_fixed(),
+      adjusted[0].size() / 2);
+
+  return arraydomain.tile_num(adjusted);
+}
+
+/**
  * Identifies the division of input cells into target fragments,
  * using `max_fragment_size_` as a hard limit on the target fragment size.
  *
@@ -1399,13 +1421,19 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
     stats_->add_counter("tile_num", tile_num);
   }
 
+  uint64_t running_tiles_size = current_fragment_size_;
   uint64_t fragment_size = current_fragment_size_;
+
   uint64_t fragment_start = 0;
+  std::optional<uint64_t> fragment_end;
   std::vector<std::pair<uint64_t, uint64_t>> fragments;
 
+  const uint64_t hyperrow_num_tiles =
+      (dense() ? compute_hyperrow_num_tiles(
+                     array_schema_.domain(), subarray_.ndrange(0)) :
+                 1);
+
   // Make sure we don't write more than the desired fragment size.
-  // FIXME: for dense array this has to be aligned to a "hyper-row"
-  // so that we can have
   for (uint64_t t = 0; t < tile_num; t++) {
     uint64_t tile_size = 0;
     for (uint64_t a = 0; a < buf_names.size(); a++) {
@@ -1431,20 +1459,30 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       }
     }
 
-    if (fragment_size + tile_size > max_fragment_size_) {
-      if (fragment_size == 0) {
+    if (running_tiles_size + tile_size > max_fragment_size_) {
+      if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
+      } else if (!fragment_end.has_value()) {
+        throw GlobalOrderWriterException(
+            "Fragment size is too small to subdivide dense subarray into "
+            "multiple fragments");
       }
+
       fragments.push_back(std::make_pair(fragment_size, fragment_start));
-      fragment_size = 0;
-      fragment_start = t;
+
+      running_tiles_size = 0;
+      fragment_start = fragment_end.value();
+      fragment_end.reset();
+    } else if (((t + 1) - fragment_start) % hyperrow_num_tiles == 0) {
+      fragment_size = running_tiles_size + tile_size;
+      fragment_end = t + 1;
     }
 
-    fragment_size += tile_size;
+    running_tiles_size += tile_size;
   }
 
-  fragments.push_back(std::make_pair(fragment_size, fragment_start));
+  fragments.push_back(std::make_pair(running_tiles_size, fragment_start));
 
   return fragments;
 }
@@ -1465,23 +1503,9 @@ static NDRange domain_tile_offset(
     const NDRange& domain,
     uint64_t start_tile,
     uint64_t num_tiles) {
-  // if a hyper-rectangle is a generalization of a rectangle to N dimensions,
-  // then let's say a "hyper-row" is a generalization of a row to N dimensions,
-  // i.e. a hyper-rectangle whose length is 1 in the outer-most dimension
-
-  // compute difference so we can determine number of tiles per hyper-row
   const uint64_t domain_num_tiles = arraydomain.tile_num(domain);
-
-  NDRange adjusted = domain;
-
-  // normalize `adjusted` to a single hyper-row so that we can compute number of
-  // tiles per hyper-row, and thus the number of hyper-rows in the domain
-  memcpy(
-      adjusted[0].end_fixed(),
-      adjusted[0].start_fixed(),
-      adjusted[0].size() / 2);
-
-  const uint64_t hyperrow_num_tiles = arraydomain.tile_num(adjusted);
+  const uint64_t hyperrow_num_tiles =
+      compute_hyperrow_num_tiles(arraydomain, domain);
   iassert(domain_num_tiles % hyperrow_num_tiles == 0);
   iassert(start_tile % hyperrow_num_tiles == 0);
   iassert(num_tiles % hyperrow_num_tiles == 0);
@@ -1490,10 +1514,27 @@ static NDRange domain_tile_offset(
   const uint64_t num_hyperrows = num_tiles / hyperrow_num_tiles;
   iassert(num_hyperrows > 0);
 
+  NDRange adjusted = domain;
+
   auto fix_bounds = [&]<typename T>(T) {
-    *static_cast<T*>(adjusted[0].start_fixed()) += start_hyperrow;
-    *static_cast<T*>(adjusted[0].end_fixed()) +=
-        start_hyperrow + num_hyperrows - 1;
+    const T extent = arraydomain.tile_extent(0).rvalue_as<T>();
+    T* start = static_cast<T*>(adjusted[0].start_fixed());
+    T* end = static_cast<T*>(adjusted[0].end_fixed());
+    if (start_tile == 0) {
+      // first hyperrow - the start is the same, align the end to the bottom of
+      // the tile
+      *end = ((*start + extent) / extent) * extent - 1;
+    } else if (start_tile + num_tiles < num_tiles) {
+      // intermediate hyperrow - advance hyperrow of tiles and align bounds to
+      // the start/end of the tile
+      *start += ((extent * start_hyperrow) / extent) * extent;
+      *end = *start + extent - 1;
+    } else {
+      // final hyperrow - advance to the final hyperrow of tiles, the start is
+      // tile aligned, the end is not
+      *start += ((extent * start_hyperrow) / extent) * extent;
+      *end = *static_cast<const T*>(domain[0].end_fixed());
+    }
   };
   apply_with_type(fix_bounds, arraydomain.dimension_ptr(0)->type());
 
