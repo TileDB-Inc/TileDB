@@ -700,30 +700,46 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
     using Dim = templates::Dimension<Datatype::UINT64>;
     using Dom = templates::Domain<uint64_t>;
 
-    const uint64_t extent_d1 = GENERATE(8, 4);
-    constexpr size_t span_d2 = 10000;
-    REQUIRE(span_d2 % extent_d1 == 0);
+    const uint64_t d1_extent = GENERATE(8, 4);
+    constexpr size_t d2_span = 10000;
+    REQUIRE(d2_span % d1_extent == 0);  // for test setup
 
     const std::vector<Dim> dimensions = {
-        Dim(0, std::numeric_limits<uint64_t>::max() - 1, extent_d1),
-        Dim(0, span_d2 - 1, span_d2 / extent_d1)};
+        Dim(0, std::numeric_limits<uint64_t>::max() - 1, d1_extent),
+        Dim(0, d2_span - 1, d2_span / d1_extent)};
 
-    const uint64_t base_d1 = 100;
+    const uint64_t d1_start_offset = GENERATE(0, 1);
+    const uint64_t d1_end_offset = GENERATE(0, 1);
+    const uint64_t d1_start = 100 + d1_start_offset;
+    const uint64_t d1_end = d1_start + 15 - d1_end_offset;
     const std::vector<Dom> subarray = {
-        Dom(base_d1 + 0, base_d1 + 7), Dom(0, span_d2 - 1)};
+        Dom(d1_start, d1_end), Dom(0, d2_span - 1)};
 
     const uint64_t max_fragment_size = 4 * 64 * 1024;
 
-    if (extent_d1 == 8) {
+    if (d1_extent == 8) {
       const auto expect = Catch::Matchers::ContainsSubstring(
           "Fragment size is too small to subdivide dense subarray into "
           "multiple fragments");
       REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
           ctx, max_fragment_size, dimensions, subarray));
+    } else if (d1_start_offset + d1_end_offset > 0) {
+      // if this constraint is ever relaxed this test must be extended
+      // with new inputs which are offset within a tile
+      const auto expect = Catch::Matchers::ContainsSubstring(
+          "the subarray must coincide with the tile bounds");
+      REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
+          ctx, max_fragment_size, dimensions, subarray));
     } else {
       const std::vector<std::vector<Dom>> expect = {
-          {Dom(base_d1 + 0, base_d1 + 3), Dom(0, span_d2 - 1)},
-          {Dom(base_d1 + 4, base_d1 + 7), Dom(0, span_d2 - 1)}};
+          {Dom(d1_start + 0 * d1_extent, d1_start + 1 * d1_extent - 1),
+           Dom(0, d2_span - 1)},
+          {Dom(d1_start + 1 * d1_extent, d1_start + 2 * d1_extent - 1),
+           Dom(0, d2_span - 1)},
+          {Dom(d1_start + 2 * d1_extent, d1_start + 3 * d1_extent - 1),
+           Dom(0, d2_span - 1)},
+          {Dom(d1_start + 3 * d1_extent, d1_start + 4 * d1_extent - 1),
+           Dom(0, d2_span - 1)}};
 
       const auto actual = instance_dense_global_order<AsserterCatch>(
           ctx, max_fragment_size, dimensions, subarray);
