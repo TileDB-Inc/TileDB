@@ -693,19 +693,21 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
     const std::vector<Dom> subarray = {
         Dom(base_d1 + 0, base_d1 + 7), Dom(0, span_d2 - 1)};
 
+    const uint64_t max_fragment_size = 4 * 64 * 1024;
+
     if (extent_d1 == 8) {
       const auto expect = Catch::Matchers::ContainsSubstring(
           "Fragment size is too small to subdivide dense subarray into "
           "multiple fragments");
       REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
-          ctx, 64 * 1024, dimensions, subarray));
+          ctx, max_fragment_size, dimensions, subarray));
     } else {
       const std::vector<std::vector<Dom>> expect = {
-          {Dom(base_d1 + 0, base_d1 + 0), Dom(0, span_d2 - 1)},
-          {Dom(base_d1 + 1, base_d1 + 1), Dom(0, span_d2 - 1)}};
+          {Dom(base_d1 + 0, base_d1 + 3), Dom(0, span_d2 - 1)},
+          {Dom(base_d1 + 4, base_d1 + 7), Dom(0, span_d2 - 1)}};
 
       const auto actual = instance_dense_global_order<AsserterCatch>(
-          ctx, 64 * 1024, dimensions, subarray);
+          ctx, max_fragment_size, dimensions, subarray);
 
       CHECK(expect == actual);
     }
