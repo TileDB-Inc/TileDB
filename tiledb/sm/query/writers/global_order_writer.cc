@@ -1457,7 +1457,9 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       }
     }
 
-    if (running_tiles_size + tile_size > max_fragment_size_) {
+    // NB: normally this should only hit once, but if there is a single
+    // tile larger than the max fragment size it could hit twice and error
+    while (running_tiles_size + tile_size > max_fragment_size_) {
       if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
@@ -1474,7 +1476,9 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
 
       fragment_start = fragment_end.value();
       fragment_end.reset();
-    } else if (((t + 1) - fragment_start) % hyperrow_num_tiles == 0) {
+    }
+
+    if (((t + 1) - fragment_start) % hyperrow_num_tiles == 0) {
       fragment_size = running_tiles_size + tile_size;
       fragment_end = t + 1;
     }

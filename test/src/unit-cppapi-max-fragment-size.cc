@@ -683,15 +683,17 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
         Dim(0, span_d2 - 1, span_d2)};
 
     const uint64_t base_d1 = 12345;
+    const uint64_t num_rows = GENERATE(1, 2, 4, 8);
     const std::vector<Dom> subarray = {
-        Dom(base_d1 + 0, base_d1 + 1), Dom(0, span_d2 - 1)};
-
-    const std::vector<std::vector<Dom>> expect = {
-        {Dom(base_d1 + 0, base_d1 + 0), Dom(0, span_d2 - 1)},
-        {Dom(base_d1 + 1, base_d1 + 1), Dom(0, span_d2 - 1)}};
+        Dom(base_d1 + 0, base_d1 + num_rows - 1), Dom(0, span_d2 - 1)};
 
     const auto actual = instance_dense_global_order<AsserterCatch>(
         ctx, 64 * 1024, dimensions, subarray);
+
+    std::vector<std::vector<Dom>> expect;
+    for (uint64_t r = 0; r < num_rows; r++) {
+      expect.push_back({Dom(base_d1 + r, base_d1 + r), Dom(0, span_d2 - 1)});
+    }
 
     CHECK(expect == actual);
   }
