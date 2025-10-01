@@ -6,8 +6,6 @@ on:
 jobs:
   rest-ci:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       # For easy access to lookup dispatched CI job.
