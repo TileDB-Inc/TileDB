@@ -238,9 +238,16 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
 }
 
 template <>
-void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os) {
-  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
-}
+void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os);
+
+template <>
+void show<Domain<uint64_t>>(
+    const templates::Domain<uint64_t>& domain, std::ostream& os);
+
+template <>
+void show<Dimension<tiledb::sm::Datatype::UINT64>>(
+    const templates::Dimension<tiledb::sm::Datatype::UINT64>& dimension,
+    std::ostream& os);
 
 }  // namespace rc
 

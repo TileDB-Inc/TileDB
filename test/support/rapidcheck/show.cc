@@ -32,8 +32,11 @@
  * header files.
  */
 
+#include <test/support/rapidcheck/array_templates.h>
 #include <test/support/rapidcheck/show.h>
+#include <test/support/stdx/traits.h>
 
+#include "test/support/src/array_templates.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
@@ -77,3 +80,40 @@ void showValue(const tiledb::sm::ASTNode& node, std::ostream& os) {
 }
 
 }  // namespace rc::detail
+
+namespace rc {
+
+template <stdx::is_fundamental T>
+void showImpl(
+    const tiledb::test::templates::Domain<T>& domain, std::ostream& os) {
+  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
+}
+
+template <>
+void show<tiledb::test::templates::Domain<int>>(
+    const tiledb::test::templates::Domain<int>& domain, std::ostream& os) {
+  showImpl(domain, os);
+}
+
+template <>
+void show<tiledb::test::templates::Domain<uint64_t>>(
+    const tiledb::test::templates::Domain<uint64_t>& domain, std::ostream& os) {
+  showImpl(domain, os);
+}
+
+template <tiledb::sm::Datatype DT>
+void showImpl(
+    const tiledb::test::templates::Dimension<DT>& dimension, std::ostream& os) {
+  os << "{\"domain\": ";
+  showImpl(dimension.domain, os);
+  os << ", \"extent\": " << dimension.extent << "}";
+}
+
+template <>
+void show<Dimension<tiledb::sm::Datatype::UINT64>>(
+    const templates::Dimension<tiledb::sm::Datatype::UINT64>& dimension,
+    std::ostream& os) {
+  showImpl(dimension, os);
+}
+
+}  // namespace rc
