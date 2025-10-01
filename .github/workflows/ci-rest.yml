@@ -2,17 +2,6 @@ name: REST CI
 
 on:
   workflow_call:
-  workflow_dispatch:
-    inputs:
-      ref:
-        type: string
-        required: false
-        description: TileDB core reference to test against REST CI.
-  push:
-    branches:
-      - main
-      - release-*
-      - refs/tags/*
 
 jobs:
   rest-ci:
