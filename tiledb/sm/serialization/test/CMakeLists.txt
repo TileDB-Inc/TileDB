@@ -50,3 +50,11 @@ commence(unit_test capnp_nonempty_domain)
   # Enable serialization
   target_compile_definitions(unit_capnp_nonempty_domain PRIVATE -DTILEDB_SERIALIZATION)
 conclude(unit_test)
+
+commence(unit_test capnp_group)
+  this_target_sources(main.cc unit_capnp_group.cc)
+  this_target_link_libraries(tiledb_test_support_lib)
+
+  # Enable serialization
+  target_compile_definitions(unit_capnp_group PRIVATE -DTILEDB_SERIALIZATION)
+conclude(unit_test)
