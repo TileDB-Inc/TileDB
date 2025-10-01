@@ -180,15 +180,6 @@ tiledb::sm::Azure::ServiceCredentialType get_service_credential(
 
   return {};
 }
-
-std::optional<bool> parse_optional_bool(const std::string& str) {
-  if (str.empty()) {
-    return nullopt;
-  }
-  bool result;
-  throw_if_not_ok(tiledb::sm::utils::parse::convert(str, &result));
-  return result;
-}
 }  // namespace
 
 namespace tiledb::sm {
@@ -228,8 +219,9 @@ AzureParameters::AzureParameters(const Config& config)
     , account_key_(get_config_with_env_fallback(
           config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
     , blob_endpoint_(get_blob_endpoint(config, account_name_))
-    , is_data_lake_endpoint_(parse_optional_bool(config.get<std::string>(
-          "vfs.azure.is_data_lake_endpoint", Config::must_find)))
+    , is_data_lake_endpoint_(tiledb::sm::utils::parse::convert_optional<bool>(
+          config.get<std::string>(
+              "vfs.azure.is_data_lake_endpoint", Config::must_find)))
     , ssl_cfg_(config)
     , has_sas_token_(
           !get_config_with_env_fallback(
