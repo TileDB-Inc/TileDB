@@ -307,9 +307,17 @@ Gen<Fragment3D<D1, D2, D3, Att...>> make_fragment_3d(
   });
 }
 
-void showValue(const templates::Domain<int>& domain, std::ostream& os);
-void showValue(const templates::Domain<int64_t>& domain, std::ostream& os);
-void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os);
+template <>
+void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os);
+
+template <>
+void show<Domain<uint64_t>>(
+    const templates::Domain<uint64_t>& domain, std::ostream& os);
+
+template <>
+void show<Dimension<tiledb::sm::Datatype::UINT64>>(
+    const templates::Dimension<tiledb::sm::Datatype::UINT64>& dimension,
+    std::ostream& os);
 
 namespace detail {
 
