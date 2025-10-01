@@ -336,7 +336,7 @@ void Azure::AzureClientSingleton::ensure_initialized(
     is_datalake = accountInfo.Value.IsHierarchicalNamespaceEnabled;
   }
 
-  if (*is_datalake) {
+  if (is_datalake.value()) {
     ::Azure::Storage::Files::DataLake::DataLakeClientOptions data_lake_options;
     data_lake_options.Retry = options.Retry;
     data_lake_options.Transport = options.Transport;
