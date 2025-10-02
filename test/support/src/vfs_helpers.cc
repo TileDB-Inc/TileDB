@@ -425,7 +425,8 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
 VFSTestBase::VFSTestBase(
     const std::vector<size_t>& test_tree,
     const std::string& prefix,
-    const std::string& vfs_backend)
+    const std::string& vfs_backend,
+    bool skip_vfs_config)
     : test_tree_(test_tree)
     , compute_(4)
     , io_(4)
@@ -434,7 +435,7 @@ VFSTestBase::VFSTestBase(
           tiledb::test::g_helper_logger().get(),
           &io_,
           &compute_,
-          create_test_config())
+          skip_vfs_config ? tiledb::sm::Config() : create_test_config())
     , prefix_(prefix)
     , temp_dir_(tiledb::test::test_dir(prefix_))
     , is_supported_(vfs_.supports_uri_scheme(temp_dir_)) {
