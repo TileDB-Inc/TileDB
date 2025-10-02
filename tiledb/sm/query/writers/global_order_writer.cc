@@ -623,15 +623,22 @@ Status GlobalOrderWriter::compute_coord_dups(
 
 Status GlobalOrderWriter::finalize_global_write_state() {
   iassert(layout_ == Layout::GLOBAL_ORDER, "layout = {}", layout_str(layout_));
-  auto meta = global_write_state_->frag_meta_;
-  const auto& uri = meta->fragment_uri();
 
   // Handle last tile
   Status st = global_write_handle_last_tile();
   if (!st.ok()) {
-    throw_if_not_ok(close_files(meta));
+    if (global_write_state_->frag_meta_) {
+      throw_if_not_ok(close_files(global_write_state_->frag_meta_));
+    }
     return st;
   }
+
+  auto meta = global_write_state_->frag_meta_;
+  if (!meta) {
+    return Status::Ok();
+  }
+
+  const auto& uri = meta->fragment_uri();
 
   // Close all files
   RETURN_NOT_OK(close_files(meta));
@@ -815,8 +822,15 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
   if (cell_num_last_tiles == 0)
     return Status::Ok();
 
+  // if we haven't started a fragment yet, now is the time
+  if (!global_write_state_->frag_meta_) {
+    iassert(!dense());  // FIXME: probably not true
+    RETURN_CANCEL_OR_ERROR(start_new_fragment(0, 0));
+  }
+
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
+  iassert(meta);
   meta->set_num_tiles(meta->tile_index_base() + 1);
 
   // Filter last tiles
@@ -1563,17 +1577,17 @@ Status GlobalOrderWriter::start_new_fragment(
     frag_meta->store(array_->get_encryption_key());
 
     frag_uris_to_commit_.emplace_back(uri);
-  }
 
-  // Make a new fragment URI.
-  const auto write_version = array_->array_schema_latest().write_version();
-  auto frag_dir_uri =
-      array_->array_directory().get_fragments_dir(write_version);
-  auto new_fragment_str = storage_format::generate_timestamped_name(
-      fragment_timestamp_range_.first,
-      fragment_timestamp_range_.second,
-      write_version);
-  fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
+    // Make a new fragment URI.
+    const auto write_version = array_->array_schema_latest().write_version();
+    auto frag_dir_uri =
+        array_->array_directory().get_fragments_dir(write_version);
+    auto new_fragment_str = storage_format::generate_timestamped_name(
+        fragment_timestamp_range_.first,
+        fragment_timestamp_range_.second,
+        write_version);
+    fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
+  }
 
   // Set domain of new fragment if needed
   std::optional<NDRange> new_fragment_domain;
