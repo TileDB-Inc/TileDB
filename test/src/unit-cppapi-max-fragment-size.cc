@@ -512,6 +512,10 @@ TEST_CASE(
   array.close();
 }
 
+/**
+ * @return the number of cells contained within a subarray, or `std::nullopt` if
+ * overflow
+ */
 std::optional<uint64_t> subarray_num_cells(
     std::span<const templates::Domain<uint64_t>> subarray) {
   uint64_t num_cells = 1;
@@ -525,6 +529,16 @@ std::optional<uint64_t> subarray_num_cells(
   return num_cells;
 }
 
+/**
+ * Creates an array with the provided `dimensions` and then
+ * runs a global order write into `subarray` using `max_fragment_size` to bound
+ * the fragment size.
+ *
+ * Asserts that all created fragments respect `max_fragment_size` and that the
+ * data read back out for `subarray` matches what we wrote into it.
+ *
+ * @return a list of the domains written to each fragment in ascending order
+ */
 template <typename Asserter>
 std::vector<std::vector<templates::Domain<uint64_t>>>
 instance_dense_global_order(
@@ -676,12 +690,17 @@ instance_dense_global_order(
   return fragment_domains;
 }
 
+/**
+ * Tests that the max fragment size parameter is properly respected
+ * for global order writes to dense arrays.
+ */
 TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
   const std::string array_name =
       "cppapi_consolidation_dense_domain_arithmetic_overflow";
 
   Context ctx;
 
+  // each tile is a full row of a 2D array
   SECTION("Row tiles") {
     using Dim = templates::Dimension<Datatype::UINT64>;
     using Dom = templates::Domain<uint64_t>;
@@ -707,6 +726,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
     CHECK(expect == actual);
   }
 
+  // each tile is some rectangle of a 2D array
   SECTION("Rectangle tiles") {
     using Dim = templates::Dimension<Datatype::UINT64>;
     using Dom = templates::Domain<uint64_t>;
@@ -788,6 +808,10 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
   }
 }
 
+/**
+ * @return a generator which prdocues subarrays whose bounds are aligned to the
+ * tiles of `arraydomain`
+ */
 namespace rc {
 template <sm::Datatype D>
 Gen<std::vector<typename templates::Dimension<D>::domain_type>>
