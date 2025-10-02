@@ -20,5 +20,5 @@ trigger_pipeline:
   trigger:
     project: tiledb-inc/tiledb-internal
     strategy: depend
-    branch: shaunreed/debug-tiledb-uri-test-hangs
+    branch: shaunreed/fix-vfs-test-hangs
 
