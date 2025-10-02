@@ -580,6 +580,9 @@ bool Azure::is_dir(const URI& uri) const {
   }
 
   std::optional<std::string> continuation_token;
+  if (!blob_path.ends_with('/')) {
+    blob_path.push_back('/');
+  }
   auto paths =
       list_blobs_impl(container_name, blob_path, false, 1, continuation_token);
   return !paths.empty();
