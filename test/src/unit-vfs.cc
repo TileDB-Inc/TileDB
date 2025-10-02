@@ -773,6 +773,7 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
       config.set("vfs.azure.storage_account_name", "exampleaccount"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  require_tiledb_ok(config.set("vfs.azure.is_data_lake_endpoint", "false"));
   if (sas_token.empty()) {
     // If the SAS token is empty, the VFS will try to connect to Microsoft Entra
     // ID to obtain credentials, which can take a long time because of retries.
