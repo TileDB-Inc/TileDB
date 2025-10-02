@@ -83,6 +83,13 @@ static uint64_t get_effective_memory_budget(
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+Query::CoordsInfo::CoordsInfo()
+    : has_coords_(false)
+    , coords_buffer_(nullptr)
+    , coords_buffer_size_(nullptr)
+    , coords_num_(0) {
+}
+
 Query::Query(
     ContextResources& resources,
     CancellationSource cancellation_source,
@@ -140,11 +147,6 @@ Query::Query(
   subarray_ = Subarray(array_, layout_, stats_, logger_);
 
   fragment_metadata_ = array->fragment_metadata();
-
-  coords_info_.coords_buffer_ = nullptr;
-  coords_info_.coords_buffer_size_ = nullptr;
-  coords_info_.coords_num_ = 0;
-  coords_info_.has_coords_ = false;
 
   callback_ = nullptr;
   callback_data_ = nullptr;
