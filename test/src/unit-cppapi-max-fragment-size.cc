@@ -32,9 +32,12 @@
 
 #include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
+#include <test/support/tdb_rapidcheck.h>
+#include "test/support/rapidcheck/array_templates.h"
 #include "test/support/src/array_helpers.h"
 #include "test/support/src/array_templates.h"
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
 #include "tiledb/common/arithmetic.h"
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
@@ -605,15 +608,18 @@ instance_dense_global_order(
     ASSERTER(st == Query::Status::COMPLETE);
   }
 
-  ASSERTER(a_read == a_write);
-
   FragmentInfo finfo(ctx, array_name);
   finfo.load();
 
   // validate fragment size
   for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
     const uint64_t fsize = finfo.fragment_size(f);
-    ASSERTER(fsize <= max_fragment_size);
+    const uint64_t fmetasize = finfo.ptr()
+                                   ->fragment_info()
+                                   ->single_fragment_info_vec()[f]
+                                   .meta()
+                                   ->fragment_meta_size();
+    ASSERTER(fsize <= max_fragment_size + fmetasize);
   }
 
   // collect fragment domains
@@ -663,6 +669,9 @@ instance_dense_global_order(
       ASSERTER(fragment_domains[f][d] == subarray[d]);
     }
   }
+
+  // this is last because a fragment domain mismatch is more informative
+  ASSERTER(a_read == a_write);
 
   return fragment_domains;
 }
@@ -749,4 +758,136 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
       CHECK(expect == actual);
     }
   }
+
+  // examples found from the rapidcheck test
+  SECTION("Shrinking") {
+    using Dim = templates::Dimension<Datatype::UINT64>;
+    using Dom = templates::Domain<uint64_t>;
+
+    SECTION("Example 1") {
+      Dim d1(0, 0, 1);
+      Dim d2(0, 0, 1);
+      Dom s1(0, 0);
+      Dom s2(0, 0);
+      const uint64_t max_fragment_size = 24;
+
+      instance_dense_global_order<AsserterCatch>(
+          ctx, max_fragment_size, {d1, d2}, {s1, s2});
+    }
+
+    SECTION("Example 2") {
+      Dim d1(1, 26, 2);
+      Dim d2(0, 0, 1);
+      Dom s1(1, 2);
+      Dom s2(0, 0);
+      const uint64_t max_fragment_size = 28;
+
+      instance_dense_global_order<AsserterCatch>(
+          ctx, max_fragment_size, {d1, d2}, {s1, s2});
+    }
+  }
+}
+
+namespace rc {
+template <sm::Datatype D>
+Gen<std::vector<typename templates::Dimension<D>::domain_type>>
+make_tile_aligned_subarray(
+    const std::vector<templates::Dimension<D>>& arraydomain) {
+  using Dom = typename templates::Dimension<D>::domain_type;
+
+  // dense subarrays have to be aligned to tile boundaries
+  // so choose the tiles in each dimension that the subarray will overlap
+  std::vector<Gen<templates::Domain<uint64_t>>> gen_subarray_tiles;
+  for (const auto& dimension : arraydomain) {
+    const uint64_t tile_ub =
+        (dimension.domain.upper_bound - dimension.domain.lower_bound) /
+        dimension.extent;
+    gen_subarray_tiles.push_back(
+        make_range(templates::Domain<uint64_t>(0, tile_ub)));
+  }
+
+  return gen::exec([gen_subarray_tiles, arraydomain]() {
+    std::vector<templates::Domain<uint64_t>> subarray_tiles;
+    for (const auto& gen_dim : gen_subarray_tiles) {
+      subarray_tiles.push_back(*gen_dim);
+    }
+
+    std::vector<Dom> subarray;
+    auto to_subarray = [&]() -> std::vector<Dom>& {
+      subarray.clear();
+      for (uint64_t d = 0; d < arraydomain.size(); d++) {
+        subarray.push_back(Dom(
+            arraydomain[d].domain.lower_bound +
+                subarray_tiles[d].lower_bound * arraydomain[d].extent,
+            arraydomain[d].domain.lower_bound +
+                (subarray_tiles[d].upper_bound + 1) * arraydomain[d].extent -
+                1));
+      }
+      return subarray;
+    };
+
+    uint64_t num_cells_per_tile = 1;
+    for (const auto& dim : arraydomain) {
+      num_cells_per_tile *= dim.extent;
+    }
+
+    // clamp to a hopefully reasonable limit
+    // avoid too many cells, and avoid too many tiles
+    std::optional<uint64_t> num_cells;
+    while (!(num_cells = subarray_num_cells(to_subarray())).has_value() ||
+           num_cells.value() >= 1024 * 1024 * 4 ||
+           (num_cells.value() / num_cells_per_tile) >= 16 * 1024) {
+      for (uint64_t d = subarray.size(); d > 0; --d) {
+        auto& dtiles = subarray_tiles[d - 1];
+        if (dtiles.num_cells() > 4) {
+          dtiles.upper_bound = (dtiles.lower_bound + dtiles.upper_bound) / 2;
+          break;
+        }
+      }
+    }
+
+    return to_subarray();
+  });
+}
+
+}  // namespace rc
+
+TEST_CASE(
+    "C++ API: Max fragment size dense array rapidcheck 2d",
+    "[cppapi][max-frag-size][rapidcheck]") {
+  Context ctx;
+  rc::prop("max fragment size dense 2d", [ctx]() {
+    static constexpr auto DT = sm::Datatype::UINT64;
+    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(512);
+    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(512);
+    const std::optional<uint64_t> num_cells_per_tile =
+        checked_arithmetic<uint64_t>::mul(d1.extent, d2.extent);
+    RC_PRE(num_cells_per_tile.has_value());
+    RC_PRE(num_cells_per_tile.value() <= 1024 * 128);
+
+    const uint64_t estimate_single_tile_fragment_size =
+        num_cells_per_tile.value() * sizeof(int)  // data
+        + sizeof(uint64_t)       // prefix containing the number of chunks
+        + 3 * sizeof(uint32_t);  // chunk sizes
+
+    const auto subarray =
+        *rc::make_tile_aligned_subarray<sm::Datatype::UINT64>({d1, d2});
+
+    const uint64_t num_tiles_per_hyperrow = d2.num_tiles(subarray[1]);
+    const uint64_t max_fragment_size = *rc::gen::inRange(1, 8) *
+                                       num_tiles_per_hyperrow *
+                                       estimate_single_tile_fragment_size;
+
+    std::cerr << std::endl << "d1: ";
+    rc::show(d1, std::cerr);
+    std::cerr << std::endl << "d2: ";
+    rc::show(d2, std::cerr);
+    std::cerr << std::endl << "subarray: ";
+    rc::show(subarray, std::cerr);
+    std::cerr << std::endl
+              << "max_fragment_size: " << max_fragment_size << std::endl;
+
+    instance_dense_global_order<AsserterRapidcheck>(
+        ctx, max_fragment_size, {d1, d2}, subarray);
+  });
 }
