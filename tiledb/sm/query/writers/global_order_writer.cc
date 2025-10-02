@@ -1529,7 +1529,11 @@ static NDRange domain_tile_offset(
     T* start = static_cast<T*>(adjusted[0].start_fixed());
     T* end = static_cast<T*>(adjusted[0].end_fixed());
 
-    auto align = [extent](T value) -> T { return (value / extent) * extent; };
+    // tiles begin at [LB, LB + E, LB + 2E, ...] where LB is lower bound, E is
+    // extent
+    auto align = [lower_bound, extent](T value) -> T {
+      return lower_bound + ((value - lower_bound) / extent) * extent;
+    };
 
     *start = std::max<T>(lower_bound, align(*start + extent * start_hyperrow));
     *end = std::min<T>(upper_bound, align(*start + extent * num_hyperrows) - 1);
