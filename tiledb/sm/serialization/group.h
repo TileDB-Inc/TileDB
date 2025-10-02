@@ -161,6 +161,8 @@ Status group_metadata_serialize(
     SerializationBuffer& serialized_buffer,
     bool load);
 
+#ifdef TILEDB_SERIALIZATION
+
 /**
  * Convert Cap'n Proto message to GroupMember object
  *
@@ -180,6 +182,8 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader);
 Status group_member_to_capnp(
     const tdb_shared_ptr<GroupMember>& group_member,
     capnp::GroupMember::Builder* group_member_builder);
+
+#endif  // TILEDB_SERIALIZATION
 
 }  // namespace serialization
 }  // namespace sm
