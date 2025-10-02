@@ -205,7 +205,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
 using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
-  TestType fs({0});
+  TestType fs({});
   if (!fs.is_supported()) {
     return;
   }
