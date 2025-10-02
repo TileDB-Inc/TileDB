@@ -1438,14 +1438,14 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t running_tiles_size = current_fragment_size_;
   uint64_t fragment_size = current_fragment_size_;
 
-  uint64_t fragment_start = 0;
-  std::optional<uint64_t> fragment_end;
+  uint64_t fragment_start = 0, fragment_end = 0;
   std::vector<std::pair<uint64_t, uint64_t>> fragments;
 
-  const uint64_t hyperrow_num_tiles =
-      (dense() ? compute_hyperrow_num_tiles(
-                     array_schema_.domain(), subarray_.ndrange(0)) :
-                 1);
+  std::optional<uint64_t> hyperrow_num_tiles;
+  if (dense()) {
+    hyperrow_num_tiles = compute_hyperrow_num_tiles(
+        array_schema_.domain(), subarray_.ndrange(0));
+  }
 
   // Make sure we don't write more than the desired fragment size.
   for (uint64_t t = 0; t < tile_num; t++) {
@@ -1479,7 +1479,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
-      } else if (!fragment_end.has_value()) {
+      } else if (fragment_end == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to subdivide dense subarray into "
             "multiple fragments");
@@ -1490,11 +1490,12 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       iassert(running_tiles_size >= fragment_size);
       running_tiles_size -= fragment_size;
 
-      fragment_start = fragment_end.value();
-      fragment_end.reset();
+      fragment_start = fragment_end;
+      fragment_end = 0;
     }
 
-    if (((t + 1) - fragment_start) % hyperrow_num_tiles == 0) {
+    if (!hyperrow_num_tiles.has_value() ||
+        ((t + 1) - fragment_start) % hyperrow_num_tiles.value() == 0) {
       fragment_size = running_tiles_size + tile_size;
       fragment_end = t + 1;
     }
