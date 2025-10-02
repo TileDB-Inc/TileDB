@@ -448,7 +448,7 @@ VFSTestBase::~VFSTestBase() {
   try {
     if (vfs_.supports_uri_scheme(temp_dir_)) {
       if (vfs_.is_dir(temp_dir_)) {
-        REQUIRE_NOTHROW(vfs_.remove_dir(temp_dir_));
+        vfs_.remove_dir(temp_dir_);
       }
     }
   } catch (const std::exception& e) {
