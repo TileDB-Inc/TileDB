@@ -673,14 +673,7 @@ uint64_t FragmentMetadata::fragment_size() const {
   for (const auto& file_validity_size : file_validity_sizes_)
     size += file_validity_size;
 
-  // The fragment metadata file size can be empty when we've loaded consolidated
-  // metadata
-  uint64_t meta_file_size = meta_file_size_;
-  if (meta_file_size == 0) {
-    auto meta_uri = fragment_uri_.join_path(
-        std::string(constants::fragment_metadata_filename));
-    meta_file_size = resources_->vfs().file_size(meta_uri);
-  }
+  const uint64_t meta_file_size = fragment_meta_size();
   // Validate that the meta_file_size is not zero, either preloaded or fetched
   // above
   iassert(meta_file_size != 0);
@@ -689,6 +682,17 @@ uint64_t FragmentMetadata::fragment_size() const {
   size += meta_file_size;
 
   return size;
+}
+
+uint64_t FragmentMetadata::fragment_meta_size() const {
+  // The fragment metadata file size can be empty when we've loaded consolidated
+  // metadata
+  if (meta_file_size_ == 0) {
+    auto meta_uri = fragment_uri_.join_path(
+        std::string(constants::fragment_metadata_filename));
+    meta_file_size_ = resources_->vfs().file_size(meta_uri);
+  }
+  return meta_file_size_;
 }
 
 void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
