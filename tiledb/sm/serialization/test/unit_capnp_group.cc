@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,11 +33,8 @@
 #include <capnp/message.h>
 
 #include <test/support/tdb_catch.h>
-
 #include "test/support/src/mem_helpers.h"
-#include "tiledb/sm/group/group_member.h"
 
-#include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/group.h"
 
 using namespace tiledb::common;

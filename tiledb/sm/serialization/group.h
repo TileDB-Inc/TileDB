@@ -38,6 +38,10 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/group/group_member.h"
 
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb {
