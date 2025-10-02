@@ -127,6 +127,8 @@ class Query {
 
     /** Keeps track of the number of coordinates across coordinate buffers. */
     uint64_t coords_num_;
+
+    CoordsInfo();
   };
 
   /* ********************************* */
