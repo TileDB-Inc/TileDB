@@ -229,7 +229,12 @@ TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
   SECTION("Filesize = 150 MB") {
     test_str_size = 150 * 1048576;
   }
-  std::string test_str(test_str_size, 'a');
+  std::string test_chars = "abcdefghij";
+  std::string test_str;
+  for (size_t i = 0; i < test_str_size / 10; ++i) {
+    test_str += test_chars;
+  }
+  test_str += test_chars.substr(0, test_str_size % 10);
   REQUIRE(test_str.size() == test_str_size);
 
   // Create src_file and write data to it.
