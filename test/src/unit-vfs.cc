@@ -206,7 +206,7 @@ using AllBackends =
     std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, TileDBFSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][rest][uri]", AllBackends) {
-  TestType fs({0});
+  TestType fs({});
   if (!fs.is_supported()) {
     return;
   }
@@ -214,19 +214,6 @@ TEMPLATE_LIST_TEST_CASE(
   auto& vfs = fs.vfs_;
 
   URI path = fs.temp_dir_.add_trailing_slash();
-
-  // Set up
-  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    if (vfs.is_bucket(path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(path));
-  } else {
-    if (vfs.is_dir(path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(path));
-  }
 
   /* Create the following file hierarchy:
    *
@@ -475,21 +462,6 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   if (path.is_file()) {
     // #TODO Ensure this doesn't fail. This test case seems incorrect.
     CHECK_THROWS(vfs.file_size(non_existent));
-  }
-
-  // Set up
-  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    if (vfs.is_bucket(path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(path));
-  } else {
-    if (vfs.is_dir(path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(path));
-    // Bucket-specific operations are only valid for object store filesystems.
-    CHECK_THROWS(vfs.create_bucket(path));
   }
 
   // Prepare buffers
@@ -800,6 +772,7 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
       config.set("vfs.azure.storage_account_name", "exampleaccount"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  require_tiledb_ok(config.set("vfs.azure.is_data_lake_endpoint", "false"));
   if (sas_token.empty()) {
     // If the SAS token is empty, the VFS will try to connect to Microsoft Entra
     // ID to obtain credentials, which can take a long time because of retries.

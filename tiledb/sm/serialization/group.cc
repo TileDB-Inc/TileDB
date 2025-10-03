@@ -127,8 +127,8 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
     name = group_member_reader->getName().cStr();
   }
 
-  tdb_shared_ptr<GroupMember> group_member =
-      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri), type, relative, name);
+  tdb_shared_ptr<GroupMember> group_member = tdb::make_shared<GroupMemberV1>(
+      HERE(), URI(uri, !relative), type, relative, name);
 
   return {Status::Ok(), group_member};
 }
