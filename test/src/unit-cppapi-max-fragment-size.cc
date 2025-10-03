@@ -44,6 +44,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <numeric>
 
@@ -826,8 +827,8 @@ make_tile_aligned_subarray(
     const uint64_t tile_ub =
         (dimension.domain.upper_bound - dimension.domain.lower_bound) /
         dimension.extent;
-    gen_subarray_tiles.push_back(
-        make_range(templates::Domain<uint64_t>(0, tile_ub)));
+    gen_subarray_tiles.push_back(make_range(
+        templates::Domain<uint64_t>(0, std::min<uint64_t>(64, tile_ub))));
   }
 
   return gen::exec([gen_subarray_tiles, arraydomain]() {
@@ -855,7 +856,7 @@ make_tile_aligned_subarray(
       num_cells_per_tile *= dim.extent;
     }
 
-    // clamp to a hopefully reasonable limit
+    // clamp to a hopefully reasonable limit (if the other attempts failed)
     // avoid too many cells, and avoid too many tiles
     std::optional<uint64_t> num_cells;
     while (!(num_cells = subarray_num_cells(to_subarray())).has_value() ||
@@ -882,25 +883,37 @@ TEST_CASE(
   Context ctx;
   rc::prop("max fragment size dense 2d", [ctx]() {
     static constexpr auto DT = sm::Datatype::UINT64;
-    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(512);
-    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(512);
+    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(128);
+    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(128);
     const std::optional<uint64_t> num_cells_per_tile =
         checked_arithmetic<uint64_t>::mul(d1.extent, d2.extent);
     RC_PRE(num_cells_per_tile.has_value());
     RC_PRE(num_cells_per_tile.value() <= 1024 * 128);
 
+    const uint64_t tile_size = num_cells_per_tile.value() * sizeof(int);
+    const uint64_t filter_chunk_size =
+        sm::WriterTile::compute_chunk_size(tile_size, sizeof(int));
+    const uint64_t num_filter_chunks_per_tile =
+        (tile_size + filter_chunk_size - 1) / filter_chunk_size;
+
     const uint64_t estimate_single_tile_fragment_size =
         num_cells_per_tile.value() * sizeof(int)  // data
-        + sizeof(uint64_t)       // prefix containing the number of chunks
-        + 3 * sizeof(uint32_t);  // chunk sizes
+        + sizeof(uint64_t)  // prefix containing the number of chunks
+        + num_filter_chunks_per_tile * 3 * sizeof(uint32_t);  // chunk sizes
 
     const auto subarray =
         *rc::make_tile_aligned_subarray<sm::Datatype::UINT64>({d1, d2});
 
     const uint64_t num_tiles_per_hyperrow = d2.num_tiles(subarray[1]);
-    const uint64_t max_fragment_size = *rc::gen::inRange(1, 8) *
-                                       num_tiles_per_hyperrow *
-                                       estimate_single_tile_fragment_size;
+
+    auto gen_fragment_size = rc::gen::map(
+        rc::gen::inRange(1, 8),
+        [num_tiles_per_hyperrow,
+         estimate_single_tile_fragment_size](uint64_t scale) {
+          return num_tiles_per_hyperrow * estimate_single_tile_fragment_size *
+                 scale;
+        });
+    const uint64_t max_fragment_size = *gen_fragment_size;
 
     std::cerr << std::endl << "d1: ";
     rc::show(d1, std::cerr);
