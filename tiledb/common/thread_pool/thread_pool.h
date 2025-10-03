@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,8 +61,10 @@ class ThreadPool {
    protected:
     friend class ThreadPool;
 
-    /* C.67 A polymorphic class should suppress public copy/move to prevent
-     * slicing */
+    /**
+     * C.67 A polymorphic class should suppress public copy/move to prevent
+     * slicing.
+     */
     ThreadPoolTask(const ThreadPoolTask&) = default;
     ThreadPoolTask& operator=(const ThreadPoolTask&) = default;
     ThreadPoolTask(ThreadPoolTask&&) = default;
@@ -70,7 +72,7 @@ class ThreadPool {
 
     /**
      * Pure virtual functions that tasks need to implement so that they can be
-     * run in the threadpool wait loop
+     * run in the threadpool wait loop.
      */
     virtual std::future_status wait_for(
         const std::chrono::milliseconds timeout_duration) const = 0;
@@ -81,20 +83,21 @@ class ThreadPool {
   };
 
   /**
-   * @brief Task class encapsulating std::future. Like std::future it's shared
-   * state can only be get once and thus only one thread. It can only be moved
-   * and not copied.
+   * Task class encapsulating `std::future`. Like `std::future`, its shared
+   * state can only be retrieved once, and thus on only one thread. It can only
+   * be moved, and not copied.
    */
   class Task : public ThreadPoolTask {
    public:
     /**
-     * Default constructor
-     * @brief Default constructed SharedTask is possible but not valid().
+     * Default constructor.
+     *
+     * @note Default-constructed `SharedTask` is possible, but not `valid()`.
      */
     Task() = default;
 
     /**
-     * Constructor from std::future
+     * Constructor from `std::future`.
      */
     Task(std::future<Status>&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
@@ -140,33 +143,34 @@ class ThreadPool {
     }
 
     /**
-     * The encapsulated std::shared_future
+     * The encapsulated `std::shared_future`.
      */
     std::future<Status> f_;
   };
 
   /**
-   * @brief SharedTask class encapsulating std::shared_future. Like
-   * std::shared_future multiple threads can wait/get on the shared state
+   * `SharedTask` class encapsulating `std::shared_future`. Like
+   * `std::shared_future`, multiple threads can wait/get on the shared state
    * multiple times. It can be both moved and copied.
    */
   class SharedTask : public ThreadPoolTask {
    public:
     /**
-     * Default constructor
-     * @brief Default constructed SharedTask is possible but not valid().
+     * Default constructor.
+     *
+     * @note Default-constructed `SharedTask` is possible, but not `valid()`.
      */
     SharedTask() = default;
 
     /**
-     * Constructor from std::future or std::shared_future
+     * Constructor from `std::future` or `std::shared_future`.
      */
     SharedTask(auto&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
         , f_(std::forward<decltype(f)>(f)) {};
 
     /**
-     * Move constructor from a Task
+     * Move constructor from a `Task`.
      */
     SharedTask(Task&& t) noexcept
         : ThreadPoolTask(t.tp_)
@@ -212,7 +216,7 @@ class ThreadPool {
     }
 
     /**
-     * The encapsulated std::shared_future
+     * The encapsulated `std::shared_future`.
      */
     std::shared_future<Status> f_;
   };
@@ -232,7 +236,7 @@ class ThreadPool {
    */
   explicit ThreadPool(size_t n);
 
-  /** Deleted default constructor */
+  /** Deleted default constructor. */
   ThreadPool() = delete;
 
   /** Destructor. */
@@ -303,6 +307,39 @@ class ThreadPool {
   Status wait_all(std::vector<SharedTask>& tasks);
   std::vector<Status> wait_all_status(std::vector<SharedTask>& tasks);
 
+  /**
+   * Wait for the given condition to be satisfied.
+   * This function is usually safe to call recursively, and may execute pending
+   * tasks on the calling thread while waiting.
+   *
+   * There is an innate risk of deadlock in calling this method if the condition
+   * remains unsatisfied across all threads. Users should use this method with
+   * caution, and ensure they understand the potential tradeoffs of use.
+   *
+   * Additionally, this method swallows the results of tasks run while waiting
+   * for the condition to be satisfied. The purpose of this method is purely for
+   * a single thread to wait on a condition, and allow other work to be done
+   * in the meantime.
+   *
+   * @param condition Condition that must be satisfied before proceeding.
+   */
+  void wait_until(auto&& condition) {
+    while (true) {
+      if (condition()) {
+        // Condition is satisfied; waiting is finished.
+        // Note: the condition must be re-evaluated to see updates.
+        return;
+      } else {
+        // In the meantime, try to do useful work to avoid deadlock
+        if (auto val = task_queue_.try_pop()) {
+          (*(*val))();
+        } else {
+          std::this_thread::yield();
+        }
+      }
+    }
+  }
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -341,7 +378,7 @@ class ThreadPool {
    *
    * @param task Task to wait on.
    * @return Status::Ok if the task returned Status::Ok, otherwise the error
-   * status is returned
+   * status is returned.
    */
   Status wait(ThreadPoolTask& task);
 

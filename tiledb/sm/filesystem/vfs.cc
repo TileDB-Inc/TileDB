@@ -384,17 +384,15 @@ void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
 
 void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
   auto &src_fs{get_fs(src)}, &dest_fs{get_fs(dest)};
-  std::condition_variable cv;
-  std::mutex mtx;
 
   // Deque which stores the buffers passed between the readers and writer.
-  ProducerConsumerQueue<std::variant<std::vector<char>, std::exception_ptr>>
+  ProducerConsumerQueue<
+      std::variant<tdb_shared_ptr<std::vector<char>>, std::exception_ptr>>
       buffer_queue;
 
   // By default, the buffer size is 10 MB, unless the filesize is smaller.
   uint64_t filesize = src_fs.file_size(src);
   uint64_t buffer_size = std::min(filesize, (uint64_t)10485760);  // 10 MB
-  tdb_unique_ptr<std::vector<char>> buffer(new std::vector<char>(buffer_size));
 
   // The maximum number of buffers the reader may allocate.
   const int max_buffer_count = 10;
@@ -403,30 +401,30 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
   // May not exceed `max_buffer_count`.
   std::atomic<int> buffer_count = 0;
 
-  // Flag to stop the reader when set to true.
-  std::atomic<bool> stop_reader = false;
+  // Flag indicating an ongoing read. The reader will stop once set to `false`.
+  std::atomic<bool> reading = true;
 
   // Reader
   ThreadPool::Task read_task = io_tp_->execute([&] {
     uint64_t offset = 0;
-    while (true) {
-      if (stop_reader) {
-        break;
-      }
-      std::unique_lock<std::mutex> lock(mtx);
-      cv.wait(lock, [&]() { return buffer_count < max_buffer_count; });
+    while (reading) {
+      tdb_unique_ptr<std::vector<char>> buffer(
+          tdb_new(std::vector<char>, buffer_size));
       try {
         uint64_t bytes_read =
             src_fs.read(src, offset, buffer->data(), buffer->size());
         if (bytes_read > 0) {
           buffer->resize(bytes_read);
-          buffer_queue.push(std::move(*buffer.get()));
+          buffer_queue.push(std::move(buffer));
           offset += bytes_read;
         }
 
         // Once the read is complete, drain the queue and exit the reader.
+        // Note: drain() shuts down the queue without removing elements.
+        // The write fiber will be notified and write the remaining chunks.
         if (offset >= filesize) {
           buffer_queue.drain();
+          reading = false;
           break;
         }
       } catch (...) {
@@ -434,6 +432,8 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
         buffer_queue.push(std::current_exception());
       }
       buffer_count++;
+
+      io_tp_->wait_until([&]() { return buffer_count < max_buffer_count; });
     }
     return Status::Ok();
   });
@@ -448,24 +448,21 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
       break;
     }
 
-    // Signal the reader to start reading again.
-    cv.notify_one();
-
-    auto buffer = buffer_queue_element.value();
+    auto& buffer = buffer_queue_element.value();
     // Rethrow exceptions enqueued by read.
     if (std::holds_alternative<std::exception_ptr>(buffer)) {
       std::rethrow_exception(std::get<std::exception_ptr>(buffer));
     }
 
-    auto writebuf = std::get<0>(buffer);
+    auto& writebuf = std::get<0>(buffer);
     try {
-      dest_fs.write(dest, writebuf.data(), writebuf.size());
+      dest_fs.write(dest, writebuf->data(), writebuf->size());
       buffer_count--;
     } catch (...) {
+      reading = false;  // Stop the reader.
       throw;
-      stop_reader = true;
     }
-    bytes_written += writebuf.size();
+    bytes_written += writebuf->size();
   }
 
   if (bytes_written != filesize) {
