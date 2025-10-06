@@ -439,7 +439,6 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
   });
 
   // Writer
-  uint64_t bytes_written = 0;
   while (true) {
     // Allow the ProducerConsumerQueue to wait for an element to be enqueued.
     auto buffer_queue_element = buffer_queue.pop_back();
@@ -462,11 +461,6 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
       reading = false;  // Stop the reader.
       throw;
     }
-    bytes_written += writebuf->size();
-  }
-
-  if (bytes_written != filesize) {
-    throw VFSException("Failed to copy file due to internal error.");
   }
 
   dest_fs.flush(dest);

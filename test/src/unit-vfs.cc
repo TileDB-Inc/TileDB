@@ -395,8 +395,13 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
     CHECK(children[0].file_size() == s.size());
-    CHECK(children[1].file_size() == 0);  // Directories don't get a sizeß
+    CHECK(children[1].file_size() == 0);  // Directories don't get a size
+    paths.clear();
+
+    // Move file
     auto file6 = URI(path.to_string() + "file6");
+    REQUIRE_NOTHROW(vfs.move_file(file5, file6));
+    CHECK(!vfs.is_file(file5));
     CHECK(vfs.is_file(file6));
     paths.clear();
 
@@ -410,6 +415,8 @@ TEMPLATE_LIST_TEST_CASE(
     // Remove files & directories
     REQUIRE_NOTHROW(vfs.remove_file(file4));
     CHECK(!vfs.is_file(file4));
+    REQUIRE_NOTHROW(vfs.remove_file(file6));
+    CHECK(!vfs.is_file(file6));
     REQUIRE_NOTHROW(vfs.remove_dir(dir2));
     CHECK(!vfs.is_file(file1));
     CHECK(!vfs.is_file(file2));
