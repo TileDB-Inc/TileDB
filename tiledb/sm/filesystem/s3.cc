@@ -996,6 +996,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
+  auto protocol = prefix.backend_name() + "://";
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
   std::string aws_auth(aws_uri.GetAuthority());
@@ -1029,7 +1030,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
       std::string file(object.GetKey());
       uint64_t size = object.GetSize();
       entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(file), size, false);
+          protocol + aws_auth + add_front_slash(file), size, false);
     }
 
     for (const auto& object :
@@ -1038,7 +1039,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
       // For "directories" it doesn't seem possible to get a shallow size in
       // S3, so the size of such an entry will be 0 in S3.
       entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)),
+          protocol + aws_auth + add_front_slash(remove_trailing_slash(file)),
           0,
           true);
     }
@@ -1094,7 +1095,7 @@ uint64_t S3::file_size(const URI& uri) const {
     }
     throw S3Exception(
         std::string(
-            "Cannot retrieve S3 object size; Error while listing file s3://") +
+            "Cannot retrieve S3 object size; Error while listing file ") +
         uri.to_string() + outcome_error_message(head_object_outcome) +
         additional_context);
   }
@@ -2044,7 +2045,8 @@ S3Scanner::S3Scanner(
     bool recursive,
     int max_keys)
     : LsScanner(prefix, std::move(result_filter), recursive)
-    , client_(client) {
+    , client_(client)
+    , protocol_(prefix.backend_name() + "://") {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -2071,7 +2073,8 @@ S3Scanner::S3Scanner(
     bool recursive,
     int max_keys)
     : LsScanner(prefix, std::move(result_filter), recursive)
-    , client_(client) {
+    , client_(client)
+    , protocol_(prefix.backend_name() + "://") {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -2173,11 +2176,12 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
     ptr = fetch_results();
   }
 
-  std::string bucket = "s3://" + std::string(list_objects_request_.GetBucket());
+  std::string bucket =
+      protocol_ + std::string(list_objects_request_.GetBucket());
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
-    // The object key does not contain s3:// prefix or the bucket name.
+    // The object key does not contain protocol prefix or the bucket name.
     std::string path =
         bucket + S3::add_front_slash(std::string(object.GetKey()));
 

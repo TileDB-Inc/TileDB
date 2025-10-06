@@ -218,7 +218,7 @@ Config VFS::config() const {
 }
 
 void VFS::create_dir(const URI& uri) const {
-  if (!uri.is_s3() && !uri.is_azure() && !uri.is_gcs()) {
+  if (!(uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_tiledb())) {
     if (this->is_dir(uri))
       return;
   }
@@ -326,7 +326,7 @@ void VFS::remove_files(
 }
 
 uint64_t VFS::max_parallel_ops(const URI& uri) const {
-  if (uri.is_s3()) {
+  if (uri.is_s3() || uri.is_tiledb()) {
     return config_.get<uint64_t>("vfs.s3.max_parallel_ops", Config::must_find);
   } else if (uri.is_azure()) {
     return config_.get<uint64_t>(
@@ -375,7 +375,8 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
-  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
+  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure() ||
+        parent.is_tiledb())) {
     if (!this->is_dir(parent)) {
       return {};
     }
@@ -608,6 +609,8 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
     return supports_fs(Filesystem::AZURE);
   } else if (uri.is_gcs()) {
     return supports_fs(Filesystem::GCS);
+  } else if (uri.is_tiledb()) {
+    return supports_fs(Filesystem::TILEDBFS);
   } else {
     return true;
   }
@@ -656,6 +659,17 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
               "'; GCS does not support append mode");
         } else {
           throw BuiltWithout("GCS");
+        }
+      }
+      if (uri.is_tiledb()) {
+        if constexpr (s3_enabled) {
+          throw VFSException(
+              "Cannot open file '" + uri.to_string() +
+              "'; TileDB FS does not support append mode");
+        } else {
+          throw VFSException(
+              "TileDB was built without S3 support, which is required for "
+              "TileDB FS");
         }
       }
       break;
