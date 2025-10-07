@@ -357,6 +357,12 @@ class FragmentMetadata {
   void init_domain(const NDRange& non_empty_domain);
 
   /**
+   * Updates the fragment's internal domain and non-empty domain members.
+   * Validity of the argument is not checked so use with caution.
+   */
+  void set_domain(const NDRange& non_empty_domain);
+
+  /**
    * Loads the basic metadata from storage or `f_buff` for later
    * versions if it is not `nullptr`.
    */

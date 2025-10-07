@@ -45,6 +45,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -59,6 +60,12 @@ using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
+
+static NDRange domain_tile_offset(
+    const Domain& arraydomain,
+    const NDRange& domain,
+    uint64_t start_tile,
+    uint64_t num_tiles);
 
 class GlobalOrderWriterException : public StatusException {
  public:
@@ -786,6 +793,34 @@ Status GlobalOrderWriter::global_write() {
     } else {
       if (f > 0 || !global_write_state_->frag_meta_) {
         RETURN_CANCEL_OR_ERROR(start_new_fragment(start_tile, num_tiles));
+      } else {
+        // this means a resumed write of a previously started fragment
+        if (dense()) {
+          // in which case it is necessary to extend the domain
+          // (assumption which is true as of this writing: all dimensions of a
+          // dense domain have the same data type)
+          auto updated_domain = [&]<typename T>(T) -> NDRange {
+            using A = NDRangeTypedAccess<T>;
+            const NDRange& written_domain =
+                global_write_state_->frag_meta_->domain();
+            NDRange pending_range = subarray_.ndrange(0);
+            A::lower_bound(pending_range, 0) =
+                A::upper_bound(written_domain, 0) + 1;
+
+            auto extended = domain_tile_offset(
+                array_schema_.domain(),
+                pending_range,
+                0,
+                global_write_state_->frag_meta_->tile_index_base() + num_tiles);
+            A::lower_bound(extended, 0) = A::lower_bound(written_domain, 0);
+            return extended;
+          };
+
+          NDRange extended = apply_with_type(
+              updated_domain, array_schema_.domain().dimension_ptr(0)->type());
+
+          global_write_state_->frag_meta_->set_domain(extended);
+        }
       }
 
       auto frag_meta = global_write_state_->frag_meta_;
