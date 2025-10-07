@@ -311,6 +311,10 @@ class ArrayDirectory {
       uint64_t timestamp_end,
       ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
 
+  DISABLE_COPY_AND_COPY_ASSIGN(ArrayDirectory);
+
+  ArrayDirectory(ArrayDirectory&&) = default;
+
   /** Destructor. */
   ~ArrayDirectory() = default;
 
