@@ -573,7 +573,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) const override;
+  void copy_dir(const URI&, const URI&) override;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -581,7 +581,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Renames an object.

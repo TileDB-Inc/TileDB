@@ -624,7 +624,7 @@ class S3 : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies a directory. All subdirectories and files are copied.
@@ -632,7 +632,7 @@ class S3 : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads from a file.
