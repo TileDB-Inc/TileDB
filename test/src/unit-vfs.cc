@@ -229,12 +229,15 @@ TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
   SECTION("Filesize = 150 MB") {
     test_str_size = 150 * 1048576;
   }
-  std::string test_chars = "abcdefghij";
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
   std::string test_str;
-  for (size_t i = 0; i < test_str_size / 10; ++i) {
-    test_str += test_chars;
+  test_str.reserve(test_str_size);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
+  for (size_t i = 0; i < test_str_size; ++i) {
+    test_str += test_chars[dist(gen)];
   }
-  test_str += test_chars.substr(0, test_str_size % 10);
   REQUIRE(test_str.size() == test_str_size);
 
   // Create src_file and write data to it.
