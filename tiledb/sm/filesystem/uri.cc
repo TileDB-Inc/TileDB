@@ -356,6 +356,10 @@ URI URI::join_path(const URI& uri) const {
   return join_path(uri.to_string());
 }
 
+URI URI::append_string(const std::string& str) const {
+  return URI(CreateRaw, uri_ + str);
+}
+
 std::string URI::last_path_part() const {
   return uri_.substr(uri_.find_last_of('/') + 1);
 }
@@ -418,3 +422,9 @@ std::strong_ordering URI::operator<=>(const URI& uri) const {
 }
 
 }  // namespace tiledb::sm
+
+namespace std {
+size_t hash<tiledb::sm::URI>::operator()(const tiledb::sm::URI& val) const {
+  return hash<string>()(val.to_string());
+}
+}  // namespace std

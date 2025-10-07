@@ -288,6 +288,14 @@ class URI {
    */
   URI join_path(const URI& uri) const;
 
+  /**
+   * Appends a string to the input URI.
+   *
+   * @param str The string to append.
+   * @return The resulting URI.
+   */
+  URI append_string(const std::string& str) const;
+
   /** Returns the last part of the URI (i.e., excluding the parent). */
   std::string last_path_part() const;
 
@@ -401,5 +409,16 @@ struct URIHasher {
 };
 
 }  // namespace tiledb::sm
+
+namespace std {
+template <>
+/**
+ * Specialization of std::hash for URI. This lets it being used as a key for
+ * hash tables.
+ */
+struct hash<tiledb::sm::URI> {
+  size_t operator()(const tiledb::sm::URI& val) const;
+};
+}  // namespace std
 
 #endif  // TILEDB_URI_H

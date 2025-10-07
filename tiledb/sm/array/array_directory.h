@@ -436,7 +436,7 @@ class ArrayDirectory {
   const std::vector<URI>& commit_uris_to_vacuum() const;
 
   /** Returns the consolidated commit URI set. */
-  const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
+  const std::unordered_set<URI>& consolidated_commit_uris_set() const;
 
   /** Returns the URIs of the consolidated commit files to vacuum. */
   const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
@@ -511,7 +511,7 @@ class ArrayDirectory {
   }
 
   /** Accessor to consolidated_commit_uris_set_ */
-  inline std::unordered_set<std::string>& consolidated_commit_uris_set() {
+  inline std::unordered_set<URI>& consolidated_commit_uris_set() {
     return consolidated_commit_uris_set_;
   }
 
@@ -589,7 +589,7 @@ class ArrayDirectory {
   std::vector<URI> unfiltered_fragment_uris_;
 
   /** Consolidated commit URI set. */
-  std::unordered_set<std::string> consolidated_commit_uris_set_;
+  std::unordered_set<URI> consolidated_commit_uris_set_;
 
   /** The URIs of all the array schema files. */
   std::vector<URI> array_schema_uris_;
@@ -710,7 +710,7 @@ class ArrayDirectory {
       const std::vector<URI>& array_dir_uris,
       const std::vector<URI>& commits_dir_uris,
       const std::vector<URI>& consolidated_uris,
-      const std::unordered_set<std::string>& consolidated_uris_set);
+      const std::unordered_set<URI>& consolidated_uris_set);
 
   /**
    * Loads the consolidated commit URI from the commit directory and the files
@@ -718,10 +718,7 @@ class ArrayDirectory {
    *
    * @return Status, consolidated uris, set of all consolidated uris.
    */
-  tuple<
-      Status,
-      optional<std::vector<URI>>,
-      optional<std::unordered_set<std::string>>>
+  tuple<Status, optional<std::vector<URI>>, optional<std::unordered_set<URI>>>
   load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
 
   /** Loads the array metadata URIs. */
@@ -821,7 +818,7 @@ class ArrayDirectory {
   Status is_fragment(
       const URI& uri,
       const std::unordered_set<std::string>& ok_uris_set,
-      const std::unordered_set<std::string>& consolidated_uris_set,
+      const std::unordered_set<URI>& consolidated_uris_set,
       int32_t* is_fragment) const;
 
   /**

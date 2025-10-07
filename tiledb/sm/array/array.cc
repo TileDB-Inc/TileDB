@@ -676,8 +676,7 @@ void Array::delete_fragments(
   for (auto& fragment : fragment_uris) {
     auto commit_uri = array_dir->get_commit_uri(fragment.uri_);
     commit_uris_to_delete.emplace_back(commit_uri);
-    if (array_dir->consolidated_commit_uris_set().count(commit_uri.c_str()) !=
-        0) {
+    if (array_dir->consolidated_commit_uris_set().count(commit_uri) != 0) {
       commit_uris_to_ignore.emplace_back(commit_uri);
     }
   }
