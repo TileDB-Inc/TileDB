@@ -1,5 +1,7 @@
 #[cxx::bridge]
 mod ffi {
+    #![allow(unused_attributes)]
+
     #[namespace = "tiledb::sm"]
     unsafe extern "C++" {
         include!("tiledb/sm/tile/tile.h");
