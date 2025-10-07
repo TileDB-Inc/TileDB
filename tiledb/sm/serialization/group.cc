@@ -258,7 +258,10 @@ Status group_update_details_to_capnp(
             group_members_to_remove.size());
     uint64_t i = 0;
     for (const auto& it : group_members_to_remove) {
-      group_members_to_remove_builder.set(i, it->uri().c_str());
+      group_members_to_remove_builder.set(
+          i,
+          it->name().has_value() ? it->name().value().c_str() :
+                                   it->uri().c_str());
       // Increment index
       ++i;
     }
