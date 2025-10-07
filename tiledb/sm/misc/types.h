@@ -47,6 +47,31 @@ namespace tiledb::sm {
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
 using NDRange = std::vector<Range>;
 
+/**
+ * Helper functions for more concisely accessing or manipulating
+ * fields of a range with static typing.
+ *
+ * Useful with `apply_with_type`.
+ */
+template <typename T>
+struct NDRangeTypedAccess {
+  static T& lower_bound(NDRange& range, uint64_t dim) {
+    return *static_cast<T*>(range[dim].start_fixed());
+  }
+
+  static const T& lower_bound(const NDRange& range, uint64_t dim) {
+    return *static_cast<const T*>(range[dim].start_fixed());
+  }
+
+  static T& upper_bound(NDRange& range, uint64_t dim) {
+    return *static_cast<T*>(range[dim].end_fixed());
+  }
+
+  static const T& upper_bound(const NDRange& range, uint64_t dim) {
+    return *static_cast<const T*>(range[dim].end_fixed());
+  }
+};
+
 /** An untyped value, barely more than raw storage. This class is only
  * transitional. All uses should be rewritten to use ordinary types. Consider
  * it deprecated at creation.
