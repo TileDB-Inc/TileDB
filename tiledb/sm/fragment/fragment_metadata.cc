@@ -696,12 +696,16 @@ uint64_t FragmentMetadata::fragment_meta_size() const {
 }
 
 void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
-  auto& domain{array_schema_->domain()};
-
   // Sanity check
   iassert(!non_empty_domain.empty());
   iassert(non_empty_domain_.empty());
   iassert(domain_.empty());
+
+  set_domain(non_empty_domain);
+}
+
+void FragmentMetadata::set_domain(const NDRange& non_empty_domain) {
+  auto& domain{array_schema_->domain()};
 
   // Set non-empty domain for dense arrays (for sparse it will be calculated
   // via the MBRs)
