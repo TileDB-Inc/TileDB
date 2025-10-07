@@ -437,7 +437,7 @@ void Win::move_file(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t Win::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   auto path = uri.to_path();
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
@@ -503,7 +503,7 @@ uint64_t Win::read(
   return length_returned;
 }
 
-void Win::flush(const URI& uri, bool) {
+void Win::flush(const URI& uri, bool) const {
   sync(uri);
 }
 
@@ -545,7 +545,7 @@ void Win::sync(const URI& uri) const {
 }
 
 void Win::write(
-    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) const {
   auto path = uri.to_path();
   throw_if_not_ok(ensure_directory(path));
   // Open the file for appending, creating it if it doesn't exist.

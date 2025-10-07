@@ -330,12 +330,7 @@ class ThreadPool {
         // Note: the condition must be re-evaluated to see updates.
         return;
       } else {
-        // In the meantime, try to do useful work to avoid deadlock
-        if (auto val = task_queue_.try_pop()) {
-          (*(*val))();
-        } else {
-          std::this_thread::yield();
-        }
+        yield();
       }
     }
   }
@@ -345,6 +340,18 @@ class ThreadPool {
   /* ********************************* */
 
  private:
+  /**
+   * Attempt to do useful work to avoid deadlock, or yield the current thread.
+   */
+  void yield() {
+    // Try to do useful work to avoid deadlock
+    if (auto val = task_queue_.try_pop()) {
+      (*(*val))();
+    } else {
+      std::this_thread::yield();
+    }
+  }
+
   /**
    * Wait on all the given tasks to complete. This function is safe to call
    * recursively and may execute pending tasks on the calling thread while
