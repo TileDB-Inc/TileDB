@@ -198,8 +198,8 @@ class MemFilesystem : public FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    */
-  uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
+  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
+      const override;
 
   /**
    * Removes a given path and its contents.
@@ -245,7 +245,7 @@ class MemFilesystem : public FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write) override;
+      bool remote_global_order_write) const override;
 
   /**
    * Flushes an object store file.
@@ -255,7 +255,7 @@ class MemFilesystem : public FilesystemBase {
    * @param uri The URI of the file.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI&, bool) override {
+  void flush(const URI&, bool) const override {
     // No-op for MemFS; stub function for local filesystems.
   }
 

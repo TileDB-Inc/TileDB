@@ -624,7 +624,7 @@ class S3 : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) override;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies a directory. All subdirectories and files are copied.
@@ -632,7 +632,7 @@ class S3 : public FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Reads from a file.
@@ -642,8 +642,8 @@ class S3 : public FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    */
-  uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
+  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
+      const override;
 
   /**
    * Deletes a bucket.
@@ -697,7 +697,7 @@ class S3 : public FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t length,
-      bool remote_global_order_write = false) override;
+      bool remote_global_order_write = false) const override;
 
   /**
    * Creates a directory.
@@ -760,7 +760,7 @@ class S3 : public FilesystemBase {
    * @param finalize If `true`, flushes as a result of a remote global order
    * write `finalize()` call.
    */
-  void flush(const URI& uri, bool finalize = false) override;
+  void flush(const URI& uri, bool finalize = false) const override;
 
   /**
    * Flushes an s3 object as a result of a remote global order write

@@ -476,7 +476,7 @@ void MemFilesystem::move_file(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t MemFilesystem::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   FSNode* node;
   std::unique_lock<std::mutex> node_lock;
   auto path = uri.to_path();
@@ -611,7 +611,7 @@ MemFilesystem::FSNode* MemFilesystem::touch_internal(
 }
 
 void MemFilesystem::write(
-    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) const {
   iassert(buffer);
   auto path = uri.to_path();
 

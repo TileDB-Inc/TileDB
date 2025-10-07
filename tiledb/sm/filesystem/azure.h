@@ -384,7 +384,7 @@ class Azure : public FilesystemBase {
    * @param uri The URI of the blob to be flushed.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI& uri, bool finalize) override;
+  void flush(const URI& uri, bool finalize) const override;
 
   /**
    * Check if a container is empty.
@@ -573,7 +573,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The directory's current URI.
    * @param new_uri The directory's URI to move to.
    */
-  void copy_dir(const URI&, const URI&) override;
+  void copy_dir(const URI&, const URI&) const override;
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -581,7 +581,7 @@ class Azure : public FilesystemBase {
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) override;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames an object.
@@ -618,8 +618,8 @@ class Azure : public FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    */
-  uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
+  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
+      const override;
 
   /**
    * Deletes a container.
@@ -681,7 +681,7 @@ class Azure : public FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t length,
-      bool remote_global_order_write) override;
+      bool remote_global_order_write) const override;
 
   /**
    * Initializes the Azure blob service client and returns a reference to it.

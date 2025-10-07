@@ -239,7 +239,7 @@ void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t Posix::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   // Checks
   auto path = uri.to_path();
   uint64_t file_size = this->file_size(URI(path));
@@ -277,7 +277,7 @@ uint64_t Posix::read(
   return nbytes;
 }
 
-void Posix::flush(const URI& uri, bool) {
+void Posix::flush(const URI& uri, bool) const {
   sync(uri);
 }
 
@@ -316,7 +316,7 @@ void Posix::sync(const URI& uri) const {
 }
 
 void Posix::write(
-    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) const {
   auto path = uri.to_path();
   // Check for valid inputs before attempting the actual
   // write system call. This is to avoid a bug on macOS
