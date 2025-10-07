@@ -686,7 +686,7 @@ class VFS : FilesystemBase,
    * @param src The source URI to read from.
    * @param dest The destination URI to write to.
    */
-  void chunked_buffer_io(const URI& src, const URI& dest) const;
+  void chunked_buffer_io(const URI& src, const URI& dest);
 
   /**
    * Copies a file.
@@ -694,7 +694,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies directory.
@@ -702,7 +702,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads from a file.
@@ -712,8 +712,8 @@ class VFS : FilesystemBase,
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    */
-  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
-      const override;
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Reads the specified number of bytes from a file.
@@ -725,7 +725,7 @@ class VFS : FilesystemBase,
    * @return Status
    */
   Status read_exactly(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
@@ -776,8 +776,7 @@ class VFS : FilesystemBase,
    * @param finalize For s3 objects only. If `true`, flushes as a result of a
    * remote global order write `finalize()` call.
    */
-  void flush(
-      const URI& uri, [[maybe_unused]] bool finalize = false) const override;
+  void flush(const URI& uri, [[maybe_unused]] bool finalize = false) override;
 
   /**
    * Closes a file, flushing its contents to persistent storage.
@@ -789,7 +788,7 @@ class VFS : FilesystemBase,
    * @param uri The URI of the file.
    * @return Status
    */
-  Status close_file(const URI& uri) const;
+  Status close_file(const URI& uri);
 
   /**
    * Writes the contents of a buffer into a file.
@@ -805,7 +804,7 @@ class VFS : FilesystemBase,
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write = false) const override;
+      bool remote_global_order_write = false) override;
 
   /**
    * Used in serialization to share the multipart upload state
@@ -1047,7 +1046,7 @@ class VFS : FilesystemBase,
   VFSParameters vfs_params_;
 
   /** The URIs previously read by this instance. */
-  mutable std::unordered_set<std::string> reads_logged_;
+  std::unordered_set<std::string> reads_logged_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -1069,7 +1068,7 @@ class VFS : FilesystemBase,
       void* buffer,
       uint64_t nbytes,
       bool use_read_ahead,
-      uint64_t* length_read) const;
+      uint64_t* length_read);
 
   /**
    * Retrieves the backend-specific max number of parallel operations for VFS
@@ -1085,7 +1084,7 @@ class VFS : FilesystemBase,
    * @param offset The offset being read from.
    * @param nbytes The number of bytes requested.
    */
-  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes) const;
+  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
 
   /**
    * Creates a LogDurationInstrument, if enabled in config.

@@ -699,7 +699,7 @@ void GCS::move_file(const URI& old_uri, const URI& new_uri) const {
   remove_file(old_uri);
 }
 
-void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void GCS::copy_dir(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(init_client());
   auto paths = ls_filtered(old_uri, LsScanner::accept_all, true);
   for (auto& path : paths) {
@@ -709,7 +709,7 @@ void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void GCS::copy_file(const URI& old_uri, const URI& new_uri) const {
+void GCS::copy_file(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(copy_object(old_uri, new_uri));
 }
 
@@ -897,10 +897,7 @@ bool GCS::is_object(
 }
 
 void GCS::write(
-    const URI& uri,
-    const void* const buffer,
-    const uint64_t length,
-    bool) const {
+    const URI& uri, const void* const buffer, const uint64_t length, bool) {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -1160,7 +1157,7 @@ Status GCS::upload_part(
   return Status::Ok();
 }
 
-void GCS::flush(const URI& uri, bool) const {
+void GCS::flush(const URI& uri, bool) {
   throw_if_not_ok(init_client());
 
   if (!uri.is_gcs()) {
@@ -1341,7 +1338,7 @@ Status GCS::flush_object_direct(const URI& uri) {
 }
 
 uint64_t GCS::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   throw_if_not_ok(init_client());
 
   if (!uri.is_gcs()) {

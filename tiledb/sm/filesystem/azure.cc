@@ -376,7 +376,7 @@ void Azure::empty_bucket(const URI& container) const {
   remove_dir(container);
 }
 
-void Azure::flush(const URI& uri, bool) const {
+void Azure::flush(const URI& uri, bool) {
   const auto& c = client();
   if (!azure_params_.use_block_list_upload_) {
     flush_blob_direct(uri);
@@ -827,7 +827,7 @@ uint64_t Azure::file_size(const URI& uri) const {
 }
 
 uint64_t Azure::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   const auto& c = client();
 
   if (!uri.is_azure()) {
@@ -974,10 +974,7 @@ void Azure::touch(const URI& uri) const {
 }
 
 void Azure::write(
-    const URI& uri,
-    const void* const buffer,
-    const uint64_t length,
-    bool) const {
+    const URI& uri, const void* const buffer, const uint64_t length, bool) {
   auto write_cache_max_size = azure_params_.write_cache_max_size_;
   if (!uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + uri.to_string());

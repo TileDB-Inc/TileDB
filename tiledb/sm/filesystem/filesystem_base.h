@@ -206,7 +206,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_file(const URI& old_uri, const URI& new_uri) const;
+  virtual void copy_file(const URI& old_uri, const URI& new_uri);
 
   /**
    * Copies directory.
@@ -215,7 +215,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri);
 
   /**
    * Whether or not to use the read-ahead cache.
@@ -233,7 +233,7 @@ class FilesystemBase {
    * @param nbytes Number of bytes to read.
    */
   virtual uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const = 0;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) = 0;
 
   /**
    * Flushes an object store file.
@@ -245,7 +245,7 @@ class FilesystemBase {
    * remote global order write `finalize()` call.
    */
   virtual void flush(
-      const URI& uri, [[maybe_unused]] bool finalize = false) const = 0;
+      const URI& uri, [[maybe_unused]] bool finalize = false) = 0;
 
   /**
    * Syncs a local file.
@@ -269,7 +269,7 @@ class FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      [[maybe_unused]] bool remote_global_order_write = false) const = 0;
+      [[maybe_unused]] bool remote_global_order_write = false) = 0;
 
   /**
    * Checks if an object store bucket exists.

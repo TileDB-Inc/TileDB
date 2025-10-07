@@ -447,13 +447,13 @@ void S3::move_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void S3::copy_file(const URI& old_uri, const URI& new_uri) const {
+void S3::copy_file(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(init_client());
 
   throw_if_not_ok(copy_object(old_uri, new_uri));
 }
 
-void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void S3::copy_dir(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(init_client());
 
   std::string old_uri_string = old_uri.to_string();
@@ -477,7 +477,7 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t S3::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
@@ -621,7 +621,7 @@ void S3::write(
     const URI& uri,
     const void* buffer,
     uint64_t length,
-    bool remote_global_order_write) const {
+    bool remote_global_order_write) {
   throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
@@ -777,7 +777,7 @@ Status S3::disconnect() {
   return ret_st;
 }
 
-void S3::flush(const URI& uri, bool finalize) const {
+void S3::flush(const URI& uri, bool finalize) {
   if (finalize) {
     finalize_and_flush_object(uri);
     return;
