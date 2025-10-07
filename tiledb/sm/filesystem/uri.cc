@@ -50,32 +50,13 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-URI::URI() {
-  uri_ = "";
-}
-
-URI::URI(char* path)
-    : URI((path == nullptr) ? std::string("") : std::string(path)) {
-}
+URI::URI() = default;
 
 URI::URI(const char* path)
-    : URI((path == nullptr) ? std::string("") : std::string(path)) {
+    : URI(std::string_view(path)) {
 }
 
-URI::URI(std::string_view path) {
-  if (path.empty())
-    uri_ = "";
-  else if (URI::is_file(path))
-    uri_ = VFS::abs_path(path);
-  else if (
-      URI::is_s3(path) || URI::is_azure(path) || URI::is_gcs(path) ||
-      URI::is_memfs(path) || URI::is_tiledb(path))
-    uri_ = path;
-  else
-    uri_ = "";
-}
-
-URI::URI(std::string_view path, const bool& get_abs) {
+URI::URI(std::string_view path, bool get_abs) {
   if (path.empty()) {
     uri_ = "";
   } else if (URI::is_file(path)) {
@@ -343,30 +324,30 @@ std::optional<URI> URI::get_fragment_name() const {
   }
 
   if (slash_pos != std::string::npos) {
-    return URI(uri_.substr(0, slash_pos));
+    return URI(CreateRaw, uri_.substr(0, slash_pos));
   }
 
-  return URI(uri_);
+  return *this;
 }
 
 URI URI::join_path(const std::string& path) const {
   // Check for empty strings.
   if (path.empty()) {
-    return URI(uri_);
+    return *this;
   } else if (uri_.empty()) {
     return URI(path);
   }
 
   if (uri_.back() == '/') {
     if (path.front() == '/') {
-      return URI(uri_ + path.substr(1, path.size()));
+      return URI(CreateRaw, uri_ + path.substr(1, path.size()));
     }
-    return URI(uri_ + path);
+    return URI(CreateRaw, uri_ + path);
   } else {
     if (path.front() == '/') {
-      return URI(uri_ + path);
+      return URI(CreateRaw, uri_ + path);
     } else {
-      return URI(uri_ + "/" + path);
+      return URI(CreateRaw, uri_ + "/" + path);
     }
   }
 }
@@ -385,7 +366,7 @@ std::string URI::last_two_path_parts() const {
 
 URI URI::parent_path() const {
   auto pos = this->remove_trailing_slash().to_string().find_last_of('/');
-  return URI(uri_.substr(0, pos + 1));
+  return URI(CreateRaw, uri_.substr(0, pos + 1));
 }
 
 std::string URI::to_path(const std::string& uri) {
@@ -432,16 +413,8 @@ bool URI::operator==(const URI& uri) const {
   return uri_ == uri.uri_;
 }
 
-bool URI::operator!=(const URI& uri) const {
-  return !operator==(uri);
-}
-
-bool URI::operator<(const URI& uri) const {
-  return uri_ < uri.uri_;
-}
-
-bool URI::operator>(const URI& uri) const {
-  return uri_ > uri.uri_;
+std::strong_ordering URI::operator<=>(const URI& uri) const {
+  return uri_ <=> uri.uri_;
 }
 
 }  // namespace tiledb::sm

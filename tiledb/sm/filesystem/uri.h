@@ -33,6 +33,7 @@
 #ifndef TILEDB_URI_H
 #define TILEDB_URI_H
 
+#include <compare>
 #include <string>
 
 #include "tiledb/common/status.h"
@@ -74,6 +75,18 @@ class URI {
   /** Constructor. */
   URI();
 
+  /** Copy constructor. */
+  URI(const URI&) = default;
+
+  /** Move constructor. */
+  URI(URI&&) = default;
+
+  /** Copy assignment operator. */
+  URI& operator=(const URI&) = default;
+
+  /** Move assignment operator. */
+  URI& operator=(URI&&) = default;
+
   /**
    * Constructor.
    *
@@ -85,26 +98,10 @@ class URI {
   /**
    * Constructor.
    *
-   * @param path String that gets converted into an absolute path and stored
-   *     as a URI.
+   * @param path The URI's path.
+   * @param get_abs Whether to convert path to absolute.
    */
-  explicit URI(char* path);
-
-  /**
-   * Constructor.
-   *
-   * @param path String that gets converted into an absolute path and stored
-   *     as a URI.
-   */
-  explicit URI(std::string_view path);
-
-  /**
-   * Constructor.
-   *
-   * @param path
-   * @param get_abs should local files become absolute
-   */
-  explicit URI(std::string_view path, const bool& get_abs);
+  explicit URI(std::string_view path, bool get_abs = true);
 
   /**
    * Constructor. Throws if the given path is invalid (nullptr or empty).
@@ -331,17 +328,25 @@ class URI {
   bool operator==(const URI& uri) const;
 
   /** For comparing URIs alphanumerically. */
-  bool operator!=(const URI& uri) const;
-
-  /** For comparing URIs alphanumerically. */
-  bool operator<(const URI& uri) const;
-
-  /** For comparing URIs alphanumerically. */
-  bool operator>(const URI& uri) const;
+  std::strong_ordering operator<=>(const URI& uri) const;
 
   operator std::string_view() const noexcept;
 
  private:
+  struct CreateRawMarker {};
+
+  static constexpr CreateRawMarker CreateRaw{};
+
+  /**
+   * Creates a URI from a string, without making any modifications.
+   *
+   * @param create_raw CreateRawMarker dummy value.
+   * @param uri Rvalue reference to string.
+   */
+  URI(const CreateRawMarker, std::string&& uri)
+      : uri_(std::move(uri)) {
+  }
+
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
