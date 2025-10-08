@@ -2,11 +2,11 @@
 
 
 ## New features
-* Add support for Azure Data Lake Storage. [#5657](https://github.com/TileDB-Inc/TileDB/pull/5657)
+* Add support for Azure Data Lake Storage. [#5652](https://github.com/TileDB-Inc/TileDB/pull/5652)
 
 
 ## Defects removed
-* Fix deserialization of relative group member URI [#5656](https://github.com/TileDB-Inc/TileDB/pull/5656)
+* Fix deserialization of relative group member URI [#5654](https://github.com/TileDB-Inc/TileDB/pull/5654)
 
 
 # TileDB v2.29.0 Release Notes
