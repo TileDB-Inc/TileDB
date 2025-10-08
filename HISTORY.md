@@ -13,7 +13,7 @@
 
 * Add support for `Profiles` onto the `Config`. [#5498](https://github.com/TileDB-Inc/TileDB/pull/5498)
 * Add support for relative URI remote group members. [#5635](https://github.com/TileDB-Inc/TileDB/pull/5635)
-* Introduce `ls_recursive_v2` that includes directories in results for all backends. [#5602](https://github.com/TileDB-Inc/TileDB/pull/5602)
+* Add `ls_recursive_v2` that includes directories in results for all backends. [#5602](https://github.com/TileDB-Inc/TileDB/pull/5602)
 
 
 ## Improvements
@@ -35,8 +35,9 @@
 * Refactor `class VFS` to remove `#ifdef`s. [#5589](https://github.com/TileDB-Inc/TileDB/pull/5589)
 * Add support for `tiledb_vfs_copy_file` and `tiledb_vfs_copy_dir` on Windows. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
 * Allow adding relative group members to remote groups. [#5623](https://github.com/TileDB-Inc/TileDB/pull/5623)
-* Always check return codes in Curl::get_data and throw [#5640](https://github.com/TileDB-Inc/TileDB/pull/5640)
+* Always check return codes in `Curl::get_data` and throw [#5640](https://github.com/TileDB-Inc/TileDB/pull/5640)
 * Do not retry most SSL-related failures in the REST client. [#5638](https://github.com/TileDB-Inc/TileDB/pull/5638)
+* Respect `TILEDB_PROFILE_DIR` environment variable in Profile save path. [#5644](https://github.com/TileDB-Inc/TileDB/pull/5644)
 
 
 ## Deprecations
