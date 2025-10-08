@@ -53,7 +53,7 @@ namespace tiledb::sm {
 URI::URI() = default;
 
 URI::URI(const char* path)
-    : URI(std::string_view(path)) {
+    : URI(path == nullptr ? std::string_view() : std::string_view(path)) {
 }
 
 URI::URI(std::string_view path, bool get_abs) {
