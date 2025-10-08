@@ -488,6 +488,10 @@ class Config {
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
 
+  /** Whether the Azure storage account is known to support hierarchical
+   * namespace or not. */
+  static const std::string VFS_AZURE_IS_DATA_LAKE_ENDPOINT;
+
   /** Azure max parallel ops. */
   static const std::string VFS_AZURE_MAX_PARALLEL_OPS;
 

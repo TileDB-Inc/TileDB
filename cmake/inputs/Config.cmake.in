@@ -28,6 +28,7 @@ if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   if(@TILEDB_AZURE@) # TILEDB_AZURE
     find_dependency(azure-identity-cpp)
     find_dependency(azure-storage-blobs-cpp)
+    find_dependency(azure-storage-files-datalake-cpp)
   endif()
   if(@TILEDB_GCS@) # TILEDB_GCS
     find_dependency(google_cloud_cpp_storage)

@@ -51,11 +51,23 @@
 #endif
 #include <list>
 #include <unordered_map>
+#include <variant>
 
-// Forward declaration
-namespace Azure::Storage::Blobs {
+// Forward declarations
+namespace Azure {
+namespace Core::Credentials {
+class TokenCredential;
+}
+namespace Storage {
+class StorageSharedKeyCredential;
+namespace Blobs {
 class BlobServiceClient;
 }
+namespace Files::DataLake {
+class DataLakeServiceClient;
+}
+}  // namespace Storage
+}  // namespace Azure
 
 using namespace tiledb::common;
 
@@ -121,6 +133,10 @@ struct AzureParameters {
 
   /** The Blob Storage endpoint to connect to. */
   std::string blob_endpoint_;
+
+  /** Whether the Azure storage account is known to support hierarchical
+   * namespace or not. */
+  std::optional<bool> is_data_lake_endpoint_;
 
   /** SSL configuration. */
   SSLConfig ssl_cfg_;
@@ -286,6 +302,39 @@ class Azure : public FilesystemBase {
   friend class AzureScanner;
 
  public:
+  /**
+   * Alias for the Azure SDK blob service client type.
+   */
+  using BlobServiceClientType = ::Azure::Storage::Blobs::BlobServiceClient;
+
+  /**
+   * Alias for the Azure SDK data lake service client type.
+   */
+  using DataLakeServiceClientType =
+      ::Azure::Storage::Files::DataLake::DataLakeServiceClient;
+
+  /**
+   * Alias for a pair of Azure SDK blob and data lake service client types.
+   *
+   * The blob service client will always be non-null, but the data lake service
+   * client might be null if the storage account does not support hierarchical
+   * namespace.
+   */
+  using ServiceClientPairType =
+      std::pair<const BlobServiceClientType&, const DataLakeServiceClientType*>;
+
+  /**
+   * Alias for one of the supported Azure SDK credential types.
+   *
+   * This is a variant that can contain either a monostate (corresponding to
+   * anonymous authentication), an Entra ID token credential, or a shared key
+   * credential.
+   */
+  using ServiceCredentialType = std::variant<
+      std::monostate,
+      shared_ptr<::Azure::Core::Credentials::TokenCredential>,
+      shared_ptr<::Azure::Storage::StorageSharedKeyCredential>>;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -398,14 +447,10 @@ class Azure : public FilesystemBase {
    *
    * @param uri The prefix URI.
    * @param delimiter The delimiter that will
-   * @param max_paths The maximum number of paths to be retrieved. The default
-   *     `-1` indicates that no upper bound is specified.
    * @return The retrieved paths.
    */
   std::vector<std::string> ls(
-      const URI& uri,
-      const std::string& delimiter = "/",
-      int max_paths = -1) const;
+      const URI& uri, const std::string& delimiter = "/") const;
 
   /**
    * Lists objects and object information that start with `uri`.
@@ -421,11 +466,10 @@ class Azure : public FilesystemBase {
    *
    * @param uri The prefix URI.
    * @param delimiter The uri is truncated to the first delimiter
-   * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri, const std::string& delimiter, int max_paths) const;
+      const URI& uri, const std::string& delimiter) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
@@ -516,11 +560,12 @@ class Azure : public FilesystemBase {
   /**
    * Creates a directory.
    *
-   * @param uri The directory's URI.
+   * Calling this function has no effect in storage accounts with
+   * hierarchical namespace disabled.
+   *
+   * @param uri The URI of the directory.
    */
-  void create_dir(const URI&) const override {
-    // No-op. Stub function for other filesystems.
-  }
+  void create_dir(const URI&) const override;
 
   /**
    * Copies the directory at 'old_uri' to `new_uri`.
@@ -642,16 +687,26 @@ class Azure : public FilesystemBase {
    * Initializes the Azure blob service client and returns a reference to it.
    *
    * Calling code should include the Azure SDK headers to make
-   * use of the BlobServiceClient.
+   * use of the clients.
    */
-  const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
+  const ServiceClientPairType clients() const {
     if (azure_params_.blob_endpoint_.empty()) {
       throw AzureException(
           "Azure VFS is not configured. Please set the "
           "'vfs.azure.storage_account_name' and/or "
           "'vfs.azure.blob_endpoint' configuration options.");
     }
-    return client_singleton_.get(azure_params_);
+    return client_singleton_.clients(azure_params_);
+  }
+
+  /**
+   * Initializes the Azure blob service client and returns a reference to it.
+   *
+   * Calling code should include the Azure SDK headers to make
+   * use of the BlobServiceClient.
+   */
+  const BlobServiceClientType& client() const {
+    return clients().first;
   }
 
  private:
@@ -709,17 +764,27 @@ class Azure : public FilesystemBase {
   class AzureClientSingleton {
    public:
     /**
-     * Gets a reference to the Azure BlobServiceClient, and initializes it if it
-     * is not initialized.
+     * Gets referernces to the Azure blob service and data lake service clients,
+     * and initializes them if they are not initialized.
      *
-     * @param params The parameters to initialize the client with.
+     * @param params The parameters to initialize the clients with.
      */
-    const ::Azure::Storage::Blobs::BlobServiceClient& get(
-        const AzureParameters& params);
+    ServiceClientPairType clients(const AzureParameters& params) {
+      if (!client_) {
+        ensure_initialized(params);
+      }
+      return {*client_, data_lake_client_.get()};
+    }
 
    private:
+    /** Contains the logic to initialize the Azure SDK service clients. */
+    void ensure_initialized(const AzureParameters& params);
+
     /** The Azure blob service client. */
-    tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+    tdb_unique_ptr<BlobServiceClientType> client_;
+
+    /** The Azure data lake service client. */
+    tdb_unique_ptr<DataLakeServiceClientType> data_lake_client_;
 
     /** Protects from creating the client many times. */
     std::mutex client_init_mtx_;

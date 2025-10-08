@@ -16,6 +16,7 @@
             "description": "Support Azure Blob Storage",
             "dependencies": [
                 "azure-storage-blobs-cpp",
+                "azure-storage-files-datalake-cpp",
                 "azure-identity-cpp"
             ]
         },
