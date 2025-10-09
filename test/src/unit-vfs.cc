@@ -281,7 +281,8 @@ TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
 }
 
 TEST_CASE("VFS: copy_dir", "[vfs][copy_dir]") {
-  LocalFsTest src_fs({}), dst_fs({});
+  LocalFsTest src_fs({});
+  S3Test dst_fs({});
   URI src_path = src_fs.temp_dir_.add_trailing_slash();
   URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
 
