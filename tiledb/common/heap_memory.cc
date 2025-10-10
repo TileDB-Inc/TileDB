@@ -30,6 +30,8 @@
  * Implements TileDB-variants of dynamic (heap) memory allocation routines.
  */
 
+#include <mimalloc-new-delete.h>
+#include <mimalloc-override.h>
 #include <cstdlib>
 
 #include "tiledb/common/heap_memory.h"
@@ -44,12 +46,12 @@ std::recursive_mutex __tdb_heap_mem_lock;
 
 void* tiledb_malloc(const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-    return std::malloc(size);
+    return malloc(size);
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-  void* const p = std::malloc(size);
+  void* const p = malloc(size);
 
   if (!p)
     heap_profiler.dump_and_terminate();
@@ -62,12 +64,12 @@ void* tiledb_malloc(const size_t size, const std::string& label) {
 void* tiledb_calloc(
     const size_t num, const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-    return std::calloc(num, size);
+    return calloc(num, size);
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
-  void* const p = std::calloc(num, size);
+  void* const p = calloc(num, size);
 
   if (!p)
     heap_profiler.dump_and_terminate();
@@ -80,13 +82,13 @@ void* tiledb_calloc(
 void* tiledb_realloc(
     void* const p, const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
-    return std::realloc(p, size);
+    return realloc(p, size);
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   auto p_orig{std::launder(reinterpret_cast<const char*>(p))};
-  void* const p_realloc = std::realloc(p, size);
+  void* const p_realloc = realloc(p, size);
 
   if (!p_realloc)
     heap_profiler.dump_and_terminate();

@@ -698,6 +698,9 @@ endif()
 # the value of the BUILD_SHARED_LIBS variable.
 add_library(tiledb $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
+find_package(mimalloc CONFIG REQUIRED)
+target_link_libraries(tiledb PRIVATE mimalloc)
+
 # Export the target as either tiledb_shared or tiledb_static for compatibility.
 # The exported config will create the unified tiledb target that links to either
 # of them.
