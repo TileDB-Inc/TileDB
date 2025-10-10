@@ -679,12 +679,22 @@ class VFS : FilesystemBase,
   void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
+   * Performs chunked buffer I/O, reading from src and writing to dest.
+   *
+   * @note To reduce latency, we suggest copying files no larger than 100 MB.
+   *
+   * @param src The source URI to read from.
+   * @param dest The destination URI to write to.
+   */
+  void chunked_buffer_io(const URI& src, const URI& dest);
+
+  /**
    * Copies a file.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies directory.
@@ -692,7 +702,7 @@ class VFS : FilesystemBase,
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads from a file.

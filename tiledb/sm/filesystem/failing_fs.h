@@ -109,11 +109,11 @@ class FailingFS : public FilesystemBase {
     throw get_exception();
   }
 
-  virtual void copy_file(const URI&, const URI&) const override {
+  virtual void copy_file(const URI&, const URI&) override {
     throw get_exception();
   }
 
-  virtual void copy_dir(const URI&, const URI&) const override {
+  virtual void copy_dir(const URI&, const URI&) override {
     throw get_exception();
   }
 

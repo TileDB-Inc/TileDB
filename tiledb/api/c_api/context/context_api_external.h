@@ -74,6 +74,39 @@ TILEDB_EXPORT capi_return_t
 tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) TILEDB_NOEXCEPT;
 
 /**
+ * Creates a TileDB context, which contains the TileDB storage manager
+ * that manages everything in the TileDB library.
+ *
+ * **Examples:**
+ *
+ * Without config (i.e., use default configuration):
+ *
+ * @code{.c}
+ * tiledb_ctx_t* ctx;
+ * tiledb_error_t* error;
+ * tiledb_ctx_alloc_with_error(NULL, &ctx, &error);
+ * @endcode
+ *
+ * With some config:
+ *
+ * @code{.c}
+ * tiledb_ctx_t* ctx;
+ * tiledb_error_t* error;
+ * tiledb_ctx_alloc_with_error(config, &ctx, &error);
+ * @endcode
+ *
+ * @param[in] config The configuration parameters (`NULL` means default).
+ * @param[out] ctx The TileDB context to be created.
+ * @param[out] error Error object returned upon error (`NULL` if there is
+ *     no error).
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
+    tiledb_config_t* config,
+    tiledb_ctx_t** ctx,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
  * Destroys the TileDB context, freeing all associated memory and resources.
  *
  * **Example:**

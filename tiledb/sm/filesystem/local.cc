@@ -124,14 +124,14 @@ LsObjects LocalFilesystem::ls_filtered_v2(
   return qualifyingPaths;
 }
 
-void LocalFilesystem::copy_file(const URI& old_uri, const URI& new_uri) const {
+void LocalFilesystem::copy_file(const URI& old_uri, const URI& new_uri) {
   std::filesystem::copy_file(
       old_uri.to_path(),
       new_uri.to_path(),
       std::filesystem::copy_options::overwrite_existing);
 }
 
-void LocalFilesystem::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void LocalFilesystem::copy_dir(const URI& old_uri, const URI& new_uri) {
   std::filesystem::copy(
       old_uri.to_path(),
       new_uri.to_path(),
