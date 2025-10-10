@@ -92,9 +92,9 @@ URI URI::add_trailing_slash() const {
   if (uri_.empty()) {
     return URI("/");
   } else if (uri_.back() != '/') {
-    return URI(uri_ + '/');
+    return URI(CreateRaw, uri_ + '/');
   } else {
-    return URI(uri_);
+    return *this;
   }
 }
 
@@ -102,10 +102,10 @@ URI URI::remove_trailing_slash() const {
   if (!uri_.empty() && uri_.back() == '/') {
     std::string uri_str = uri_;
     uri_str.pop_back();
-    return URI(uri_str);
+    return URI(CreateRaw, std::move(uri_str));
   }
 
-  return URI(uri_);
+  return *this;
 }
 
 bool URI::empty() const {
