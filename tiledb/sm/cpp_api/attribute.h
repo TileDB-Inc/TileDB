@@ -275,34 +275,6 @@ class Attribute {
     return *this;
   }
 
-  /**
-   * Sets the default fill value for the input attribute. This value will
-   * be used for the input attribute whenever querying (1) an empty cell in
-   * a dense array, or (2) a non-empty cell (in either dense or sparse array)
-   * when values on the input attribute are missing (e.g., if the user writes
-   * a subset of the attributes in a write operation).
-   *
-   * Applicable to fixed-sized attributes only.
-   *
-   * **Example:**
-   *
-   * @code{.c}
-   * tiledb::Context ctx;
-   *
-   * // Fixed-sized attribute
-   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
-   * a1.set_fill_value<int>(0);
-   * @endcode
-   *
-   * @param value The fill value to set.
-   *
-   * @note A call to `cell_val_num` sets the fill value
-   *     of the attribute to its default. Therefore, make sure you invoke
-   *     `set_fill_value` after deciding on the number
-   *     of values this attribute will hold in each cell.
-   *
-   * @note The input `size` should be equal to the cell size.
-   */
   template <typename T>
   Attribute& set_fill_value(T value) {
     return set_fill_value(static_cast<const void*>(&value), sizeof(T));
