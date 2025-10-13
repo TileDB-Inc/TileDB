@@ -1044,9 +1044,15 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 16 or higher.
+   * versions 16 to 22.
    */
-  void load_generic_tile_offsets_v16_or_higher(Deserializer& deserializer);
+  void load_generic_tile_offsets_v16_v22(Deserializer& deserializer);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 23 or higher.
+   */
+  void load_generic_tile_offsets_v23_or_higher(Deserializer& deserializer);
 
   /**
    * Loads the array schema name.

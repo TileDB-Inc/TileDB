@@ -2356,8 +2356,10 @@ void FragmentMetadata::load_generic_tile_offsets(Deserializer& deserializer) {
     load_generic_tile_offsets_v11(deserializer);
   } else if (version_ >= 12 && version_ < 16) {
     load_generic_tile_offsets_v12_v15(deserializer);
+  } else if (version_ >= 16 && version_ < 23) {
+    load_generic_tile_offsets_v16_v22(deserializer);
   } else {
-    load_generic_tile_offsets_v16_or_higher(deserializer);
+    load_generic_tile_offsets_v23_or_higher(deserializer);
   }
 }
 
@@ -2511,7 +2513,7 @@ void FragmentMetadata::load_generic_tile_offsets_v12_v15(
       deserializer.read<uint64_t>();
 }
 
-void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
+void FragmentMetadata::load_generic_tile_offsets_v16_v22(
     Deserializer& deserializer) {
   // Load R-Tree offset
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
@@ -2542,8 +2544,53 @@ void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
   gt_offsets_.tile_max_offsets_.resize(num);
   deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
 
-  if (!dense_ &&
-      version_ >= constants::fragment_metadata_global_order_bounds_version) {
+  // Load offsets for tile sum offsets
+  gt_offsets_.tile_sum_offsets_.resize(num);
+  deserializer.read(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
+
+  // Load offsets for tile null count offsets
+  gt_offsets_.tile_null_count_offsets_.resize(num);
+  deserializer.read(
+      &gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
+
+  gt_offsets_.fragment_min_max_sum_null_count_offset_ =
+      deserializer.read<uint64_t>();
+
+  gt_offsets_.processed_conditions_offsets_ = deserializer.read<uint64_t>();
+}
+
+void FragmentMetadata::load_generic_tile_offsets_v23_or_higher(
+    Deserializer& deserializer) {
+  // Load R-Tree offset
+  gt_offsets_.rtree_ = deserializer.read<uint64_t>();
+
+  // Load offsets for tile offsets
+  auto num = num_dims_and_attrs();
+  gt_offsets_.tile_offsets_.resize(num);
+  deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
+
+  // Load offsets for tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
+
+  // Load offsets for tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
+
+  // Load offsets for tile validity offsets
+  gt_offsets_.tile_validity_offsets_.resize(num);
+  deserializer.read(
+      &gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
+
+  // Load offsets for tile min offsets
+  gt_offsets_.tile_min_offsets_.resize(num);
+  deserializer.read(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
+
+  // Load offsets for tile max offsets
+  gt_offsets_.tile_max_offsets_.resize(num);
+  deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
+
+  if (!dense_) {
     // Load offsets for the tile global order bounds
     const auto num_dims = array_schema_->dim_num();
     gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
