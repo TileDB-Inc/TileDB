@@ -282,7 +282,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile maxes offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile maxes for attribute/dimension 1. |
 | … | … | … |
 | Tile maxes offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile maxes for attribute/dimension N |
-| Tile global order min coordinates offset for dimension 1 | `uint64_t` | _New in version 23_ For sparse arrays, he offset to the generic tile storing the tile global order mins for dimension 1
+| Tile global order min coordinates offset for dimension 1 | `uint64_t` | _New in version 23_ For sparse arrays, the offset to the generic tile storing the tile global order mins for dimension 1
 | … | … | … |
 | Tile global order min coordinates offset for dimension N | `uint64_t` | _New in version 23_ For sparse arrays, the offset to the generic tile storing the tile global order mins for dimension N
 | Tile global order max coordinates offset for dimension 1 | `uint64_t` | _New in version 23_ For sparse arrays, the offset to the generic tile storing the tile global order maxes for dimension 1
