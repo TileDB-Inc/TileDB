@@ -546,7 +546,8 @@ instance_dense_global_order(
     const Context& ctx,
     uint64_t max_fragment_size,
     const std::vector<templates::Dimension<Datatype::UINT64>>& dimensions,
-    const std::vector<templates::Domain<uint64_t>>& subarray) {
+    const std::vector<templates::Domain<uint64_t>>& subarray,
+    std::optional<uint64_t> write_unit_num_cells = std::nullopt) {
   const std::string array_name = "max_fragment_size_dense_global_order";
 
   const std::optional<uint64_t> num_cells = subarray_num_cells(subarray);
@@ -595,12 +596,21 @@ instance_dense_global_order(
     Query query(ctx, array, TILEDB_WRITE);
     query.set_layout(TILEDB_GLOBAL_ORDER);
     query.set_subarray(sub);
-    query.set_data_buffer("a", a_write);
-
     query.ptr().get()->query_->set_fragment_size(max_fragment_size);
 
-    const auto status = query.submit();
-    ASSERTER(status == Query::Status::COMPLETE);
+    uint64_t cells_written = 0;
+    while (cells_written < a_write.size()) {
+      const uint64_t cells_this_write = std::min(
+          a_write.size() - cells_written,
+          write_unit_num_cells.value_or(a_write.size()));
+      query.set_data_buffer("a", &a_write[cells_written], cells_this_write);
+
+      const auto status = query.submit();
+      ASSERTER(status == Query::Status::COMPLETE);
+
+      cells_written += cells_this_write;
+    }
+
     query.finalize();
   }
 
@@ -716,15 +726,27 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
     const std::vector<Dom> subarray = {
         Dom(base_d1 + 0, base_d1 + num_rows - 1), Dom(0, span_d2 - 1)};
 
-    const auto actual = instance_dense_global_order<AsserterCatch>(
-        ctx, 64 * 1024, dimensions, subarray);
+    const uint64_t write_unit_num_cells = GENERATE(0, 64, 1024, 1024 * 1024);
 
-    std::vector<std::vector<Dom>> expect;
-    for (uint64_t r = 0; r < num_rows; r++) {
-      expect.push_back({Dom(base_d1 + r, base_d1 + r), Dom(0, span_d2 - 1)});
+    DYNAMIC_SECTION(
+        "num_rows = " << num_rows
+                      << ", write_unit_num_cells = " << write_unit_num_cells) {
+      const auto actual = instance_dense_global_order<AsserterCatch>(
+          ctx,
+          64 * 1024,
+          dimensions,
+          subarray,
+          write_unit_num_cells == 0 ?
+              std::nullopt :
+              std::optional<uint64_t>{write_unit_num_cells});
+
+      std::vector<std::vector<Dom>> expect;
+      for (uint64_t r = 0; r < num_rows; r++) {
+        expect.push_back({Dom(base_d1 + r, base_d1 + r), Dom(0, span_d2 - 1)});
+      }
+
+      CHECK(expect == actual);
     }
-
-    CHECK(expect == actual);
   }
 
   // each tile is some rectangle of a 2D array
@@ -749,34 +771,48 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
 
     const uint64_t max_fragment_size = 4 * 64 * 1024;
 
-    if (d1_extent == 8) {
-      const auto expect = Catch::Matchers::ContainsSubstring(
-          "Fragment size is too small to subdivide dense subarray into "
-          "multiple fragments");
-      REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
-          ctx, max_fragment_size, dimensions, subarray));
-    } else if (d1_start_offset + d1_end_offset > 0) {
-      // if this constraint is ever relaxed this test must be extended
-      // with new inputs which are offset within a tile
-      const auto expect = Catch::Matchers::ContainsSubstring(
-          "the subarray must coincide with the tile bounds");
-      REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
-          ctx, max_fragment_size, dimensions, subarray));
-    } else {
-      const std::vector<std::vector<Dom>> expect = {
-          {Dom(d1_start + 0 * d1_extent, d1_start + 1 * d1_extent - 1),
-           Dom(0, d2_span - 1)},
-          {Dom(d1_start + 1 * d1_extent, d1_start + 2 * d1_extent - 1),
-           Dom(0, d2_span - 1)},
-          {Dom(d1_start + 2 * d1_extent, d1_start + 3 * d1_extent - 1),
-           Dom(0, d2_span - 1)},
-          {Dom(d1_start + 3 * d1_extent, d1_start + 4 * d1_extent - 1),
-           Dom(0, d2_span - 1)}};
+    const uint64_t write_unit_num_cells = GENERATE(0, 64, 1024, 1024 * 1024);
 
-      const auto actual = instance_dense_global_order<AsserterCatch>(
-          ctx, max_fragment_size, dimensions, subarray);
+    DYNAMIC_SECTION(
+        "start_offset = " << d1_start_offset << ", end_offset = "
+                          << d1_end_offset << ", extent = " << d1_extent
+                          << ", write_unit_num_cells = "
+                          << write_unit_num_cells) {
+      if (d1_extent == 8) {
+        const auto expect = Catch::Matchers::ContainsSubstring(
+            "Fragment size is too small to subdivide dense subarray into "
+            "multiple fragments");
+        REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
+            ctx, max_fragment_size, dimensions, subarray));
+      } else if (d1_start_offset + d1_end_offset > 0) {
+        // if this constraint is ever relaxed this test must be extended
+        // with new inputs which are offset within a tile
+        const auto expect = Catch::Matchers::ContainsSubstring(
+            "the subarray must coincide with the tile bounds");
+        REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
+            ctx,
+            max_fragment_size,
+            dimensions,
+            subarray,
+            write_unit_num_cells == 0 ?
+                std::nullopt :
+                std::optional<uint64_t>(write_unit_num_cells)));
+      } else {
+        const std::vector<std::vector<Dom>> expect = {
+            {Dom(d1_start + 0 * d1_extent, d1_start + 1 * d1_extent - 1),
+             Dom(0, d2_span - 1)},
+            {Dom(d1_start + 1 * d1_extent, d1_start + 2 * d1_extent - 1),
+             Dom(0, d2_span - 1)},
+            {Dom(d1_start + 2 * d1_extent, d1_start + 3 * d1_extent - 1),
+             Dom(0, d2_span - 1)},
+            {Dom(d1_start + 3 * d1_extent, d1_start + 4 * d1_extent - 1),
+             Dom(0, d2_span - 1)}};
 
-      CHECK(expect == actual);
+        const auto actual = instance_dense_global_order<AsserterCatch>(
+            ctx, max_fragment_size, dimensions, subarray);
+
+        CHECK(expect == actual);
+      }
     }
   }
 

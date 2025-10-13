@@ -124,6 +124,7 @@ GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
     : last_tiles_(memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
     , last_var_offsets_(memory_tracker->get_resource(MemoryType::WRITER_DATA))
     , cells_written_(memory_tracker->get_resource(MemoryType::WRITER_DATA)) {
+  dense_.domain_tile_offset_ = 0;
 }
 
 /* ****************************** */
@@ -650,6 +651,18 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Close all files
   RETURN_NOT_OK(close_files(meta));
 
+  // Update dense fragment domain
+  if (dense()) {
+    const uint64_t num_tiles_in_fragment =
+        meta->loaded_metadata()->tile_offsets()[0].size();
+    NDRange fragment_domain = domain_tile_offset(
+        array_schema_.domain(),
+        subarray_.ndrange(0),
+        global_write_state_->dense_.domain_tile_offset_,
+        num_tiles_in_fragment);
+    meta->set_domain(fragment_domain);
+  }
+
   // Check that the same number of cells was written across attributes
   // and dimensions
   auto cell_num = global_write_state_->cells_written_[buffers_.begin()->first];
@@ -775,69 +788,46 @@ Status GlobalOrderWriter::global_write() {
   const auto fragments = identify_fragment_tile_boundaries(tiles);
 
   for (uint64_t f = 0; f < fragments.size(); f++) {
-    const uint64_t start_tile = fragments[f].second;
-    const uint64_t num_tiles =
+    const uint64_t input_start_tile = fragments[f].second;
+    const uint64_t input_num_tiles =
         (f + 1 < fragments.size() ? fragments[f + 1].second : tile_num) -
-        start_tile;
+        input_start_tile;
 
-    if (num_tiles == 0) {
+    if (input_num_tiles == 0) {
       // this should only happen if there is only one tile of input and we have
       // to wait for finalize, or if continuing a fragment from a previous write
       // and there is no more room
       iassert(f == 0);
-      if (current_fragment_size_ > 0) {
-        RETURN_CANCEL_OR_ERROR(start_new_fragment(start_tile, num_tiles));
-      } else {
+      if (current_fragment_size_ == 0) {
         iassert(fragments.size() == 1);
       }
     } else {
       if (f > 0 || !global_write_state_->frag_meta_) {
-        RETURN_CANCEL_OR_ERROR(start_new_fragment(start_tile, num_tiles));
-      } else {
-        // this means a resumed write of a previously started fragment
-        if (dense()) {
-          // in which case it is necessary to extend the domain
-          // (assumption which is true as of this writing: all dimensions of a
-          // dense domain have the same data type)
-          auto updated_domain = [&]<typename T>(T) -> NDRange {
-            using A = NDRangeTypedAccess<T>;
-            const NDRange& written_domain =
-                global_write_state_->frag_meta_->domain();
-            NDRange pending_range = subarray_.ndrange(0);
-            A::lower_bound(pending_range, 0) =
-                A::upper_bound(written_domain, 0) + 1;
-
-            auto extended = domain_tile_offset(
-                array_schema_.domain(),
-                pending_range,
-                0,
-                global_write_state_->frag_meta_->tile_index_base() + num_tiles);
-            A::lower_bound(extended, 0) = A::lower_bound(written_domain, 0);
-            return extended;
-          };
-
-          NDRange extended = apply_with_type(
-              updated_domain, array_schema_.domain().dimension_ptr(0)->type());
-
-          global_write_state_->frag_meta_->set_domain(extended);
-        }
+        RETURN_CANCEL_OR_ERROR(start_new_fragment());
       }
 
       auto frag_meta = global_write_state_->frag_meta_;
 
       // update metadata of current fragment
-      frag_meta->set_num_tiles(frag_meta->tile_index_base() + num_tiles);
+      frag_meta->set_num_tiles(frag_meta->tile_index_base() + input_num_tiles);
 
       set_coords_metadata(
-          start_tile, start_tile + num_tiles, tiles, mbrs, frag_meta);
+          input_start_tile,
+          input_start_tile + input_num_tiles,
+          tiles,
+          mbrs,
+          frag_meta);
 
       // write tiles for all attributes
-      RETURN_CANCEL_OR_ERROR(
-          write_tiles(start_tile, start_tile + num_tiles, frag_meta, &tiles));
+      RETURN_CANCEL_OR_ERROR(write_tiles(
+          input_start_tile,
+          input_start_tile + input_num_tiles,
+          frag_meta,
+          &tiles));
     }
 
     global_write_state_->frag_meta_->set_tile_index_base(
-        global_write_state_->frag_meta_->tile_index_base() + num_tiles);
+        global_write_state_->frag_meta_->tile_index_base() + input_num_tiles);
   }
 
   if (!fragments.empty()) {
@@ -860,7 +850,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
   // if we haven't started a fragment yet, now is the time
   if (!global_write_state_->frag_meta_) {
     iassert(!dense());  // FIXME: probably not true
-    RETURN_CANCEL_OR_ERROR(start_new_fragment(0, 0));
+    RETURN_CANCEL_OR_ERROR(start_new_fragment());
   }
 
   // Reserve space for the last tile in the fragment metadata
@@ -1473,13 +1463,20 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t running_tiles_size = current_fragment_size_;
   uint64_t fragment_size = current_fragment_size_;
 
-  uint64_t fragment_start = 0, fragment_end = 0;
+  uint64_t fragment_start = 0;
+  std::optional<uint64_t> fragment_end;
   std::vector<std::pair<uint64_t, uint64_t>> fragments;
 
+  uint64_t hyperrow_offset = 0;
   std::optional<uint64_t> hyperrow_num_tiles;
   if (dense()) {
     hyperrow_num_tiles = compute_hyperrow_num_tiles(
         array_schema_.domain(), subarray_.ndrange(0));
+
+    if (global_write_state_->frag_meta_) {
+      hyperrow_offset = global_write_state_->dense_.domain_tile_offset_ +
+                        global_write_state_->frag_meta_->tile_index_base();
+    }
   }
 
   // Make sure we don't write more than the desired fragment size.
@@ -1514,7 +1511,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
-      } else if (fragment_end == 0) {
+      } else if (!fragment_end.has_value() && fragment_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to subdivide dense subarray into "
             "multiple fragments");
@@ -1525,12 +1522,14 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       iassert(running_tiles_size >= fragment_size);
       running_tiles_size -= fragment_size;
 
-      fragment_start = fragment_end;
-      fragment_end = 0;
+      fragment_start = fragment_end.value_or(0);
+      fragment_end = std::nullopt;
     }
 
     if (!hyperrow_num_tiles.has_value() ||
-        ((t + 1) - fragment_start) % hyperrow_num_tiles.value() == 0) {
+        ((hyperrow_offset + t + 1) - fragment_start) %
+                hyperrow_num_tiles.value() ==
+            0) {
       fragment_size = running_tiles_size + tile_size;
       fragment_end = t + 1;
     }
@@ -1593,8 +1592,7 @@ static NDRange domain_tile_offset(
   return adjusted;
 }
 
-Status GlobalOrderWriter::start_new_fragment(
-    uint64_t tile_start, uint64_t num_tiles) {
+Status GlobalOrderWriter::start_new_fragment() {
   // finish off current fragment if there is one
   if (global_write_state_->frag_meta_) {
     auto frag_meta = global_write_state_->frag_meta_;
@@ -1602,6 +1600,20 @@ Status GlobalOrderWriter::start_new_fragment(
 
     // Close all files
     RETURN_NOT_OK(close_files(frag_meta));
+
+    // Update dense fragment domain
+    if (dense()) {
+      const uint64_t num_tiles_in_fragment =
+          frag_meta->loaded_metadata()->tile_offsets()[0].size();
+      NDRange fragment_domain = domain_tile_offset(
+          array_schema_.domain(),
+          subarray_.ndrange(0),
+          global_write_state_->dense_.domain_tile_offset_,
+          num_tiles_in_fragment);
+      frag_meta->set_domain(fragment_domain);
+
+      global_write_state_->dense_.domain_tile_offset_ += num_tiles_in_fragment;
+    }
 
     // Set the processed conditions
     frag_meta->set_processed_conditions(processed_conditions_);
@@ -1625,22 +1637,12 @@ Status GlobalOrderWriter::start_new_fragment(
     fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
   }
 
-  // Set domain of new fragment if needed
-  std::optional<NDRange> new_fragment_domain;
-  if (dense()) {
-    new_fragment_domain = domain_tile_offset(
-        array_schema_.domain(), subarray_.ndrange(0), tile_start, num_tiles);
-  }
-
   // Create a new fragment.
   current_fragment_size_ = 0;
-  RETURN_NOT_OK(create_fragment(
-      dense(),
-      global_write_state_->frag_meta_,
-      new_fragment_domain.has_value() ? &new_fragment_domain.value() :
-                                        nullptr));
+  RETURN_NOT_OK(create_fragment(dense(), global_write_state_->frag_meta_));
 
   return Status::Ok();
 }
 
 }  // namespace tiledb::sm
+
