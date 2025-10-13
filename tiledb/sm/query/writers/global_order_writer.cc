@@ -1643,4 +1643,3 @@ Status GlobalOrderWriter::start_new_fragment() {
 }
 
 }  // namespace tiledb::sm
-
