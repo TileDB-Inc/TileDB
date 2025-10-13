@@ -848,8 +848,8 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
     return Status::Ok();
 
   // if we haven't started a fragment yet, now is the time
+  // (this can happen if the writes do not fill a full tile)
   if (!global_write_state_->frag_meta_) {
-    iassert(!dense());  // FIXME: probably not true
     RETURN_CANCEL_OR_ERROR(start_new_fragment());
   }
 
