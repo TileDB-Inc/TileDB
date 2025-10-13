@@ -78,7 +78,7 @@ jobs:
             triplet: x64-linux
           - os: windows-2022
             triplet: x64-windows
-          - os: macos-13
+          - os: macos-15-intel
             triplet: x64-osx
             deployment-target: 13
           - os: macos-latest

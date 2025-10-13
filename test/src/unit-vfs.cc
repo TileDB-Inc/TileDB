@@ -202,10 +202,88 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
+TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
+  LocalFsTest src_fs({0}), dst_fs({0});
+  URI src_path = src_fs.temp_dir_.add_trailing_slash();
+  URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params();
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+
+  size_t test_str_size = 0;
+  SECTION("Filesize = 0 MB") {
+    test_str_size = 0;
+  }
+  SECTION("Filesize = 1 MB") {
+    test_str_size = 1048576;
+  }
+  SECTION("Filesize = 10 MB") {
+    test_str_size = 10 * 1048576;
+  }
+  SECTION("Filesize = 100 MB") {
+    test_str_size = 100 * 1048576;
+  }
+  SECTION("Filesize = 150 MB") {
+    test_str_size = 150 * 1048576;
+  }
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::string test_str;
+  test_str.reserve(test_str_size);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
+  for (size_t i = 0; i < test_str_size; ++i) {
+    test_str += test_chars[dist(gen)];
+  }
+  REQUIRE(test_str.size() == test_str_size);
+
+  // Create src_file and write data to it.
+  auto src_file = URI(src_path.to_string() + "src_file");
+  REQUIRE_NOTHROW(vfs.touch(src_file));
+  test_str_size = test_str.size();
+  REQUIRE_NOTHROW(vfs.write(src_file, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(src_file));
+
+  // copy_file src -> dst using chunked-buffer I/O.
+  // Note: it doesn't matter if the dst file exists; copy will create on write.
+  auto dst_file = URI(dst_path.to_string() + "dst_file");
+  REQUIRE_NOTHROW(vfs.chunked_buffer_io(src_file, dst_file));
+  CHECK(vfs.is_file(src_file));
+
+  // Validate the contents are the same.
+  if (test_str_size > 0) {
+    CHECK(vfs.is_file(dst_file));
+    std::string dst_file_str;
+    dst_file_str.resize(test_str_size);
+    require_tiledb_ok(vfs.read_exactly(
+        dst_file, 0, (char*)dst_file_str.data(), test_str_size));
+    CHECK(dst_file_str == test_str);
+  }
+
+  // Clean up.
+  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
+    REQUIRE(!vfs.is_bucket(src_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(src_path));
+    REQUIRE(!vfs.is_dir(src_path));
+  }
+  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
+    REQUIRE(!vfs.is_bucket(dst_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
+    REQUIRE(!vfs.is_dir(dst_path));
+  }
+}
+
 using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
-  TestType fs({0});
+  TestType fs({});
   if (!fs.is_supported()) {
     return;
   }
@@ -217,19 +295,6 @@ TEMPLATE_LIST_TEST_CASE(
       &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
   URI path = fs.temp_dir_.add_trailing_slash();
-
-  // Set up
-  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    if (vfs.is_bucket(path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(path));
-  } else {
-    if (vfs.is_dir(path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(path));
-  }
 
   /* Create the following file hierarchy:
    *
@@ -334,6 +399,7 @@ TEMPLATE_LIST_TEST_CASE(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
     CHECK(children[0].file_size() == s.size());
     CHECK(children[1].file_size() == 0);  // Directories don't get a size
+    paths.clear();
 
     // Move file
     auto file6 = URI(path.to_string() + "file6");
@@ -349,13 +415,11 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(vfs.is_dir(dir2));
     paths.clear();
 
-    // Remove files
+    // Remove files & directories
     REQUIRE_NOTHROW(vfs.remove_file(file4));
     CHECK(!vfs.is_file(file4));
     REQUIRE_NOTHROW(vfs.remove_file(file6));
     CHECK(!vfs.is_file(file6));
-
-    // Remove directories
     REQUIRE_NOTHROW(vfs.remove_dir(dir2));
     CHECK(!vfs.is_file(file1));
     CHECK(!vfs.is_file(file2));
@@ -478,21 +542,6 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   if (path.is_file()) {
     // #TODO Ensure this doesn't fail. This test case seems incorrect.
     CHECK_THROWS(vfs.file_size(non_existent));
-  }
-
-  // Set up
-  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    if (vfs.is_bucket(path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(path));
-  } else {
-    if (vfs.is_dir(path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(path));
-    // Bucket-specific operations are only valid for object store filesystems.
-    CHECK_THROWS(vfs.create_bucket(path));
   }
 
   // Prepare buffers
@@ -801,6 +850,7 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
       config.set("vfs.azure.storage_account_name", "exampleaccount"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  require_tiledb_ok(config.set("vfs.azure.is_data_lake_endpoint", "false"));
   if (sas_token.empty()) {
     // If the SAS token is empty, the VFS will try to connect to Microsoft Entra
     // ID to obtain credentials, which can take a long time because of retries.

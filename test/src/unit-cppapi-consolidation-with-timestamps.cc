@@ -736,7 +736,7 @@ TEST_CASE_METHOD(
   std::vector<int> a(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
-  std::vector<uint64_t> timestamps(10);
+  static std::vector<uint64_t> timestamps(10);
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
@@ -822,7 +822,7 @@ TEST_CASE_METHOD(
   std::vector<int> a(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
-  std::vector<uint64_t> timestamps(10);
+  static std::vector<uint64_t> timestamps(10);
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
@@ -903,7 +903,7 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
+  static std::vector<uint64_t> timestamps(16);
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
@@ -1042,7 +1042,7 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
+  static std::vector<uint64_t> timestamps(16);
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
@@ -1147,7 +1147,7 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
+  static std::vector<uint64_t> timestamps(16);
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
@@ -1358,7 +1358,7 @@ TEST_CASE_METHOD(
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  std::vector<uint64_t> timestamps(16);
+  static std::vector<uint64_t> timestamps(16);
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 

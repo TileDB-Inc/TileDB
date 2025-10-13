@@ -34,6 +34,7 @@
 #define TILEDB_VALIDITY_VECTOR_H
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "tiledb/common/macros.h"
@@ -66,9 +67,9 @@ class ValidityVector {
   }
 
   /** Move constructor. */
-  ValidityVector(ValidityVector&& rhs) {
-    std::swap(buffer_, rhs.buffer_);
-    std::swap(buffer_size_, rhs.buffer_size_);
+  ValidityVector(ValidityVector&& rhs)
+      : buffer_(std::exchange(rhs.buffer_, nullptr))
+      , buffer_size_(std::exchange(rhs.buffer_size_, nullptr)) {
   }
 
   /** Destructor. */

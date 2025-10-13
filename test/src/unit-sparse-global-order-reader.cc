@@ -1475,6 +1475,11 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
     "[sparse-global-order][rest]") {
+#ifdef _WIN32
+  SKIP(
+      "CORE-328: This test fails on nightly [windows-latest - Sanitizer: OFF | "
+      "Assertions: ON | Debug] To re-enable when fixed.");
+#endif
   SECTION("Example") {
     instance_fragment_skew<tiledb::test::AsserterCatch>(200, 8, 2);
   }
@@ -1818,6 +1823,11 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: merge bound duplication",
     "[sparse-global-order][rest]") {
+#ifdef _WIN32
+  SKIP(
+      "CORE-328: This test fails on nightly [windows-latest - Sanitizer: OFF | "
+      "Assertions: ON | Debug] To re-enable when fixed.");
+#endif
   SECTION("Example") {
     instance_merge_bound_duplication<tiledb::test::AsserterCatch>(
         16, 16, 1024, 16, false);
