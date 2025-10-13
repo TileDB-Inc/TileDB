@@ -613,6 +613,12 @@ class Config {
    *    that at least one of these two options must be set (or both if shared
    *    key authentication is used). <br>
    *    **Default**: ""
+   * - `vfs.azure.is_data_lake_endpoint` <br>
+   *    Sets whether the Azure Storage account is known to have hierarchical
+   *    namespace enabled or disabled. This option can be used to reduce latency
+   *    when performing the first Azure request. If not specified, the account's
+   *    capabilities will be automatically detected. <br>
+   *    **Default**: <unset>
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
    *    Any `uint64_t` value is acceptable. Note:

@@ -725,6 +725,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.azure.storage_account_key"] = "";
   all_param_values["vfs.azure.storage_sas_token"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
+  all_param_values["vfs.azure.is_data_lake_endpoint"] = "";
   all_param_values["vfs.azure.block_list_block_size"] = "5242880";
   all_param_values["vfs.azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -797,6 +798,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["azure.storage_account_key"] = "";
   vfs_param_values["azure.storage_sas_token"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
+  vfs_param_values["azure.is_data_lake_endpoint"] = "";
   vfs_param_values["azure.block_list_block_size"] = "5242880";
   vfs_param_values["azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -863,6 +865,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   azure_param_values["storage_account_key"] = "";
   azure_param_values["storage_sas_token"] = "";
   azure_param_values["blob_endpoint"] = "";
+  azure_param_values["is_data_lake_endpoint"] = "";
   azure_param_values["block_list_block_size"] = "5242880";
   azure_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());

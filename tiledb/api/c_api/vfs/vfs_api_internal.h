@@ -130,12 +130,12 @@ struct tiledb_vfs_handle_t
   }
 
   void copy_file(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
     vfs_.copy_file(old_uri, new_uri);
   }
 
   void copy_dir(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
     vfs_.copy_dir(old_uri, new_uri);
   }
 

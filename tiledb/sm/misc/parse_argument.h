@@ -106,6 +106,23 @@ Status convert(const std::string& str, std::vector<T>* value) {
   return Status::Ok();
 }
 
+template <class T>
+concept Convertible = requires(const std::string& str, T x) {
+  { convert(str, &x) } -> std::convertible_to<Status>;
+};
+
+/** Converts the input string into an std::optional value. Returns nullopt if
+ * the input string is empty. */
+template <Convertible T>
+std::optional<T> convert_optional(const std::string& str) {
+  if (str.empty()) {
+    return nullopt;
+  }
+  T result;
+  throw_if_not_ok(convert(str, &result));
+  return result;
+}
+
 /** Returns `true` if the input string is a (potentially signed) integer. */
 bool is_int(const std::string& str);
 
