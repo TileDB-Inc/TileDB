@@ -75,18 +75,6 @@ class URI {
   /** Constructor. */
   URI();
 
-  /** Copy constructor. */
-  URI(const URI&) = default;
-
-  /** Move constructor. */
-  URI(URI&&) = default;
-
-  /** Copy assignment operator. */
-  URI& operator=(const URI&) = default;
-
-  /** Move assignment operator. */
-  URI& operator=(URI&&) = default;
-
   /**
    * Constructor.
    *
@@ -396,15 +384,6 @@ struct TimestampedURI {
 
   bool has_unary_timestamp_range() const {
     return timestamp_range_.first == timestamp_range_.second;
-  }
-};
-
-/**
- * URI hash operator.
- */
-struct URIHasher {
-  std::size_t operator()(const URI& uri) const {
-    return std::hash<std::string>()(uri.to_string());
   }
 };
 
