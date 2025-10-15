@@ -38,19 +38,10 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-template <>
-IndexedList<sm::SerializationBuffer>::IndexedList(
-    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
-    : memory_tracker_(memory_tracker)
-    , list_(
-          memory_tracker->get_resource(sm::MemoryType::SERIALIZATION_BUFFER)) {
-}
-
-namespace sm {
+namespace tiledb::sm {
 
 BufferList::BufferList(shared_ptr<sm::MemoryTracker> memory_tracker)
-    : buffers_(memory_tracker)
+    : buffers_(memory_tracker, MemoryType::SERIALIZATION_BUFFER)
     , current_buffer_index_(0)
     , current_relative_offset_(0)
     , offset_(0) {
@@ -154,5 +145,4 @@ uint64_t BufferList::total_size() const {
   return size;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

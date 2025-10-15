@@ -33,16 +33,18 @@
 #ifndef TILEDB_INDEXED_LIST_H
 #define TILEDB_INDEXED_LIST_H
 
+#include "memory_tracker.h"
 #include "pmr.h"
 
 #include <list>
 #include <vector>
 
-namespace tiledb::sm {
-class MemoryTracker;
-}
-
 namespace tiledb::common {
+
+namespace detail {
+template <typename T>
+class WhiteboxIndexedList;
+}
 
 /**
  * Container class for data that cannot be moved but that we want to access by
@@ -52,7 +54,136 @@ namespace tiledb::common {
  */
 template <class T>
 class IndexedList {
+  using Self = IndexedList<T>;
+  using Elements = tdb::pmr::list<T>;
+  using Indexes = std::vector<T*>;
+
+  friend class detail::WhiteboxIndexedList<T>;
+
  public:
+  /**
+   * Iterator handle to a mutable element of an `IndexedList`.
+   */
+  class iterator {
+    Elements::iterator elt_;
+    Indexes::iterator idx_;
+
+    friend class IndexedList<T>;
+
+    iterator(Elements::iterator elt, Indexes::iterator idx)
+        : elt_(elt)
+        , idx_(idx) {
+    }
+
+   public:
+    using difference_type = int64_t;
+    using value_type = T;
+
+    T& operator*() const {
+      return *elt_;
+    }
+
+    T* operator->() const {
+      return &*elt_;
+    }
+
+    iterator& operator++() {
+      ++elt_;
+      ++idx_;
+      return *this;
+    }
+
+    iterator& operator++(int) {
+      elt_++;
+      idx_++;
+      return *this;
+    }
+
+    iterator& operator--() {
+      --elt_;
+      --idx_;
+      return *this;
+    }
+
+    iterator& operator--(int) {
+      elt_--;
+      idx_--;
+      return *this;
+    }
+
+    bool operator==(const iterator& other) const {
+      return elt_ == other.elt_;
+    }
+
+    bool operator!=(const iterator& other) const {
+      return !(*this == other);
+    }
+  };
+
+  /**
+   * Iterator handle to an immutable element of an `IndexedList`.
+   */
+  class const_iterator {
+    Elements::const_iterator elt_;
+    Indexes::const_iterator idx_;
+
+    friend class IndexedList<T>;
+
+    const_iterator(Elements::const_iterator elt, Indexes::const_iterator idx)
+        : elt_(elt)
+        , idx_(idx) {
+    }
+
+   public:
+    using difference_type = int64_t;
+    using value_type = T;
+
+    const_iterator(IndexedList<T>::iterator ii)
+        : elt_(ii.elt_)
+        , idx_(ii.idx_) {
+    }
+
+    const T& operator*() const {
+      return *elt_;
+    }
+
+    const T* operator->() const {
+      return &*elt_;
+    }
+
+    const_iterator& operator++() {
+      ++elt_;
+      ++idx_;
+      return *this;
+    }
+
+    const_iterator& operator++(int) {
+      elt_++;
+      idx_++;
+      return *this;
+    }
+
+    const_iterator& operator--() {
+      --elt_;
+      --idx_;
+      return *this;
+    }
+
+    const_iterator& operator--(int) {
+      elt_--;
+      idx_--;
+      return *this;
+    }
+
+    bool operator==(const const_iterator& other) const {
+      return elt_ == other.elt_;
+    }
+
+    bool operator!=(const const_iterator& other) const {
+      return !(*this == other);
+    }
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -65,7 +196,11 @@ class IndexedList {
    *
    * @param memory_tracker The memory tracker for the underlying containers.
    */
-  explicit IndexedList(shared_ptr<sm::MemoryTracker> memory_tracker);
+  explicit IndexedList(
+      shared_ptr<sm::MemoryTracker> memory_tracker, sm::MemoryType mem_type)
+      : memory_tracker_(memory_tracker)
+      , list_(memory_tracker->get_resource(mem_type)) {
+  }
 
   DISABLE_COPY_AND_COPY_ASSIGN(IndexedList);
   DISABLE_MOVE_AND_MOVE_ASSIGN(IndexedList);
@@ -73,6 +208,9 @@ class IndexedList {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+  shared_ptr<sm::MemoryTracker> memory_tracker() const {
+    return memory_tracker_;
+  }
 
   /**
    * Emplace an item to the end of the container.
@@ -92,24 +230,20 @@ class IndexedList {
     return list_.get_allocator();
   }
 
-  /** Returns an iterator to the beginning of the items. */
-  typename std::list<T>::iterator begin() {
-    return list_.begin();
+  iterator begin() {
+    return iterator(list_.begin(), vec_.begin());
   }
 
-  /** Returns an iterator to the beginning of the items. */
-  typename std::list<T>::const_iterator begin() const {
-    return list_.begin();
+  const_iterator begin() const {
+    return const_iterator(list_.begin(), vec_.begin());
   }
 
-  /** Returns an iterator to the end of the items. */
-  typename std::list<T>::iterator end() {
-    return list_.end();
+  iterator end() {
+    return iterator(list_.end(), vec_.end());
   }
 
-  /** Returns an iterator to the end of the items. */
-  typename std::list<T>::const_iterator end() const {
-    return list_.end();
+  const_iterator end() const {
+    return const_iterator(list_.end(), vec_.end());
   }
 
   /** Returns wether the container is empty or not. */
@@ -144,7 +278,8 @@ class IndexedList {
    *
    * @param num Number of items to add.
    */
-  void resize(size_t num) {
+  template <std::copyable... Args>
+  void resize(size_t num, Args... args) {
     if (list_.size() != 0 || vec_.size() != 0) {
       throw std::logic_error(
           "Resize should only be called on empty container.");
@@ -152,7 +287,7 @@ class IndexedList {
 
     vec_.reserve(num);
     for (uint64_t n = 0; n < num; n++) {
-      emplace_back(memory_tracker_);
+      emplace_back<Args...>(std::forward<Args>(args)...);
     }
   }
 
@@ -204,15 +339,51 @@ class IndexedList {
     return *(vec_.at(index));
   }
 
+  /**
+   * @return a pointer to the last element of the list
+   */
+  T* back() {
+    if (empty()) {
+      return nullptr;
+    } else {
+      return vec_.back();
+    }
+  }
+
+  /**
+   * @return a pointer to the last element of the list
+   */
+  const T* back() const {
+    if (empty()) {
+      return nullptr;
+    } else {
+      return vec_.back();
+    }
+  }
+
+  /**
+   * Transfers elements from `other` to `*this`. The elements are inserted at
+   * `pos`.
+   */
+  void splice(
+      const_iterator pos,
+      Self& other,
+      const_iterator first,
+      const_iterator last) {
+    list_.splice(pos.elt_, other.list_, first.elt_, last.elt_);
+    vec_.insert(pos.idx_, first.idx_, last.idx_);
+    other.vec_.erase(first.idx_, last.idx_);
+  }
+
  private:
   /** The memory tracker for the underlying list. */
   shared_ptr<sm::MemoryTracker> memory_tracker_;
 
   /** List that contains all the elements. */
-  tdb::pmr::list<T> list_;
+  Elements list_;
 
   /** Vector that contains a pointer to the elements allowing indexed access. */
-  std::vector<T*> vec_;
+  Indexes vec_;
 };
 
 }  // namespace tiledb::common
