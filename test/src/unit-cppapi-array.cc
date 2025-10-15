@@ -1728,10 +1728,14 @@ TEST_CASE(
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
-  CHECK(stats.find("\"Context.VFS.read_ops_num\": 5") != std::string::npos);
+  CHECK_THAT(
+      stats,
+      Catch::Matchers::ContainsSubstring("\"Context.VFS.read_ops_num\": 5"));
 
   // Expect file_size on the fragment.
-  CHECK(stats.find("\"Context.VFS.file_size_num\": 1") != std::string::npos);
+  CHECK_THAT(
+      stats,
+      Catch::Matchers::ContainsSubstring("\"Context.VFS.file_size_num\": 1"));
 }
 
 TEST_CASE(
@@ -1780,10 +1784,14 @@ TEST_CASE(
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
-  CHECK(stats.find("\"Context.VFS.read_ops_num\": 5") != std::string::npos);
+  CHECK_THAT(
+      stats,
+      Catch::Matchers::ContainsSubstring("\"Context.VFS.read_ops_num\": 5"));
 
   // Expect file_size on the fragment.
-  CHECK(stats.find("\"Context.VFS.file_size_num\": 1") != std::string::npos);
+  CHECK_THAT(
+      stats,
+      Catch::Matchers::ContainsSubstring("\"Context.VFS.file_size_num\": 1"));
 }
 
 TEST_CASE(
