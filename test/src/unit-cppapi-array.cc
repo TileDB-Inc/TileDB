@@ -1715,6 +1715,9 @@ TEST_CASE(
   query_w.submit();
   array_w.close();
 
+  // Reset stats before read
+  ctx.ptr().get()->context().resources().stats().reset();
+
   // Open for read.
   Array array(ctx, array_uri, TILEDB_READ);
   array.close();
@@ -1770,6 +1773,9 @@ TEST_CASE(
   query_w.submit();
   query_w.finalize();
   array_w.close();
+
+  // Reset stats before read
+  ctx.ptr().get()->context().resources().stats().reset();
 
   // Open for read.
   Array array(ctx, array_name, TILEDB_READ);
