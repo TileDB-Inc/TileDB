@@ -33,6 +33,7 @@
 #ifndef TILEDB_URI_H
 #define TILEDB_URI_H
 
+#include <compare>
 #include <string>
 
 #include "tiledb/common/status.h"
@@ -85,26 +86,10 @@ class URI {
   /**
    * Constructor.
    *
-   * @param path String that gets converted into an absolute path and stored
-   *     as a URI.
+   * @param path The URI's path.
+   * @param get_abs Whether to convert path to absolute.
    */
-  explicit URI(char* path);
-
-  /**
-   * Constructor.
-   *
-   * @param path String that gets converted into an absolute path and stored
-   *     as a URI.
-   */
-  explicit URI(std::string_view path);
-
-  /**
-   * Constructor.
-   *
-   * @param path
-   * @param get_abs should local files become absolute
-   */
-  explicit URI(std::string_view path, const bool& get_abs);
+  explicit URI(std::string_view path, bool get_abs = true);
 
   /**
    * Constructor. Throws if the given path is invalid (nullptr or empty).
@@ -291,6 +276,14 @@ class URI {
    */
   URI join_path(const URI& uri) const;
 
+  /**
+   * Appends a string to the input URI.
+   *
+   * @param str The string to append.
+   * @return The resulting URI.
+   */
+  URI append_string(const std::string& str) const;
+
   /** Returns the last part of the URI (i.e., excluding the parent). */
   std::string last_path_part() const;
 
@@ -331,17 +324,25 @@ class URI {
   bool operator==(const URI& uri) const;
 
   /** For comparing URIs alphanumerically. */
-  bool operator!=(const URI& uri) const;
-
-  /** For comparing URIs alphanumerically. */
-  bool operator<(const URI& uri) const;
-
-  /** For comparing URIs alphanumerically. */
-  bool operator>(const URI& uri) const;
+  std::strong_ordering operator<=>(const URI& uri) const;
 
   operator std::string_view() const noexcept;
 
  private:
+  struct CreateRawMarker {};
+
+  static constexpr CreateRawMarker CreateRaw{};
+
+  /**
+   * Creates a URI from a string, without making any modifications.
+   *
+   * @param create_raw CreateRawMarker dummy value.
+   * @param uri Rvalue reference to string.
+   */
+  URI(const CreateRawMarker, std::string&& uri)
+      : uri_(std::move(uri)) {
+  }
+
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
@@ -386,15 +387,17 @@ struct TimestampedURI {
   }
 };
 
-/**
- * URI hash operator.
- */
-struct URIHasher {
-  std::size_t operator()(const URI& uri) const {
-    return std::hash<std::string>()(uri.to_string());
-  }
-};
-
 }  // namespace tiledb::sm
+
+namespace std {
+template <>
+/**
+ * Specialization of std::hash for URI. This lets it being used as a key for
+ * hash tables.
+ */
+struct hash<tiledb::sm::URI> {
+  size_t operator()(const tiledb::sm::URI& val) const;
+};
+}  // namespace std
 
 #endif  // TILEDB_URI_H
