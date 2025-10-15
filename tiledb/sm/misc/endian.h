@@ -34,6 +34,7 @@
 #ifndef TILEDB_MISC_ENDIAN_H
 #define TILEDB_MISC_ENDIAN_H
 
+#include <bit>
 #include <climits>
 #include <cstdint>
 #include <type_traits>
@@ -48,16 +49,15 @@ namespace tiledb::sm::utils::endianness {
  * Returns true if the current CPU architecture has little endian byte
  * ordering, false for big endian.
  */
-inline bool is_little_endian() {
-  const int n = 1;
-  return *(char*)&n == 1;
+inline constexpr bool is_little_endian() {
+  return std::endian::native == std::endian::little;
 }
 
 /**
  * Returns true if the current CPU architecture has big endian byte
  * ordering, false for little endian.
  */
-inline bool is_big_endian() {
+inline constexpr bool is_big_endian() {
   return !is_little_endian();
 }
 
@@ -85,7 +85,7 @@ constexpr U bswap(T i) {
 template <class T>
 inline T decode_le(const void* const data) {
   const T* const n = reinterpret_cast<const T* const>(data);
-  if (is_little_endian()) {
+  if constexpr (is_little_endian()) {
     return *n;
   }
 
@@ -99,7 +99,7 @@ inline T decode_le(const void* const data) {
 template <class T>
 inline T decode_be(const void* const data) {
   const T* const n = reinterpret_cast<const T* const>(data);
-  if (is_big_endian()) {
+  if constexpr (is_big_endian()) {
     return *n;
   }
 
@@ -112,7 +112,7 @@ inline T decode_be(const void* const data) {
 template <class T>
 inline void encode_be(const T value, void* const data) {
   T* const n = reinterpret_cast<T* const>(data);
-  if (is_big_endian()) {
+  if constexpr (is_big_endian()) {
     *n = value;
     return;
   }
