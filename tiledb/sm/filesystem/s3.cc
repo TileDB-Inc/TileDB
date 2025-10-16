@@ -1155,19 +1155,20 @@ void S3::global_order_write(
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
     unique_rl.unlock();
+
+    MultiPartUploadState state;
+    throw_if_not_ok(initiate_multipart_request(aws_uri, &state));
+
     UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
 
     state_iter =
-        multipart_upload_states_.emplace(uri_path, MultiPartUploadState())
-            .first;
+        multipart_upload_states_.emplace(uri_path, std::move(state)).first;
 
     unique_wl.unlock();
 
     if (is_file(uri)) {
       remove_file(uri);
     }
-
-    throw_if_not_ok(initiate_multipart_request(aws_uri, &state_iter->second));
   } else {
     // Unlock, as make_upload_part_req will reaquire as necessary.
     unique_rl.unlock();
@@ -1830,6 +1831,8 @@ Status S3::write_multipart(
       std::string path(aws_uri.GetPath());
       MultiPartUploadState new_state;
 
+      throw_if_not_ok(initiate_multipart_request(aws_uri, &new_state));
+
       passert(multipart_upload_states_.count(path) == 0);
       multipart_upload_states_.emplace(std::move(path), std::move(new_state));
       state = &multipart_upload_states_.at(uri_path);
@@ -1842,11 +1845,6 @@ Status S3::write_multipart(
       // Delete file if it exists (overwrite) and initiate multipart request
       if (is_file(uri)) {
         remove_file(uri);
-      }
-
-      const Status st = initiate_multipart_request(aws_uri, state);
-      if (!st.ok()) {
-        return st;
       }
     } else {
       // If another thread switched state, switch back to a read lock
