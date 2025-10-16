@@ -229,6 +229,13 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
         Datatype::DATETIME_MONTH, Datatype::UINT64, data);
   }
 
+  SECTION("Shrinking CORE-407") {
+    const std::vector<uint8_t> data = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::TIME_NS, Datatype::UINT64, data);
+  }
+
   SECTION("Rapidcheck all") {
     rc::prop("Filter: Round trip Compressor Double Delta", [doit]() {
       const auto datatype = *rc::gen::arbitrary<Datatype>();
