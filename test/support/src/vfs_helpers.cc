@@ -537,7 +537,11 @@ bool VFSTestSetup::is_legacy_rest() {
 }
 
 TileDBFSTest::TileDBFSTest(const std::vector<size_t>& test_tree)
-    : VFSTestBase(test_tree, "tiledb://unit-workspace/unit-teamspace/", "rest-s3", true) {
+    : VFSTestBase(
+          test_tree,
+          "tiledb://unit-workspace/unit-teamspace/",
+          "rest-s3",
+          true) {
   for (size_t i = 1; i <= test_tree_.size(); i++) {
     sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
     // VFS::create_dir is a no-op for Azure; Just create objects.
