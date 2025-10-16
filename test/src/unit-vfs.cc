@@ -280,6 +280,115 @@ TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
   }
 }
 
+TEST_CASE("VFS: copy_dir", "[vfs][copy_dir]") {
+  LocalFsTest src_fs({});
+  S3Test dst_fs({});
+  if (!dst_fs.is_supported()) {
+    return;
+  }
+  URI src_path = src_fs.temp_dir_.add_trailing_slash();
+  URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params();
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+
+  /* Create the following file hierarchy:
+   *
+   * src_path/file1
+   * src_path/dir2/file2
+   * src_path/dir3/subdir/file3
+   */
+  auto file1 = URI(src_path.to_string() + "file1");
+  auto dir2 = URI(src_path.to_string() + "dir2/");
+  auto file2 = URI(dir2.to_string() + "file2");
+  auto dir3 = URI(src_path.to_string() + "dir3/");
+  auto subdir = URI(dir3.to_string() + "subdir/");
+  auto file3 = URI(subdir.to_string() + "file3");
+  REQUIRE_NOTHROW(vfs.touch(file1));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir2)));
+  REQUIRE_NOTHROW(vfs.touch(file2));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir3)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir3)));
+  REQUIRE_NOTHROW(vfs.touch(file3));
+
+  // Write some random test data to file1, file2, file3
+  size_t test_str_size = 10 * 1048576;  // 10 MB
+  std::string test_str;
+  test_str.reserve(test_str_size);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::uniform_int_distribution<size_t> dist(0, test_chars.size() - 1);
+  for (size_t i = 0; i < test_str_size; ++i) {
+    test_str += test_chars[dist(gen)];
+  }
+  REQUIRE(test_str.size() == test_str_size);
+  REQUIRE_NOTHROW(vfs.write(file1, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(file1));
+  std::shuffle(test_str.begin(), test_str.end(), gen);
+  REQUIRE_NOTHROW(vfs.write(file2, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(file2));
+  std::shuffle(test_str.begin(), test_str.end(), gen);
+  REQUIRE_NOTHROW(vfs.write(file3, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(file3));
+
+  // Copy the source directory to the destination.
+  REQUIRE_NOTHROW(vfs.copy_dir(src_path, dst_path));
+  CHECK(vfs.is_dir(src_path));
+  CHECK(vfs.is_dir(dst_path));
+  auto dst_file1 = URI(dst_path.to_string() + "file1");
+  auto dst_file2 = URI(dst_path.to_string() + "dir2/file2");
+  auto dst_file3 = URI(dst_path.to_string() + "dir3/subdir/file3");
+
+  // Validate the file contents are the same.
+  if (test_str_size > 0) {
+    std::string src_str;
+    src_str.reserve(test_str_size);
+    std::string dst_str;
+    dst_str.reserve(test_str_size);
+
+    CHECK(vfs.is_file(dst_file1));
+    require_tiledb_ok(
+        vfs.read_exactly(file1, 0, (char*)src_str.data(), test_str_size));
+    require_tiledb_ok(
+        vfs.read_exactly(dst_file1, 0, (char*)dst_str.data(), test_str_size));
+    CHECK(src_str == dst_str);
+
+    CHECK(vfs.is_file(dst_file2));
+    require_tiledb_ok(
+        vfs.read_exactly(file2, 0, (char*)src_str.data(), test_str_size));
+    require_tiledb_ok(
+        vfs.read_exactly(dst_file2, 0, (char*)dst_str.data(), test_str_size));
+    CHECK(src_str == dst_str);
+
+    CHECK(vfs.is_file(dst_file3));
+    require_tiledb_ok(
+        vfs.read_exactly(file3, 0, (char*)src_str.data(), test_str_size));
+    require_tiledb_ok(
+        vfs.read_exactly(dst_file3, 0, (char*)dst_str.data(), test_str_size));
+    CHECK(src_str == dst_str);
+  }
+
+  // Clean up.
+  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
+    REQUIRE(!vfs.is_bucket(src_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(src_path));
+    REQUIRE(!vfs.is_dir(src_path));
+  }
+  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
+    REQUIRE(!vfs.is_bucket(dst_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
+    REQUIRE(!vfs.is_dir(dst_path));
+  }
+}
+
 using AllBackends =
     std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, TileDBFSTest>;
 TEMPLATE_LIST_TEST_CASE(

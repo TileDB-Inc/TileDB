@@ -100,7 +100,7 @@ class OpenedArray {
       uint64_t timestamp_end_opened_at,
       bool is_remote)
       : resources_(resources)
-      , array_dir_(ArrayDirectory(resources, array_uri))
+      , array_dir_(std::in_place, resources, array_uri)
       , array_schema_latest_(nullptr)
       , metadata_(memory_tracker)
       , metadata_loaded_(false)
@@ -124,8 +124,8 @@ class OpenedArray {
   }
 
   /** Sets the array directory. */
-  inline void set_array_directory(const ArrayDirectory&& dir) {
-    array_dir_ = dir;
+  inline void set_array_directory(ArrayDirectory&& dir) {
+    array_dir_.emplace(std::move(dir));
   }
 
   /** Returns the latest array schema. */
@@ -320,7 +320,7 @@ class Array {
   }
 
   /** Set the array directory. */
-  inline void set_array_directory(const ArrayDirectory&& dir) {
+  inline void set_array_directory(ArrayDirectory&& dir) {
     opened_array_->set_array_directory(std::move(dir));
   }
 
@@ -463,23 +463,10 @@ class Array {
    * between the provided timestamps.
    *
    * @param resources The context resources.
-   * @param uri The uri of the Array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete fragments.
-   * @param timestamp_end The end timestamp at which to delete fragments.
    * @param array_dir An optional ArrayDirectory from which to delete fragments.
-   *
-   * @section Maturity Notes
-   * This is legacy code, ported from StorageManager during its removal process.
-   * Its existence supports the non-static `delete_fragments` API below,
-   * performing the actual deletion of fragments. This function is slated for
-   * removal and should be directly integrated into the function below.
    */
   static void delete_fragments(
-      ContextResources& resources,
-      const URI& uri,
-      uint64_t timestamp_start,
-      uint64_t timstamp_end,
-      std::optional<ArrayDirectory> array_dir = std::nullopt);
+      ContextResources& resources, ArrayDirectory& array_dir);
 
   /**
    * Handles local and remote deletion of fragments between the provided

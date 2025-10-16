@@ -50,32 +50,13 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-URI::URI() {
-  uri_ = "";
-}
-
-URI::URI(char* path)
-    : URI((path == nullptr) ? std::string("") : std::string(path)) {
-}
+URI::URI() = default;
 
 URI::URI(const char* path)
-    : URI((path == nullptr) ? std::string("") : std::string(path)) {
+    : URI(path == nullptr ? std::string_view() : std::string_view(path)) {
 }
 
-URI::URI(std::string_view path) {
-  if (path.empty())
-    uri_ = "";
-  else if (URI::is_file(path))
-    uri_ = VFS::abs_path(path);
-  else if (
-      URI::is_s3(path) || URI::is_azure(path) || URI::is_gcs(path) ||
-      URI::is_memfs(path) || URI::is_tiledb(path))
-    uri_ = path;
-  else
-    uri_ = "";
-}
-
-URI::URI(std::string_view path, const bool& get_abs) {
+URI::URI(std::string_view path, bool get_abs) {
   if (path.empty()) {
     uri_ = "";
   } else if (URI::is_file(path)) {
@@ -111,9 +92,9 @@ URI URI::add_trailing_slash() const {
   if (uri_.empty()) {
     return URI("/");
   } else if (uri_.back() != '/') {
-    return URI(uri_ + '/');
+    return URI(CreateRaw, uri_ + '/');
   } else {
-    return URI(uri_);
+    return *this;
   }
 }
 
@@ -121,10 +102,10 @@ URI URI::remove_trailing_slash() const {
   if (!uri_.empty() && uri_.back() == '/') {
     std::string uri_str = uri_;
     uri_str.pop_back();
-    return URI(uri_str);
+    return URI(CreateRaw, std::move(uri_str));
   }
 
-  return URI(uri_);
+  return *this;
 }
 
 bool URI::empty() const {
@@ -343,36 +324,40 @@ std::optional<URI> URI::get_fragment_name() const {
   }
 
   if (slash_pos != std::string::npos) {
-    return URI(uri_.substr(0, slash_pos));
+    return URI(CreateRaw, uri_.substr(0, slash_pos));
   }
 
-  return URI(uri_);
+  return *this;
 }
 
 URI URI::join_path(const std::string& path) const {
   // Check for empty strings.
   if (path.empty()) {
-    return URI(uri_);
+    return *this;
   } else if (uri_.empty()) {
     return URI(path);
   }
 
   if (uri_.back() == '/') {
     if (path.front() == '/') {
-      return URI(uri_ + path.substr(1, path.size()));
+      return URI(CreateRaw, uri_ + path.substr(1, path.size()));
     }
-    return URI(uri_ + path);
+    return URI(CreateRaw, uri_ + path);
   } else {
     if (path.front() == '/') {
-      return URI(uri_ + path);
+      return URI(CreateRaw, uri_ + path);
     } else {
-      return URI(uri_ + "/" + path);
+      return URI(CreateRaw, uri_ + "/" + path);
     }
   }
 }
 
 URI URI::join_path(const URI& uri) const {
   return join_path(uri.to_string());
+}
+
+URI URI::append_string(const std::string& str) const {
+  return URI(CreateRaw, uri_ + str);
 }
 
 std::string URI::last_path_part() const {
@@ -385,7 +370,7 @@ std::string URI::last_two_path_parts() const {
 
 URI URI::parent_path() const {
   auto pos = this->remove_trailing_slash().to_string().find_last_of('/');
-  return URI(uri_.substr(0, pos + 1));
+  return URI(CreateRaw, uri_.substr(0, pos + 1));
 }
 
 std::string URI::to_path(const std::string& uri) {
@@ -428,16 +413,14 @@ bool URI::operator==(const URI& uri) const {
   return uri_ == uri.uri_;
 }
 
-bool URI::operator!=(const URI& uri) const {
-  return !operator==(uri);
-}
-
-bool URI::operator<(const URI& uri) const {
-  return uri_ < uri.uri_;
-}
-
-bool URI::operator>(const URI& uri) const {
-  return uri_ > uri.uri_;
+std::strong_ordering URI::operator<=>(const URI& uri) const {
+  return uri_ <=> uri.uri_;
 }
 
 }  // namespace tiledb::sm
+
+namespace std {
+size_t hash<tiledb::sm::URI>::operator()(const tiledb::sm::URI& val) const {
+  return hash<string>()(val.to_string());
+}
+}  // namespace std
