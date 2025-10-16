@@ -53,6 +53,11 @@
 
 class [[nodiscard]] SetEnvScope {
  public:
+  SetEnvScope(SetEnvScope&& other)
+      : name_(std::exchange(other.name_, nullptr))
+      , old_value_(std::move(other.old_value_)) {
+  }
+
   ~SetEnvScope();
 
  private:

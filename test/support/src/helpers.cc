@@ -77,7 +77,7 @@ static int unsetenv(const char* __name) {
 
 SetEnvScope setenv_local(const char* __name, const char* __value) {
   std::optional<std::string> old_value;
-  if (auto ptr = ::getenv(__name); ptr) {
+  if (auto ptr = ::getenv(__name); ptr != nullptr) {
     old_value.emplace(ptr);
   }
   if (int result = setenv(__name, __value); result != 0) {
@@ -87,8 +87,12 @@ SetEnvScope setenv_local(const char* __name, const char* __value) {
 }
 
 SetEnvScope::~SetEnvScope() {
-  if (old_value_) {
-    setenv(name_, old_value_->c_str());
+  if (name_ == nullptr) {
+    // The object was moved to somewhere else; don't run destructor.
+    return;
+  }
+  if (old_value_.has_value()) {
+    setenv(name_, old_value_.value().c_str());
   } else {
     unsetenv(name_);
   }

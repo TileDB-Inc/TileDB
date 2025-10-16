@@ -126,7 +126,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "RestClient: Remove trailing slash from rest_server_", "[rest-client]") {
+    "RestClient: Remove trailing slash from rest_server_",
+    "[rest-client][server-address]") {
   std::string rest_server =
       GENERATE("http://localhost:8080/", "http://localhost:8080//");
   tiledb::sm::Config cfg;
