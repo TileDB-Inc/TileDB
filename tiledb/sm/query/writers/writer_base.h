@@ -242,13 +242,26 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /**
    * Computes the MBRs.
    *
+   * @param start_tile_idx The index of the first tile to compute MBR for
+   * @param end_tile_idx The index of the last tile to compute MBR for
    * @param tiles The tiles to calculate the MBRs from. It is a map of vectors,
    * one vector of tiles per dimension/coordinates.
    * @return MBRs.
    */
   std::vector<NDRange> compute_mbrs(
+      uint64_t start_tile_idx,
+      uint64_t end_tile_idx,
       const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
       const;
+
+  /**
+   * Computes the MBRs for all of the requested tiles. See above.
+   */
+  std::vector<NDRange> compute_mbrs(
+      const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const {
+    return compute_mbrs(0, tiles.begin()->second.size(), tiles);
+  }
 
   /**
    * Set the coordinates metadata (e.g., MBRs).
@@ -270,14 +283,25 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /**
    * Computes the tiles metadata (min/max/sum/null count).
    *
-   * @param tile_num The number of tiles.
+   * @param start_tile_idx The index of the first tile to compute metadata for
+   * @param end_tile_idx The index of the last tile to compute metadata for
    * @param tiles The tiles to calculate the tile metadata from. It is
    *     a map of vectors, one vector of tiles per dimension.
    * @return Status
    */
   Status compute_tiles_metadata(
-      uint64_t tile_num,
+      uint64_t start_tile_idx,
+      uint64_t end_tile_idx,
       tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
+
+  /**
+   * Computes the tiles metadata for each tile in the provided list. See above.
+   */
+  Status compute_tiles_metadata(
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const {
+    return compute_tiles_metadata(0, tiles.begin()->second.size(), tiles);
+  }
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -306,19 +330,38 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * Runs the input coordinate and attribute tiles through their
    * filter pipelines. The tile buffers are modified to contain the output
    * of the pipeline.
+   *
+   * @param start_tile_idx The index of the first tile to filter
+   * @param end_tile_idx The index of the last tile to filter
    */
   Status filter_tiles(
+      uint64_t start_tile_idx,
+      uint64_t end_tile_idx,
       tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles);
+
+  /**
+   * See above, filtering all of the provided tiles.
+   */
+  Status filter_tiles(
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
+    return filter_tiles(0, tiles->begin()->second.size(), tiles);
+  }
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
    * The tile buffers are modified to contain the output of the pipeline.
    *
+   * @param start_tile_idx The index of the first tile to filter
+   * @param end_tile_idx The index of the last tile to filter
    * @param name The attribute/dimension the tiles belong to.
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, WriterTileTupleVector* tiles);
+  Status filter_tiles(
+      uint64_t start_tile_idx,
+      uint64_t end_tile_idx,
+      const std::string& name,
+      WriterTileTupleVector* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
