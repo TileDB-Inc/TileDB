@@ -34,6 +34,7 @@
 #define TILEDB_UNIT_TEST_CONFIG_H
 
 #include <cassert>
+#include <optional>
 
 #include "tiledb/common/assert.h"
 #include "tiledb/common/macros.h"
@@ -55,14 +56,20 @@ class UnitTestConfig {
     return self;
   }
 
+  template <typename T>
+  class SetSentinel;
+
   /** Wraps an attribute type to determine if it has been intentionally set. */
   template <typename T>
   class Attribute {
+    friend class SetSentinel<T>;
+
    public:
     /** Constructor. */
-    Attribute()
-        : set_(false) {
-    }
+    Attribute() = default;
+
+    DISABLE_COPY_AND_COPY_ASSIGN(Attribute);
+    DISABLE_MOVE_AND_MOVE_ASSIGN(Attribute);
 
     /** Destructor. */
     ~Attribute() = default;
@@ -73,34 +80,23 @@ class UnitTestConfig {
      * @return bool
      */
     bool is_set() const {
-      return set_;
+      return attr_.has_value();
     }
 
     /**
      * Sets the internal attribute.
      *
-     * @param T the internal attribute value to set.
+     * @param attr the internal attribute value to set.
+     * @returns Sentinel object that resets the attribute to its old value on
+     * destruction.
      */
-    void set(const T& attr) {
-      attr_ = attr;
-      set_ = true;
-    }
-
-    /**
-     * Sets the internal attribute.
-     *
-     * @param T the internal attribute value to set.
-     */
-    void set(T&& attr) {
-      attr_ = std::move(attr);
-      set_ = true;
-    }
+    SetSentinel<T> set(auto&& attr);
 
     /**
      * Unsets the internal attribute.
      */
     void reset() {
-      set_ = false;
+      attr_.reset();
     }
 
     /**
@@ -108,20 +104,40 @@ class UnitTestConfig {
      *
      * @return T the internal attribute value.
      */
-    T get() const {
-      passert(set_);
-      return attr_;
+    const T& get() const {
+      passert(attr_.has_value());
+      return attr_.value();
     }
 
    private:
-    DISABLE_COPY_AND_COPY_ASSIGN(Attribute);
-    DISABLE_MOVE_AND_MOVE_ASSIGN(Attribute);
+    void assign(std::optional<T>&& value) {
+      attr_ = std::move(value);
+    }
 
-    /** True if 'attr_' has been set. */
-    bool set_;
+    /** Attribute value. */
+    std::optional<T> attr_;
+  };
 
-    /** Internal attribute. */
-    T attr_;
+  template <typename T>
+  class [[nodiscard]] SetSentinel {
+    friend class Attribute<T>;
+
+   public:
+    ~SetSentinel() {
+      attribute_.assign(std::move(old_value_));
+    }
+
+    DISABLE_COPY_AND_COPY_ASSIGN(SetSentinel);
+    DISABLE_MOVE_AND_MOVE_ASSIGN(SetSentinel);
+
+   private:
+    SetSentinel(Attribute<T>& attribute, std::optional<T>&& old_value)
+        : attribute_(attribute)
+        , old_value_(std::move(old_value)) {
+    }
+
+    Attribute<T>& attribute_;
+    std::optional<T> old_value_;
   };
 
   /** For every nth multipart upload request, return a non-OK status. */
@@ -137,6 +153,14 @@ class UnitTestConfig {
   DISABLE_COPY_AND_COPY_ASSIGN(UnitTestConfig);
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnitTestConfig);
 };
+
+template <typename T>
+inline UnitTestConfig::SetSentinel<T> UnitTestConfig::Attribute<T>::set(
+    auto&& attr) {
+  auto old_value = attr_;
+  attr_.emplace(std::forward<decltype(attr)>(attr));
+  return SetSentinel(*this, std::move(old_value));
+}
 
 }  // namespace sm
 }  // namespace tiledb
