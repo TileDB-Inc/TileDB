@@ -640,17 +640,6 @@ instance_dense_global_order(
   FragmentInfo finfo(ctx, array_name);
   finfo.load();
 
-  // validate fragment size
-  for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
-    const uint64_t fsize = finfo.fragment_size(f);
-    const uint64_t fmetasize = finfo.ptr()
-                                   ->fragment_info()
-                                   ->single_fragment_info_vec()[f]
-                                   .meta()
-                                   ->fragment_meta_size();
-    ASSERTER(fsize <= max_fragment_size + fmetasize);
-  }
-
   // collect fragment domains
   std::vector<std::vector<templates::Domain<uint64_t>>> fragment_domains;
   for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
@@ -712,6 +701,17 @@ instance_dense_global_order(
         ASSERTER(fragment_domains[f][d] == subarray[d]);
       }
     }
+  }
+
+  // validate fragment size
+  for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
+    const uint64_t fsize = finfo.fragment_size(f);
+    const uint64_t fmetasize = finfo.ptr()
+                                   ->fragment_info()
+                                   ->single_fragment_info_vec()[f]
+                                   .meta()
+                                   ->fragment_meta_size();
+    ASSERTER(fsize <= max_fragment_size + fmetasize);
   }
 
   // this is last because a fragment domain mismatch is more informative
