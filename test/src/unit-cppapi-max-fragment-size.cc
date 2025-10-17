@@ -1040,7 +1040,9 @@ TEST_CASE(
     const auto subarray =
         *rc::make_tile_aligned_subarray<sm::Datatype::UINT64>({d1, d2});
 
-    const uint64_t num_tiles_per_hyperrow = d2.num_tiles(subarray[1]);
+    const uint64_t num_tiles_per_hyperrow =
+        (tile_order == TILEDB_ROW_MAJOR ? d2.num_tiles(subarray[1]) :
+                                          d1.num_tiles(subarray[0]));
 
     auto gen_fragment_size = rc::gen::map(
         rc::gen::inRange(1, 8),
