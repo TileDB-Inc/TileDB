@@ -777,9 +777,6 @@ Status GlobalOrderWriter::populate_fragment(
     uint64_t num_tiles) {
   auto frag_meta = global_write_state_->frag_meta_;
 
-  // update metadata of current fragment
-  frag_meta->set_num_tiles(frag_meta->tile_index_base() + num_tiles);
-
   // write tiles for all attributes
   RETURN_CANCEL_OR_ERROR(
       write_tiles(tile_offset, tile_offset + num_tiles, frag_meta, &tiles));
@@ -866,6 +863,9 @@ Status GlobalOrderWriter::global_write() {
         RETURN_CANCEL_OR_ERROR(start_new_fragment());
       }
 
+      global_write_state_->frag_meta_->set_num_tiles(
+          global_write_state_->frag_meta_->tile_index_base() + input_num_tiles);
+
       set_coords_metadata(
           input_start_tile,
           input_start_tile + input_num_tiles,
@@ -883,6 +883,11 @@ Status GlobalOrderWriter::global_write() {
         fragments.back().second;  // FIXME: bad name, offset for tiles which
                                   // weren't started yet
     RETURN_CANCEL_OR_ERROR(start_new_fragment());
+
+    global_write_state_->frag_meta_->set_num_tiles(
+        global_write_state_->frag_meta_->tile_index_base() + tile_num -
+        num_unpopulated);
+
     set_coords_metadata(
         num_unpopulated,
         tile_num,
