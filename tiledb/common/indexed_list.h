@@ -287,7 +287,12 @@ class IndexedList {
 
     vec_.reserve(num);
     for (uint64_t n = 0; n < num; n++) {
-      emplace_back<Args...>(std::forward<Args>(args)...);
+      std::tuple<std::decay_t<Args>...> copied_args(args...);
+      std::apply(
+          [this](auto&&... copied_arg) {
+            emplace_back<Args...>(std::move(copied_arg)...);
+          },
+          copied_args);
     }
   }
 

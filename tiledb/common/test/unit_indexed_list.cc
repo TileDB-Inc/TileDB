@@ -197,3 +197,58 @@ TEST_CASE("IndexedList splice rapidcheck", "[algorithm][rapidcheck]") {
         instance_splice<uint64_t>(target, targetpos, src, srcfirst, srclast);
       });
 }
+
+TEST_CASE("IndexedList resize copy args", "[algorithm]") {
+  SECTION("POD") {
+    SECTION("Default") {
+      IndexedList<uint64_t> ll(
+          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      ll.resize(8);
+
+      std::vector<uint64_t> vv(ll.begin(), ll.end());
+      CHECK(vv == std::vector<uint64_t>{0, 0, 0, 0, 0, 0, 0, 0});
+    }
+    SECTION("Copy value") {
+      IndexedList<uint64_t> ll(
+          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      ll.resize(8, 123);
+
+      std::vector<uint64_t> vv(ll.begin(), ll.end());
+      CHECK(
+          vv == std::vector<uint64_t>{123, 123, 123, 123, 123, 123, 123, 123});
+    }
+  }
+
+  SECTION("shared_ptr") {
+    SECTION("Default") {
+      IndexedList<std::shared_ptr<uint64_t>> ll(
+          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      ll.resize(8);
+
+      std::vector<std::shared_ptr<uint64_t>> vv(ll.begin(), ll.end());
+      CHECK(
+          vv == std::vector<std::shared_ptr<uint64_t>>{
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr});
+    }
+
+    SECTION("Alias") {
+      std::shared_ptr<uint64_t> value(new uint64_t(123));
+
+      IndexedList<std::shared_ptr<uint64_t>> ll(
+          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      ll.resize(8, value);
+
+      std::vector<std::shared_ptr<uint64_t>> vv(ll.begin(), ll.end());
+      CHECK(
+          vv == std::vector<std::shared_ptr<uint64_t>>{
+                    value, value, value, value, value, value, value, value});
+    }
+  }
+}
