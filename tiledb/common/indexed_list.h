@@ -290,7 +290,7 @@ class IndexedList {
       std::tuple<std::decay_t<Args>...> copied_args(args...);
       std::apply(
           [this](auto&&... copied_arg) {
-            emplace_back<Args...>(std::move(copied_arg)...);
+            this->emplace_back<Args...>(std::move(copied_arg)...);
           },
           copied_args);
     }

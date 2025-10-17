@@ -49,7 +49,8 @@ static_assert(std::input_iterator<IndexedList<uint64_t>::const_iterator>);
 namespace tiledb::common::detail {
 
 template <typename T>
-struct WhiteboxIndexedList : public IndexedList<T> {
+class WhiteboxIndexedList : public IndexedList<T> {
+ public:
   using IndexedList<T>::list_;
   using IndexedList<T>::vec_;
 
