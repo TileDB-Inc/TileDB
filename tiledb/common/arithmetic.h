@@ -196,6 +196,20 @@ struct checked_arithmetic<uint64_t> {
       return -negated.value();
     }
   }
+
+  /**
+   * @return `a * b` if it can be represented as a `uint64_t` without undefined
+   * behavior, `std::nullopt` otherwise
+   */
+  static std::optional<uint64_t> mul(uint64_t a, uint64_t b) {
+    if (b == 0) {
+      return 0;
+    } else if (a > std::numeric_limits<uint64_t>::max() / b) {
+      return std::nullopt;
+    } else {
+      return a * b;
+    }
+  }
 };
 
 template <>

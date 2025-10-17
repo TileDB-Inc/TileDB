@@ -87,7 +87,8 @@ std::optional<T> checked_sub(T a, T b) {
 }
 
 template <DimensionType D>
-Gen<D> make_extent(const templates::Domain<D>& domain) {
+Gen<D> make_extent(
+    const templates::Domain<D>& domain, std::optional<D> bound = std::nullopt) {
   // upper bound on all possible extents to avoid unreasonably
   // huge tile sizes
   static constexpr D extent_limit = static_cast<D>(
@@ -99,6 +100,10 @@ Gen<D> make_extent(const templates::Domain<D>& domain) {
               static_cast<uint64_t>(std::numeric_limits<D>::max()),
               static_cast<uint64_t>(1024 * 16)));
 
+  const D extent_bound =
+      (bound.has_value() ? std::min(bound.value(), extent_limit) :
+                           extent_limit);
+
   // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
   // inclusive. So we have to be careful to avoid overflow.
 
@@ -109,27 +114,35 @@ Gen<D> make_extent(const templates::Domain<D>& domain) {
       checked_sub(domain.upper_bound, domain.lower_bound);
   if (bound_distance.has_value()) {
     extent_upper_bound =
-        (bound_distance.value() < extent_limit ? bound_distance.value() + 1 :
-                                                 extent_limit);
+        (bound_distance.value() < extent_bound ? bound_distance.value() + 1 :
+                                                 extent_bound);
   } else {
-    extent_upper_bound = extent_limit;
+    extent_upper_bound = extent_bound;
   }
 
   return gen::inRange(extent_lower_bound, extent_upper_bound + 1);
 }
 
 template <tiledb::sm::Datatype D>
+Gen<templates::Dimension<D>> make_dimension(
+    std::optional<typename templates::Dimension<D>::value_type> extent_bound =
+        std::nullopt) {
+  using CoordType = templates::Dimension<D>::value_type;
+  auto tup = gen::mapcat(
+      gen::arbitrary<Domain<CoordType>>(),
+      [extent_bound](Domain<CoordType> domain) {
+        return gen::pair(gen::just(domain), make_extent(domain, extent_bound));
+      });
+
+  return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
+    return templates::Dimension<D>(tup.first, tup.second);
+  });
+}
+
+template <tiledb::sm::Datatype D>
 struct Arbitrary<templates::Dimension<D>> {
   static Gen<templates::Dimension<D>> arbitrary() {
-    using CoordType = templates::Dimension<D>::value_type;
-    auto tup = gen::mapcat(
-        gen::arbitrary<Domain<CoordType>>(), [](Domain<CoordType> domain) {
-          return gen::pair(gen::just(domain), make_extent(domain));
-        });
-
-    return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
-      return templates::Dimension<D>(tup.first, tup.second);
-    });
+    return make_dimension<D>();
   }
 };
 
@@ -238,9 +251,16 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
 }
 
 template <>
-void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os) {
-  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
-}
+void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os);
+
+template <>
+void show<Domain<uint64_t>>(
+    const templates::Domain<uint64_t>& domain, std::ostream& os);
+
+template <>
+void show<Dimension<tiledb::sm::Datatype::UINT64>>(
+    const templates::Dimension<tiledb::sm::Datatype::UINT64>& dimension,
+    std::ostream& os);
 
 }  // namespace rc
 

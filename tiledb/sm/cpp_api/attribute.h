@@ -275,6 +275,11 @@ class Attribute {
     return *this;
   }
 
+  template <typename T>
+  Attribute& set_fill_value(T value) {
+    return set_fill_value(static_cast<const void*>(&value), sizeof(T));
+  }
+
   /**
    * Gets the default fill value for the input attribute. This value will
    * be used for the input attribute whenever querying (1) an empty cell in

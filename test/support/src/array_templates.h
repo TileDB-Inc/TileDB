@@ -158,6 +158,8 @@ struct Domain {
       , upper_bound(std::max(d1, d2)) {
   }
 
+  bool operator==(const Domain<D>&) const = default;
+
   uint64_t num_cells() const {
     // FIXME: this is incorrect for 64-bit domains which need to check overflow
     if (std::is_signed<D>::value) {
@@ -195,6 +197,7 @@ struct Domain {
 template <tiledb::sm::Datatype DATATYPE>
 struct Dimension {
   using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
+  using domain_type = Domain<value_type>;
 
   Dimension() = default;
   Dimension(Domain<value_type> domain, value_type extent)
@@ -202,8 +205,26 @@ struct Dimension {
       , extent(extent) {
   }
 
+  Dimension(value_type lower_bound, value_type upper_bound, value_type extent)
+      : Dimension(Domain<value_type>(lower_bound, upper_bound), extent) {
+  }
+
   Domain<value_type> domain;
   value_type extent;
+
+  /**
+   * @return the number of tiles spanned by the whole domain of this dimension
+   */
+  uint64_t num_tiles() const {
+    return num_tiles(domain);
+  }
+
+  /**
+   * @return the number of tiles spanned by a range in this dimension
+   */
+  uint64_t num_tiles(const domain_type& range) const {
+    return (range.num_cells() + extent - 1) / extent;
+  }
 };
 
 template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>

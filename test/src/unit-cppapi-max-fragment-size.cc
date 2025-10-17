@@ -30,17 +30,26 @@
  * Tests the C++ API for maximum fragment size.
  */
 
+#include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
+#include <test/support/tdb_rapidcheck.h>
+#include "test/support/rapidcheck/array_templates.h"
+#include "test/support/src/array_helpers.h"
+#include "test/support/src/array_templates.h"
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
+#include "tiledb/common/arithmetic.h"
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <numeric>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 struct CPPMaxFragmentSizeFx {
   const int max_domain = 1000000;
@@ -502,4 +511,556 @@ TEST_CASE(
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name));
 
   array.close();
+}
+
+/**
+ * @return the number of cells contained within a subarray, or `std::nullopt` if
+ * overflow
+ */
+std::optional<uint64_t> subarray_num_cells(
+    std::span<const templates::Domain<uint64_t>> subarray) {
+  uint64_t num_cells = 1;
+  for (const auto& dim : subarray) {
+    auto maybe = checked_arithmetic<uint64_t>::mul(num_cells, dim.num_cells());
+    if (!maybe.has_value()) {
+      return std::nullopt;
+    }
+    num_cells = maybe.value();
+  }
+  return num_cells;
+}
+
+/**
+ * Creates an array with the provided `dimensions` and then
+ * runs a global order write into `subarray` using `max_fragment_size` to bound
+ * the fragment size.
+ *
+ * Asserts that all created fragments respect `max_fragment_size` and that the
+ * data read back out for `subarray` matches what we wrote into it.
+ *
+ * @return a list of the domains written to each fragment in ascending order
+ */
+template <typename Asserter>
+std::vector<std::vector<templates::Domain<uint64_t>>>
+instance_dense_global_order(
+    const Context& ctx,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t max_fragment_size,
+    const std::vector<templates::Dimension<Datatype::UINT64>>& dimensions,
+    const std::vector<templates::Domain<uint64_t>>& subarray,
+    std::optional<uint64_t> write_unit_num_cells = std::nullopt) {
+  const std::string array_name = "max_fragment_size_dense_global_order";
+
+  const std::optional<uint64_t> num_cells = subarray_num_cells(subarray);
+  ASSERTER(num_cells.has_value());
+
+  Domain domain(ctx);
+  for (uint64_t d = 0; d < dimensions.size(); d++) {
+    const std::string dname = "d" + std::to_string(d);
+    auto dim = Dimension::create<uint64_t>(
+        ctx,
+        dname,
+        {{dimensions[d].domain.lower_bound, dimensions[d].domain.upper_bound}},
+        dimensions[d].extent);
+    domain.add_dimension(dim);
+  }
+
+  auto a = Attribute::create<int>(ctx, "a");
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.set_tile_order(tile_order);
+  schema.set_cell_order(cell_order);
+  schema.add_attributes(a);
+
+  Array::create(array_name, schema);
+  test::DeleteArrayGuard del(ctx.ptr().get(), array_name.c_str());
+
+  const int a_offset = 77;
+  std::vector<int> a_write;
+  a_write.reserve(num_cells.value());
+  for (int i = 0; i < static_cast<int64_t>(num_cells.value()); i++) {
+    a_write.push_back(a_offset + i);
+  }
+
+  std::vector<uint64_t> api_subarray;
+  api_subarray.reserve(2 * subarray.size());
+  for (const auto& sub_dim : subarray) {
+    api_subarray.push_back(sub_dim.lower_bound);
+    api_subarray.push_back(sub_dim.upper_bound);
+  }
+
+  // write data, should be split into multiple fragments
+  {
+    Array array(ctx, array_name, TILEDB_WRITE);
+
+    Subarray sub(ctx, array);
+    sub.set_subarray(api_subarray);
+
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
+    query.set_subarray(sub);
+    query.ptr().get()->query_->set_fragment_size(max_fragment_size);
+
+    uint64_t cells_written = 0;
+    while (cells_written < a_write.size()) {
+      const uint64_t cells_this_write = std::min(
+          a_write.size() - cells_written,
+          write_unit_num_cells.value_or(a_write.size()));
+      query.set_data_buffer("a", &a_write[cells_written], cells_this_write);
+
+      const auto status = query.submit();
+      ASSERTER(status == Query::Status::COMPLETE);
+
+      cells_written += cells_this_write;
+    }
+
+    query.finalize();
+  }
+
+  // then read back
+  std::vector<int> a_read;
+  {
+    a_read.resize(a_write.size());
+
+    Array array(ctx, array_name, TILEDB_READ);
+
+    Subarray sub(ctx, array);
+    sub.set_subarray(api_subarray);
+
+    Query query(ctx, array, TILEDB_READ);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
+    query.set_subarray(sub);
+    query.set_data_buffer("a", a_read);
+
+    auto st = query.submit();
+    ASSERTER(st == Query::Status::COMPLETE);
+  }
+
+  FragmentInfo finfo(ctx, array_name);
+  finfo.load();
+
+  // validate fragment size
+  for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
+    const uint64_t fsize = finfo.fragment_size(f);
+    const uint64_t fmetasize = finfo.ptr()
+                                   ->fragment_info()
+                                   ->single_fragment_info_vec()[f]
+                                   .meta()
+                                   ->fragment_meta_size();
+    ASSERTER(fsize <= max_fragment_size + fmetasize);
+  }
+
+  // collect fragment domains
+  std::vector<std::vector<templates::Domain<uint64_t>>> fragment_domains;
+  for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
+    std::vector<templates::Domain<uint64_t>> this_fragment_domain;
+    for (uint64_t d = 0; d < dimensions.size(); d++) {
+      uint64_t bounds[2];
+      finfo.get_non_empty_domain(f, d, &bounds[0]);
+      this_fragment_domain.push_back(
+          templates::Domain<uint64_t>(bounds[0], bounds[1]));
+    }
+    fragment_domains.push_back(this_fragment_domain);
+  }
+
+  // the fragments are not always emitted in the same order, sort them
+  std::sort(
+      fragment_domains.begin(),
+      fragment_domains.end(),
+      [&](const auto& left, const auto& right) -> bool {
+        for (uint64_t d = 0; d < dimensions.size(); d++) {
+          if (left[d].lower_bound < right[d].lower_bound) {
+            return true;
+          } else if (left[d].lower_bound > right[d].lower_bound) {
+            return false;
+          } else if (left[d].upper_bound < right[d].upper_bound) {
+            return true;
+          } else if (left[d].upper_bound > right[d].upper_bound) {
+            return false;
+          }
+        }
+        return false;
+      });
+
+  // validate fragment domains
+  ASSERTER(!fragment_domains.empty());
+  ASSERTER(fragment_domains[0][0].lower_bound == subarray[0].lower_bound);
+  ASSERTER(fragment_domains.back()[0].upper_bound == subarray[0].upper_bound);
+  for (uint32_t f = 0; f < fragment_domains.size(); f++) {
+    if (tile_order == TILEDB_ROW_MAJOR) {
+      // first dimension is ranging and contiguous
+      if (f > 0) {
+        ASSERTER(
+            fragment_domains[f - 1][0].upper_bound + 1 ==
+            fragment_domains[f][0].lower_bound);
+      }
+      // non-first dimensions should match
+      for (uint64_t d = 1; d < dimensions.size(); d++) {
+        ASSERTER(fragment_domains[f][d] == subarray[d]);
+      }
+    } else {
+      // last dimension is ranging and contiguous
+      const uint64_t num_dims = dimensions.size();
+      if (f > 0) {
+        ASSERTER(
+            fragment_domains[f - 1][num_dims - 1].upper_bound + 1 ==
+            fragment_domains[f][num_dims - 1].lower_bound);
+      }
+      // non-last dimensions should match
+      for (uint64_t d = 0; d < num_dims - 1; d++) {
+        ASSERTER(fragment_domains[f][d] == subarray[d]);
+      }
+    }
+  }
+
+  // this is last because a fragment domain mismatch is more informative
+  ASSERTER(a_read == a_write);
+
+  return fragment_domains;
+}
+
+/**
+ * Tests that the max fragment size parameter is properly respected
+ * for global order writes to dense arrays.
+ */
+TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
+  const std::string array_name =
+      "cppapi_consolidation_dense_domain_arithmetic_overflow";
+
+  Context ctx;
+
+  const tiledb_layout_t tile_order =
+      GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+  const tiledb_layout_t cell_order =
+      GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
+  DYNAMIC_SECTION(
+      "tile_order = " << sm::layout_str(static_cast<sm::Layout>(tile_order))
+                      << ", cell_order = "
+                      << sm::layout_str(static_cast<sm::Layout>(cell_order))) {
+    // each tile is a full row of a 2D array
+    SECTION("Row tiles") {
+      using Dim = templates::Dimension<Datatype::UINT64>;
+      using Dom = templates::Domain<uint64_t>;
+
+      constexpr uint64_t max_fragment_size = 64 * 1024;
+
+      constexpr size_t span_d2 = 10000;
+      const std::vector<Dim> dimensions = {
+          Dim(0, std::numeric_limits<uint64_t>::max() - 1, 1),
+          Dim(0, span_d2 - 1, span_d2)};
+
+      const uint64_t base_d1 = 12345;
+      const uint64_t num_rows = GENERATE(1, 2, 4, 8);
+      const std::vector<Dom> subarray = {
+          Dom(base_d1 + 0, base_d1 + num_rows - 1), Dom(0, span_d2 - 1)};
+
+      const uint64_t write_unit_num_cells = GENERATE(0, 64, 1024, 1024 * 1024);
+
+      DYNAMIC_SECTION(
+          "num_rows = " << num_rows << ", write_unit_num_cells = "
+                        << write_unit_num_cells) {
+        if (tile_order == TILEDB_COL_MAJOR && num_rows > 1) {
+          // Consider the following example:
+          //
+          // [ 1  1  1  1  2  2  2  2 ]
+          // [ 3  3  3  3  4  4  4  4 ]
+          // [ 5  5  5  5  6  6  6  6 ]
+          // [ 7  7  7  7  8  8  8  8 ]
+          //
+          // In row major order we can see that there are two tiles per
+          // "hyper-row". In column major order instead the tiles are placed [1
+          // 3 5 7 2 4 6 8]. A "hyperrow" is not formed until tile 7 is
+          // written... i.e the number of rows.
+          //
+          // But wait, this example only has one tile per row! And indeed this
+          // does mean that each tile can be its own hyper-row again. For
+          // simplicity we elect not to implement that special case.
+          const auto expect = Catch::Matchers::ContainsSubstring(
+              "Fragment size is too small to subdivide dense subarray into "
+              "multiple fragments");
+          REQUIRE_THROWS(
+              instance_dense_global_order<AsserterCatch>(
+                  ctx,
+                  tile_order,
+                  cell_order,
+                  max_fragment_size,
+                  dimensions,
+                  subarray),
+              expect);
+        } else {
+          const auto actual = instance_dense_global_order<AsserterCatch>(
+              ctx,
+              tile_order,
+              cell_order,
+              max_fragment_size,
+              dimensions,
+              subarray,
+              write_unit_num_cells == 0 ?
+                  std::nullopt :
+                  std::optional<uint64_t>{write_unit_num_cells});
+
+          std::vector<std::vector<Dom>> expect;
+          for (uint64_t r = 0; r < num_rows; r++) {
+            expect.push_back(
+                {Dom(base_d1 + r, base_d1 + r), Dom(0, span_d2 - 1)});
+          }
+
+          CHECK(expect == actual);
+        }
+      }
+    }
+
+    // each tile is some rectangle of a 2D array
+    SECTION("Rectangle tiles") {
+      using Dim = templates::Dimension<Datatype::UINT64>;
+      using Dom = templates::Domain<uint64_t>;
+
+      const uint64_t d1_extent = GENERATE(8, 4);
+      constexpr size_t d2_span = 10000;
+      REQUIRE(d2_span % d1_extent == 0);  // for row major
+
+      const uint64_t d1_subarray = 16;
+      REQUIRE(d2_span % d1_subarray == 0);  // for column major
+
+      const std::vector<Dim> dimensions = {
+          Dim(0, std::numeric_limits<uint64_t>::max() - 1, d1_extent),
+          Dim(0, d2_span - 1, d2_span / d1_extent)};
+
+      const uint64_t d1_start_offset = GENERATE(0, 1);
+      const uint64_t d1_end_offset = GENERATE(0, 1);
+      const uint64_t d1_start = 100 + d1_start_offset;
+      const uint64_t d1_end = d1_start + d1_subarray - 1 - d1_end_offset;
+      const std::vector<Dom> subarray = {
+          Dom(d1_start, d1_end), Dom(0, d2_span - 1)};
+
+      const uint64_t max_fragment_size = 4 * 64 * 1024;
+
+      const uint64_t write_unit_num_cells = GENERATE(0, 64, 1024, 1024 * 1024);
+
+      DYNAMIC_SECTION(
+          "start_offset = "
+          << d1_start_offset << ", end_offset = " << d1_end_offset
+          << ", extent = " << d1_extent
+          << ", write_unit_num_cells = " << write_unit_num_cells) {
+        if (d1_extent == 8) {
+          const auto expect = Catch::Matchers::ContainsSubstring(
+              "Fragment size is too small to subdivide dense subarray into "
+              "multiple fragments");
+          REQUIRE_THROWS(
+              instance_dense_global_order<AsserterCatch>(
+                  ctx,
+                  tile_order,
+                  cell_order,
+                  max_fragment_size,
+                  dimensions,
+                  subarray),
+              expect);
+        } else if (d1_start_offset + d1_end_offset > 0) {
+          // if this constraint is ever relaxed this test must be extended
+          // with new inputs which are offset within a tile
+          const auto expect = Catch::Matchers::ContainsSubstring(
+              "the subarray must coincide with the tile bounds");
+          REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
+              ctx,
+              tile_order,
+              cell_order,
+              max_fragment_size,
+              dimensions,
+              subarray,
+              write_unit_num_cells == 0 ?
+                  std::nullopt :
+                  std::optional<uint64_t>(write_unit_num_cells)));
+        } else {
+          std::vector<std::vector<Dom>> expect;
+          if (tile_order == TILEDB_ROW_MAJOR) {
+            expect = {
+                {Dom(d1_start + 0 * d1_extent, d1_start + 1 * d1_extent - 1),
+                 Dom(0, d2_span - 1)},
+                {Dom(d1_start + 1 * d1_extent, d1_start + 2 * d1_extent - 1),
+                 Dom(0, d2_span - 1)},
+                {Dom(d1_start + 2 * d1_extent, d1_start + 3 * d1_extent - 1),
+                 Dom(0, d2_span - 1)},
+                {Dom(d1_start + 3 * d1_extent, d1_start + 4 * d1_extent - 1),
+                 Dom(0, d2_span - 1)}};
+          } else {
+            expect = {
+                {Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(0 * (d2_span / 4), 1 * (d2_span / 4) - 1)},
+                {Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(1 * (d2_span / 4), 2 * (d2_span / 4) - 1)},
+                {Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(2 * (d2_span / 4), 3 * (d2_span / 4) - 1)},
+                {Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(3 * (d2_span / 4), 4 * (d2_span / 4) - 1)},
+            };
+          }
+
+          const auto actual = instance_dense_global_order<AsserterCatch>(
+              ctx,
+              tile_order,
+              cell_order,
+              max_fragment_size,
+              dimensions,
+              subarray);
+
+          CHECK(expect == actual);
+        }
+      }
+    }
+  }
+
+  // examples found from the rapidcheck test
+  SECTION("Shrinking") {
+    using Dim = templates::Dimension<Datatype::UINT64>;
+    using Dom = templates::Domain<uint64_t>;
+
+    SECTION("Example 1") {
+      Dim d1(0, 0, 1);
+      Dim d2(0, 0, 1);
+      Dom s1(0, 0);
+      Dom s2(0, 0);
+      const uint64_t max_fragment_size = 24;
+
+      instance_dense_global_order<AsserterCatch>(
+          ctx, tile_order, cell_order, max_fragment_size, {d1, d2}, {s1, s2});
+    }
+
+    SECTION("Example 2") {
+      Dim d1(1, 26, 2);
+      Dim d2(0, 0, 1);
+      Dom s1(1, 2);
+      Dom s2(0, 0);
+      const uint64_t max_fragment_size = 28;
+
+      instance_dense_global_order<AsserterCatch>(
+          ctx, tile_order, cell_order, max_fragment_size, {d1, d2}, {s1, s2});
+    }
+  }
+}
+
+/**
+ * @return a generator which prdocues subarrays whose bounds are aligned to the
+ * tiles of `arraydomain`
+ */
+namespace rc {
+template <sm::Datatype D>
+Gen<std::vector<typename templates::Dimension<D>::domain_type>>
+make_tile_aligned_subarray(
+    const std::vector<templates::Dimension<D>>& arraydomain) {
+  using Dom = typename templates::Dimension<D>::domain_type;
+
+  // dense subarrays have to be aligned to tile boundaries
+  // so choose the tiles in each dimension that the subarray will overlap
+  std::vector<Gen<templates::Domain<uint64_t>>> gen_subarray_tiles;
+  for (const auto& dimension : arraydomain) {
+    const uint64_t tile_ub =
+        (dimension.domain.upper_bound - dimension.domain.lower_bound) /
+        dimension.extent;
+    gen_subarray_tiles.push_back(make_range(
+        templates::Domain<uint64_t>(0, std::min<uint64_t>(64, tile_ub))));
+  }
+
+  return gen::exec([gen_subarray_tiles, arraydomain]() {
+    std::vector<templates::Domain<uint64_t>> subarray_tiles;
+    for (const auto& gen_dim : gen_subarray_tiles) {
+      subarray_tiles.push_back(*gen_dim);
+    }
+
+    std::vector<Dom> subarray;
+    auto to_subarray = [&]() -> std::vector<Dom>& {
+      subarray.clear();
+      for (uint64_t d = 0; d < arraydomain.size(); d++) {
+        subarray.push_back(Dom(
+            arraydomain[d].domain.lower_bound +
+                subarray_tiles[d].lower_bound * arraydomain[d].extent,
+            arraydomain[d].domain.lower_bound +
+                (subarray_tiles[d].upper_bound + 1) * arraydomain[d].extent -
+                1));
+      }
+      return subarray;
+    };
+
+    uint64_t num_cells_per_tile = 1;
+    for (const auto& dim : arraydomain) {
+      num_cells_per_tile *= dim.extent;
+    }
+
+    // clamp to a hopefully reasonable limit (if the other attempts failed)
+    // avoid too many cells, and avoid too many tiles
+    std::optional<uint64_t> num_cells;
+    while (!(num_cells = subarray_num_cells(to_subarray())).has_value() ||
+           num_cells.value() >= 1024 * 1024 * 4 ||
+           (num_cells.value() / num_cells_per_tile) >= 16 * 1024) {
+      for (uint64_t d = subarray.size(); d > 0; --d) {
+        auto& dtiles = subarray_tiles[d - 1];
+        if (dtiles.num_cells() > 4) {
+          dtiles.upper_bound = (dtiles.lower_bound + dtiles.upper_bound) / 2;
+          break;
+        }
+      }
+    }
+
+    return to_subarray();
+  });
+}
+
+}  // namespace rc
+
+TEST_CASE(
+    "C++ API: Max fragment size dense array rapidcheck 2d",
+    "[cppapi][max-frag-size][rapidcheck]") {
+  Context ctx;
+  rc::prop("max fragment size dense 2d", [ctx]() {
+    static constexpr auto DT = sm::Datatype::UINT64;
+    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(128);
+    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(128);
+    const std::optional<uint64_t> num_cells_per_tile =
+        checked_arithmetic<uint64_t>::mul(d1.extent, d2.extent);
+    RC_PRE(num_cells_per_tile.has_value());
+    RC_PRE(num_cells_per_tile.value() <= 1024 * 128);
+
+    const tiledb_layout_t tile_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    const tiledb_layout_t cell_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
+    const uint64_t tile_size = num_cells_per_tile.value() * sizeof(int);
+    const uint64_t filter_chunk_size =
+        sm::WriterTile::compute_chunk_size(tile_size, sizeof(int));
+    const uint64_t num_filter_chunks_per_tile =
+        (tile_size + filter_chunk_size - 1) / filter_chunk_size;
+
+    const uint64_t estimate_single_tile_fragment_size =
+        num_cells_per_tile.value() * sizeof(int)  // data
+        + sizeof(uint64_t)  // prefix containing the number of chunks
+        + num_filter_chunks_per_tile * 3 * sizeof(uint32_t);  // chunk sizes
+
+    const auto subarray =
+        *rc::make_tile_aligned_subarray<sm::Datatype::UINT64>({d1, d2});
+
+    const uint64_t num_tiles_per_hyperrow = d2.num_tiles(subarray[1]);
+
+    auto gen_fragment_size = rc::gen::map(
+        rc::gen::inRange(1, 8),
+        [num_tiles_per_hyperrow,
+         estimate_single_tile_fragment_size](uint64_t scale) {
+          return num_tiles_per_hyperrow * estimate_single_tile_fragment_size *
+                 scale;
+        });
+    const uint64_t max_fragment_size = *gen_fragment_size;
+
+    std::cerr << std::endl << "d1: ";
+    rc::show(d1, std::cerr);
+    std::cerr << std::endl << "d2: ";
+    rc::show(d2, std::cerr);
+    std::cerr << std::endl << "subarray: ";
+    rc::show(subarray, std::cerr);
+    std::cerr << std::endl
+              << "max_fragment_size: " << max_fragment_size << std::endl;
+
+    instance_dense_global_order<AsserterRapidcheck>(
+        ctx, tile_order, cell_order, max_fragment_size, {d1, d2}, subarray);
+  });
 }
