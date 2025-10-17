@@ -1459,10 +1459,3 @@ template void ReaderBase::validate_attribute_order<uint64_t>(
     std::vector<uint64_t>&);
 
 }  // namespace tiledb::sm
-
-template <>
-IndexedList<tiledb::sm::ResultTile>::IndexedList(
-    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
-    : memory_tracker_(memory_tracker)
-    , list_(memory_tracker->get_resource(sm::MemoryType::RESULT_TILE)) {
-}
