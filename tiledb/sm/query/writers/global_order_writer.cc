@@ -881,7 +881,7 @@ Status GlobalOrderWriter::global_write() {
   if (dense() && !fragments.empty()) {
     const uint64_t offset_not_written = fragments.back().second;
 
-    if (!global_write_state_->frag_meta_) {
+    if (!global_write_state_->frag_meta_ || fragments.size() > 1) {
       RETURN_CANCEL_OR_ERROR(start_new_fragment());
     }
 
