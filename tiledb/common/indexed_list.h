@@ -367,8 +367,8 @@ class IndexedList {
   }
 
   /**
-   * Transfers elements from `other` to `*this`. The elements are inserted at
-   * `pos`.
+   * Transfers the elements from `other` between its positions `first` and
+   * `last` to `*this`. The elements are inserted at `pos`.
    */
   void splice(
       const_iterator pos,

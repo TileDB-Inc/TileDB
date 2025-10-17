@@ -198,6 +198,10 @@ TEST_CASE("IndexedList splice rapidcheck", "[algorithm][rapidcheck]") {
       });
 }
 
+/**
+ * Test that `IndexedList::resize` correctly initializes each new element
+ * by copying the variadic arguments for each element.
+ */
 TEST_CASE("IndexedList resize copy args", "[algorithm]") {
   SECTION("POD") {
     SECTION("Default") {
@@ -238,6 +242,10 @@ TEST_CASE("IndexedList resize copy args", "[algorithm]") {
                     nullptr});
     }
 
+    /**
+     * Notably this fails if the move constructor rather than the copy
+     * constructor is used, since the first move steals the value.
+     */
     SECTION("Alias") {
       std::shared_ptr<uint64_t> value(new uint64_t(123));
 
