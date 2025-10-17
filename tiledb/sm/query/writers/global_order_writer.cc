@@ -879,23 +879,21 @@ Status GlobalOrderWriter::global_write() {
   }
 
   if (dense() && !fragments.empty()) {
-    const uint64_t num_unpopulated =
-        fragments.back().second;  // FIXME: bad name, offset for tiles which
-                                  // weren't started yet
-    RETURN_CANCEL_OR_ERROR(start_new_fragment());
+    const uint64_t offset_not_written = fragments.back().second;
+
+    if (!global_write_state_->frag_meta_) {
+      RETURN_CANCEL_OR_ERROR(start_new_fragment());
+    }
 
     global_write_state_->frag_meta_->set_num_tiles(
         global_write_state_->frag_meta_->tile_index_base() + tile_num -
-        num_unpopulated);
+        offset_not_written);
 
-    set_coords_metadata(
-        num_unpopulated,
-        tile_num,
-        tiles,
-        mbrs,
-        global_write_state_->frag_meta_);
-
-    current_fragment_size_ = 0;
+    // Dense array does not have bounding rectangles.
+    // If there were any other tile metadata which we needed to draw from the
+    // un-filtered tiles, we would have to store that in the global write state
+    // here. But there is no other such metadata.
+    iassert(mbrs.empty());
 
     // buffer tiles which couldn't fit in memory
     for (auto& attr : tiles) {
