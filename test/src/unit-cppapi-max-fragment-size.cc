@@ -1066,3 +1066,55 @@ TEST_CASE(
         ctx, tile_order, cell_order, max_fragment_size, {d1, d2}, subarray);
   });
 }
+
+TEST_CASE(
+    "C++ API: Max fragment size dense array rapidcheck 3d",
+    "[cppapi][max-frag-size][rapidcheck]") {
+  Context ctx;
+  rc::prop("max fragment size dense 3d", [ctx]() {
+    static constexpr auto DT = sm::Datatype::UINT64;
+    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(32);
+    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(32);
+    templates::Dimension<DT> d3 = *rc::make_dimension<DT>(32);
+
+    const uint64_t num_cells_per_tile = d1.extent * d2.extent * d3.extent;
+
+    RC_PRE(num_cells_per_tile <= 32 * 32 * 32);
+
+    const tiledb_layout_t tile_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    const tiledb_layout_t cell_order =
+        *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
+    const uint64_t tile_size = num_cells_per_tile * sizeof(int);
+    const uint64_t filter_chunk_size =
+        sm::WriterTile::compute_chunk_size(tile_size, sizeof(int));
+    const uint64_t num_filter_chunks_per_tile =
+        (tile_size + filter_chunk_size - 1) / filter_chunk_size;
+
+    const uint64_t estimate_single_tile_fragment_size =
+        num_cells_per_tile * sizeof(int)  // data
+        + sizeof(uint64_t)  // prefix containing the number of chunks
+        + num_filter_chunks_per_tile * 3 * sizeof(uint32_t);  // chunk sizes
+
+    const auto subarray =
+        *rc::make_tile_aligned_subarray<sm::Datatype::UINT64>({d1, d2, d3});
+
+    const uint64_t num_tiles_per_hyperrow =
+        (tile_order == TILEDB_ROW_MAJOR ?
+             d2.num_tiles(subarray[1]) * d3.num_tiles(subarray[2]) :
+             d1.num_tiles(subarray[0]) * d2.num_tiles(subarray[1]));
+
+    auto gen_fragment_size = rc::gen::map(
+        rc::gen::inRange(1, 8),
+        [num_tiles_per_hyperrow,
+         estimate_single_tile_fragment_size](uint64_t scale) {
+          return num_tiles_per_hyperrow * estimate_single_tile_fragment_size *
+                 scale;
+        });
+    const uint64_t max_fragment_size = *gen_fragment_size;
+
+    instance_dense_global_order<AsserterRapidcheck>(
+        ctx, tile_order, cell_order, max_fragment_size, {d1, d2, d3}, subarray);
+  });
+}
