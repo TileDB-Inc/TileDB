@@ -389,19 +389,16 @@ TEST_CASE("VFS: copy_dir", "[vfs][copy_dir]") {
   }
 }
 
-using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
+using AllBackends =
+    std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, TileDBFSTest>;
 TEMPLATE_LIST_TEST_CASE(
-    "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
+    "VFS: URI semantics and file management", "[vfs][rest][uri]", AllBackends) {
   TestType fs({});
   if (!fs.is_supported()) {
     return;
   }
 
-  ThreadPool compute_tp(4);
-  ThreadPool io_tp(4);
-  Config config = set_config_params();
-  VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+  auto& vfs = fs.vfs_;
 
   URI path = fs.temp_dir_.add_trailing_slash();
 
@@ -792,11 +789,11 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 }
 
 // Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
-using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest>;
+using LsRecursiveBackends = std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: ls_filtered recursion enabled",
-    "[vfs][ls_filtered][ls_filtered_v2][recursion]",
-    TestBackends) {
+    "[vfs][ls_filtered][ls_filtered_v2][rest][recursion]",
+    LsRecursiveBackends) {
   TestType fs({10, 50});
   if (!fs.is_supported()) {
     return;
@@ -822,7 +819,7 @@ TEMPLATE_LIST_TEST_CASE(
 TEMPLATE_LIST_TEST_CASE(
     "VFS: ls_filtered non-recursive",
     "[vfs][ls_filtered][ls_filtered_v2]",
-    TestBackends) {
+    LsRecursiveBackends) {
   TestType fs({10});
   if (!fs.is_supported()) {
     return;
@@ -860,9 +857,11 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-TEST_CASE("VFS: Throwing filters for ls_recursive", "[vfs][ls_recursive]") {
-  std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
-  VFSTest vfs_test({0}, prefix);
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: Throwing filters for ls_recursive",
+    "[vfs][ls_recursive]",
+    LsRecursiveBackends) {
+  TestType vfs_test({0});
   if (!vfs_test.is_supported()) {
     return;
   }
@@ -1005,7 +1004,7 @@ TEST_CASE(
     "Validate GCS service account impersonation",
     "[gcs][credentials][impersonation]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   std::string impersonate_service_account, target_service_account;
   std::vector<std::string> delegates;
 
@@ -1049,7 +1048,7 @@ TEST_CASE(
     "Validate GCS service account credentials",
     "[gcs][credentials][service-account]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string service_account_key = "{\"foo\": \"bar\"}";
@@ -1072,7 +1071,7 @@ TEST_CASE(
     "Validate GCS service account credentials with impersonation",
     "[gcs][credentials][service-account-and-impersonation]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string service_account_key = "{\"foo\": \"bar\"}";
@@ -1107,7 +1106,7 @@ TEST_CASE(
     "Validate GCS external account credentials",
     "[gcs][credentials][external-account]") {
   ThreadPool thread_pool(2);
-  Config cfg = set_config_params(true);
+  Config cfg;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
