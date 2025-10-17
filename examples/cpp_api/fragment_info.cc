@@ -36,127 +36,148 @@
 
 using namespace tiledb;
 
-// Name of array.
-std::string array_name("fragment_info_array");
+Context ctx;
 
-void create_array() {
-  // Create a TileDB context.
-  Context ctx;
-
-  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4]
-  // and space tiles 2x2
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 2))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 2));
-
-  // The array will be dense.
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-
-  // Add a single attribute "a" so each (i,j) cell can store an integer.
-  schema.add_attribute(Attribute::create<int>(ctx, "a"));
-
-  // Create the (empty) array on disk.
-  Array::create(ctx, array_name, schema);
-}
-
-void write_array() {
-  Context ctx;
-
-  // Prepare some data for the array
-  std::vector<int> data = {1, 2, 3, 4, 5, 6, 7, 8};
-
-  // Open the array for writing and create the query.
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 2).add_range(1, 1, 4);
-  Query query(ctx, array);
-  query.set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", data)
-      .set_subarray(subarray);
-
-  // Perform the write and close the array.
-  query.submit();
-  array.close();
-}
-
-void get_fragment_info() {
-  // Create TileDB context
-  Context ctx;
-
-  // Create fragment info object
-  FragmentInfo fragment_info(ctx, array_name);
-
-  // Load fragment
-  fragment_info.load();
-
-  // Get number of written fragments.
-  uint32_t num = fragment_info.fragment_num();
-  std::cout << "The number of written fragments is " << num << ".\n"
-            << std::endl;
-
-  // Get fragment name
-  std::string name = fragment_info.fragment_name(0);
-  std::cout << "The fragment name is " << name.c_str() << ".\n" << std::endl;
-
-  // Get fragment URI
-  std::string uri = fragment_info.fragment_uri(0);
-  std::cout << "The fragment URI is " << uri.c_str() << ".\n" << std::endl;
-
-  // Get fragment size
-  uint64_t size = fragment_info.fragment_size(0);
-  std::cout << "The fragment size is " << size << ".\n" << std::endl;
-
-  // Check if the fragment is dense or sparse.
-  bool dense = fragment_info.dense(0);
-  if (dense == 1)
-    std::cout << "The fragment is dense.\n" << std::endl;
-  else
-    std::cout << "The fragment is sparse.\n" << std::endl;
-
-  // Get the fragment timestamp range
-  std::pair<uint64_t, uint64_t> timestamps = fragment_info.timestamp_range(0);
-  std::cout << "The fragment's timestamp range is {" << timestamps.first << " ,"
-            << timestamps.second << "}.\n"
-            << std::endl;
-
-  // Get the number of cells written to the fragment.
-  uint64_t cell_num = fragment_info.cell_num(0);
-  std::cout << "The number of cells written to the fragment is " << cell_num
-            << ".\n"
-            << std::endl;
-
-  // Get the format version of the fragment.
-  uint32_t version = fragment_info.version(0);
-  std::cout << "The fragment's format version is " << version << ".\n"
-            << std::endl;
-
-  // Check if fragment has consolidated metadata.
-  // If not, get the number of fragments with unconsolidated metadata
-  //  in the fragment info object.
-  bool consolidated = fragment_info.has_consolidated_metadata(0);
-  if (consolidated != 0) {
-    std::cout << "The fragment has consolidated metadata.\n" << std::endl;
-  } else {
-    uint32_t unconsolidated = fragment_info.unconsolidated_metadata_num();
-    std::cout << "The fragment has " << unconsolidated
-              << " unconsolidated metadata fragments.\n"
-              << std::endl;
-  }
-
-  // Get non-empty domain from index
-  uint64_t non_empty_dom[2];
-  fragment_info.get_non_empty_domain(0, 0, &non_empty_dom[0]);
-}
+std::string uri("/Users/ypatia/Documents/core-1234");
+// std::string
+// uri("s3://tiledb-seth/customers/az/core-383/100k_fragment_array");
 
 int main() {
-  Context ctx;
-  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
-    tiledb::Object::remove(ctx, array_name);
-  }
-  create_array();
-  write_array();
-  get_fragment_info();
+  tiledb::Object obj = tiledb::Object::object(ctx, uri);
+  // if (obj.type() != tiledb::Object::Type::Array) {
+  //   ArraySchema schema(ctx, TILEDB_SPARSE);
+  //   Domain domain(ctx);
+  //   // Create domain
+  //   domain.add_dimension(
+  //       Dimension::create(ctx, "d0", TILEDB_STRING_ASCII, nullptr, nullptr));
+  //   domain.add_dimension(Dimension::create<uint64_t>(
+  //       ctx,
+  //       "d1",
+  //       {{0, std::numeric_limits<uint32_t>::max() - 1}},
+  //       std::numeric_limits<uint32_t>::max()));
+  //   domain.add_dimension(
+  //       Dimension::create(ctx, "d2", TILEDB_STRING_ASCII, nullptr, nullptr));
+  //   schema.set_domain(domain);
 
-  return 0;
+  //   schema.add_attribute(Attribute(ctx, "a0", TILEDB_UINT8));
+  //   schema.add_attribute(Attribute(ctx, "a1", TILEDB_UINT8));
+  //   schema.add_attribute(Attribute(ctx, "a2", TILEDB_UINT8));
+  //   schema.add_attribute(Attribute(ctx, "a3", TILEDB_UINT8));
+
+  //   Array::create(uri, schema);
+
+  //   // Create a million fragments by writing one cell in each
+  //   std::vector<char> d0_data = {'a'};
+  //   std::vector<uint64_t> d0_offsets = {0};
+  //   std::vector<uint64_t> d1_data = {0};
+  //   std::vector<char> d2_data = {'a'};
+  //   std::vector<uint64_t> d2_offsets = {0};
+  //   std::vector<uint8_t> a0_data = {0};
+  //   std::vector<uint8_t> a1_data = {0};
+  //   std::vector<uint8_t> a2_data = {0};
+  //   std::vector<uint8_t> a3_data = {0};
+
+  //   tiledb::Array arr(ctx, uri, TILEDB_WRITE);
+  //   for (uint64_t i = 0; i < 100000; i++) {
+  //     tiledb::Query query(ctx, arr);
+  //     query.set_data_buffer("d0", d0_data);
+  //     query.set_offsets_buffer("d0", d0_offsets);
+  //     query.set_data_buffer("d1", d1_data);
+  //     query.set_data_buffer("d2", d2_data);
+  //     query.set_offsets_buffer("d2", d2_offsets);
+
+  //     // attributes
+  //     query.set_data_buffer("a0", a0_data);
+  //     query.set_data_buffer("a1", a1_data);
+  //     query.set_data_buffer("a2", a2_data);
+  //     query.set_data_buffer("a3", a3_data);
+
+  //     query.submit();
+  //   }
+
+  //   tiledb::Config cfg;
+
+  //   cfg.set("sm.consolidation.mode", "fragment_meta");
+  //   cfg.set("sm.vacuum.mode", "fragment_meta");
+  //   std::cout << "Consolidating fragment_meta" << std::endl;
+  //   tiledb::Array::consolidate(ctx, uri, &cfg);
+  //   std::cout << "Vacuuming fragment_meta" << std::endl;
+  //   tiledb::Array::vacuum(ctx, uri, &cfg);
+
+  //   cfg.set("sm.consolidation.mode", "commits");
+  //   cfg.set("sm.vacuum.mode", "commits");
+  //   std::cout << "Consolidating commits" << std::endl;
+  //   tiledb::Array::consolidate(ctx, uri, &cfg);
+  //   std::cout << "Vacuuming commits" << std::endl;
+  //   tiledb::Array::vacuum(ctx, uri, &cfg);
+  // }
+
+  //  tiledb_serialize_array(*ctx.ptr(),
+  // std::vector<bool> modes = {true, false};
+  // std::vector<bool> capnp_modes = {true, false};
+  std::vector<bool> modes = {true};
+  // std::vector<bool> capnp_modes = false;
+  // for (auto capnp_mode : capnp_modes) {
+  for (auto mode : modes) {
+    tiledb::Config cfg = tiledb::Config();
+
+    std::string mode_str = "true";
+    if (mode) {
+      mode_str = "true";
+    }
+
+    // std::string capnp_copy_str = "false";
+    // if (capnp_mode) {
+    //   capnp_copy_str = "true";
+    // }
+
+    // std::cout << "use_refactored_array_open: " << mode << std::endl;
+
+    // cfg.set("rest.use_refactored_array_open", mode_str);
+    // cfg.set("rest.use_refactored_array_open_and_query_submit", mode_str);
+
+    //      std::cout << "capnp buffer copy: " << capnp_mode << std::endl;
+    //      cfg.set("capnp_copy", capnp_copy_str);
+    // std::cout << "old_fragment_serialization: " << capnp_mode << std::endl;
+    // cfg.set("old_fragment_serialization", capnp_copy_str);
+
+    ctx = tiledb::Context(cfg);
+    std::cout << "Opening array for serialization" << std::endl;
+    auto start_time_array_open = std::chrono::high_resolution_clock::now();
+    tiledb::Array array = Array(ctx, uri, TILEDB_READ);
+    auto end_time_array_open = std::chrono::high_resolution_clock::now();
+    std::cout << "array_open duration: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(
+                     end_time_array_open - start_time_array_open)
+                     .count()
+              << "ms" << std::endl;
+
+    // std::cout << "Serializing" << std::endl;
+    // tiledb_buffer_t* buff;
+    // int rc = tiledb_serialize_array(
+    //     ctx.ptr().get(), array.ptr().get(), TILEDB_CAPNP, 0, &buff);
+    // REQUIRE(rc == TILEDB_OK);
+
+    // std::cout << "Deserializing" << std::endl;
+    // // Load array from the rest server
+    // tiledb_array_t* new_array = nullptr;
+    // auto start_time_array_deserializing =
+    //     std::chrono::high_resolution_clock::now();
+    // rc = tiledb_deserialize_array(
+    //     ctx.ptr().get(), buff, TILEDB_CAPNP, 1, uri.c_str(), &new_array);
+    // REQUIRE(rc == TILEDB_OK);
+    // auto end_time_array_deserializing =
+    //     std::chrono::high_resolution_clock::now();
+    // std::cout << "array_deserializing duration: "
+    //           << std::chrono::duration_cast<std::chrono::milliseconds>(
+    //                   end_time_array_deserializing -
+    //                   start_time_array_deserializing)
+    //                   .count()
+    //           << "ms" << std::endl;
+
+    // Clean up.
+    // tiledb_buffer_free(&buff);
+
+    std::cout << std::endl;
+  }
 }
