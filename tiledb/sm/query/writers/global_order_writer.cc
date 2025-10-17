@@ -62,7 +62,7 @@ using namespace tiledb::sm::stats;
 namespace tiledb::sm {
 
 static NDRange domain_tile_offset(
-    const Domain& arraydomain,
+    const ArraySchema& arrayschema,
     const NDRange& domain,
     uint64_t start_tile,
     uint64_t num_tiles);
@@ -522,27 +522,37 @@ void GlobalOrderWriter::clean_up() {
 }
 
 Status GlobalOrderWriter::filter_last_tiles(uint64_t cell_num) {
+  const uint64_t last_tile_offset =
+      global_write_state_->last_tiles_.begin()->second.size() - 1;
+
   // Adjust cell num
   for (auto& last_tiles : global_write_state_->last_tiles_) {
-    last_tiles.second[0].set_final_size(cell_num);
+    last_tiles.second.back()->set_final_size(cell_num);
   }
 
   // Compute coordinates metadata
   auto meta = global_write_state_->frag_meta_;
-  auto mbrs = compute_mbrs(global_write_state_->last_tiles_);
+  auto mbrs = compute_mbrs(
+      last_tile_offset, last_tile_offset + 1, global_write_state_->last_tiles_);
   set_coords_metadata(0, 1, global_write_state_->last_tiles_, mbrs, meta);
 
   // Compute tile metadata.
-  RETURN_NOT_OK(compute_tiles_metadata(1, global_write_state_->last_tiles_));
+  RETURN_NOT_OK(compute_tiles_metadata(
+      last_tile_offset,
+      last_tile_offset + 1,
+      global_write_state_->last_tiles_));
 
   // Gather stats
   stats_->add_counter(
       "cell_num",
-      global_write_state_->last_tiles_.begin()->second[0].cell_num());
+      global_write_state_->last_tiles_.begin()->second.back()->cell_num());
   stats_->add_counter("tile_num", 1);
 
   // Filter tiles
-  RETURN_NOT_OK(filter_tiles(&global_write_state_->last_tiles_));
+  RETURN_NOT_OK(filter_tiles(
+      last_tile_offset,
+      last_tile_offset + 1,
+      &global_write_state_->last_tiles_));
 
   return Status::Ok();
 }
@@ -632,6 +642,22 @@ Status GlobalOrderWriter::compute_coord_dups(
 Status GlobalOrderWriter::finalize_global_write_state() {
   iassert(layout_ == Layout::GLOBAL_ORDER, "layout = {}", layout_str(layout_));
 
+  // For dense, there may be prepared tiles which have not been flushed yet
+  if (dense()) {
+    const uint64_t num_remaining =
+        global_write_state_->last_tiles_.begin()->second.size() - 1;
+    if (num_remaining > 0) {
+      iassert(global_write_state_->frag_meta_);
+      throw_if_not_ok(populate_fragment(
+          global_write_state_->last_tiles_, 0, num_remaining));
+      // NB: there is a possibility here that we write a tile bigger than the
+      // max fragment size if these remaining tiles fill it up and then the last
+      // tile runs over... we can live with that right?
+    }
+  } else {
+    iassert(global_write_state_->last_tiles_.begin()->second.size() <= 1);
+  }
+
   // Handle last tile
   Status st = global_write_handle_last_tile();
   if (!st.ok()) {
@@ -656,7 +682,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     const uint64_t num_tiles_in_fragment =
         meta->loaded_metadata()->tile_offsets()[0].size();
     NDRange fragment_domain = domain_tile_offset(
-        array_schema_.domain(),
+        array_schema_,
         subarray_.ndrange(0),
         global_write_state_->dense_.domain_tile_offset_,
         num_tiles_in_fragment);
@@ -745,6 +771,24 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   return st;
 }
 
+Status GlobalOrderWriter::populate_fragment(
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
+    uint64_t tile_offset,
+    uint64_t num_tiles) {
+  auto frag_meta = global_write_state_->frag_meta_;
+
+  // update metadata of current fragment
+  frag_meta->set_num_tiles(frag_meta->tile_index_base() + num_tiles);
+
+  // write tiles for all attributes
+  RETURN_CANCEL_OR_ERROR(
+      write_tiles(tile_offset, tile_offset + num_tiles, frag_meta, &tiles));
+
+  frag_meta->set_tile_index_base(frag_meta->tile_index_base() + num_tiles);
+
+  return Status::Ok();
+}
+
 Status GlobalOrderWriter::global_write() {
   // Applicable only to global write on dense/sparse arrays
   iassert(layout_ == Layout::GLOBAL_ORDER, "layout = {}", layout_str(layout_));
@@ -771,23 +815,39 @@ Status GlobalOrderWriter::global_write() {
       query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
-  const uint64_t tile_num = (tiles.empty() ? 0 : tiles.begin()->second.size());
+  uint64_t tile_num = (tiles.empty() ? 0 : tiles.begin()->second.size());
   if (tile_num == 0) {
     return Status::Ok();
   }
 
+  // Compute tile metadata.
+  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tiles));
+
   // Compute coordinate metadata (if coordinates are present)
   auto mbrs = compute_mbrs(tiles);
 
-  // Compute tile metadata.
-  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tile_num, tiles));
+  RETURN_NOT_OK(filter_tiles(&tiles));
 
-  // Filter all tiles
-  RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));
+  // include any prepared tiles from previous `submit` which were not flushed
+  for (const auto& it : buffers_) {
+    auto& last = global_write_state_->last_tiles_.at(it.first);
+    if (!last.empty()) {
+      const uint64_t num_leftover = last.size() - 1;
+      tiles.at(it.first).splice(
+          tiles.at(it.first).begin(),
+          last,
+          last.begin(),
+          std::next(last.begin(), num_leftover));
+    }
+  }
+  tile_num = (tiles.empty() ? 0 : tiles.begin()->second.size());
 
   const auto fragments = identify_fragment_tile_boundaries(tiles);
 
-  for (uint64_t f = 0; f < fragments.size(); f++) {
+  const uint64_t num_fragments_to_write =
+      (dense() ? fragments.size() - 1 : fragments.size());
+
+  for (uint64_t f = 0; f < num_fragments_to_write; f++) {
     const uint64_t input_start_tile = fragments[f].second;
     const uint64_t input_num_tiles =
         (f + 1 < fragments.size() ? fragments[f + 1].second : tile_num) -
@@ -806,32 +866,41 @@ Status GlobalOrderWriter::global_write() {
         RETURN_CANCEL_OR_ERROR(start_new_fragment());
       }
 
-      auto frag_meta = global_write_state_->frag_meta_;
-
-      // update metadata of current fragment
-      frag_meta->set_num_tiles(frag_meta->tile_index_base() + input_num_tiles);
-
       set_coords_metadata(
           input_start_tile,
           input_start_tile + input_num_tiles,
           tiles,
           mbrs,
-          frag_meta);
+          global_write_state_->frag_meta_);
 
-      // write tiles for all attributes
-      RETURN_CANCEL_OR_ERROR(write_tiles(
-          input_start_tile,
-          input_start_tile + input_num_tiles,
-          frag_meta,
-          &tiles));
+      RETURN_CANCEL_OR_ERROR(
+          populate_fragment(tiles, input_start_tile, input_num_tiles));
     }
-
-    global_write_state_->frag_meta_->set_tile_index_base(
-        global_write_state_->frag_meta_->tile_index_base() + input_num_tiles);
   }
 
-  if (!fragments.empty()) {
-    current_fragment_size_ = fragments.back().first;
+  if (dense() && !fragments.empty()) {
+    const uint64_t num_unpopulated =
+        fragments.back().second;  // FIXME: bad name, offset for tiles which
+                                  // weren't started yet
+    RETURN_CANCEL_OR_ERROR(start_new_fragment());
+    set_coords_metadata(
+        num_unpopulated,
+        tile_num,
+        tiles,
+        mbrs,
+        global_write_state_->frag_meta_);
+
+    current_fragment_size_ = 0;
+
+    // buffer tiles which couldn't fit in memory
+    for (auto& attr : tiles) {
+      auto& last = global_write_state_->last_tiles_.at(attr.first);
+      last.splice(
+          last.begin(),
+          attr.second,
+          std::next(attr.second.begin(), fragments.back().second),
+          attr.second.end());
+    }
   }
 
   return Status::Ok();
@@ -939,7 +1008,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   }
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
+  auto& last_tile = *global_write_state_->last_tiles_.at(name).back();
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
       global_write_state_->cells_written_[name] % cell_num_per_tile;
@@ -1119,7 +1188,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     return Status::Ok();
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
+  auto& last_tile = *global_write_state_->last_tiles_.at(name).back();
   auto& last_var_offset = global_write_state_->last_var_offsets_[name];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
@@ -1396,7 +1465,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 
 /**
  * @return the number of tiles in a "hyper-row" of `subarray` within
- * `arraydomain`
+ * `arrayschema`
  *
  * If a "hyper-rectangle" is a generalization of a rectangle to N dimensions,
  * then let's define a "hyper-row" to be a generalization of a row to N
@@ -1404,16 +1473,21 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
  * the outer-most dimension.
  */
 static uint64_t compute_hyperrow_num_tiles(
-    const Domain& arraydomain, const NDRange& subarray) {
+    const ArraySchema& arrayschema, const NDRange& subarray) {
+  const uint64_t rdim =
+      (arrayschema.tile_order() == Layout::ROW_MAJOR ?
+           0 :
+           arrayschema.dim_num() - 1);
+
   NDRange adjusted = subarray;
 
   // normalize `adjusted` to a single hyper-row
   memcpy(
-      adjusted[0].end_fixed(),
-      adjusted[0].start_fixed(),
-      adjusted[0].size() / 2);
+      adjusted[rdim].end_fixed(),
+      adjusted[rdim].start_fixed(),
+      adjusted[rdim].size() / 2);
 
-  return arraydomain.tile_num(adjusted);
+  return arrayschema.domain().tile_num(adjusted);
 }
 
 /**
@@ -1431,12 +1505,13 @@ static uint64_t compute_hyperrow_num_tiles(
  */
 std::vector<std::pair<uint64_t, uint64_t>>
 GlobalOrderWriter::identify_fragment_tile_boundaries(
-    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
+    const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+    const {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
   std::vector<bool> var_size;
   std::vector<bool> nullable;
-  std::vector<WriterTileTupleVector*> writer_tile_vectors;
+  std::vector<const WriterTileTupleVector*> writer_tile_vectors;
   var_size.reserve(buf_names.size());
   nullable.reserve(buf_names.size());
   writer_tile_vectors.reserve(buf_names.size());
@@ -1470,8 +1545,8 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t hyperrow_offset = 0;
   std::optional<uint64_t> hyperrow_num_tiles;
   if (dense()) {
-    hyperrow_num_tiles = compute_hyperrow_num_tiles(
-        array_schema_.domain(), subarray_.ndrange(0));
+    hyperrow_num_tiles =
+        compute_hyperrow_num_tiles(array_schema_, subarray_.ndrange(0));
 
     if (global_write_state_->frag_meta_) {
       hyperrow_offset = global_write_state_->dense_.domain_tile_offset_ +
@@ -1511,10 +1586,12 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
-      } else if (!fragment_end.has_value() && fragment_size == 0) {
-        throw GlobalOrderWriterException(
-            "Fragment size is too small to subdivide dense subarray into "
-            "multiple fragments");
+      } else if (!fragment_end.has_value()) {
+        if (fragment_size == 0) {
+          throw GlobalOrderWriterException(
+              "Fragment size is too small to subdivide dense subarray into "
+              "multiple fragments");
+        }
       }
 
       fragments.push_back(std::make_pair(fragment_size, fragment_start));
@@ -1554,13 +1631,14 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
  * hyper-rectangle into two new hyper-rectangle
  */
 static NDRange domain_tile_offset(
-    const Domain& arraydomain,
+    const ArraySchema& arrayschema,
     const NDRange& domain,
     uint64_t start_tile,
     uint64_t num_tiles) {
+  const Domain& arraydomain = arrayschema.domain();
   const uint64_t domain_num_tiles = arraydomain.tile_num(domain);
   const uint64_t hyperrow_num_tiles =
-      compute_hyperrow_num_tiles(arraydomain, domain);
+      compute_hyperrow_num_tiles(arrayschema, domain);
   iassert(domain_num_tiles % hyperrow_num_tiles == 0);
   iassert(start_tile % hyperrow_num_tiles == 0);
   iassert(num_tiles % hyperrow_num_tiles == 0);
@@ -1569,14 +1647,19 @@ static NDRange domain_tile_offset(
   const uint64_t num_hyperrows = num_tiles / hyperrow_num_tiles;
   iassert(num_hyperrows > 0);
 
+  const uint64_t rdim =
+      (arrayschema.tile_order() == Layout::ROW_MAJOR ?
+           0 :
+           arrayschema.dim_num() - 1);
+
   NDRange adjusted = domain;
 
   auto fix_bounds = [&]<typename T>(T) {
-    const T extent = arraydomain.tile_extent(0).rvalue_as<T>();
-    const T lower_bound = *static_cast<const T*>(domain[0].start_fixed());
-    const T upper_bound = *static_cast<const T*>(domain[0].end_fixed());
-    T* start = static_cast<T*>(adjusted[0].start_fixed());
-    T* end = static_cast<T*>(adjusted[0].end_fixed());
+    const T extent = arraydomain.tile_extent(rdim).rvalue_as<T>();
+    const T lower_bound = *static_cast<const T*>(domain[rdim].start_fixed());
+    const T upper_bound = *static_cast<const T*>(domain[rdim].end_fixed());
+    T* start = static_cast<T*>(adjusted[rdim].start_fixed());
+    T* end = static_cast<T*>(adjusted[rdim].end_fixed());
 
     // tiles begin at [LB, LB + E, LB + 2E, ...] where LB is lower bound, E is
     // extent
@@ -1587,7 +1670,7 @@ static NDRange domain_tile_offset(
     *start = std::max<T>(lower_bound, align(*start + extent * start_hyperrow));
     *end = std::min<T>(upper_bound, align(*start + extent * num_hyperrows) - 1);
   };
-  apply_with_type(fix_bounds, arraydomain.dimension_ptr(0)->type());
+  apply_with_type(fix_bounds, arraydomain.dimension_ptr(rdim)->type());
 
   return adjusted;
 }
@@ -1606,7 +1689,7 @@ Status GlobalOrderWriter::start_new_fragment() {
       const uint64_t num_tiles_in_fragment =
           frag_meta->loaded_metadata()->tile_offsets()[0].size();
       NDRange fragment_domain = domain_tile_offset(
-          array_schema_.domain(),
+          array_schema_,
           subarray_.ndrange(0),
           global_write_state_->dense_.domain_tile_offset_,
           num_tiles_in_fragment);

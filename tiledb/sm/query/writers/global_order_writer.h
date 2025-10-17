@@ -75,6 +75,16 @@ class GlobalOrderWriter : public WriterBase {
      * attributes/dimensions, the first tile is the offsets tile, whereas the
      * second tile is the values tile. In both cases, the third tile stores a
      * validity tile for nullable attributes.
+     *
+     * For sparse arrays, each `WriterTileTupleVector` contains up to one tile,
+     * which is the data from the previous `submit` which did not fill a tile.
+     *
+     * For dense arrays, each `WriterTileTupleVector` contains any tiles which
+     * were not guaranteed to fit into `max_fragment_size_` while also forming
+     * a bounding rectangle. Written fragments always have a rectangular domain,
+     * and it is necessary to buffer tiles this way to avoid flushing data
+     * which might later require a fragment to exceed `max_fragment_size_`
+     * in order to represent a rectangular domain.
      */
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector> last_tiles_;
 
@@ -396,7 +406,20 @@ class GlobalOrderWriter : public WriterBase {
    * `start_tile`
    */
   std::vector<std::pair<uint64_t, uint64_t>> identify_fragment_tile_boundaries(
-      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
+      const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const;
+
+  /**
+   * Writes cells from the indicated slice of `tiles` into the current fragment.
+   *
+   * @param tiles the source of cells organized into filtered tiles
+   * @param tile_offset the tile from which to begin writing
+   * @param num_tiles the number of tiles to write
+   */
+  Status populate_fragment(
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
+      uint64_t tile_offset,
+      uint64_t num_tiles);
 
   /**
    * Close the current fragment and start a new one. The closed fragment will
