@@ -60,6 +60,8 @@ class LoadedFragmentMetadata {
     std::vector<bool> tile_validity_offsets_;
     std::vector<bool> tile_min_;
     std::vector<bool> tile_max_;
+    std::vector<bool> tile_global_order_min_;
+    std::vector<bool> tile_global_order_max_;
     std::vector<bool> tile_sum_;
     std::vector<bool> tile_null_count_;
     bool fragment_min_max_sum_null_count_ = false;
@@ -333,6 +335,14 @@ class LoadedFragmentMetadata {
       const EncryptionKey& encryption_key) = 0;
 
   /**
+   * Loads the tile global order bounds for the fragment.
+   *
+   * @param encrpytion_key The key the array was opened with.
+   */
+  virtual void load_fragment_tile_global_order_bounds(
+      const EncryptionKey& encryption_key) = 0;
+
+  /**
    * Loads the processed conditions for the fragment. The processed conditions
    * is the list of delete/update conditions that have already been applied for
    * this fragment and don't need to be applied again.
@@ -454,6 +464,38 @@ class LoadedFragmentMetadata {
   /** tile_max_var_buffer accessor */
   tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer() {
     return tile_max_var_buffer_;
+  }
+
+  inline const auto& tile_global_order_min_buffer() const {
+    return tile_global_order_min_buffer_;
+  }
+
+  inline const auto& tile_global_order_min_var_buffer() const {
+    return tile_global_order_min_var_buffer_;
+  }
+
+  inline const auto& tile_global_order_max_buffer() const {
+    return tile_global_order_max_buffer_;
+  }
+
+  inline const auto& tile_global_order_max_var_buffer() const {
+    return tile_global_order_max_var_buffer_;
+  }
+
+  inline auto& tile_global_order_min_buffer() {
+    return tile_global_order_min_buffer_;
+  }
+
+  inline auto& tile_global_order_min_var_buffer() {
+    return tile_global_order_min_var_buffer_;
+  }
+
+  inline auto& tile_global_order_max_buffer() {
+    return tile_global_order_max_buffer_;
+  }
+
+  inline auto& tile_global_order_max_var_buffer() {
+    return tile_global_order_max_var_buffer_;
   }
 
   /** Returns an RTree for the MBRs. */
@@ -656,6 +698,40 @@ class LoadedFragmentMetadata {
   tdb::pmr::vector<tdb::pmr::vector<char>> tile_max_var_buffer_;
 
   /**
+   * The tile global order minima.
+   *
+   * The outer vector is indexed by dimension `d`.
+   * The inner vector is the concatenated values of the `d`th
+   * dimension of the global order minimum coordinate for each tile.
+   *
+   * For variable-length dimensions the value stored here is the offset
+   * into the corresponding variable-length buffer.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_min_buffer_;
+
+  /**
+   * The tile global order maxima.
+   *
+   * The outer vector is indexed by dimension `d`.
+   * The inner vector is the concatenated values of the `d`th
+   * dimension of the global order maximum coordinate for each tile.
+   *
+   * For variable-length dimensions the value stored here is the offset
+   * into the corresponding variable-length buffer.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_max_buffer_;
+
+  /**
+   * The tile global order minima, variable-length part.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_min_var_buffer_;
+
+  /**
+   * The tile global order maxima, variable-length part.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_max_var_buffer_;
+
+  /**
    * The tile sum values, ignored for var sized attributes/dimensions.
    */
   tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_sums_;
@@ -764,6 +840,24 @@ class LoadedFragmentMetadata {
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
+
+  /**
+   * Loads the global order minimum values for the given dimension from storage.
+   *
+   * @param encryption_key The encryption key
+   * @param dimension Dimension index
+   */
+  virtual void load_tile_global_order_min_values(
+      const EncryptionKey& encryption_key, unsigned dimension) = 0;
+
+  /**
+   * Loads the global order minimum values for the given dimension from storage.
+   *
+   * @param encryption_key The encryption key
+   * @param dimension Dimension index
+   */
+  virtual void load_tile_global_order_max_values(
+      const EncryptionKey& encryption_key, unsigned dimension) = 0;
 
   /**
    * Loads the sum values for the input attribute idx from storage.

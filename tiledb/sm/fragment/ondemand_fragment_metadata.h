@@ -76,6 +76,14 @@ class OndemandFragmentMetadata : public LoadedFragmentMetadata {
       const EncryptionKey& encryption_key) override;
 
   /**
+   * Loads the tile global order bounds for the fragment.
+   *
+   * @param encrpytion_key The key the array was opened with.
+   */
+  virtual void load_fragment_tile_global_order_bounds(
+      const EncryptionKey& encryption_key) override;
+
+  /**
    * Loads the processed conditions for the fragment. The processed conditions
    * is the list of delete/update conditions that have already been applied for
    * this fragment and don't need to be applied again.
@@ -222,6 +230,32 @@ class OndemandFragmentMetadata : public LoadedFragmentMetadata {
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the tile global order minima for the dimension `dimension`.
+   */
+  void load_tile_global_order_min_values(
+      unsigned dimension, Deserializer& deserializer);
+
+  /**
+   * Loads the tile global order minima for the dimension `dimension` from
+   * storage.
+   */
+  void load_tile_global_order_min_values(
+      const EncryptionKey& encryption_key, unsigned dimension) override;
+
+  /**
+   * Loads the tile global order maxima for the dimension `dimension`.
+   */
+  void load_tile_global_order_max_values(
+      unsigned dimension, Deserializer& deserializer);
+
+  /**
+   * Loads the tile global order maxima for the dimension `dimension` from
+   * storage.
+   */
+  void load_tile_global_order_max_values(
+      const EncryptionKey& encryption_key, unsigned dimension) override;
 
   /**
    * Loads the sum values for the input attribute from the input buffer.
