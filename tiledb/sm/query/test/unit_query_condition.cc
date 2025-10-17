@@ -50,6 +50,7 @@
 
 #ifdef HAVE_RUST
 #include "test/support/assert_helpers.h"
+#include "tiledb/oxidize/arrow.h"
 #include "tiledb/oxidize/unit_query_condition.h"
 #endif
 
@@ -5194,7 +5195,8 @@ std::vector<uint8_t> instance(
   // set up datafusion evaluation
   QueryCondition qc_datafusion(ast.clone());
   qc_datafusion.rewrite_for_schema(array_schema);
-  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(array_schema);
+  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(
+      array_schema, tiledb::oxidize::arrow::schema::WhichSchema::Storage);
   ASSERTER(datafusion_ok);
 
   // prepare to evaluate
@@ -5346,7 +5348,7 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
 
     tile.tile_tuple("v")->fixed_tile().write(
         offsets_v.data(), 0, offsets_v.size() * sizeof(uint64_t));
-    tile.tile_tuple("v")->var_tile().write(&values_v[0], 0, sizeof(values_v));
+    tile.tile_tuple("v")->var_tile().write(&values_v[0], 0, values_v.size());
     tile.tile_tuple("v")->validity_tile().write(
         validity_v.data(), 0, validity_v.size() * sizeof(uint8_t));
 
