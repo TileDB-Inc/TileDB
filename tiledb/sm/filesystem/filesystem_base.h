@@ -72,9 +72,52 @@ class UnsupportedURI : public FilesystemException {
 
 class FilesystemBase {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
   FilesystemBase() = default;
 
   virtual ~FilesystemBase() = default;
+
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+  struct BufferedChunk {
+    std::string uri;
+    uint64_t size;
+
+    BufferedChunk()
+        : uri("")
+        , size(0) {
+    }
+    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
+        : uri(chunk_uri)
+        , size(chunk_size) {
+    }
+  };
+
+  /**
+   * Multipart upload state definition used in the serialization of remote
+   * global order writes. This state is a generalization of
+   * the multipart upload state types currently defined independently by each
+   * backend implementation.
+   */
+  struct MultiPartUploadState {
+    struct CompletedParts {
+      optional<std::string> e_tag;
+      uint64_t part_number;
+    };
+
+    uint64_t part_number;
+    optional<std::string> upload_id;
+    optional<std::vector<BufferedChunk>> buffered_chunks;
+    std::vector<CompletedParts> completed_parts;
+    Status status;
+  };
+
+  /* ********************************* */
+  /*               API                 */
+  /* ********************************* */
 
   /**
    * Checks if the filesystem supports the given URI.
@@ -127,6 +170,15 @@ class FilesystemBase {
    * @param uri The uri of the directory to be removed
    */
   virtual void remove_dir(const URI& uri) const = 0;
+
+  /**
+   * Removes a given empty directory.
+   *
+   * @invariant Currently valid only for local filesystems.
+   *
+   * @param path The path of the directory.
+   */
+  virtual void remove_dir_if_empty(const URI& uri) const;
 
   /**
    * Deletes a file.
@@ -255,6 +307,41 @@ class FilesystemBase {
    * @param uri The URI of the file.
    */
   virtual void sync(const URI& uri) const;
+
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends during deserialization.
+   *
+   * @invariant Currently valid only for S3 filesystems.
+   *
+   * @param uri The file uri used as key in the internal map of the backend.
+   * @param state The multipart upload state info.
+   */
+  virtual void set_multipart_upload_state(
+      const URI& uri, const MultiPartUploadState& state);
+
+  /**
+   * Used in serialization to share the multipart upload state among cloud
+   * executors during global order writes.
+   *
+   * @invariant Currently valid only for S3 filesystems.
+   *
+   * @param uri The file uri used as key in the internal map of the backend.
+   * @return A MultiPartUploadState object.
+   */
+  virtual std::optional<MultiPartUploadState> multipart_upload_state(
+      const URI& uri);
+
+  /**
+   * Used in remote global order writes to flush the internal
+   * in-memory buffer for an URI that backends maintain to modulate the
+   * frequency of multipart upload requests.
+   *
+   * @invariant Currently valid only for S3 filesystems.
+   *
+   * @param uri The file uri identifying the backend file buffer.
+   */
+  virtual void flush_multipart_file_buffer(const URI& uri);
 
   /**
    * Writes the contents of a buffer into a file.

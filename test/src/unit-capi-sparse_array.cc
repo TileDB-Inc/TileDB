@@ -7162,6 +7162,6 @@ TEST_CASE_METHOD(
       deserialized_array_dir->timestamp_start() == array_dir.timestamp_start());
   REQUIRE(deserialized_array_dir->timestamp_end() == array_dir.timestamp_end());
 
-  REQUIRE_NOTHROW(resources.vfs().remove_dir(tiledb::sm::URI(array_name)));
+  REQUIRE_NOTHROW(resources.vfs()->remove_dir(tiledb::sm::URI(array_name)));
 #endif
 }

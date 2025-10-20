@@ -1113,7 +1113,7 @@ Status FragmentInfo::set_default_timestamp_range() {
 tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
-  auto& vfs = resources_->vfs();
+  auto vfs = resources_->vfs();
   const auto& array_schema_latest =
       single_fragment_info_vec_.back().meta()->array_schema();
 
@@ -1127,7 +1127,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
     try {
-      vfs.is_file(coords_uri);
+      vfs->is_file(coords_uri);
     } catch (std::exception& e) {
       return {Status_Error(e.what()), nullopt};
     }

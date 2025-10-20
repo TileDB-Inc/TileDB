@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -116,10 +116,10 @@ void CommitsConsolidator::vacuum(const char* array_name) {
       ArrayDirectoryMode::COMMITS);
 
   // Delete the commits and vacuum files
-  auto& vfs = resources_.vfs();
+  auto vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
-  vfs.remove_files(&compute_tp, array_dir.commit_uris_to_vacuum());
-  vfs.remove_files(
+  vfs->remove_files(&compute_tp, array_dir.commit_uris_to_vacuum());
+  vfs->remove_files(
       &compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 

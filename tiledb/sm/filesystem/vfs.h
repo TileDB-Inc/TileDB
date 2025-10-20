@@ -227,164 +227,26 @@ struct VFSBase {
   stats::Stats* stats_;
 };
 
-/** The Azure filesystem. */
-#ifdef HAVE_AZURE
-class Azure_within_VFS {
-  /** Private member variable */
-  Azure azure_;
-
- protected:
-  template <typename... Args>
-  Azure_within_VFS(Args&&... args)
-      : azure_(std::forward<Args>(args)...) {
-  }
-
-  /** Protected accessor for the Azure object. */
-  inline Azure& azure() {
-    return azure_;
-  }
-
-  /** Protected accessor for the const Azure object. */
-  inline const Azure& azure() const {
-    return azure_;
-  }
-};
-#else
-class Azure_within_VFS {
- protected:
-  template <typename... Args>
-  Azure_within_VFS(Args&&...) {
-  }  // empty constructor
-};
-#endif
-
-/** The GCS filesystem. */
-#ifdef HAVE_GCS
-class GCS_within_VFS {
-  /** Private member variable */
-  GCS gcs_;
-
- protected:
-  template <typename... Args>
-  GCS_within_VFS(Args&&... args)
-      : gcs_(std::forward<Args>(args)...) {
-  }
-
-  /** Protected accessor for the GCS object. */
-  inline GCS& gcs() {
-    return gcs_;
-  }
-
-  /** Protected accessor for the const GCS object. */
-  inline const GCS& gcs() const {
-    return gcs_;
-  }
-};
-#else
-class GCS_within_VFS {
- protected:
-  template <typename... Args>
-  GCS_within_VFS(Args&&...) {
-  }  // empty constructor
-};
-#endif
-
-/** The S3 filesystem. */
-#ifdef HAVE_S3
-class S3_within_VFS {
-  /** Private member variable */
-  tdb_unique_ptr<S3> s3_;
-
- protected:
-  template <typename... Args>
-  S3_within_VFS(Args&&... args)
-      : s3_(tdb_unique_ptr<S3>(tdb_new(S3, std::forward<Args>(args)...))) {
-  }
-
-  ~S3_within_VFS() = default;
-
-  /** Protected accessor for the S3 object. */
-  inline S3& s3() {
-    return *s3_;
-  }
-
-  /** Protected accessor for the const S3 object. */
-  inline const S3& s3() const {
-    return *s3_;
-  }
-};
-#else
-class S3_within_VFS {
- protected:
-  template <typename... Args>
-  S3_within_VFS(Args&&...) {
-  }  // empty constructor
-};
-#endif
-
 /**
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : FilesystemBase,
-            private VFSBase,
-            protected Azure_within_VFS,
-            GCS_within_VFS,
-            S3_within_VFS {
+class VFS : FilesystemBase, private VFSBase {
  public:
-  /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  struct BufferedChunk {
-    std::string uri;
-    uint64_t size;
-
-    BufferedChunk()
-        : uri("")
-        , size(0) {
-    }
-    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
-        : uri(chunk_uri)
-        , size(chunk_size) {
-    }
-  };
-
-  /**
-   * Multipart upload state definition used in the serialization of remote
-   * global order writes. This state is a generalization of
-   * the multipart upload state types currently defined independently by each
-   * backend implementation.
-   */
-  struct MultiPartUploadState {
-    struct CompletedParts {
-      optional<std::string> e_tag;
-      uint64_t part_number;
-    };
-
-    uint64_t part_number;
-    optional<std::string> upload_id;
-    optional<std::vector<BufferedChunk>> buffered_chunks;
-    std::vector<CompletedParts> completed_parts;
-    Status status;
-  };
-
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
   /** Constructor.
    * @param parent_stats The parent stats to inherit from.
    * @param logger The logger to use. Optional, can be nullptr.
    * @param compute_tp Thread pool for compute-bound tasks.
    * @param io_tp Thread pool for io-bound tasks.
    * @param config Configuration parameters.
+   * @param filesystems The supported filesystems.
    **/
   VFS(stats::Stats* parent_stats,
       Logger* logger,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
-      const Config& config);
+      const Config& config,
+      std::vector<std::unique_ptr<FilesystemBase>>&& filesystems);
 
   /** Destructor. */
   ~VFS() = default;
@@ -506,7 +368,7 @@ class VFS : FilesystemBase,
    *
    * @param uri The uri of the directory to be removed
    */
-  void remove_dir_if_empty(const URI& uri) const;
+  void remove_dir_if_empty(const URI& uri) const override;
 
   /**
    * Deletes directories in parallel from the given vector of directories.
@@ -728,6 +590,9 @@ class VFS : FilesystemBase,
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /** Checks if a given filesystem is supported. */
+  bool supports_fs(FilesystemBase& fs) const;
+
+  /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
 
   /** Checks if the backend required to access the given URI is supported. */
@@ -808,34 +673,32 @@ class VFS : FilesystemBase,
 
   /**
    * Used in serialization to share the multipart upload state
-   * among cloud executors during global order writes
+   * among cloud executors during global order writes.
    *
    * @param uri The file uri used as key in the internal map of the backend
-   * @return A pair of status and VFS::MultiPartUploadState object.
+   * @return An optional MultiPartUploadState object.
    */
-  std::pair<Status, std::optional<MultiPartUploadState>> multipart_upload_state(
-      const URI& uri);
+  std::optional<MultiPartUploadState> multipart_upload_state(
+      const URI& uri) override;
 
   /**
    * Used in serialization of global order writes to set the multipart upload
-   * state in the internal maps of cloud backends during deserialization
+   * state in the internal maps of cloud backends during deserialization.
    *
-   * @param uri The file uri used as key in the internal map of the backend
-   * @param state The multipart upload state info
-   * @return Status
+   * @param uri The file uri used as key in the internal map of the backend.
+   * @param state The multipart upload state info.
    */
-  Status set_multipart_upload_state(
-      const URI& uri, const MultiPartUploadState& state);
+  void set_multipart_upload_state(
+      const URI& uri, const MultiPartUploadState& state) override;
 
   /**
    * Used in remote global order writes to flush the internal
    * in-memory buffer for an URI that backends maintain to modulate the
    * frequency of multipart upload requests.
    *
-   * @param uri The file uri identifying the backend file buffer
-   * @return Status
+   * @param uri The file uri identifying the backend file buffer.
    */
-  Status flush_multipart_file_buffer(const URI& uri);
+  void flush_multipart_file_buffer(const URI& uri) override;
 
   inline stats::Stats* stats() const {
     return stats_;
@@ -1004,17 +867,6 @@ class VFS : FilesystemBase,
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-#ifdef _WIN32
-  using LocalFS = Win;
-#else
-  using LocalFS = Posix;
-#endif
-
-  LocalFS local_;
-
-  /** The in-memory filesystem which is always supported */
-  MemFilesystem memfs_;
-
   /**
    * Config.
    *
@@ -1027,8 +879,8 @@ class VFS : FilesystemBase,
   /** Logger. */
   Logger* logger_;
 
-  /** The set with the supported filesystems. */
-  std::set<Filesystem> supported_fs_;
+  /** The supported filesystems. */
+  std::vector<std::unique_ptr<FilesystemBase>> filesystems_;
 
   /** Thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,7 @@ ObjectIter* object_iter_begin(
 
   // Get all contents of path
   std::vector<URI> uris;
-  throw_if_not_ok(resources.vfs().ls(path_uri, &uris));
+  throw_if_not_ok(resources.vfs()->ls(path_uri, &uris));
 
   // Create a new object iterator
   ObjectIter* obj_iter = tdb_new(ObjectIter);
@@ -90,7 +90,7 @@ ObjectIter* object_iter_begin(ContextResources& resources, const char* path) {
 
   // Get all contents of path
   std::vector<URI> uris;
-  throw_if_not_ok(resources.vfs().ls(path_uri, &uris));
+  throw_if_not_ok(resources.vfs()->ls(path_uri, &uris));
 
   // Create a new object iterator
   ObjectIter* obj_iter = tdb_new(ObjectIter);
@@ -158,7 +158,7 @@ Status object_iter_next_postorder(
     do {
       obj_num = obj_iter->objs_.size();
       std::vector<URI> uris;
-      throw_if_not_ok(resources.vfs().ls(obj_iter->objs_.front(), &uris));
+      throw_if_not_ok(resources.vfs()->ls(obj_iter->objs_.front(), &uris));
       obj_iter->expanded_.front() = true;
 
       // Push the new TileDB objects in the front of the iterator's list
@@ -209,7 +209,7 @@ Status object_iter_next_preorder(
 
   // Get all contents of the next URI
   std::vector<URI> uris;
-  throw_if_not_ok(resources.vfs().ls(front_uri, &uris));
+  throw_if_not_ok(resources.vfs()->ls(front_uri, &uris));
 
   // Push the new TileDB objects in the front of the iterator's list
   ObjectType obj_type;

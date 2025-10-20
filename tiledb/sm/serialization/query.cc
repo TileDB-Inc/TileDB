@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2969,7 +2969,7 @@ Status global_write_state_from_capnp(
     auto multipart_reader = state_reader.getMultiPartUploadStates();
     if (multipart_reader.hasEntries()) {
       for (auto entry : multipart_reader.getEntries()) {
-        VFS::MultiPartUploadState deserialized_state;
+        FilesystemBase::MultiPartUploadState deserialized_state;
         auto state = entry.getValue();
         auto buffer_uri =
             std::string_view{entry.getKey().cStr(), entry.getKey().size()};

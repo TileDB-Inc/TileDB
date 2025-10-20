@@ -75,7 +75,7 @@ ArrayDirectory::ArrayDirectory(
     ArrayDirectoryMode mode)
     : resources_(resources)
     , uri_(uri.add_trailing_slash())
-    , stats_(resources_.get().vfs().stats()->create_child("ArrayDirectory"))
+    , stats_(resources_.get().vfs()->stats()->create_child("ArrayDirectory"))
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , mode_(mode)
@@ -293,8 +293,8 @@ void ArrayDirectory::write_commit_ignore_file(
   auto data = ss.str();
   URI ignore_file_uri = get_commits_dir(constants::format_version)
                             .join_path(name + constants::ignore_file_suffix);
-  resources_.get().vfs().write(ignore_file_uri, data.c_str(), data.size());
-  throw_if_not_ok(resources_.get().vfs().close_file(ignore_file_uri));
+  resources_.get().vfs()->write(ignore_file_uri, data.c_str(), data.size());
+  throw_if_not_ok(resources_.get().vfs()->close_file(ignore_file_uri));
 }
 
 void ArrayDirectory::delete_fragments_list(
@@ -322,10 +322,10 @@ void ArrayDirectory::delete_fragments_list(
   // Delete fragments and commits
   throw_if_not_ok(parallel_for(
       &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
-        auto& vfs = resources_.get().vfs();
-        vfs.remove_dir(uris[i]);
-        if (vfs.is_file(commit_uris_to_delete[i])) {
-          vfs.remove_file(commit_uris_to_delete[i]);
+        auto vfs = resources_.get().vfs();
+        vfs->remove_dir(uris[i]);
+        if (vfs->is_file(commit_uris_to_delete[i])) {
+          vfs->remove_file(commit_uris_to_delete[i]);
         }
         return Status::Ok();
       }));
@@ -589,7 +589,7 @@ const std::set<std::string>& ArrayDirectory::dir_names() {
 }
 
 std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
-  auto dir_entries = resources_.get().vfs().ls_with_sizes(uri);
+  auto dir_entries = resources_.get().vfs()->ls_with_sizes(uri);
   auto& dirs = dir_names();
   std::vector<URI> uris;
   uris.reserve(dir_entries.size());
@@ -729,11 +729,11 @@ ArrayDirectory::load_consolidated_commit_uris(
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
             uri.to_string(), constants::ignore_file_suffix)) {
-      uint64_t size = resources_.get().vfs().file_size(uri);
+      uint64_t size = resources_.get().vfs()->file_size(uri);
       std::string names;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().read_exactly(uri, 0, &names[0], size),
+          resources_.get().vfs()->read_exactly(uri, 0, &names[0], size),
           nullopt,
           nullopt);
       std::stringstream ss(names);
@@ -751,13 +751,13 @@ ArrayDirectory::load_consolidated_commit_uris(
     auto& uri = commits_dir_uris[i];
     if (stdx::string::ends_with(
             uri.to_string(), constants::con_commits_file_suffix)) {
-      uint64_t size = resources_.get().vfs().file_size(uri);
+      uint64_t size = resources_.get().vfs()->file_size(uri);
       meta_files.emplace_back(uri, std::string());
 
       auto& names = meta_files.back().second;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().read_exactly(uri, 0, &names[0], size),
+          resources_.get().vfs()->read_exactly(uri, 0, &names[0], size),
           nullopt,
           nullopt);
       std::stringstream ss(names);
@@ -1082,11 +1082,11 @@ ArrayDirectory::compute_uris_to_vacuum(
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto& tp = resources_.get().compute_tp();
   auto status = parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
-    auto& vfs = resources_.get().vfs();
-    uint64_t size = vfs.file_size(vac_files[i]);
+    auto vfs = resources_.get().vfs();
+    uint64_t size = vfs->file_size(vac_files[i]);
     std::string names;
     names.resize(size);
-    throw_if_not_ok(vfs.read_exactly(vac_files[i], 0, &names[0], size));
+    throw_if_not_ok(vfs->read_exactly(vac_files[i], 0, &names[0], size));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
@@ -1195,7 +1195,7 @@ Status ArrayDirectory::compute_array_schema_uris(
     // dir.
     // Optionally add the old array schema from the root array folder
     auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
-    if (resources_.get().vfs().is_file(old_schema_uri)) {
+    if (resources_.get().vfs()->is_file(old_schema_uri)) {
       array_schema_uris_.push_back(old_schema_uri);
     }
   }
@@ -1305,7 +1305,7 @@ Status ArrayDirectory::is_fragment(
   }
 
   // Versions < 5
-  *is_fragment = (int)resources_.get().vfs().is_file(
+  *is_fragment = (int)resources_.get().vfs()->is_file(
       uri.join_path(constants::fragment_metadata_filename));
   return Status::Ok();
 }

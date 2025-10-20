@@ -36,8 +36,7 @@
 
 #include "tiledb/sm/misc/constants.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Defines a filesystem. */
 enum class Filesystem : uint8_t {
@@ -59,6 +58,8 @@ inline const std::string& filesystem_str(Filesystem filesystem_type) {
       return constants::filesystem_type_gcs_str;
     case Filesystem::MEMFS:
       return constants::filesystem_type_mem_str;
+    case Filesystem::LOCAL:
+      return constants::filesystem_type_local_str;
     default:
       return constants::empty_str;
   }
@@ -77,13 +78,14 @@ inline Status filesystem_enum(
     *filesystem_type = Filesystem::GCS;
   else if (filesystem_type_str == constants::filesystem_type_mem_str)
     *filesystem_type = Filesystem::MEMFS;
+  else if (filesystem_type_str == constants::filesystem_type_local_str)
+    *filesystem_type = Filesystem::LOCAL;
   else
     return Status_Error("Invalid Filesystem " + filesystem_type_str);
 
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FILESYSTEM_H

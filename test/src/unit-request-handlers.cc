@@ -432,8 +432,8 @@ void RequestHandlerFx::create_array() {
 }
 
 void RequestHandlerFx::delete_array() {
-  if (ctx_.resources().vfs().is_dir(uri_)) {
-    ctx_.resources().vfs().remove_dir(uri_);
+  if (ctx_.resources().vfs()->is_dir(uri_)) {
+    ctx_.resources().vfs()->remove_dir(uri_);
   }
 }
 

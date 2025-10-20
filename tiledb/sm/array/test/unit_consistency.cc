@@ -185,7 +185,7 @@ TEST_CASE(
   REQUIRE(x.is_open(uri) == false);
 
   // Clean up
-  REQUIRE_NOTHROW(resources.vfs().remove_dir(uri));
+  REQUIRE_NOTHROW(resources.vfs()->remove_dir(uri));
 }
 
 TEST_CASE(
@@ -225,7 +225,7 @@ TEST_CASE(
 
   // Clean up
   for (auto uri : uris) {
-    REQUIRE_NOTHROW(resources.vfs().remove_dir(uri));
+    REQUIRE_NOTHROW(resources.vfs()->remove_dir(uri));
   }
 }
 
@@ -280,5 +280,5 @@ TEST_CASE(
   REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
-  REQUIRE_NOTHROW(resources.vfs().remove_dir(uri));
+  REQUIRE_NOTHROW(resources.vfs()->remove_dir(uri));
 }

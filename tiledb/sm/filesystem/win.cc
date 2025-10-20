@@ -289,17 +289,17 @@ void Win::remove_dir(const URI& uri) const {
   }
 }
 
-bool Win::remove_dir_if_empty(const std::string& path) const {
+void Win::remove_dir_if_empty(const URI& uri) const {
+  auto path = uri.to + path();
   if (!RemoveDirectoryA(path.c_str())) {
     auto gle = GetLastError();
     if (gle == ERROR_DIR_NOT_EMPTY) {
-      return false;
+      return;
     }
     throw IOError(
         std::string("Failed to delete directory '") + path + "' " +
         get_last_error_msg(gle, "RemoveDirectory"));
   }
-  return true;
 }
 
 void Win::remove_file(const URI& uri) const {

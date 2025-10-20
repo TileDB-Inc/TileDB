@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -395,7 +395,7 @@ class FilteredData {
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
     auto task = resources_.io_tp().execute([this, offset, data, size, uri]() {
-      throw_if_not_ok(resources_.vfs().read_exactly(uri, offset, data, size));
+      throw_if_not_ok(resources_.vfs()->read_exactly(uri, offset, data, size));
       return Status::Ok();
     });
     read_tasks_.push_back(std::move(task));

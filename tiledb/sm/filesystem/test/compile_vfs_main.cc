@@ -29,11 +29,15 @@
 #include "../vfs.h"
 #include "tiledb/common/logger.h"
 
+using namespace tiledb::sm;
+
 int main() {
-  static tiledb::sm::stats::Stats stats("test");
+  static stats::Stats stats("test");
   static tiledb::common::Logger logger("test");
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-  tiledb::sm::VFS x{&stats, &logger, &compute_tp, &io_tp, tiledb::sm::Config{}};
+  std::vector<std::unique_ptr<FilesystemBase>> fses;
+  fses.emplace_back(std::make_unique<MemFilesystem>());
+  VFS x{&stats, &logger, &compute_tp, &io_tp, Config{}, std::move(fses)};
   return 0;
 }

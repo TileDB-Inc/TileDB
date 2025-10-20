@@ -365,8 +365,9 @@ TEST_CASE(
       return !result_filter(a.first, a.second);
     });
 
-    auto scan = s3_test.get_s3().scanner(
-        s3_test.temp_dir_, result_filter, recursive, max_keys);
+    auto scan =
+        s3_test.get_fs(s3_test.temp_dir_)
+            .scanner(s3_test.temp_dir_, result_filter, recursive, max_keys);
     std::vector results_vector(scan.begin(), scan.end());
 
     CHECK(results_vector.size() == expected.size());
@@ -388,11 +389,12 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
 
   std::vector<Aws::S3::Model::Object> results_vector;
   DYNAMIC_SECTION("Testing with " << max_keys << " max keys from S3") {
-    auto scan = s3_test.get_s3().scanner(
-        s3_test.temp_dir_,
-        tiledb::sm::LsScanner::accept_all,
-        recursive,
-        max_keys);
+    auto scan = s3_test.get_fs(s3_test.temp_dir_)
+                    .scanner(
+                        s3_test.temp_dir_,
+                        tiledb::sm::LsScanner::accept_all,
+                        recursive,
+                        max_keys);
 
     SECTION("for loop") {
       SECTION("range based for") {

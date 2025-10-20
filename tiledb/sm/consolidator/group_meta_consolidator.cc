@@ -107,8 +107,8 @@ Status GroupMetaConsolidator::consolidate(
   group_for_writes.close();
 
   // Write vacuum file
-  resources_.vfs().write(vac_uri, data.c_str(), data.size());
-  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
+  resources_.vfs()->write(vac_uri, data.c_str(), data.size());
+  throw_if_not_ok(resources_.vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }
@@ -120,18 +120,18 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
   }
 
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
-  auto& vfs = resources_.vfs();
+  auto vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
   GroupDirectory group_dir(
-      vfs,
+      *vfs.get(),
       compute_tp,
       URI(group_name),
       0,
       std::numeric_limits<uint64_t>::max());
 
   // Delete the group metadata and vacuum files
-  vfs.remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
-  vfs.remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
+  vfs->remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
+  vfs->remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */

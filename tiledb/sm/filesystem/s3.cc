@@ -704,6 +704,63 @@ void S3::remove_file(const URI& uri) const {
       delete_object_request.GetBucket(), delete_object_request.GetKey()));
 }
 
+void S3::set_multipart_upload_state(
+    const URI& uri, const FilesystemBase::MultiPartUploadState& state) {
+  S3::MultiPartUploadState s3_state;
+  s3_state.part_number = state.part_number;
+  s3_state.upload_id = *state.upload_id;
+  s3_state.st = state.status;
+  for (auto& part : state.completed_parts) {
+    auto rv = s3_state.completed_parts.try_emplace(part.part_number);
+    rv.first->second.SetETag(part.e_tag->c_str());
+    rv.first->second.SetPartNumber(part.part_number);
+  }
+
+  if (state.buffered_chunks.has_value()) {
+    for (auto& chunk : *state.buffered_chunks) {
+      // Chunk URI gets reconstructed from the serialized chunk name
+      // and the real attribute uri
+      s3_state.buffered_chunks.emplace_back(
+          generate_chunk_uri(uri, chunk.uri).to_string(), chunk.size);
+    }
+  }
+
+  set_multipart_upload_state_internal(uri.to_string(), s3_state);
+}
+
+std::optional<FilesystemBase::MultiPartUploadState> S3::multipart_upload_state(
+    const URI& uri) {
+  auto state_fetched = multipart_upload_state_internal(uri);
+  if (!state_fetched.has_value()) {
+    return nullopt;
+  }
+  FilesystemBase::MultiPartUploadState state;
+  state.upload_id = state_fetched->upload_id;
+  state.part_number = state_fetched->part_number;
+  state.status = state_fetched->st;
+  auto& completed_parts = state_fetched->completed_parts;
+  for (auto& entry : completed_parts) {
+    state.completed_parts.emplace_back();
+    state.completed_parts.back().e_tag = entry.second.GetETag();
+    state.completed_parts.back().part_number = entry.second.GetPartNumber();
+  }
+  if (!state_fetched->buffered_chunks.empty()) {
+    state.buffered_chunks.emplace();
+    for (auto& chunk : state_fetched->buffered_chunks) {
+      state.buffered_chunks->emplace_back(
+          URI(chunk.uri).remove_trailing_slash().last_path_part(), chunk.size);
+    }
+  }
+  return state;
+}
+
+void S3::flush_multipart_file_buffer(const URI& uri) {
+  Buffer* buff = nullptr;
+  throw_if_not_ok(get_file_buffer(uri, &buff));
+  global_order_write(uri, buff->data(), buff->size());
+  buff->reset_size();
+}
+
 std::vector<directory_entry> S3::ls_with_sizes(const URI& parent) const {
   return ls_with_sizes(parent, "/", -1);
 }
@@ -2024,7 +2081,7 @@ Status S3::get_make_upload_part_req(
   return Status::Ok();
 }
 
-Status S3::set_multipart_upload_state(
+void S3::set_multipart_upload_state_internal(
     const std::string& uri, MultiPartUploadState& state) {
   Aws::Http::URI aws_uri(uri.c_str());
   std::string uri_path(aws_uri.GetPath());
@@ -2034,11 +2091,9 @@ Status S3::set_multipart_upload_state(
 
   UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
   multipart_upload_states_[uri_path] = state;
-
-  return Status::Ok();
 }
 
-std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
+std::optional<S3::MultiPartUploadState> S3::multipart_upload_state_internal(
     const URI& uri) {
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath());

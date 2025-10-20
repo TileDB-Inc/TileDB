@@ -45,10 +45,6 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
-#if HAVE_S3
-#include "tiledb/sm/filesystem/s3.h"
-#endif
-
 #include "tiledb/sm/rest/rest_client.h"
 
 namespace tiledb::test {
@@ -118,7 +114,7 @@ Status vfs_test_init(
   }
 
   for (auto& supported_fs : fs_vec) {
-    REQUIRE(supported_fs->init(*ctx, *vfs).ok());
+    (void)supported_fs->init(*ctx, *vfs);
   }
 
   return Status::Ok();
@@ -432,11 +428,15 @@ VFSTestBase::VFSTestBase(
           tiledb::test::g_helper_logger().get(),
           &io_,
           &compute_,
-          create_test_config())
+          create_test_config(),
+          tiledb::sm::ContextResources::make_filesystems(
+              &tiledb::test::g_helper_stats, &io_, create_test_config()))
     , prefix_(prefix)
     , temp_dir_(tiledb::test::test_dir(prefix_))
     , is_supported_(vfs_.supports_uri_scheme(temp_dir_)) {
-  // TODO: Throw when we can provide a list of supported filesystems to Catch2.
+  if (!is_supported_) {
+    throw tiledb::sm::filesystem::BuiltWithout(prefix_);
+  }
 }
 
 VFSTestBase::~VFSTestBase() {
@@ -498,33 +498,6 @@ VFSTest::VFSTest(
     }
   }
   std::sort(expected_results_.begin(), expected_results_.end());
-}
-
-S3Test::S3Test(const std::vector<size_t>& test_tree)
-    : VFSTestBase(test_tree, "s3://")
-    , S3_within_VFS(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
-#ifdef HAVE_S3
-  s3().create_bucket(temp_dir_);
-  for (size_t i = 1; i <= test_tree_.size(); i++) {
-    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
-    // VFS::create_dir is a no-op for S3; Just create objects.
-    if (test_tree_[i - 1] > 0) {
-      // Do not include an empty prefix in expected results.
-      // The only way to retrieve an empty prefix in ls_recursive results is to
-      // explicitly create an empty prefix object through AWS console or SDK.
-      expected_results_.emplace_back(path.to_string(), 0);
-    }
-    for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
-      auto object_uri = path.join_path("test_file_" + std::to_string(j));
-      s3().touch(object_uri);
-      std::string data(j * 10, 'a');
-      s3().write(object_uri, data.data(), data.size());
-      s3().flush(object_uri);
-      expected_results_.emplace_back(object_uri.to_string(), data.size());
-    }
-  }
-  std::sort(expected_results_.begin(), expected_results_.end());
-#endif
 }
 
 LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,7 +103,7 @@ class ContextResources {
     return *(stats_.get());
   }
 
-  [[nodiscard]] inline VFS& vfs() const {
+  [[nodiscard]] inline shared_ptr<VFS> vfs() const {
     return vfs_;
   }
 
@@ -144,6 +144,20 @@ class ContextResources {
    */
   shared_ptr<MemoryTracker> serialization_memory_tracker() const;
 
+  /**
+   * Return the vector of supported filesystems.
+   *
+   * @param stats The parent stats to inherit from.
+   * @param io_tp Thread pool for io-bound tasks.
+   * @param config Configuration parameters.
+   *
+   * @return The vector of supported filesystems.
+   */
+  static std::vector<std::unique_ptr<FilesystemBase>> make_filesystems(
+      [[maybe_unused]] stats::Stats* parent_stats,
+      [[maybe_unused]] ThreadPool* io_tp,
+      const Config& config);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -180,7 +194,7 @@ class ContextResources {
    * Virtual filesystem handler. It directs queries to the appropriate
    * filesystem backend. Note that this is stateful.
    */
-  mutable VFS vfs_;
+  shared_ptr<VFS> vfs_;
 
   /** The rest client (may be null if none was configured). */
   shared_ptr<RestClient> rest_client_;

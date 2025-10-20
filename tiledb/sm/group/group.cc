@@ -103,17 +103,18 @@ void Group::create(ContextResources& resources, const URI& uri) {
   }
 
   // Create group directory
-  resources.vfs().create_dir(uri);
+  resources.vfs()->create_dir(uri);
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  resources.vfs().touch(group_filename);
+  resources.vfs()->touch(group_filename);
 
   // Create metadata folder
-  resources.vfs().create_dir(uri.join_path(constants::group_metadata_dir_name));
+  resources.vfs()->create_dir(
+      uri.join_path(constants::group_metadata_dir_name));
 
   // Create group detail folder
-  resources.vfs().create_dir(uri.join_path(constants::group_detail_dir_name));
+  resources.vfs()->create_dir(uri.join_path(constants::group_detail_dir_name));
 }
 
 void Group::open(
@@ -195,7 +196,7 @@ void Group::open(
   } else if (query_type == QueryType::READ) {
     group_dir_ = make_shared<GroupDirectory>(
         HERE(),
-        resources_.vfs(),
+        *resources_.vfs().get(),
         resources_.compute_tp(),
         group_uri_,
         timestamp_start,
@@ -204,7 +205,7 @@ void Group::open(
   } else {
     group_dir_ = make_shared<GroupDirectory>(
         HERE(),
-        resources_.vfs(),
+        *resources_.vfs().get(),
         resources_.compute_tp(),
         group_uri_,
         timestamp_start,
@@ -364,17 +365,17 @@ void Group::delete_group(const URI& uri, bool recursive) {
       }
     }
 
-    auto& vfs = resources_.vfs();
+    auto vfs = resources_.vfs();
     auto& compute_tp = resources_.compute_tp();
     auto group_dir = GroupDirectory(
-        vfs, compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
+        *vfs.get(), compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
 
     // Delete the group detail, group metadata and group files
-    vfs.remove_files(&compute_tp, group_dir.group_detail_uris());
-    vfs.remove_files(&compute_tp, group_dir.group_meta_uris());
-    vfs.remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
-    vfs.remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
-    vfs.remove_files(&compute_tp, group_dir.group_file_uris());
+    vfs->remove_files(&compute_tp, group_dir.group_detail_uris());
+    vfs->remove_files(&compute_tp, group_dir.group_meta_uris());
+    vfs->remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
+    vfs->remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
+    vfs->remove_files(&compute_tp, group_dir.group_file_uris());
 
     // Delete all tiledb child directories
     // Note: using vfs().ls() here could delete user data
@@ -383,8 +384,8 @@ void Group::delete_group(const URI& uri, bool recursive) {
     for (auto group_dir_name : constants::group_dir_names) {
       dirs.emplace_back(URI(parent_dir + group_dir_name));
     }
-    vfs.remove_dirs(&compute_tp, dirs);
-    vfs.remove_dir_if_empty(group_dir.uri());
+    vfs->remove_dirs(&compute_tp, dirs);
+    vfs->remove_dir_if_empty(group_dir.uri());
   }
   // Clear metadata and other pending changes to avoid patching a deleted group.
   metadata_.clear();

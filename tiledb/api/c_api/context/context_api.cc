@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@
 #include "context_api_external.h"
 #include "context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/rest/rest_client.h"
 
 namespace tiledb::api {
@@ -119,8 +120,7 @@ capi_return_t tiledb_ctx_get_last_error(
 capi_return_t tiledb_ctx_is_supported_fs(
     tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) {
   ensure_output_pointer_is_valid(is_supported);
-
-  *is_supported = (int32_t)ctx->context().resources().vfs().supports_fs(
+  *is_supported = (int32_t)ctx->context().resources().vfs()->supports_fs(
       static_cast<tiledb::sm::Filesystem>(fs));
   return TILEDB_OK;
 }

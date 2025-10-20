@@ -57,6 +57,17 @@ class LocalFilesystem : public FilesystemBase {
 
   void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
+  void set_multipart_upload_state(
+      const URI&, const MultiPartUploadState&) override {
+    // No-op for local filesystems.
+  }
+
+  std::optional<MultiPartUploadState> multipart_upload_state(
+      const URI&) override {
+    // No-op for local filesystems.
+    return {};
+  }
+
  protected:
   /**
    * Creates the containing directories of a path if they do not exist.

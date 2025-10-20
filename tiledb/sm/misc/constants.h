@@ -666,6 +666,9 @@ extern const std::string filesystem_type_gcs_str;
 /** The string representation for in-memory filesystem. */
 extern const std::string filesystem_type_mem_str;
 
+/** The string representation for local filesystem. */
+extern const std::string filesystem_type_local_str;
+
 /** The string representation for WalkOrder preorder. */
 extern const std::string walkorder_preorder_str;
 

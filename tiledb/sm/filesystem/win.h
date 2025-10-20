@@ -139,9 +139,8 @@ class Win : public LocalFilesystem {
    * Removes a given empty directory.
    *
    * @param path The path of the directory.
-   * @return true if the directory was removed, false otherwise.
    */
-  bool remove_dir_if_empty(const std::string& path) const;
+  void remove_dir_if_empty(const URI& uri) const override;
 
   /**
    * Removes a given path.

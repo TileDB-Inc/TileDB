@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,4 +40,6 @@
     TILEDB_FILESYSTEM_ENUM(GCS) = 3,
     /** In-memory filesystem */
     TILEDB_FILESYSTEM_ENUM(MEMFS) = 4,
+    /** Local filesystem */
+    TILEDB_FILESYSTEM_ENUM(LOCAL) = 5,
 #endif

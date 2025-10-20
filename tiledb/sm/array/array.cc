@@ -216,41 +216,41 @@ void Array::create(
   }
 
   // Create array directory
-  resources.vfs().create_dir(array_uri);
+  resources.vfs()->create_dir(array_uri);
 
   // Create array schema directory
   URI array_schema_dir_uri =
       array_uri.join_path(constants::array_schema_dir_name);
-  resources.vfs().create_dir(array_schema_dir_uri);
+  resources.vfs()->create_dir(array_schema_dir_uri);
 
   // Create the enumerations directory inside the array schema directory
   URI array_enumerations_uri =
       array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  resources.vfs().create_dir(array_enumerations_uri);
+  resources.vfs()->create_dir(array_enumerations_uri);
 
   // Create commit directory
   URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
-  resources.vfs().create_dir(array_commit_uri);
+  resources.vfs()->create_dir(array_commit_uri);
 
   // Create fragments directory
   URI array_fragments_uri =
       array_uri.join_path(constants::array_fragments_dir_name);
-  resources.vfs().create_dir(array_fragments_uri);
+  resources.vfs()->create_dir(array_fragments_uri);
 
   // Create array metadata directory
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_dir_name);
-  resources.vfs().create_dir(array_metadata_uri);
+  resources.vfs()->create_dir(array_metadata_uri);
 
   // Create fragment metadata directory
   URI array_fragment_metadata_uri =
       array_uri.join_path(constants::array_fragment_meta_dir_name);
-  resources.vfs().create_dir(array_fragment_metadata_uri);
+  resources.vfs()->create_dir(array_fragment_metadata_uri);
 
   // Create dimension label directory
   URI array_dimension_labels_uri =
       array_uri.join_path(constants::array_dimension_labels_dir_name);
-  resources.vfs().create_dir(array_dimension_labels_uri);
+  resources.vfs()->create_dir(array_dimension_labels_uri);
 
   // Store the array schema
   try {
@@ -282,7 +282,7 @@ void Array::create(
       store_array_schema(resources, array_schema, encryption_key);
     }
   } catch (...) {
-    resources.vfs().remove_dir(array_uri);
+    resources.vfs()->remove_dir(array_uri);
     throw;
   }
 }
@@ -688,7 +688,7 @@ void Array::delete_fragments(
   }
 
   // Delete fragments and commits
-  auto vfs = &(resources.vfs());
+  auto vfs = resources.vfs();
   throw_if_not_ok(parallel_for(
       &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
         vfs->remove_dir(fragment_uris[i].uri_);
@@ -719,7 +719,7 @@ void Array::delete_fragments(
 }
 
 void Array::delete_array(ContextResources& resources, const URI& uri) {
-  auto& vfs = resources.vfs();
+  auto vfs = resources.vfs();
   auto array_dir =
       ArrayDirectory(resources, uri, 0, std::numeric_limits<uint64_t>::max());
 
@@ -729,9 +729,9 @@ void Array::delete_array(ContextResources& resources, const URI& uri) {
 
   // Delete array metadata, fragment metadata and array schema files
   // Note: metadata files may not be present, try to delete anyway
-  vfs.remove_files(&resources.compute_tp(), array_dir.array_meta_uris());
-  vfs.remove_files(&resources.compute_tp(), array_dir.fragment_meta_uris());
-  vfs.remove_files(&resources.compute_tp(), array_dir.array_schema_uris());
+  vfs->remove_files(&resources.compute_tp(), array_dir.array_meta_uris());
+  vfs->remove_files(&resources.compute_tp(), array_dir.fragment_meta_uris());
+  vfs->remove_files(&resources.compute_tp(), array_dir.array_schema_uris());
 
   // Delete all tiledb child directories
   // Note: using vfs.ls() here could delete user data
@@ -740,8 +740,8 @@ void Array::delete_array(ContextResources& resources, const URI& uri) {
   for (auto array_dir_name : constants::array_dir_names) {
     dirs.emplace_back(URI(parent_dir + array_dir_name));
   }
-  vfs.remove_dirs(&resources.compute_tp(), dirs);
-  vfs.remove_dir_if_empty(array_dir.uri());
+  vfs->remove_dirs(&resources.compute_tp(), dirs);
+  vfs->remove_dir_if_empty(array_dir.uri());
 }
 
 void Array::delete_array(const URI& uri) {
@@ -1788,7 +1788,7 @@ Array::open_for_writes() {
   auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
   // Checks
-  if (!resources_.vfs().supports_uri_scheme(array_uri_)) {
+  if (!resources_.vfs()->supports_uri_scheme(array_uri_)) {
     throw ArrayException("Cannot open array; URI scheme unsupported.");
   }
 
@@ -1954,7 +1954,7 @@ void Array::upgrade_version(
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    resources.vfs().create_dir(array_schema_dir_uri);
+    resources.vfs()->create_dir(array_schema_dir_uri);
 
     // Store array schema
     store_array_schema(resources, array_schema, encryption_key_cfg);
@@ -1962,17 +1962,17 @@ void Array::upgrade_version(
     // Create commit directory if necessary
     URI array_commit_uri =
         array_uri.join_path(constants::array_commits_dir_name);
-    resources.vfs().create_dir(array_commit_uri);
+    resources.vfs()->create_dir(array_commit_uri);
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
         array_uri.join_path(constants::array_fragments_dir_name);
-    resources.vfs().create_dir(array_fragments_uri);
+    resources.vfs()->create_dir(array_fragments_uri);
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
         array_uri.join_path(constants::array_fragment_meta_dir_name);
-    resources.vfs().create_dir(array_fragment_metadata_uri);
+    resources.vfs()->create_dir(array_fragment_metadata_uri);
   }
 }
 

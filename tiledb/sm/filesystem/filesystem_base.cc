@@ -47,6 +47,10 @@ LsObjects FilesystemBase::ls_filtered_v2(
   throw UnsupportedOperation("ls_filtered");
 }
 
+void FilesystemBase::remove_dir_if_empty(const URI&) const {
+  throw UnsupportedOperation("remove_dir_if_empty");
+}
+
 void FilesystemBase::move_file(const URI&, const URI&) const {
   throw UnsupportedOperation("move_file");
 }
@@ -69,6 +73,20 @@ bool FilesystemBase::use_read_ahead_cache() const {
 
 void FilesystemBase::sync(const URI&) const {
   throw UnsupportedOperation("sync");
+}
+
+void FilesystemBase::set_multipart_upload_state(
+    const URI&, const MultiPartUploadState&) {
+  throw UnsupportedOperation("set_multipart_upload_state");
+}
+
+std::optional<FilesystemBase::MultiPartUploadState>
+FilesystemBase::multipart_upload_state(const URI&) {
+  throw UnsupportedOperation("multipart_upload_state");
+}
+
+void FilesystemBase::flush_multipart_file_buffer(const URI&) {
+  throw UnsupportedOperation("flush_multipart_file_buffer");
 }
 
 bool FilesystemBase::is_bucket(const URI&) const {

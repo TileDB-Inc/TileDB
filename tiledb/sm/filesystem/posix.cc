@@ -191,16 +191,16 @@ void Posix::remove_dir(const URI& uri) const {
   }
 }
 
-bool Posix::remove_dir_if_empty(const std::string& path) const {
+void Posix::remove_dir_if_empty(const URI& uri) const {
+  auto path = uri.to_path();
   if (rmdir(path.c_str()) != 0) {
     if (errno == ENOTEMPTY) {
-      return false;
+      return;
     }
     throw IOError(
         std::string("Failed to delete path '") + path + "';  " +
         strerror(errno));
   }
-  return true;
 }
 
 void Posix::remove_file(const URI& uri) const {

@@ -679,7 +679,7 @@ uint64_t FragmentMetadata::fragment_size() const {
   if (meta_file_size == 0) {
     auto meta_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
-    meta_file_size = resources_->vfs().file_size(meta_uri);
+    meta_file_size = resources_->vfs()->file_size(meta_uri);
   }
   // Validate that the meta_file_size is not zero, either preloaded or fetched
   // above
@@ -777,7 +777,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
               sf.uri_,
               sf.timestamp_range_,
               memory_tracker,
-              !resources.vfs().is_file(coords_uri));
+              !resources.vfs()->is_file(coords_uri));
         } else {
           // Fragment format version > 2
           metadata = make_shared<FragmentMetadata>(
@@ -827,7 +827,7 @@ void FragmentMetadata::load(
   // Load the metadata file size when we are not reading from consolidated
   // buffer
   if (fragment_metadata_tile == nullptr) {
-    meta_file_size_ = resources_->vfs().file_size(meta_uri);
+    meta_file_size_ = resources_->vfs()->file_size(meta_uri);
   }
 
   // Get fragment name version
@@ -928,7 +928,7 @@ void FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
   store_footer(encryption_key);
 
   // Close file
-  throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
+  throw_if_not_ok(resources_->vfs()->close_file(fragment_metadata_uri));
 }
 
 void FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
@@ -1010,7 +1010,7 @@ void FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   store_footer(encryption_key);
 
   // Close file
-  throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
+  throw_if_not_ok(resources_->vfs()->close_file(fragment_metadata_uri));
 }
 
 void FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
@@ -1097,7 +1097,7 @@ void FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   store_footer(encryption_key);
 
   // Close file
-  throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
+  throw_if_not_ok(resources_->vfs()->close_file(fragment_metadata_uri));
 }
 
 void FragmentMetadata::store_v15_or_higher(
@@ -1190,7 +1190,7 @@ void FragmentMetadata::store_v15_or_higher(
   store_footer(encryption_key);
 
   // Close file
-  throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
+  throw_if_not_ok(resources_->vfs()->close_file(fragment_metadata_uri));
 }
 
 void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
@@ -1679,7 +1679,7 @@ void FragmentMetadata::get_footer_offset_and_size(
     URI fragment_metadata_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
     uint64_t size_offset = meta_file_size_ - sizeof(uint64_t);
-    throw_if_not_ok(resources_->vfs().read_exactly(
+    throw_if_not_ok(resources_->vfs()->read_exactly(
         fragment_metadata_uri, size_offset, size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     resources_->stats().add_counter("read_frag_meta_size", sizeof(uint64_t));
@@ -2758,7 +2758,7 @@ void FragmentMetadata::read_file_footer(
   }
 
   // Read footer
-  throw_if_not_ok(resources_->vfs().read_exactly(
+  throw_if_not_ok(resources_->vfs()->read_exactly(
       fragment_metadata_uri,
       *footer_offset,
       tile->data_as<uint8_t>(),
@@ -2781,11 +2781,11 @@ void FragmentMetadata::write_footer_to_file(shared_ptr<WriterTile> tile) const {
       std::string(constants::fragment_metadata_filename));
 
   uint64_t size = tile->size();
-  resources_->vfs().write(fragment_metadata_uri, tile->data(), tile->size());
+  resources_->vfs()->write(fragment_metadata_uri, tile->data(), tile->size());
 
   // Write the size in the end if there is at least one var-sized dimension
   if (!array_schema_->domain().all_dims_fixed() || version_ >= 10) {
-    resources_->vfs().write(fragment_metadata_uri, &size, sizeof(uint64_t));
+    resources_->vfs()->write(fragment_metadata_uri, &size, sizeof(uint64_t));
   }
 }
 
@@ -3464,8 +3464,8 @@ void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
-  throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
-  resources_->vfs().remove_file(fragment_metadata_uri);
+  throw_if_not_ok(resources_->vfs()->close_file(fragment_metadata_uri));
+  resources_->vfs()->remove_file(fragment_metadata_uri);
 }
 
 const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {

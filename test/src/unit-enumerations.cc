@@ -3108,8 +3108,8 @@ bool EnumerationFx::vec_cmp(std::vector<T> v1, std::vector<T> v2) {
 }
 
 void EnumerationFx::rm_array() {
-  if (ctx_.resources().vfs().is_dir(uri_)) {
-    ctx_.resources().vfs().remove_dir(uri_);
+  if (ctx_.resources().vfs()->is_dir(uri_)) {
+    ctx_.resources().vfs()->remove_dir(uri_);
   }
 }
 

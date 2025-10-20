@@ -141,8 +141,15 @@ std::string local_path() {
 TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
+  Config config;
+  Context ctx(config);
   VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, Config{}};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
 
   SECTION("- Deep hierarchy") {
     // Create a nested path with a long total length
@@ -210,8 +217,14 @@ TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params();
+  Context ctx(config);
   VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
 
   size_t test_str_size = 0;
   SECTION("Filesize = 0 MB") {
@@ -292,8 +305,14 @@ TEST_CASE("VFS: copy_dir", "[vfs][copy_dir]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params();
+  Context ctx(config);
   VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
 
   /* Create the following file hierarchy:
    *
@@ -400,8 +419,14 @@ TEMPLATE_LIST_TEST_CASE(
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params();
+  Context ctx(config);
   VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
 
   URI path = fs.temp_dir_.add_trailing_slash();
 
@@ -643,8 +668,14 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params(disable_multipart, max_parallel_ops);
+  Context ctx(config);
   VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
 
   // Getting file_size on a nonexistent blob shouldn't crash on Azure
   URI non_existent = URI(path.to_string() + "non_existent");
@@ -731,9 +762,14 @@ TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
   ThreadPool io_tp(1);
   // Will be configured from environment variables.
   Config config;
-
+  Context ctx(config);
   VFS vfs{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
   REQUIRE(vfs.supports_uri_scheme(test_file));
   CHECK(vfs.file_size(test_file) > 0);
 }
@@ -741,8 +777,15 @@ TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
+  Config config;
+  Context ctx(config);
   VFS vfs_ls{
-      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, Config{}};
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &compute_tp,
+      &io_tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &io_tp, config)};
 
   std::string path = local_path();
   std::string dir = path + "ls_dir";
@@ -898,7 +941,15 @@ TEST_CASE("VFS: Throwing filters for ls_recursive", "[vfs][ls_recursive]") {
 
 TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
   ThreadPool tp(1);
-  VFS vfs{&g_helper_stats, g_helper_logger().get(), &tp, &tp, Config{}};
+  Config config;
+  Context ctx(config);
+  VFS vfs{
+      &g_helper_stats,
+      g_helper_logger().get(),
+      &tp,
+      &tp,
+      config,
+      ctx.resources().make_filesystems(&g_helper_stats, &tp, config)};
 
   std::string path = local_path();
   std::string dir = path + "remove_dir_if_empty/";

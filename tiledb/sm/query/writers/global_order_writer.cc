@@ -230,22 +230,21 @@ GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state() {
   return global_write_state_.get();
 }
 
-std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+// #TODO ensure this works as-intended
+std::pair<Status, std::unordered_map<std::string, MultiPartUploadState>>
 GlobalOrderWriter::multipart_upload_state(bool client) {
   if (client) {
     return {Status::Ok(), global_write_state_->multipart_upload_state_};
   }
 
   auto meta = global_write_state_->frag_meta_;
-  std::unordered_map<std::string, VFS::MultiPartUploadState> result;
+  std::unordered_map<std::string, MultiPartUploadState> result;
 
   // TODO: to be refactored, there are multiple places in writers where
   // we iterate over the internal fragment files manually
   for (const auto& name : buffer_names()) {
     auto uri = meta->uri(name);
-
-    auto&& [st2, state] = resources_.vfs().multipart_upload_state(uri);
-    RETURN_NOT_OK_TUPLE(st2, {});
+    auto state = resources_.vfs()->multipart_upload_state(uri);
     // If there is no entry for this uri, probably multipart upload is disabled
     // or no write was issued so far
     if (!state.has_value()) {
@@ -255,16 +254,13 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
 
     if (array_schema_.var_size(name)) {
       auto var_uri = meta->var_uri(name);
-      auto&& [st, var_state] = resources_.vfs().multipart_upload_state(var_uri);
-      RETURN_NOT_OK_TUPLE(st, {});
+      auto var_state = resources_.vfs()->multipart_upload_state(var_uri);
       result[var_uri.remove_trailing_slash().last_path_part()] =
           std::move(*var_state);
     }
     if (array_schema_.is_nullable(name)) {
       auto validity_uri = meta->validity_uri(name);
-      auto&& [st, val_state] =
-          resources_.vfs().multipart_upload_state(validity_uri);
-      RETURN_NOT_OK_TUPLE(st, {});
+      auto val_state = resources_.vfs()->multipart_upload_state(validity_uri);
       result[validity_uri.remove_trailing_slash().last_path_part()] =
           std::move(*val_state);
     }
@@ -274,9 +270,7 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
 }
 
 Status GlobalOrderWriter::set_multipart_upload_state(
-    const std::string& uri,
-    const VFS::MultiPartUploadState& state,
-    bool client) {
+    const std::string& uri, const MultiPartUploadState& state, bool client) {
   if (client) {
     global_write_state_->multipart_upload_state_[uri] = state;
     return Status::Ok();
@@ -285,7 +279,8 @@ Status GlobalOrderWriter::set_multipart_upload_state(
   // uri in this case holds only the buffer name
   auto absolute_uri =
       global_write_state_->frag_meta_->fragment_uri().join_path(uri);
-  return resources_.vfs().set_multipart_upload_state(absolute_uri, state);
+  resources_.vfs()->set_multipart_upload_state(absolute_uri, state);
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -502,13 +497,13 @@ void GlobalOrderWriter::clean_up() {
     // Cleanup the fragment we are currently writing. There is a chance that the
     // URI is empty if creating the first fragment had failed.
     if (!uri.empty()) {
-      resources_.vfs().remove_dir(uri);
+      resources_.vfs()->remove_dir(uri);
     }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
     for (auto& uri : frag_uris_to_commit_) {
-      resources_.vfs().remove_dir(uri);
+      resources_.vfs()->remove_dir(uri);
     }
     frag_uris_to_commit_.clear();
   }
@@ -699,7 +694,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Write either one commit file or a consolidated commit file if multiple
   // fragments were written.
   if (frag_uris_to_commit_.size() == 0) {
-    resources_.vfs().touch(commit_uri);
+    resources_.vfs()->touch(commit_uri);
   } else {
     std::vector<URI> commit_uris;
     commit_uris.reserve(frag_uris_to_commit_.size() + 1);
@@ -848,7 +843,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 void GlobalOrderWriter::nuke_global_write_state() {
   auto meta = global_write_state_->frag_meta_;
   throw_if_not_ok(close_files(meta));
-  resources_.vfs().remove_dir(meta->fragment_uri());
+  resources_.vfs()->remove_dir(meta->fragment_uri());
   global_write_state_.reset(nullptr);
 }
 

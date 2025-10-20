@@ -228,9 +228,9 @@ void GroupDetails::store(
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
-  auto& vfs = resources.vfs();
-  if (!vfs.is_dir(group_detail_folder_uri)) {
-    vfs.create_dir(group_detail_folder_uri);
+  auto vfs = resources.vfs();
+  if (!vfs->is_dir(group_detail_folder_uri)) {
+    vfs->create_dir(group_detail_folder_uri);
   }
   GenericTileIO::store_data(resources, group_detail_uri, tile, encryption_key);
 }

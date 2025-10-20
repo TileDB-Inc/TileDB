@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,8 +43,9 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+using MultiPartUploadState = FilesystemBase::MultiPartUploadState;
 
 /** Processes write queries. */
 class GlobalOrderWriter : public WriterBase {
@@ -106,7 +107,7 @@ class GlobalOrderWriter : public WriterBase {
      * A mapping of buffer names to multipart upload state used by clients
      * to track the write state in remote global order writes
      */
-    std::unordered_map<std::string, VFS::MultiPartUploadState>
+    std::unordered_map<std::string, MultiPartUploadState>
         multipart_upload_state_;
   };
 
@@ -168,7 +169,7 @@ class GlobalOrderWriter : public WriterBase {
    * or from within the cloud backend internal mappings if the code is executed
    * on the rest server.
    */
-  std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+  std::pair<Status, std::unordered_map<std::string, MultiPartUploadState>>
   multipart_upload_state(bool client);
 
   /**
@@ -182,9 +183,7 @@ class GlobalOrderWriter : public WriterBase {
    * @return Status
    */
   Status set_multipart_upload_state(
-      const std::string& uri,
-      const VFS::MultiPartUploadState& state,
-      bool client);
+      const std::string& uri, const MultiPartUploadState& state, bool client);
 
  private:
   /* ********************************* */
@@ -393,7 +392,6 @@ class GlobalOrderWriter : public WriterBase {
   Status start_new_fragment();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GLOBAL_ORDER_WRITER_H

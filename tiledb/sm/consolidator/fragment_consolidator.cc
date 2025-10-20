@@ -522,24 +522,24 @@ void FragmentConsolidator::vacuum(const char* array_name) {
   }
 
   // Delete fragment directories
-  auto& vfs = resources_.vfs();
+  auto vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
   throw_if_not_ok(parallel_for(
       &compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
         // Remove the commit file, if present.
         auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
-        if (vfs.is_file(commit_uri)) {
-          vfs.remove_file(commit_uri);
+        if (vfs->is_file(commit_uri)) {
+          vfs->remove_file(commit_uri);
         }
-        if (vfs.is_dir(fragment_uris_to_vacuum[i])) {
-          vfs.remove_dir(fragment_uris_to_vacuum[i]);
+        if (vfs->is_dir(fragment_uris_to_vacuum[i])) {
+          vfs->remove_dir(fragment_uris_to_vacuum[i]);
         }
 
         return Status::Ok();
       }));
 
   // Delete the vacuum files.
-  vfs.remove_files(
+  vfs->remove_files(
       &compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 }
 
@@ -664,8 +664,8 @@ Status FragmentConsolidator::consolidate_internal(
   // Finalize write query
   auto st = query_w->finalize();
   if (!st.ok()) {
-    if (resources_.vfs().is_dir(*new_fragment_uri))
-      resources_.vfs().remove_dir(*new_fragment_uri);
+    if (resources_.vfs()->is_dir(*new_fragment_uri))
+      resources_.vfs()->remove_dir(*new_fragment_uri);
     return st;
   }
 
@@ -676,8 +676,8 @@ Status FragmentConsolidator::consolidate_internal(
       vac_uri,
       to_consolidate);
   if (!st.ok()) {
-    if (resources_.vfs().is_dir(*new_fragment_uri))
-      resources_.vfs().remove_dir(*new_fragment_uri);
+    if (resources_.vfs()->is_dir(*new_fragment_uri))
+      resources_.vfs()->remove_dir(*new_fragment_uri);
     return st;
   }
 
@@ -1084,8 +1084,8 @@ Status FragmentConsolidator::write_vacuum_file(
   }
 
   auto data = ss.str();
-  resources_.vfs().write(vac_uri, data.c_str(), data.size());
-  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
+  resources_.vfs()->write(vac_uri, data.c_str(), data.size());
+  throw_if_not_ok(resources_.vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }

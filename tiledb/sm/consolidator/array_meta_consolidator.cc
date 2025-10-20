@@ -119,8 +119,8 @@ Status ArrayMetaConsolidator::consolidate(
   throw_if_not_ok(array_for_writes.close());
 
   // Write vacuum file
-  resources_.vfs().write(vac_uri, data.c_str(), data.size());
-  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
+  resources_.vfs()->write(vac_uri, data.c_str(), data.size());
+  throw_if_not_ok(resources_.vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }
@@ -132,14 +132,14 @@ void ArrayMetaConsolidator::vacuum(const char* array_name) {
   }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
-  auto& vfs = resources_.vfs();
+  auto vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
   auto array_dir = ArrayDirectory(
       resources_, URI(array_name), 0, std::numeric_limits<uint64_t>::max());
 
   // Delete the array metadata and vacuum files
-  vfs.remove_files(&compute_tp, array_dir.array_meta_uris_to_vacuum());
-  vfs.remove_files(&compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
+  vfs->remove_files(&compute_tp, array_dir.array_meta_uris_to_vacuum());
+  vfs->remove_files(&compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */

@@ -59,8 +59,15 @@ struct tiledb_vfs_handle_t
       Logger* logger,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
-      const tiledb::sm::Config& config)
-      : vfs_{parent_stats, logger, compute_tp, io_tp, config} {
+      const tiledb::sm::Config& config,
+      std::vector<std::unique_ptr<tiledb::sm::FilesystemBase>>&& filesystems)
+      : vfs_{
+            parent_stats,
+            logger,
+            compute_tp,
+            io_tp,
+            config,
+            std::move(filesystems)} {
   }
 
   vfs_type* vfs() {

@@ -64,13 +64,12 @@ VFS::VFS(
     Logger* const logger,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    const Config& config)
+    const Config& config,
+    std::vector<std::unique_ptr<FilesystemBase>>&& filesystems)
     : VFSBase(parent_stats)
-    , Azure_within_VFS(io_tp, config)
-    , GCS_within_VFS(io_tp, config)
-    , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , logger_(logger)
+    , filesystems_(std::move(filesystems))
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
     , vfs_params_(VFSParameters(config)) {
@@ -81,22 +80,6 @@ VFS::VFS(
   // Construct the read-ahead cache.
   read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
       tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
-
-  if constexpr (s3_enabled) {
-    supported_fs_.insert(Filesystem::S3);
-  }
-
-#ifdef HAVE_AZURE
-  supported_fs_.insert(Filesystem::AZURE);
-#endif
-
-#ifdef HAVE_GCS
-  supported_fs_.insert(Filesystem::GCS);
-#endif
-
-  local_ = LocalFS(config_);
-
-  supported_fs_.insert(Filesystem::MEMFS);
 }
 
 /* ********************************* */
@@ -104,32 +87,10 @@ VFS::VFS(
 /* ********************************* */
 
 const FilesystemBase& VFS::get_fs(const URI& uri) const {
-  if (uri.is_file()) {
-    return local_;
-  }
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    return s3();
-#else
-    throw BuiltWithout("S3");
-#endif
-  }
-  if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-    return azure();
-#else
-    throw BuiltWithout("Azure");
-#endif
-  }
-  if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-    return gcs();
-#else
-    throw BuiltWithout("GCS");
-#endif
-  }
-  if (uri.is_memfs()) {
-    return memfs_;
+  for (auto& fs : filesystems_) {
+    if (fs->supports_uri(uri)) {
+      return *fs;
+    }
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -243,10 +204,7 @@ void VFS::remove_dir(const URI& uri) const {
 }
 
 void VFS::remove_dir_if_empty(const URI& uri) const {
-  if (uri.is_file()) {
-    local_.remove_dir_if_empty(uri.to_path());
-  }
-  // Object stores do not have directories.
+  get_fs(uri).remove_dir_if_empty(uri);
 }
 
 void VFS::remove_dirs(
@@ -655,20 +613,37 @@ bool VFS::supports_uri(const URI& uri) const {
   return get_fs(uri).supports_uri(uri);
 }
 
+bool VFS::supports_fs(FilesystemBase& filesystem) const {
+  for (auto& fs : filesystems_) {
+    if (fs.get() == &filesystem) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool VFS::supports_fs(Filesystem fs) const {
-  return (supported_fs_.find(fs) != supported_fs_.end());
+  std::string path = "";
+  switch (static_cast<tiledb::sm::Filesystem>(fs)) {
+    case tiledb::sm::Filesystem::HDFS:
+      path = "hdfs://";
+    case tiledb::sm::Filesystem::S3:
+      path = "s3://";
+    case tiledb::sm::Filesystem::AZURE:
+      path = "azure://";
+    case tiledb::sm::Filesystem::GCS:
+      path = "gcs://";
+    case tiledb::sm::Filesystem::MEMFS:
+      path = "mem://";
+    case tiledb::sm::Filesystem::LOCAL:
+      path = "file://";
+  }
+
+  return supports_uri(tiledb::sm::URI(path));
 }
 
 bool VFS::supports_uri_scheme(const URI& uri) const {
-  if (uri.is_s3()) {
-    return supports_fs(Filesystem::S3);
-  } else if (uri.is_azure()) {
-    return supports_fs(Filesystem::AZURE);
-  } else if (uri.is_gcs()) {
-    return supports_fs(Filesystem::GCS);
-  } else {
-    return true;
-  }
+  return get_fs(uri).supports_uri(uri);
 }
 
 void VFS::sync(const URI& uri) const {
@@ -689,32 +664,10 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
         remove_file(uri);
       break;
     case VFSMode::VFS_APPEND:
-      if (uri.is_s3()) {
-        if constexpr (s3_enabled) {
-          throw VFSException(
-              "Cannot open file '" + uri.to_string() +
-              "'; S3 does not support append mode");
-        } else {
-          throw BuiltWithout("S3");
-        }
-      }
-      if (uri.is_azure()) {
-        if constexpr (azure_enabled) {
-          throw VFSException(
-              "Cannot open file '" + uri.to_string() +
-              "'; Azure does not support append mode");
-        } else {
-          throw BuiltWithout("Azure");
-        }
-      }
-      if (uri.is_gcs()) {
-        if constexpr (gcs_enabled) {
-          throw VFSException(
-              "Cannot open file '" + uri.to_string() +
-              "'; GCS does not support append mode");
-        } else {
-          throw BuiltWithout("GCS");
-        }
+      if (!is_file) {
+        throw VFSException(
+            "Cannot open file '" + uri.to_string() +
+            "'; Object store does not support append mode");
       }
       break;
   }
@@ -743,120 +696,20 @@ void VFS::write(
   get_fs(uri).write(uri, buffer, buffer_size, remote_global_order_write);
 }
 
-std::pair<Status, std::optional<VFS::MultiPartUploadState>>
-VFS::multipart_upload_state(const URI& uri) {
-  if (uri.is_file()) {
-    return {Status::Ok(), {}};
-  } else if (uri.is_s3()) {
-#ifdef HAVE_S3
-    VFS::MultiPartUploadState state;
-    auto s3_state = s3().multipart_upload_state(uri);
-    if (!s3_state.has_value()) {
-      return {Status::Ok(), nullopt};
-    }
-    state.upload_id = s3_state->upload_id;
-    state.part_number = s3_state->part_number;
-    state.status = s3_state->st;
-    auto& completed_parts = s3_state->completed_parts;
-    for (auto& entry : completed_parts) {
-      state.completed_parts.emplace_back();
-      state.completed_parts.back().e_tag = entry.second.GetETag();
-      state.completed_parts.back().part_number = entry.second.GetPartNumber();
-    }
-    if (!s3_state->buffered_chunks.empty()) {
-      state.buffered_chunks.emplace();
-      for (auto& chunk : s3_state->buffered_chunks) {
-        state.buffered_chunks->emplace_back(
-            URI(chunk.uri).remove_trailing_slash().last_path_part(),
-            chunk.size);
-      }
-    }
-
-    return {Status::Ok(), state};
-#else
-    return {Status_VFSError("TileDB was built without S3 support"), nullopt};
-#endif
-  } else if (uri.is_azure()) {
-    if constexpr (azure_enabled) {
-      return {Status_VFSError("Not yet supported for Azure"), nullopt};
-    } else {
-      return {
-          Status_VFSError("TileDB was built without Azure support"), nullopt};
-    }
-  } else if (uri.is_gcs()) {
-    if constexpr (gcs_enabled) {
-      return {Status_VFSError("Not yet supported for GCS"), nullopt};
-    } else {
-      return {Status_VFSError("TileDB was built without GCS support"), nullopt};
-    }
-  }
-
-  return {
-      Status_VFSError("Unsupported URI schemes: " + uri.to_string()), nullopt};
+std::optional<VFS::MultiPartUploadState> VFS::multipart_upload_state(
+    const URI& uri) {
+  return get_fs(uri).multipart_upload_state(uri);
 }
 
-Status VFS::set_multipart_upload_state(
-    const URI& uri, [[maybe_unused]] const MultiPartUploadState& state) {
-  if (uri.is_file()) {
-    return Status::Ok();
-  } else if (uri.is_s3()) {
-#ifdef HAVE_S3
-    S3::MultiPartUploadState s3_state;
-    s3_state.part_number = state.part_number;
-    s3_state.upload_id = *state.upload_id;
-    s3_state.st = state.status;
-    for (auto& part : state.completed_parts) {
-      auto rv = s3_state.completed_parts.try_emplace(part.part_number);
-      rv.first->second.SetETag(part.e_tag->c_str());
-      rv.first->second.SetPartNumber(part.part_number);
-    }
-
-    if (state.buffered_chunks.has_value()) {
-      for (auto& chunk : *state.buffered_chunks) {
-        // Chunk URI gets reconstructed from the serialized chunk name
-        // and the real attribute uri
-        s3_state.buffered_chunks.emplace_back(
-            s3().generate_chunk_uri(uri, chunk.uri).to_string(), chunk.size);
-      }
-    }
-
-    return s3().set_multipart_upload_state(uri.to_string(), s3_state);
-#else
-    throw BuiltWithout("S3");
-#endif
-  } else if (uri.is_azure()) {
-    if constexpr (azure_enabled) {
-      throw VFSException("Not yet supported for Azure");
-    } else {
-      throw BuiltWithout("Azure");
-    }
-  } else if (uri.is_gcs()) {
-    if constexpr (gcs_enabled) {
-      throw VFSException("Not yet supported for GCS");
-    } else {
-      throw BuiltWithout("GCS");
-    }
-  }
-
-  throw UnsupportedURI(uri.to_string());
+void VFS::set_multipart_upload_state(
+    const URI& uri, const MultiPartUploadState& state) {
+  get_fs(uri).set_multipart_upload_state(uri, state);
 }
 
-Status VFS::flush_multipart_file_buffer(const URI& uri) {
+void VFS::flush_multipart_file_buffer(const URI& uri) {
   auto instrument =
       make_log_duration_instrument(uri, "flush_multipart_file_buffer");
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    Buffer* buff = nullptr;
-    throw_if_not_ok(s3().get_file_buffer(uri, &buff));
-    s3().global_order_write(uri, buff->data(), buff->size());
-    buff->reset_size();
-
-#else
-    throw BuiltWithout("S3");
-#endif
-  }
-
-  return Status::Ok();
+  get_fs(uri).flush_multipart_file_buffer(uri);
 }
 
 void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {

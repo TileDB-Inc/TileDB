@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ StorageManagerCanonical::StorageManagerCanonical(
     const shared_ptr<Logger>&,  // unused
     const Config& config)
     : global_state_(global_state::GlobalState::GetGlobalState())
-    , vfs_(resources.vfs())
+    , vfs_(*resources.vfs().get())
     , cancellation_in_progress_(false)
     , config_(config)
     , queries_in_progress_(0) {

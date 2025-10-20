@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2021-2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +26,13 @@
 include(unit_test)
 
 commence(unit_test vfs)
-    this_target_object_libraries(vfs)
-    this_target_sources(main.cc unit_uri.cc unit_ls_filtered.cc)
+    this_target_object_libraries(context_resources)
+    this_target_sources(main.cc unit_uri.cc)
+conclude(unit_test)
+
+commence(unit_test vfs_ls_filtered)
+    this_target_object_libraries(context_resources)
+    this_target_sources(main.cc unit_ls_filtered.cc)
 conclude(unit_test)
 
 commence(unit_test vfs_read_log_modes)

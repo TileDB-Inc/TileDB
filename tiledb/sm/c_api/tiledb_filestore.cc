@@ -97,8 +97,8 @@ int32_t tiledb_filestore_schema_create(
   if (uri) {
     // The user provided a uri, let's examine the file and get some insights
     // Get the file size, calculate a reasonable tile extent
-    auto& vfs = ctx->resources().vfs();
-    uint64_t file_size = vfs.file_size(tiledb::sm::URI(uri));
+    auto vfs = ctx->resources().vfs();
+    uint64_t file_size = vfs->file_size(tiledb::sm::URI(uri));
     if (file_size) {
       tile_extent = compute_tile_extent_based_on_file_size(file_size);
     }
@@ -191,8 +191,8 @@ int32_t tiledb_filestore_uri_import(
   tiledb::sm::Context& context = ctx->context();
 
   // Get the file size
-  auto& vfs = ctx->resources().vfs();
-  uint64_t file_size = vfs.file_size(tiledb::sm::URI(file_uri));
+  auto vfs = ctx->resources().vfs();
+  uint64_t file_size = vfs->file_size(tiledb::sm::URI(file_uri));
   if (!file_size) {
     return TILEDB_OK;  // NOOP
   }
@@ -242,7 +242,7 @@ int32_t tiledb_filestore_uri_import(
       fext.c_str());
 
   // Write the data in batches using the global order writer
-  if (!vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_READ)
+  if (!vfs->open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_READ)
            .ok()) {
     throw api::CAPIException(
         "Failed to open the file; Invalid file URI or incorrect file "
@@ -315,7 +315,7 @@ int32_t tiledb_filestore_uri_import(
     if (start + buffer.size() > file_size) {
       readlen = file_size - start;
     }
-    throw_if_not_ok(vfs.read_exactly(
+    throw_if_not_ok(vfs->read_exactly(
         tiledb::sm::URI(file_uri), start, buffer.data(), readlen));
     return readlen;
   };
@@ -349,7 +349,7 @@ int32_t tiledb_filestore_uri_import(
 
   if (start_range < file_size) {
     // Something must have gone wrong whilst reading the file
-    throw_if_not_ok(vfs.close_file(tiledb::sm::URI(file_uri)));
+    throw_if_not_ok(vfs->close_file(tiledb::sm::URI(file_uri)));
     throw api::CAPIStatusException("Error whilst reading the file");
   }
 
@@ -357,7 +357,7 @@ int32_t tiledb_filestore_uri_import(
     // Dump the fragment on disk
     throw_if_not_ok(query.finalize());
   }
-  throw_if_not_ok(vfs.close_file(tiledb::sm::URI(file_uri)));
+  throw_if_not_ok(vfs->close_file(tiledb::sm::URI(file_uri)));
 
   throw_if_not_ok(array->close());
 
@@ -370,8 +370,8 @@ int32_t tiledb_filestore_uri_export(
   ensure_uri_is_valid(file_uri);
 
   tiledb::sm::Context& context = ctx->context();
-  auto& vfs = ctx->resources().vfs();
-  if (!vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_WRITE)
+  auto vfs = ctx->resources().vfs();
+  if (!vfs->open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_WRITE)
            .ok()) {
     throw api::CAPIException(
         "Failed to open the file; Invalid file URI or incorrect file "
@@ -447,7 +447,7 @@ int32_t tiledb_filestore_uri_export(
     }
     throw_if_not_ok(query.submit());
 
-    vfs.write(
+    vfs->write(
         tiledb::sm::URI(file_uri),
         reinterpret_cast<char*>(data.data()),
         write_size);
@@ -456,7 +456,7 @@ int32_t tiledb_filestore_uri_export(
     end_range = std::min(file_size - 1, end_range + buffer_size);
   } while (start_range <= end_range);
 
-  throw_if_not_ok(vfs.close_file(tiledb::sm::URI(file_uri)));
+  throw_if_not_ok(vfs->close_file(tiledb::sm::URI(file_uri)));
 
   throw_if_not_ok(array->close());
 

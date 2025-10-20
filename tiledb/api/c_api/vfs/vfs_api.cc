@@ -67,7 +67,12 @@ capi_return_t tiledb_vfs_alloc(
     ctx_config.inherit((config->config()));
   }
   *vfs = tiledb_vfs_t::make_handle(
-      &stats, logger, &compute_tp, &io_tp, ctx_config);
+      &stats,
+      logger,
+      &compute_tp,
+      &io_tp,
+      ctx_config,
+      resources.make_filesystems(&stats, &io_tp, ctx_config));
 
   return TILEDB_OK;
 }

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,8 @@ ContextResources::ContextResources(
     , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
-    , vfs_(stats_.get(), logger_.get(), &compute_tp_, &io_tp_, config)
+    //, vfs_(stats_.get(), logger_.get(), &compute_tp_, &io_tp_, config,
+    // std::move(make_filesystems()))
     , rest_client_{RestClientFactory::make(
           *(stats_.get()),
           config_,
@@ -77,6 +78,14 @@ ContextResources::ContextResources(
     throw std::logic_error("Logger must not be nullptr");
   }
 
+  vfs_ = make_shared<VFS>(
+      stats_.get(),
+      logger_.get(),
+      &compute_tp_,
+      &io_tp_,
+      config,
+      make_filesystems(stats_.get(), &io_tp_, config_));
+
   memory_tracker_reporter_->start();
 }
 
@@ -91,6 +100,31 @@ shared_ptr<MemoryTracker> ContextResources::ephemeral_memory_tracker() const {
 shared_ptr<MemoryTracker> ContextResources::serialization_memory_tracker()
     const {
   return serialization_memory_tracker_;
+}
+
+std::vector<std::unique_ptr<FilesystemBase>> ContextResources::make_filesystems(
+    [[maybe_unused]] stats::Stats* parent_stats,
+    [[maybe_unused]] ThreadPool* io_tp,
+    const Config& config) {
+  std::vector<std::unique_ptr<FilesystemBase>> filesystems;
+  filesystems.emplace_back(std::make_unique<MemFilesystem>());
+#ifdef _WIN32
+  using LocalFS = Win;
+#else
+  using LocalFS = Posix;
+#endif
+  filesystems.emplace_back(std::make_unique<LocalFS>(config));
+
+#ifdef HAVE_AZURE
+  filesystems.emplace_back(std::make_unique<Azure>(io_tp, config));
+#endif
+#ifdef HAVE_GCS
+  filesystems.emplace_back(std::make_unique<GCS>(io_tp, config));
+#endif
+#ifdef HAVE_S3
+  filesystems.emplace_back(std::make_unique<S3>(parent_stats, io_tp, config));
+#endif
+  return filesystems;
 }
 
 }  // namespace tiledb::sm

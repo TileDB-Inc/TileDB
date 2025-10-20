@@ -45,8 +45,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
 class GenericTileIOException : public StatusException {
@@ -124,7 +123,7 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
 
   // Read the tile.
-  throw_if_not_ok(resources_.vfs().read_exactly(
+  throw_if_not_ok(resources_.vfs()->read_exactly(
       uri_,
       file_offset + tile_data_offset,
       tile->filtered_data(),
@@ -144,7 +143,7 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 
   std::vector<uint8_t> base_buf(GenericTileHeader::BASE_SIZE);
 
-  throw_if_not_ok(resources.vfs().read_exactly(
+  throw_if_not_ok(resources.vfs()->read_exactly(
       uri, file_offset, base_buf.data(), base_buf.size()));
 
   Deserializer base_deserializer(base_buf.data(), base_buf.size());
@@ -159,7 +158,7 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 
   // Read header filter pipeline.
   std::vector<uint8_t> filter_pipeline_buf(header.filter_pipeline_size);
-  throw_if_not_ok(resources.vfs().read_exactly(
+  throw_if_not_ok(resources.vfs()->read_exactly(
       uri,
       file_offset + GenericTileHeader::BASE_SIZE,
       filter_pipeline_buf.data(),
@@ -184,7 +183,7 @@ void GenericTileIO::store_data(
   GenericTileIO tile_io(resources, uri);
   uint64_t nbytes = 0;
   tile_io.write_generic(tile, encryption_key, &nbytes);
-  throw_if_not_ok(resources.vfs().close_file(uri));
+  throw_if_not_ok(resources.vfs()->close_file(uri));
 }
 
 void GenericTileIO::write_generic(
@@ -204,7 +203,7 @@ void GenericTileIO::write_generic(
 
   write_generic_tile_header(&header);
 
-  resources_.vfs().write(
+  resources_.vfs()->write(
       uri_, tile->filtered_buffer().data(), tile->filtered_buffer().size());
 
   *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
@@ -237,7 +236,7 @@ void GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   serialize_generic_tile_header(serializer, *header);
 
   // Write buffer to file
-  resources_.vfs().write(uri_, data.data(), data.size());
+  resources_.vfs()->write(uri_, data.data(), data.size());
 }
 
 void GenericTileIO::configure_encryption_filter(
@@ -278,5 +277,4 @@ void GenericTileIO::init_generic_tile_header(
       &header->filters, encryption_key));
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

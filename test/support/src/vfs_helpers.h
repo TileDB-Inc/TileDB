@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,10 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
+
+#if HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif
 
 namespace tiledb::test {
 
@@ -1042,19 +1046,36 @@ class VFSTest : public VFSTestBase {
 };
 
 /** Test object for tiledb::sm::S3 functionality. */
-class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
+class S3Test : public VFSTestBase {
  public:
-  explicit S3Test(const std::vector<size_t>& test_tree);
-
+  explicit S3Test(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "s3://") {
 #ifdef HAVE_S3
-  /** Expose protected accessor from S3_within_VFS. */
-  tiledb::sm::S3& get_s3() {
-    return s3();
+    vfs_.create_bucket(temp_dir_);
+    for (size_t i = 1; i <= test_tree_.size(); i++) {
+      sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+      // VFS::create_dir is a no-op for S3; Just create objects.
+      if (test_tree_[i - 1] > 0) {
+        // Do not include an empty prefix in expected results.
+        expected_results_.emplace_back(path.to_string(), 0);
+      }
+      for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+        auto object_uri = path.join_path("test_file_" + std::to_string(j));
+        vfs_.touch(object_uri);
+        std::string data(j * 10, 'a');
+        vfs_.write(object_uri, data.data(), data.size());
+        vfs_.close_file(object_uri).ok();
+        expected_results_.emplace_back(object_uri.to_string(), data.size());
+      }
+    }
+    std::sort(expected_results_.begin(), expected_results_.end());
+#endif
   }
 
-  /** Expose protected const accessor from S3_within_VFS. */
-  const tiledb::sm::S3& get_s3() const {
-    return s3();
+#ifdef HAVE_S3
+  /** Expose protected accessor from S3 within VFS. */
+  tiledb::sm::S3& get_fs(const tiledb::sm::URI& uri) {
+    return dynamic_cast<tiledb::sm::S3&>(vfs_.get_fs(uri));
   }
 #endif
 };

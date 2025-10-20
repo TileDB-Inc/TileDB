@@ -35,6 +35,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 namespace tiledb::sm {
 /**
@@ -63,7 +64,14 @@ class VFSTest {
       , logger_("unit_ls_filtered")
       , io_(4)
       , compute_(4)
-      , vfs_(&stats_, &logger_, &io_, &compute_, tiledb::sm::Config())
+      , vfs_(
+            &stats_,
+            &logger_,
+            &io_,
+            &compute_,
+            tiledb::sm::Config(),
+            tiledb::sm::ContextResources::make_filesystems(
+                &stats_, &io_, tiledb::sm::Config()))
       , test_tree_(test_tree)
       , prefix_(prefix)
       , temp_dir_(prefix_)

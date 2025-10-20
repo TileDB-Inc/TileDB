@@ -59,13 +59,13 @@ bool is_array(ContextResources& resources, const URI& uri) {
     return exists.value();
   } else {
     // Check if the schema directory exists or not
-    auto& vfs = resources.vfs();
-    if (vfs.is_dir(uri.join_path(constants::array_schema_dir_name))) {
+    auto vfs = resources.vfs();
+    if (vfs->is_dir(uri.join_path(constants::array_schema_dir_name))) {
       return true;
     }
 
     // If there is no schema directory, we check schema file
-    return vfs.is_file(uri.join_path(constants::array_schema_filename));
+    return vfs->is_file(uri.join_path(constants::array_schema_filename));
   }
 }
 
@@ -78,13 +78,13 @@ bool is_group(ContextResources& resources, const URI& uri) {
     return exists.value();
   } else {
     // Check for new group details directory
-    auto& vfs = resources.vfs();
-    if (vfs.is_dir(uri.join_path(constants::group_detail_dir_name))) {
+    auto vfs = resources.vfs();
+    if (vfs->is_dir(uri.join_path(constants::group_detail_dir_name))) {
       return true;
     }
 
     // Fall back to older group file to check for legacy (pre-format 12) groups
-    return vfs.is_file(uri.join_path(constants::group_filename));
+    return vfs->is_file(uri.join_path(constants::group_filename));
   }
 }
 
@@ -99,7 +99,7 @@ ObjectType object_type(ContextResources& resources, const URI& uri) {
         URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
   } else if (!uri.is_tiledb()) {
     // For non public cloud backends, listing a non-directory is an error.
-    if (!resources.vfs().is_dir(uri)) {
+    if (!resources.vfs()->is_dir(uri)) {
       return ObjectType::INVALID;
     }
   }
@@ -134,7 +134,7 @@ void object_move(
         "'; Invalid TileDB object");
   }
 
-  resources.vfs().move_dir(old_uri, new_uri);
+  resources.vfs()->move_dir(old_uri, new_uri);
 }
 
 void object_remove(ContextResources& resources, const char* path) {
@@ -150,7 +150,7 @@ void object_remove(ContextResources& resources, const char* path) {
         "'; Invalid TileDB object");
   }
 
-  resources.vfs().remove_dir(uri);
+  resources.vfs()->remove_dir(uri);
 }
 
 }  // namespace tiledb::sm

@@ -738,6 +738,37 @@ class S3 : public FilesystemBase {
   void sync(const URI&) const override {
     // No-op for S3.
   }
+
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends during deserialization.
+   *
+   * @param uri The file uri used as key in the internal map of the backend.
+   * @param state The multipart upload state info.
+   */
+  void set_multipart_upload_state(
+      const URI& uri,
+      const FilesystemBase::MultiPartUploadState& state) override;
+
+  /**
+   * Used in serialization to share the multipart upload state among cloud
+   * executors during global order writes.
+   *
+   * @param uri The file uri used as key in the internal map of the backend.
+   * @return A MultiPartUploadState object.
+   */
+  std::optional<FilesystemBase::MultiPartUploadState> multipart_upload_state(
+      const URI& uri) override;
+
+  /**
+   * Used in remote global order writes to flush the internal
+   * in-memory buffer for an URI that backends maintain to modulate the
+   * frequency of multipart upload requests.
+   *
+   * @param uri The file uri identifying the backend file buffer.
+   */
+  void flush_multipart_file_buffer(const URI& uri) override;
+
   /**
    * Retrieves all the entries contained in the parent.
    *
@@ -1560,9 +1591,8 @@ class S3 : public FilesystemBase {
    *
    * @param uri The file uri used as key in the internal map
    * @param state The multipart upload state info
-   * @return Status
    */
-  Status set_multipart_upload_state(
+  void set_multipart_upload_state_internal(
       const std::string& uri, S3::MultiPartUploadState& state);
 
   /**
@@ -1571,7 +1601,7 @@ class S3 : public FilesystemBase {
    * @param uri The URI of the multipart state
    * @return an optional MultiPartUploadState object
    */
-  std::optional<S3::MultiPartUploadState> multipart_upload_state(
+  std::optional<S3::MultiPartUploadState> multipart_upload_state_internal(
       const URI& uri);
 
   /**

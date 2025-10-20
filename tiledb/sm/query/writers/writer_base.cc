@@ -601,9 +601,9 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
           // flush with finalize == true
-          resources_.vfs().flush(file_uri, true);
+          resources_.vfs()->flush(file_uri, true);
         } else {
-          throw_if_not_ok(resources_.vfs().close_file(file_uri));
+          throw_if_not_ok(resources_.vfs()->close_file(file_uri));
         }
         return Status::Ok();
       });
@@ -767,9 +767,9 @@ Status WriterBase::create_fragment(
   // Create the directories.
   // Create the fragment directory, the directory for the new fragment
   // URI, and the commit directory.
-  resources_.vfs().create_dir(array_dir.get_fragments_dir(write_version));
-  resources_.vfs().create_dir(fragment_uri_);
-  resources_.vfs().create_dir(array_dir.get_commits_dir(write_version));
+  resources_.vfs()->create_dir(array_dir.get_fragments_dir(write_version));
+  resources_.vfs()->create_dir(fragment_uri_);
+  resources_.vfs()->create_dir(array_dir.get_commits_dir(write_version));
 
   // Create fragment metadata.
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -1105,7 +1105,7 @@ Status WriterBase::write_tiles(
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
-    resources_.vfs().write(
+    resources_.vfs()->write(
         uri,
         t.filtered_buffer().data(),
         t.filtered_buffer().size(),
@@ -1115,7 +1115,7 @@ Status WriterBase::write_tiles(
 
     if (var_size) {
       auto& t_var = tile.var_tile();
-      resources_.vfs().write(
+      resources_.vfs()->write(
           var_uri,
           t_var.filtered_buffer().data(),
           t_var.filtered_buffer().size(),
@@ -1140,7 +1140,7 @@ Status WriterBase::write_tiles(
 
     if (nullable) {
       auto& t_val = tile.validity_tile();
-      resources_.vfs().write(
+      resources_.vfs()->write(
           validity_uri,
           t_val.filtered_buffer().data(),
           t_val.filtered_buffer().size(),
@@ -1169,10 +1169,10 @@ Status WriterBase::write_tiles(
         // requirement of remote global order writes, it should only be
         // done if this code is executed as a result of a remote query
         if (remote_query()) {
-          throw_if_not_ok(resources_.vfs().flush_multipart_file_buffer(u));
+          resources_.vfs()->flush_multipart_file_buffer(u);
         }
       } else {
-        throw_if_not_ok(resources_.vfs().close_file(u));
+        throw_if_not_ok(resources_.vfs()->close_file(u));
       }
     }
   }

@@ -242,9 +242,9 @@ std::string get_test_ca_file() {
 
 void check_failure(Filesystem fs, Config& cfg) {
   Context ctx(cfg);
-  auto& vfs = ctx.resources().vfs();
+  auto vfs = ctx.resources().vfs();
 
-  if (!vfs.supports_fs(fs)) {
+  if (!vfs->supports_fs(fs)) {
     return;
   }
 
@@ -266,7 +266,7 @@ void check_failure(Filesystem fs, Config& cfg) {
   std::vector<URI> uris;
 
   try {
-    st = vfs.ls(bucket_uri, &uris);
+    st = vfs->ls(bucket_uri, &uris);
   } catch (...) {
     // Some backends throw exceptions to signal SSL error conditions
     // so we pass the test by returning early here.
@@ -279,9 +279,9 @@ void check_failure(Filesystem fs, Config& cfg) {
 
 void check_success(Filesystem fs, Config& cfg) {
   Context ctx(cfg);
-  auto& vfs = ctx.resources().vfs();
+  auto vfs = ctx.resources().vfs();
 
-  if (!vfs.supports_fs(fs)) {
+  if (!vfs->supports_fs(fs)) {
     return;
   }
 
@@ -298,9 +298,9 @@ void check_success(Filesystem fs, Config& cfg) {
   }
 
   URI bucket_uri = URI(scheme + "://" + bucket_name);
-  if (vfs.is_bucket(bucket_uri)) {
-    vfs.remove_bucket(bucket_uri);
+  if (vfs->is_bucket(bucket_uri)) {
+    vfs->remove_bucket(bucket_uri);
   }
-  vfs.create_bucket(bucket_uri);
-  REQUIRE(vfs.is_bucket(bucket_uri));
+  vfs->create_bucket(bucket_uri);
+  REQUIRE(vfs->is_bucket(bucket_uri));
 }

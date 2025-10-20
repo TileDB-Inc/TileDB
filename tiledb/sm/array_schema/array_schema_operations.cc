@@ -176,16 +176,16 @@ void store_array_schema(
   resources.stats().add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
-  if (resources.vfs().is_file(schema_uri)) {
-    resources.vfs().remove_file(schema_uri);
+  if (resources.vfs()->is_file(schema_uri)) {
+    resources.vfs()->remove_file(schema_uri);
   }
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
-  if (!resources.vfs().is_dir(array_schema_dir_uri)) {
-    resources.vfs().create_dir(array_schema_dir_uri);
+  if (!resources.vfs()->is_dir(array_schema_dir_uri)) {
+    resources.vfs()->create_dir(array_schema_dir_uri);
   }
 
   GenericTileIO::store_data(resources, schema_uri, tile, encryption_key);
@@ -195,8 +195,8 @@ void store_array_schema(
   // array created before version 19.
   URI array_enumerations_dir_uri =
       array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  if (!resources.vfs().is_dir(array_enumerations_dir_uri)) {
-    resources.vfs().create_dir(array_enumerations_dir_uri);
+  if (!resources.vfs()->is_dir(array_enumerations_dir_uri)) {
+    resources.vfs()->create_dir(array_enumerations_dir_uri);
   }
 
   // Serialize all enumerations into the `__enumerations` directory
