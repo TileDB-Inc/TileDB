@@ -73,9 +73,10 @@ void integrity_check(const IndexedList<T>& value) {
 
 template <typename T>
 std::vector<T> instance_iterator(std::vector<T> values_in) {
-  auto mem = get_test_memory_tracker();
+  auto mem_tracker = get_test_memory_tracker();
+  auto mem_res = mem_tracker->get_resource(tiledb::sm::MemoryType::WRITER_DATA);
 
-  IndexedList<T> ii(mem, tiledb::sm::MemoryType::WRITER_DATA);
+  IndexedList<T> ii(mem_res);
   for (const auto& value : values_in) {
     ii.emplace_back(value);
   }
@@ -108,10 +109,11 @@ std::pair<std::list<T>, std::list<T>> instance_splice(
     std::list<T> values_splice,
     uint64_t splice_first,
     uint64_t splice_last) {
-  auto mem = get_test_memory_tracker();
+  auto mem_tracker = get_test_memory_tracker();
+  auto mem_res = mem_tracker->get_resource(tiledb::sm::MemoryType::WRITER_DATA);
 
-  IndexedList<T> idst(mem, tiledb::sm::MemoryType::WRITER_DATA);
-  IndexedList<T> isplice(mem, tiledb::sm::MemoryType::WRITER_DATA);
+  IndexedList<T> idst(mem_res);
+  IndexedList<T> isplice(mem_res);
 
   for (const auto& value : values_in) {
     idst.emplace_back(value);
@@ -204,18 +206,19 @@ TEST_CASE("IndexedList splice rapidcheck", "[algorithm][rapidcheck]") {
  * by copying the variadic arguments for each element.
  */
 TEST_CASE("IndexedList resize copy args", "[algorithm]") {
+  auto mem_tracker = get_test_memory_tracker();
+  auto mem_res = mem_tracker->get_resource(tiledb::sm::MemoryType::WRITER_DATA);
+
   SECTION("POD") {
     SECTION("Default") {
-      IndexedList<uint64_t> ll(
-          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      IndexedList<uint64_t> ll(mem_res);
       ll.resize(8);
 
       std::vector<uint64_t> vv(ll.begin(), ll.end());
       CHECK(vv == std::vector<uint64_t>{0, 0, 0, 0, 0, 0, 0, 0});
     }
     SECTION("Copy value") {
-      IndexedList<uint64_t> ll(
-          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      IndexedList<uint64_t> ll(mem_res);
       ll.resize(8, 123);
 
       std::vector<uint64_t> vv(ll.begin(), ll.end());
@@ -226,8 +229,7 @@ TEST_CASE("IndexedList resize copy args", "[algorithm]") {
 
   SECTION("shared_ptr") {
     SECTION("Default") {
-      IndexedList<std::shared_ptr<uint64_t>> ll(
-          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      IndexedList<std::shared_ptr<uint64_t>> ll(mem_res);
       ll.resize(8);
 
       std::vector<std::shared_ptr<uint64_t>> vv(ll.begin(), ll.end());
@@ -250,8 +252,7 @@ TEST_CASE("IndexedList resize copy args", "[algorithm]") {
     SECTION("Alias") {
       std::shared_ptr<uint64_t> value(new uint64_t(123));
 
-      IndexedList<std::shared_ptr<uint64_t>> ll(
-          get_test_memory_tracker(), tiledb::sm::MemoryType::WRITER_DATA);
+      IndexedList<std::shared_ptr<uint64_t>> ll(mem_res);
       ll.resize(8, value);
 
       std::vector<std::shared_ptr<uint64_t>> vv(ll.begin(), ll.end());

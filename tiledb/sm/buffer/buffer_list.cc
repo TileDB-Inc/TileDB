@@ -41,7 +41,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 BufferList::BufferList(shared_ptr<sm::MemoryTracker> memory_tracker)
-    : buffers_(memory_tracker, MemoryType::SERIALIZATION_BUFFER)
+    : buffers_(memory_tracker->get_resource(MemoryType::SERIALIZATION_BUFFER))
     , current_buffer_index_(0)
     , current_relative_offset_(0)
     , offset_(0) {

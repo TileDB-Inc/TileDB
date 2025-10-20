@@ -33,7 +33,6 @@
 #ifndef TILEDB_INDEXED_LIST_H
 #define TILEDB_INDEXED_LIST_H
 
-#include "memory_tracker.h"
 #include "pmr.h"
 
 #include <list>
@@ -196,10 +195,8 @@ class IndexedList {
    *
    * @param memory_tracker The memory tracker for the underlying containers.
    */
-  explicit IndexedList(
-      shared_ptr<sm::MemoryTracker> memory_tracker, sm::MemoryType mem_type)
-      : memory_tracker_(memory_tracker)
-      , list_(memory_tracker->get_resource(mem_type)) {
+  explicit IndexedList(pmr::memory_resource* resource)
+      : list_(resource) {
   }
 
   DISABLE_COPY_AND_COPY_ASSIGN(IndexedList);
@@ -208,9 +205,6 @@ class IndexedList {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-  shared_ptr<sm::MemoryTracker> memory_tracker() const {
-    return memory_tracker_;
-  }
 
   /**
    * Emplace an item to the end of the container.
@@ -381,9 +375,6 @@ class IndexedList {
   }
 
  private:
-  /** The memory tracker for the underlying list. */
-  shared_ptr<sm::MemoryTracker> memory_tracker_;
-
   /** List that contains all the elements. */
   Elements list_;
 

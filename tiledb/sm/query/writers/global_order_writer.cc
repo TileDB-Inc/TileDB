@@ -207,7 +207,7 @@ Status GlobalOrderWriter::init_global_write_state() {
         std::piecewise_construct,
         std::forward_as_tuple(name),
         std::forward_as_tuple(
-            query_memory_tracker_, MemoryType::WRITER_TILE_DATA));
+            query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA)));
     last_tiles_it.first->second.emplace_back(
         array_schema_,
         cell_num_per_tile,
@@ -864,7 +864,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
         std::piecewise_construct,
         std::forward_as_tuple(it.first),
         std::forward_as_tuple(
-            query_memory_tracker_, MemoryType::WRITER_TILE_DATA));
+            query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA)));
   }
 
   auto num = buffers_.size();

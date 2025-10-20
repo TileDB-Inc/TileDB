@@ -206,7 +206,7 @@ Status OrderedWriter::ordered_write() {
         std::piecewise_construct,
         std::forward_as_tuple(buff.first),
         std::forward_as_tuple(
-            query_memory_tracker_, MemoryType::WRITER_TILE_DATA));
+            query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA)));
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
@@ -318,7 +318,8 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   uint64_t frag_tile_id = 0;
   bool close_files = false;
   tile_batches.resize(
-      batch_num, tile_batches.memory_tracker(), MemoryType::WRITER_TILE_DATA);
+      batch_num,
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   std::optional<ThreadPool::SharedTask> write_task = nullopt;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;

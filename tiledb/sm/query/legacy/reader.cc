@@ -1805,7 +1805,7 @@ Status Reader::dense_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   IndexedList<ResultTile> sparse_result_tiles(
-      query_memory_tracker_, MemoryType::RESULT_TILE);
+      query_memory_tracker_->get_resource(MemoryType::RESULT_TILE));
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
 
   // Compute result cell slabs.
@@ -2045,7 +2045,7 @@ Status Reader::sparse_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   IndexedList<ResultTile> sparse_result_tiles(
-      query_memory_tracker_, MemoryType::RESULT_TILE);
+      query_memory_tracker_->get_resource(MemoryType::RESULT_TILE));
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;
