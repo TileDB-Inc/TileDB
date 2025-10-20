@@ -703,15 +703,29 @@ instance_dense_global_order(
     }
   }
 
-  // validate fragment size
+  auto meta_size = [&finfo](uint32_t f) -> uint64_t {
+    return finfo.ptr()
+        ->fragment_info()
+        ->single_fragment_info_vec()[f]
+        .meta()
+        ->fragment_meta_size();
+  };
+
+  // validate fragment size - no fragment should be larger than max requested
+  // size
   for (uint32_t f = 0; f < finfo.fragment_num(); f++) {
     const uint64_t fsize = finfo.fragment_size(f);
-    const uint64_t fmetasize = finfo.ptr()
-                                   ->fragment_info()
-                                   ->single_fragment_info_vec()[f]
-                                   .meta()
-                                   ->fragment_meta_size();
+    const uint64_t fmetasize = meta_size(f);
     ASSERTER(fsize <= max_fragment_size + fmetasize);
+  }
+
+  // validate fragment size - we wrote the largest possible fragments (no two
+  // adjacent should be under max fragment size)
+  for (uint32_t f = 1; f < finfo.fragment_num(); f++) {
+    const uint64_t combined_size =
+        finfo.fragment_size(f - 1) + finfo.fragment_size(f);
+    const uint64_t combined_meta_size = meta_size(f - 1) + meta_size(f);
+    ASSERTER(combined_size > max_fragment_size + combined_meta_size);
   }
 
   // this is last because a fragment domain mismatch is more informative
