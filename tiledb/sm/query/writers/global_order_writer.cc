@@ -74,6 +74,36 @@ class GlobalOrderWriterException : public StatusException {
   }
 };
 
+namespace global_order_writer {
+
+/**
+ * Contains the return values of
+ * `GlobalOrderWriter::identify_fragment_tile_boundaries`.
+ */
+struct FragmentTileBoundaries {
+  /**
+   * The offsets where each complete fragment starts.
+   */
+  std::vector<uint64_t> tile_offsets_;
+
+  /**
+   * The number of writeable tiles.
+   * For sparse arrays this is the number of tiles of input.
+   * For dense arrays this may be less if there is a trail of tiles which cannot
+   * be guaranteed to fit within `max_fragment_size` while also forming a
+   * rectangular domain.
+   */
+  uint64_t num_writeable_tiles_;
+
+  /**
+   * The size in bytes of the filtered tiles which are written to the last
+   * fragment. The last fragment may be resumed by a subsequent `submit`.
+   */
+  uint64_t last_fragment_size_;
+};
+
+}  // namespace global_order_writer
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -841,14 +871,12 @@ Status GlobalOrderWriter::global_write() {
 
   const auto fragments = identify_fragment_tile_boundaries(tiles);
 
-  const uint64_t num_fragments_to_write =
-      (dense() ? fragments.size() - 1 : fragments.size());
-
-  for (uint64_t f = 0; f < num_fragments_to_write; f++) {
-    const uint64_t input_start_tile = fragments[f].second;
-    const uint64_t input_num_tiles =
-        (f + 1 < fragments.size() ? fragments[f + 1].second : tile_num) -
-        input_start_tile;
+  for (uint64_t f = 0; f < fragments.tile_offsets_.size(); f++) {
+    const uint64_t input_start_tile = fragments.tile_offsets_[f];
+    const uint64_t input_num_tiles = (f + 1 < fragments.tile_offsets_.size() ?
+                                          fragments.tile_offsets_[f + 1] :
+                                          fragments.num_writeable_tiles_) -
+                                     input_start_tile;
 
     if (input_num_tiles == 0) {
       // this should only happen if there is only one tile of input and we have
@@ -856,7 +884,7 @@ Status GlobalOrderWriter::global_write() {
       // and there is no more room
       iassert(f == 0);
       if (current_fragment_size_ == 0) {
-        iassert(fragments.size() == 1);
+        iassert(fragments.tile_offsets_.size() == 1);
       }
     } else {
       if (f > 0 || !global_write_state_->frag_meta_) {
@@ -878,10 +906,16 @@ Status GlobalOrderWriter::global_write() {
     }
   }
 
-  if (dense() && !fragments.empty()) {
-    const uint64_t offset_not_written = fragments.back().second;
+  current_fragment_size_ = fragments.last_fragment_size_;
 
-    if (!global_write_state_->frag_meta_ || fragments.size() > 1) {
+  if (fragments.num_writeable_tiles_ < tile_num) {
+    // sparse array should be able to write everything
+    iassert(dense());
+
+    const uint64_t offset_not_written = fragments.num_writeable_tiles_;
+
+    if (!global_write_state_->frag_meta_ ||
+        fragments.tile_offsets_.size() > 1) {
       RETURN_CANCEL_OR_ERROR(start_new_fragment());
     }
 
@@ -901,7 +935,7 @@ Status GlobalOrderWriter::global_write() {
       last.splice(
           last.begin(),
           attr.second,
-          std::next(attr.second.begin(), fragments.back().second),
+          std::next(attr.second.begin(), offset_not_written),
           attr.second.end());
     }
   }
@@ -1506,7 +1540,7 @@ static uint64_t compute_hyperrow_num_tiles(
  * @return a list of (fragment size, tile offset) pairs identifying the division
  * of input data into target fragments
  */
-std::vector<std::pair<uint64_t, uint64_t>>
+global_order_writer::FragmentTileBoundaries
 GlobalOrderWriter::identify_fragment_tile_boundaries(
     const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
     const {
@@ -1541,9 +1575,13 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t running_tiles_size = current_fragment_size_;
   uint64_t fragment_size = current_fragment_size_;
 
+  // NB: gcc has a false positive uninitialized use warning for `fragment_end`
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   uint64_t fragment_start = 0;
   std::optional<uint64_t> fragment_end;
-  std::vector<std::pair<uint64_t, uint64_t>> fragments;
+  std::vector<uint64_t> fragments;
+#pragma GCC diagnostic pop
 
   uint64_t hyperrow_offset = 0;
   std::optional<uint64_t> hyperrow_num_tiles;
@@ -1597,7 +1635,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
         }
       }
 
-      fragments.push_back(std::make_pair(fragment_size, fragment_start));
+      fragments.push_back(fragment_start);
 
       iassert(running_tiles_size >= fragment_size);
       running_tiles_size -= fragment_size;
@@ -1617,9 +1655,14 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
     running_tiles_size += tile_size;
   }
 
-  fragments.push_back(std::make_pair(running_tiles_size, fragment_start));
+  if (fragment_end.has_value()) {
+    fragments.push_back(fragment_start);
+  }
 
-  return fragments;
+  return global_order_writer::FragmentTileBoundaries{
+      .tile_offsets_ = fragments,
+      .num_writeable_tiles_ = fragment_end.value_or(fragment_start),
+      .last_fragment_size_ = fragment_size};
 }
 
 /**

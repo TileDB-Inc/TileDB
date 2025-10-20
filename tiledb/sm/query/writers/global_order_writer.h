@@ -46,6 +46,10 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+namespace global_order_writer {
+struct FragmentTileBoundaries;
+}
+
 /** Processes write queries. */
 class GlobalOrderWriter : public WriterBase {
  public:
@@ -405,7 +409,7 @@ class GlobalOrderWriter : public WriterBase {
    * @return a list of `(fragment_size, start_tile)` pairs ordered on
    * `start_tile`
    */
-  std::vector<std::pair<uint64_t, uint64_t>> identify_fragment_tile_boundaries(
+  global_order_writer::FragmentTileBoundaries identify_fragment_tile_boundaries(
       const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
       const;
 
