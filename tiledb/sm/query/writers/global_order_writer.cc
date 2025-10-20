@@ -1546,15 +1546,9 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
     const {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
-  std::vector<bool> var_size;
-  std::vector<bool> nullable;
   std::vector<const WriterTileTupleVector*> writer_tile_vectors;
-  var_size.reserve(buf_names.size());
-  nullable.reserve(buf_names.size());
   writer_tile_vectors.reserve(buf_names.size());
   for (auto& name : buf_names) {
-    var_size.emplace_back(array_schema_.var_size(name));
-    nullable.emplace_back(array_schema_.is_nullable(name));
     writer_tile_vectors.emplace_back(&tiles.at(name));
   }
 
@@ -1599,26 +1593,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   for (uint64_t t = 0; t < tile_num; t++) {
     uint64_t tile_size = 0;
     for (uint64_t a = 0; a < buf_names.size(); a++) {
-      if (var_size[a]) {
-        tile_size += writer_tile_vectors[a]
-                         ->at(t)
-                         .offset_tile()
-                         .filtered_buffer()
-                         .size();
-        tile_size +=
-            writer_tile_vectors[a]->at(t).var_tile().filtered_buffer().size();
-      } else {
-        tile_size +=
-            writer_tile_vectors[a]->at(t).fixed_tile().filtered_buffer().size();
-      }
-
-      if (nullable[a]) {
-        tile_size += writer_tile_vectors[a]
-                         ->at(t)
-                         .validity_tile()
-                         .filtered_buffer()
-                         .size();
-      }
+      tile_size += writer_tile_vectors[a]->at(t).filtered_size().value();
     }
 
     // NB: normally this should only hit once, but if there is a single

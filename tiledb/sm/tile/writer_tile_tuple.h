@@ -212,6 +212,12 @@ class WriterTileTuple {
     return cell_num_;
   }
 
+  /**
+   * @return the total size of the filtered tiles, or `std::nullopt` if not
+   * filtered.
+   */
+  std::optional<uint64_t> filtered_size() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
