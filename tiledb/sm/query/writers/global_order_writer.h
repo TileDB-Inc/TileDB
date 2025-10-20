@@ -184,6 +184,9 @@ class GlobalOrderWriter : public WriterBase {
   /** Returns a bare pointer to the global state. */
   GlobalWriteState* get_global_state();
 
+  /** Returns a bare pointer to the global state. */
+  const GlobalWriteState* get_global_state() const;
+
   /**
    * Used in serialization to share the multipart upload state
    * among cloud executors

@@ -44,9 +44,11 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <numeric>
+#include <ranges>
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -590,6 +592,13 @@ instance_dense_global_order(
     api_subarray.push_back(sub_dim.upper_bound);
   }
 
+  uint64_t num_tiles_per_hyperrow = 1;
+  for (uint64_t i = 0; i < dimensions.size() - 1; i++) {
+    const uint64_t dim =
+        (tile_order == TILEDB_ROW_MAJOR ? i + 1 : dimensions.size() - i - 2);
+    num_tiles_per_hyperrow *= dimensions[dim].num_tiles(subarray[dim]);
+  }
+
   // write data, should be split into multiple fragments
   {
     Array array(ctx, array_name, TILEDB_WRITE);
@@ -613,6 +622,42 @@ instance_dense_global_order(
       ASSERTER(status == Query::Status::COMPLETE);
 
       cells_written += cells_this_write;
+
+      const auto w = dynamic_cast<const sm::GlobalOrderWriter*>(
+          query.ptr()->query_->strategy());
+      ASSERTER(w);
+      const auto g = w->get_global_state();
+      ASSERTER(g);
+
+      // Check assumptions about memory buffering.
+      // There may be a tail of tiles for which we cannot infer whether they
+      // would fit in the current fragment while also forming a rectangle.
+      // The writer keeps these in memory until it has enough information
+      // in the next `submit`. Check our assumptions about those tiles.
+      uint64_t in_memory_size = 0;
+      std::optional<uint64_t> in_memory_num_tiles;
+      for (const auto& field : g->last_tiles_) {
+        // NB: there should always be at least one tile which contains the state
+        // of the current fragment
+        ASSERTER(!field.second.empty());
+
+        for (uint64_t t = 0; t < field.second.size() - 1; t++) {
+          const auto s = field.second[t].filtered_size();
+          ASSERTER(s.has_value());
+          in_memory_size += s.value();
+        }
+
+        if (in_memory_num_tiles.has_value()) {
+          ASSERTER(field.second.size() - 1 == in_memory_num_tiles.value());
+        } else {
+          in_memory_num_tiles = field.second.size() - 1;
+        }
+      }
+      // it should be an error if they exceed the max fragment size
+      ASSERTER(in_memory_size <= max_fragment_size);
+      // and if they form a rectangle then we could have written some out
+      ASSERTER(in_memory_num_tiles.has_value());
+      ASSERTER(in_memory_num_tiles.value() < num_tiles_per_hyperrow);
     }
 
     query.finalize();

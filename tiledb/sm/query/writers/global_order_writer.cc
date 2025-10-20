@@ -265,6 +265,11 @@ GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state() {
   return global_write_state_.get();
 }
 
+const GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state()
+    const {
+  return global_write_state_.get();
+}
+
 std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
 GlobalOrderWriter::multipart_upload_state(bool client) {
   if (client) {
