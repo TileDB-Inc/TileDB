@@ -463,6 +463,8 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
     }
   }
 
+  throw_if_not_ok(read_task.wait());
+
   dest_fs.flush(dest);
 }
 
