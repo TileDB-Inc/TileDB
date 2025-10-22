@@ -376,7 +376,8 @@ Status UnorderedWriter::prepare_tiles(
       tiles->emplace(
           std::piecewise_construct,
           std::forward_as_tuple(name),
-          std::forward_as_tuple(query_memory_tracker_));
+          std::forward_as_tuple(query_memory_tracker_->get_resource(
+              MemoryType::WRITER_TILE_DATA)));
     }
   }
 
