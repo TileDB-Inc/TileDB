@@ -34,6 +34,12 @@ commence(unit_test arithmetic)
     endif ()
 conclude(unit_test)
 
+commence(unit_test indexed_list)
+    this_target_sources(main.cc unit_indexed_list.cc ${CMAKE_SOURCE_DIR}/test/support/src/mem_helpers.cc)
+    this_target_object_libraries(baseline)
+    this_target_link_libraries(rapidcheck)
+conclude(unit_test)
+
 commence(unit_test memory_tracker)
     this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
     this_target_object_libraries(baseline)
