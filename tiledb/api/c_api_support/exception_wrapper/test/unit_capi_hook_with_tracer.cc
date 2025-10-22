@@ -1,11 +1,11 @@
-/*
- * @file   version.h
+/**
+ * @file tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook_with.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
  */
 
-#define TILEDB_VERSION_MAJOR 2
-#define TILEDB_VERSION_MINOR 30
-#define TILEDB_VERSION_PATCH 0
+#include <test/support/tdb_catch.h>
+
+#include "hook_common.h"
+
+TEST_CASE("Compile definition - with tracer") {
+  STATIC_REQUIRE(which_hook == WhichHook::Tracer);
+}

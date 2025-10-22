@@ -36,6 +36,11 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/group/group_member.h"
+
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
 
 using namespace tiledb::common;
 
@@ -159,6 +164,30 @@ Status group_metadata_serialize(
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
     bool load);
+
+#ifdef TILEDB_SERIALIZATION
+
+/**
+ * Convert Cap'n Proto message to GroupMember object
+ *
+ * @param group_member_reader cap'n proto class.
+ * @return Status and GroupMember object
+ */
+std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
+group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader);
+
+/**
+ * Convert GroupMember object to Cap'n Proto message.
+ *
+ * @param group_member GroupMember to serialize info from
+ * @param group_member_builder cap'n proto class.
+ * @return Status
+ */
+Status group_member_to_capnp(
+    const tdb_shared_ptr<GroupMember>& group_member,
+    capnp::GroupMember::Builder* group_member_builder);
+
+#endif  // TILEDB_SERIALIZATION
 
 }  // namespace serialization
 }  // namespace sm

@@ -99,15 +99,6 @@ struct tiledb_array_handle_t
   }
 
   void delete_fragments(
-      tiledb::sm::ContextResources& resources,
-      const tiledb::sm::URI& uri,
-      uint64_t ts_start,
-      uint64_t ts_end,
-      std::optional<tiledb::sm::ArrayDirectory> array_dir = std::nullopt) {
-    array_->delete_fragments(resources, uri, ts_start, ts_end, array_dir);
-  }
-
-  void delete_fragments(
       const tiledb::sm::URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end) {

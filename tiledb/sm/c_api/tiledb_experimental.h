@@ -44,7 +44,6 @@
 #include "tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
 #include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_experimental.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
-#include "tiledb/api/c_api/context/context_api_experimental.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_experimental.h"

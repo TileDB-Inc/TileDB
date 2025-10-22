@@ -150,7 +150,7 @@ class Config {
   /** The namespace that should be charged for the request. */
   static const std::string REST_PAYER_NAMESPACE;
 
-  /** The prefix to use for checking for parameter environmental variables. */
+  /** The prefix to use for checking for parameter environment variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
   /**
@@ -488,6 +488,10 @@ class Config {
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
 
+  /** Whether the Azure storage account is known to support hierarchical
+   * namespace or not. */
+  static const std::string VFS_AZURE_IS_DATA_LAKE_ENDPOINT;
+
   /** Azure max parallel ops. */
   static const std::string VFS_AZURE_MAX_PARALLEL_OPS;
 
@@ -815,7 +819,7 @@ class Config {
   std::string convert_to_env_param(const std::string& param) const;
 
   /**
-   * Get an environmental variable
+   * Get an environment variable
    * @param param to fetch
    * @param found pointer to bool to set if env parameter was found or not
    * @return parameter value if found or nullptr if not found
@@ -845,7 +849,7 @@ class Config {
 
   /**
    * Get a configuration parameter from config object or a fallback
-   * (environmental variables or profiles).
+   * (environment variables or profiles).
    *
    * @pre When using the third (profiles) fallback, the profile to be
    * parsed has been set using `profile_name` and `profile_dir` config

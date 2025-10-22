@@ -1,5 +1,7 @@
 #[cxx::bridge]
 mod ffi {
+    #![allow(unused_attributes)]
+
     #[namespace = "tiledb::sm"]
     #[derive(Copy, Debug)]
     enum ArrayType {

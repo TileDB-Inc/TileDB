@@ -48,6 +48,7 @@
 #include <sstream>
 #include <type_traits>
 #include <unordered_map>
+#include <variant>
 
 using namespace tiledb::common;
 using namespace tiledb::sm::filesystem;
@@ -381,25 +382,131 @@ void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
+void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
+  auto &src_fs{get_fs(src)}, &dest_fs{get_fs(dest)};
+
+  // Deque which stores the buffers passed between the readers and writer.
+  ProducerConsumerQueue<
+      std::variant<tdb_shared_ptr<std::vector<char>>, std::exception_ptr>>
+      buffer_queue;
+
+  // By default, the buffer size is 10 MB, unless the filesize is smaller.
+  uint64_t filesize = src_fs.file_size(src);
+  uint64_t buffer_size = std::min(filesize, (uint64_t)10485760);  // 10 MB
+
+  // The maximum number of buffers the reader may allocate.
+  const int max_buffer_count = 10;
+
+  // Atomic counter of the buffers allocated by the reader.
+  // May not exceed `max_buffer_count`.
+  std::atomic<int> buffer_count = 0;
+
+  // Flag indicating an ongoing read. The reader will stop once set to `false`.
+  std::atomic<bool> reading = true;
+
+  // Reader
+  ThreadPool::Task read_task = io_tp_->execute([&] {
+    uint64_t offset = 0;
+    while (reading) {
+      tdb_unique_ptr<std::vector<char>> buffer(
+          tdb_new(std::vector<char>, buffer_size));
+      try {
+        uint64_t bytes_read =
+            src_fs.read(src, offset, buffer->data(), buffer->size());
+        if (bytes_read > 0) {
+          buffer->resize(bytes_read);
+          buffer_queue.push(std::move(buffer));
+          offset += bytes_read;
+        }
+
+        // Once the read is complete, drain the queue and exit the reader.
+        // Note: drain() shuts down the queue without removing elements.
+        // The write fiber will be notified and write the remaining chunks.
+        if (offset >= filesize) {
+          buffer_queue.drain();
+          reading = false;
+          break;
+        }
+      } catch (...) {
+        // Enqueue caught-exceptions to be handled by the writer.
+        buffer_queue.push(std::current_exception());
+        reading = false;
+      }
+      buffer_count++;
+
+      io_tp_->wait_until([&]() { return buffer_count < max_buffer_count; });
+    }
+    return Status::Ok();
+  });
+
+  // Writer
+  while (true) {
+    // Allow the ProducerConsumerQueue to wait for an element to be enqueued.
+    auto buffer_queue_element = buffer_queue.pop_back();
+    if (!buffer_queue_element.has_value()) {
+      // Stop writing once the queue is empty (reader finished reading file).
+      break;
+    }
+
+    auto& buffer = buffer_queue_element.value();
+    // Rethrow exceptions enqueued by read.
+    if (std::holds_alternative<std::exception_ptr>(buffer)) {
+      std::rethrow_exception(std::get<std::exception_ptr>(buffer));
+    }
+
+    auto& writebuf = std::get<0>(buffer);
+    try {
+      dest_fs.write(dest, writebuf->data(), writebuf->size());
+      buffer_count--;
+    } catch (...) {
+      reading = false;  // Stop the reader.
+      throw;
+    }
+  }
+
+  throw_if_not_ok(read_task.wait());
+
+  dest_fs.flush(dest);
+}
+
+void VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
   if (&old_fs == &new_fs) {
     old_fs.copy_file(old_uri, new_uri);
   } else {
-    throw UnsupportedOperation("copy_file");
+    chunked_buffer_io(old_uri, new_uri);
   }
 }
 
-void VFS::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
+  auto& src_parent_path = old_uri.to_string();
+  auto& dst_parent_path = new_uri.to_string();
+
   if (&old_fs == &new_fs) {
     old_fs.copy_dir(old_uri, new_uri);
   } else {
-    throw UnsupportedOperation("copy_dir");
+    // Recursively list and copy all source files
+    ResultFilterV2 result_filter =
+        [](const std::string_view&, uint64_t, bool is_dir) {
+          if (is_dir) {
+            return false;  // filter out directories.
+          }
+          return true;
+        };
+    auto paths = old_fs.ls_filtered_v2(old_uri, result_filter, true);
+
+    for (auto& path : paths) {
+      auto old_path = URI(path.first);
+      auto new_path =
+          URI(dst_parent_path + path.first.substr(src_parent_path.size()));
+      // Copy files across filesystems.
+      copy_file(old_path, new_path);
+    }
   }
 }
 
@@ -486,7 +593,7 @@ Status VFS::read_impl(
   auto instrument = make_log_duration_instrument(uri, "read");
   stats_->add_counter("read_ops_num", 1);
   log_read(uri, offset, nbytes);
-  FilesystemBase& fs = get_fs(uri);
+  auto& fs = get_fs(uri);
 
   // Do not read-ahead on local filesystems, or if disabled by the caller.
   if (!(fs.use_read_ahead_cache() && use_read_ahead)) {

@@ -253,8 +253,8 @@ const std::vector<URI>& ArrayDirectory::commit_uris_to_vacuum() const {
   return commit_uris_to_vacuum_;
 }
 
-const std::unordered_set<std::string>&
-ArrayDirectory::consolidated_commit_uris_set() const {
+const std::unordered_set<URI>& ArrayDirectory::consolidated_commit_uris_set()
+    const {
   return consolidated_commit_uris_set_;
 }
 
@@ -309,7 +309,7 @@ void ArrayDirectory::delete_fragments_list(
   for (auto& timestamped_uri : uris) {
     auto commit_uri = get_commit_uri(timestamped_uri);
     commit_uris_to_delete.emplace_back(commit_uri);
-    if (consolidated_commit_uris_set().count(commit_uri.c_str()) != 0) {
+    if (consolidated_commit_uris_set().count(commit_uri) != 0) {
       commit_uris_to_ignore.emplace_back(commit_uri);
     }
   }
@@ -483,7 +483,7 @@ ArrayDirectory::filtered_fragment_uris(const bool full_overlap_only) const {
   if (mode_ == ArrayDirectoryMode::VACUUM_FRAGMENTS) {
     for (auto& uri : fragment_uris_to_vacuum.value()) {
       auto commit_uri = get_commit_uri(uri);
-      if (consolidated_commit_uris_set_.count(commit_uri.c_str()) == 0) {
+      if (consolidated_commit_uris_set_.count(commit_uri) == 0) {
         commit_uris_to_vacuum.emplace_back(commit_uri);
       } else {
         commit_uris_to_ignore.emplace_back(commit_uri);
@@ -672,8 +672,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
   for (size_t i = 0; i < commits_dir_uris.size(); ++i) {
     if (stdx::string::ends_with(
             commits_dir_uris[i].to_string(), constants::write_file_suffix)) {
-      if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
-          0) {
+      if (consolidated_commit_uris_set_.count(commits_dir_uris[i]) == 0) {
         auto name = commits_dir_uris[i].last_path_part();
         name =
             name.substr(0, name.size() - constants::write_file_suffix.size());
@@ -694,8 +693,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
 
       // Add the delete tile location if it overlaps the open start/end times
       if (timestamps_overlap(timestamp_range, false)) {
-        if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
-            0) {
+        if (consolidated_commit_uris_set_.count(commits_dir_uris[i]) == 0) {
           const auto base_uri_size = uri_.to_string().size();
           delete_and_update_tiles_location_.emplace_back(
               commits_dir_uris[i],
@@ -716,10 +714,7 @@ ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   return ls(uri_.join_path(constants::array_fragment_meta_dir_name));
 }
 
-tuple<
-    Status,
-    optional<std::vector<URI>>,
-    optional<std::unordered_set<std::string>>>
+tuple<Status, optional<std::vector<URI>>, optional<std::unordered_set<URI>>>
 ArrayDirectory::load_consolidated_commit_uris(
     const std::vector<URI>& commits_dir_uris) {
   auto timer_se = stats_->start_timer("load_consolidated_commit_uris");
@@ -745,7 +740,7 @@ ArrayDirectory::load_consolidated_commit_uris(
 
   // Load all commit URIs. This is done in serial for now as it can be optimized
   // by vacuuming.
-  std::unordered_set<std::string> uris_set;
+  std::unordered_set<URI> uris_set;
   std::vector<std::pair<URI, std::string>> meta_files;
   for (uint64_t i = 0; i < commits_dir_uris.size(); i++) {
     auto& uri = commits_dir_uris[i];
@@ -763,7 +758,7 @@ ArrayDirectory::load_consolidated_commit_uris(
       std::stringstream ss(names);
       for (std::string condition_marker; std::getline(ss, condition_marker);) {
         if (ignore_set.count(condition_marker) == 0) {
-          uris_set.emplace(uri_.to_string() + condition_marker);
+          uris_set.emplace(uri_.append_string(condition_marker));
         }
 
         // If we have a delete, process the condition tile
@@ -807,7 +802,7 @@ ArrayDirectory::load_consolidated_commit_uris(
       uint64_t count = 0;
       bool all_in_set = true;
       for (std::string uri_str; std::getline(ss, uri_str);) {
-        if (uris_set.count(uri_.to_string() + uri_str) > 0) {
+        if (uris_set.count(uri_.append_string(uri_str)) > 0) {
           count++;
         } else {
           all_in_set = false;
@@ -879,7 +874,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
     const std::vector<URI>& array_dir_uris,
     const std::vector<URI>& commits_dir_uris,
     const std::vector<URI>& consolidated_uris,
-    const std::unordered_set<std::string>& consolidated_uris_set) {
+    const std::unordered_set<URI>& consolidated_uris_set) {
   // Make a set of existing commit URIs.
   std::unordered_set<std::string> uris_set;
   for (auto& uri : array_dir_uris) {
@@ -902,7 +897,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
   // Add the ok file URIs not already in the list.
   for (auto& uri : array_dir_uris) {
     if (stdx::string::ends_with(uri.to_string(), constants::ok_file_suffix)) {
-      if (consolidated_uris_set.count(uri.c_str()) == 0) {
+      if (consolidated_uris_set.count(uri) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
       }
     }
@@ -914,7 +909,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
             uri.to_string(), constants::write_file_suffix) ||
         stdx::string::ends_with(
             uri.to_string(), constants::delete_file_suffix)) {
-      if (consolidated_uris_set.count(uri.c_str()) == 0) {
+      if (consolidated_uris_set.count(uri) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
       }
     }
@@ -1035,14 +1030,14 @@ ArrayDirectory::compute_uris_to_vacuum(
           if (timestamps_overlap(
                   fragment_timestamp_range,
                   !full_overlap_only &&
-                      consolidation_with_timestamps_supported(uri))) {
+                      consolidation_with_timestamps_supported(fragment_id))) {
             overlapping_vac_file_bitmap[i] = 1;
           }
         } else {
           if (!timestamps_overlap(
                   fragment_timestamp_range,
                   !full_overlap_only &&
-                      consolidation_with_timestamps_supported(uri))) {
+                      consolidation_with_timestamps_supported(fragment_id))) {
             non_vac_uri_bitmap[i] = 1;
           }
         }
@@ -1167,7 +1162,7 @@ ArrayDirectory::compute_filtered_uris(
         if (timestamps_overlap(
                 fragment_timestamp_ranges[i],
                 !full_overlap_only &&
-                    consolidation_with_timestamps_supported(uri))) {
+                    consolidation_with_timestamps_supported(fragment_id))) {
           overlaps_bitmap[i] = 1;
         }
         return Status::Ok();
@@ -1258,7 +1253,7 @@ bool ArrayDirectory::is_vacuum_file(const URI& uri) const {
 Status ArrayDirectory::is_fragment(
     const URI& uri,
     const std::unordered_set<std::string>& ok_uris_set,
-    const std::unordered_set<std::string>& consolidated_uris_set,
+    const std::unordered_set<URI>& consolidated_uris_set,
     int* is_fragment) const {
   // If the fragment ID does not have a name, ignore it.
   if (!FragmentID::has_fragment_name(uri)) {
@@ -1292,7 +1287,7 @@ Status ArrayDirectory::is_fragment(
 
   // Check set membership in consolidated uris
   if (consolidated_uris_set.count(
-          uri.to_string() + constants::ok_file_suffix) != 0) {
+          uri.append_string(constants::ok_file_suffix)) != 0) {
     *is_fragment = 1;
     return Status::Ok();
   }
@@ -1311,13 +1306,12 @@ Status ArrayDirectory::is_fragment(
 }
 
 bool ArrayDirectory::consolidation_with_timestamps_supported(
-    const URI& uri) const {
+    const FragmentID& id) const {
   // FragmentID::array_format_version() returns UINT32_MAX for versions <= 2
   // so we should explicitly exclude this case when checking if consolidation
   // with timestamps is supported on a fragment
-  FragmentID fragment_id{uri};
   return mode_ == ArrayDirectoryMode::READ &&
-         fragment_id.array_format_version() >=
+         id.array_format_version() >=
              constants::consolidation_with_timestamps_min_version;
 }
 

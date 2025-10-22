@@ -486,17 +486,41 @@ void Curl::set_curl_request_options(
         "Cannot make curl request; curl instance is null.");
   }
   /* set url to fetch */
-  curl_easy_setopt(curl, CURLOPT_URL, url);
+  CURLcode rc = curl_easy_setopt(curl, CURLOPT_URL, url);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set URL to fetch, libcurl error "
+        "message: " +
+        get_curl_errstr(rc));
+  }
 
   /* set callback function */
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+  rc = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set callback function, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* pass fetch buffer pointer */
-  curl_easy_setopt(
+  rc = curl_easy_setopt(
       curl, CURLOPT_WRITEDATA, static_cast<void*>(&write_cb_state));
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to fetch buffer pointer, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* Set curl verbose mode */
-  curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
+  rc = curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set curl verbose mode, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* set compression */
   const char* compressor = nullptr;
@@ -513,21 +537,49 @@ void Curl::set_curl_request_options(
       if (comp == "any") {
         comp = "";
       }
-      curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
+      rc = curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
+      if (rc != CURLE_OK) {
+        throw CurlException(
+            "Error initializing libcurl; failed to set encoding, libcurl error "
+            "message: " +
+            get_curl_errstr(rc));
+      }
     }
   }
 
   /* enable location redirects */
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+  rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to fetch buffer pointer, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* set maximum allowed redirects */
-  curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
-
+  rc = curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set maximum allowed redirects, "
+        "libcurl error message: " +
+        get_curl_errstr(rc));
+  }
   /* enable forwarding auth to redirects */
-  curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
-
+  rc = curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to enable forwarding auth to "
+        "redirects, libcurl error message: " +
+        get_curl_errstr(rc));
+  }
   /* Set max buffer size */
-  curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, curl_buffer_size_);
+  rc = curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, curl_buffer_size_);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set max buffer size, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 }
 
 Status Curl::make_curl_request_common(
@@ -1011,7 +1063,13 @@ void Curl::get_data(
     throw_if_not_ok(set_content_type(serialization_type, &headers));
 
     // Pass our list of custom-made headers.
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    CURLcode rc = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    if (rc != CURLE_OK) {
+      throw CurlException(
+          "Error initializing libcurl; failed to set custom headers, libcurl "
+          "error message: " +
+          get_curl_errstr(rc));
+    }
 
     headerData.uri = &res_ns_uri;
     throw_if_not_ok(

@@ -31,7 +31,6 @@
  */
 
 #include "../config/config_api_internal.h"
-#include "context_api_experimental.h"
 #include "context_api_external.h"
 #include "context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"

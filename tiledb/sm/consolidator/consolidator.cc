@@ -252,7 +252,7 @@ void Consolidator::fragments_consolidate(
 
 void Consolidator::write_consolidated_commits_file(
     format_version_t write_version,
-    ArrayDirectory array_dir,
+    const ArrayDirectory& array_dir,
     const std::vector<URI>& commit_uris,
     ContextResources& resources) {
   // Compute the file name.

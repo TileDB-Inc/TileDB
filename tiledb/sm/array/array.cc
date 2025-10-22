@@ -658,42 +658,33 @@ Status Array::close() {
 }
 
 void Array::delete_fragments(
-    ContextResources& resources,
-    const URI& uri,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    std::optional<ArrayDirectory> array_dir) {
-  // Get the fragment URIs to be deleted
-  if (array_dir == std::nullopt) {
-    array_dir = ArrayDirectory(resources, uri, timestamp_start, timestamp_end);
-  }
-  auto filtered_fragment_uris = array_dir->filtered_fragment_uris(true);
+    ContextResources& resources, ArrayDirectory& array_dir) {
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
   const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
 
   // Retrieve commit uris to delete and ignore
   std::vector<URI> commit_uris_to_delete;
   std::vector<URI> commit_uris_to_ignore;
   for (auto& fragment : fragment_uris) {
-    auto commit_uri = array_dir->get_commit_uri(fragment.uri_);
+    auto commit_uri = array_dir.get_commit_uri(fragment.uri_);
     commit_uris_to_delete.emplace_back(commit_uri);
-    if (array_dir->consolidated_commit_uris_set().count(commit_uri.c_str()) !=
-        0) {
+    if (array_dir.consolidated_commit_uris_set().count(commit_uri) != 0) {
       commit_uris_to_ignore.emplace_back(commit_uri);
     }
   }
 
   // Write ignore file
   if (commit_uris_to_ignore.size() != 0) {
-    array_dir->write_commit_ignore_file(commit_uris_to_ignore);
+    array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
   // Delete fragments and commits
-  auto vfs = &(resources.vfs());
+  auto& vfs = resources.vfs();
   throw_if_not_ok(parallel_for(
       &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-        vfs->remove_dir(fragment_uris[i].uri_);
-        if (vfs->is_file(commit_uris_to_delete[i])) {
-          vfs->remove_file(commit_uris_to_delete[i]);
+        vfs.remove_dir(fragment_uris[i].uri_);
+        if (vfs.is_file(commit_uris_to_delete[i])) {
+          vfs.remove_file(commit_uris_to_delete[i]);
         }
         return Status::Ok();
       }));
@@ -714,7 +705,9 @@ void Array::delete_fragments(
     rest_client->post_delete_fragments_to_rest(
         uri, this, timestamp_start, timestamp_end);
   } else {
-    Array::delete_fragments(resources_, uri, timestamp_start, timestamp_end);
+    auto array_dir =
+        ArrayDirectory(resources_, uri, timestamp_start, timestamp_end);
+    Array::delete_fragments(resources_, array_dir);
   }
 }
 
@@ -724,8 +717,7 @@ void Array::delete_array(ContextResources& resources, const URI& uri) {
       ArrayDirectory(resources, uri, 0, std::numeric_limits<uint64_t>::max());
 
   // Delete fragments and commits
-  Array::delete_fragments(
-      resources, uri, 0, std::numeric_limits<uint64_t>::max(), array_dir);
+  Array::delete_fragments(resources, array_dir);
 
   // Delete array metadata, fragment metadata and array schema files
   // Note: metadata files may not be present, try to delete anyway

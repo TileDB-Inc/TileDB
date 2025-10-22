@@ -831,6 +831,14 @@ struct VFSTestSetup {
       vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
     }
     tiledb_vfs_create_dir(ctx_c, vfs_c, temp_dir.c_str());
+
+    int is_bucket = 0;
+    tiledb_vfs_is_bucket(ctx_c, vfs_c, default_storage().c_str(), &is_bucket);
+    if (!is_bucket) {
+      tiledb_vfs_create_bucket(ctx_c, vfs_c, default_storage().c_str());
+    } else {
+      tiledb_vfs_empty_bucket(ctx_c, vfs_c, default_storage().c_str());
+    }
   };
 
   void update_config(tiledb_config_t* config) {
@@ -843,13 +851,13 @@ struct VFSTestSetup {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
   }
 
-  bool is_rest() {
+  bool is_rest() const {
     return fs_vec[0]->is_rest();
   }
 
   bool is_legacy_rest();
 
-  bool is_local() {
+  bool is_local() const {
     return fs_vec[0]->is_local();
   }
 
@@ -863,10 +871,34 @@ struct VFSTestSetup {
     // Non-REST case is handled above.
     if (is_legacy_rest()) {
       return "tiledb://unit/" + temp_dir + array_name;
-    } else {
-      return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
-             temp_dir + array_name;
     }
+    return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
+           temp_dir + array_name;
+  }
+
+  /**
+   * Returns the bucket used as the default storage location for REST tests.
+   * The default storage location is configured when the REST user is created.
+   * This is the bucket name used in REST CI within the TileDB-Internal
+   * repository.
+   *
+   * @return Backend storage location used for default storage.
+   */
+  std::string default_storage() const {
+    return sm::URI(temp_dir).backend_name() + "://" + "default-bucket";
+  }
+
+  /**
+   * Generates a tiledb URI for testing using the default storage location.
+   */
+  std::string default_storage_uri(
+      const std::string& name, bool include_backend = false) {
+    const std::string label = "_" + random_label();
+    const std::string backend = include_backend ? default_storage() + "/" : "";
+    if (is_legacy_rest()) {
+      return "tiledb://unit/" + backend + name + label;
+    }
+    return "tiledb://unit-workspace/unit-teamspace/" + backend + name + label;
   }
 
   Context ctx() const {
@@ -876,6 +908,7 @@ struct VFSTestSetup {
   ~VFSTestSetup() {
     vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
     vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
+    tiledb_vfs_empty_bucket(ctx_c, vfs_c, default_storage().c_str());
 
     tiledb_ctx_free(&ctx_c);
     tiledb_vfs_free(&vfs_c);

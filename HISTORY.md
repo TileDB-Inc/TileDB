@@ -1,3 +1,14 @@
+# TileDB v2.29.1 Release Notes
+
+
+## New features
+* Add support for Azure Data Lake Storage. [#5652](https://github.com/TileDB-Inc/TileDB/pull/5652)
+
+
+## Defects removed
+* Fix deserialization of relative group member URI [#5654](https://github.com/TileDB-Inc/TileDB/pull/5654)
+
+
 # TileDB v2.29.0 Release Notes
 
 
@@ -12,6 +23,8 @@
 ## New features
 
 * Add support for `Profiles` onto the `Config`. [#5498](https://github.com/TileDB-Inc/TileDB/pull/5498)
+* Add support for relative URI remote group members. [#5635](https://github.com/TileDB-Inc/TileDB/pull/5635)
+* Add `ls_recursive_v2` that includes directories in results for all backends. [#5602](https://github.com/TileDB-Inc/TileDB/pull/5602)
 
 
 ## Improvements
@@ -31,7 +44,11 @@
 * Class `VFS` inherits base class `FilesystemBase`. [#5584](https://github.com/TileDB-Inc/TileDB/pull/5584)
 * Fix empty array name for URIs with trailing slash. [#5591](https://github.com/TileDB-Inc/TileDB/pull/5591)
 * Refactor `class VFS` to remove `#ifdef`s. [#5589](https://github.com/TileDB-Inc/TileDB/pull/5589)
-* Added support for `tiledb_vfs_copy_file` and `tiledb_vfs_copy_dir` on Windows. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
+* Add support for `tiledb_vfs_copy_file` and `tiledb_vfs_copy_dir` on Windows. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
+* Allow adding relative group members to remote groups. [#5623](https://github.com/TileDB-Inc/TileDB/pull/5623)
+* Always check return codes in `Curl::get_data` and throw [#5640](https://github.com/TileDB-Inc/TileDB/pull/5640)
+* Do not retry most SSL-related failures in the REST client. [#5638](https://github.com/TileDB-Inc/TileDB/pull/5638)
+* Respect `TILEDB_PROFILE_DIR` environment variable in Profile save path. [#5644](https://github.com/TileDB-Inc/TileDB/pull/5644)
 
 
 ## Deprecations
@@ -58,6 +75,8 @@
 * Correctly reset bugdet when initial data already loadad. [#5599](https://github.com/TileDB-Inc/TileDB/pull/5599)
 * Fixed incorrect documentation of `tiledb_vfs_copy_dir`. [#5600](https://github.com/TileDB-Inc/TileDB/pull/5600)
 * Fix build errors with `--disable-stats` from unused variable warnings. [#5603](https://github.com/TileDB-Inc/TileDB/pull/5603)
+* Fix `zip_view` default constructor for C++20 concepts compliance. [#5613](https://github.com/TileDB-Inc/TileDB/pull/5613)
+* Fixed compile errors in compilers defaulting to C23. [#5639](https://github.com/TileDB-Inc/TileDB/pull/5639)
 
 
 ## API changes
@@ -3280,7 +3299,7 @@ Bump to version 19 (.vac vacuum files now use relative filenames). [#4024](https
 * Added special files with the same name as a fragment directory and an added suffix ".ok", to indicate a committed fragment. This improved the performance of opening an array on object stores significantly, as it avoids an extra REST request per fragment.
 * Added functionality to consolidation, which allows consolidating the fragment metadata footers in a single file by toggling a new config parameter. This leads to a huge performance boost when opening an array, as it avoids fetching a separate footer per fragment from storage.
 * Various reader parallelizations that boosted read performance significantly.
-* Configuration parameters can now be read from environmental variables. `vfs.s3.session_token` -> `TILEDB_VFS_S3_SESSION_TOKEN`. The prefix of `TILEDB_` is configurable via `config.env_var_prefix`. [#1600](https://github.com/TileDB-Inc/TileDB/pull/1600)
+* Configuration parameters can now be read from environment variables. `vfs.s3.session_token` -> `TILEDB_VFS_S3_SESSION_TOKEN`. The prefix of `TILEDB_` is configurable via `config.env_var_prefix`. [#1600](https://github.com/TileDB-Inc/TileDB/pull/1600)
 
 ## Deprecations
 * The TileDB tiledb_array_consolidate_metadata and tiledb_array_consolidate_metadata_with_key C-API routines have been deprecated and will be [removed entirely](https://github.com/TileDB-Inc/TileDB/issues/1591) in a future release. The tiledb_array_consolidate and tiledb_array_consolidate_with_key routines achieve the same behavior when the "sm.consolidation.mode" parameter of the configuration argument is equivalent to "array_meta".

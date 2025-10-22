@@ -527,6 +527,51 @@ class CAPIFunctionNullAspect {
 };
 
 /**
+ * Adapter for aspect return types which will, via specialization,
+ * allow generic aspects to return `void` or any type `T`.
+ */
+template <typename T>
+struct AspectReturnAdapter {
+  AspectReturnAdapter(T&& value)
+      : value_(std::move(value)) {
+  }
+
+  T value_;
+};
+
+/**
+ * Specialization which allows returning `void` as a value.
+ */
+template <>
+struct AspectReturnAdapter<void> {
+  AspectReturnAdapter() {
+  }
+
+  ~AspectReturnAdapter() {
+  }
+};
+
+/**
+ * Provides adapters for invoking an aspect `A` and
+ * wrapping the result of its `call` function into `AspectReturnAdapter`.
+ */
+template <typename A>
+struct AspectWrapper {
+  template <typename... Args>
+  using R = decltype(A::call(std::declval<Args>()...));
+
+  template <typename... Args>
+  static AspectReturnAdapter<R<Args...>> call(Args... args) {
+    if constexpr (std::same_as<R<Args...>, void>) {
+      A::call(args...);
+      return AspectReturnAdapter<void>();
+    } else {
+      return AspectReturnAdapter<R<Args...>>(A::call(args...));
+    }
+  }
+};
+
+/**
  * Selection struct defines the default aspect type for CAPIFunction. This class
  * is always used with second template argument as `void`. This definition is
  * for the general case; a specialization can override it.
@@ -586,7 +631,7 @@ class CAPIFunction<f, H, A> {
        * Note that we don't need std::forward here because all the arguments
        * must have "C" linkage.
        */
-      A::call(args...);
+      const auto bind = AspectWrapper<A>::call(args...);
       if constexpr (std::same_as<R, void>) {
         f(args...);
         h.action_on_success();
