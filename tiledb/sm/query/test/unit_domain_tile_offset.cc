@@ -68,6 +68,40 @@ static bool is_rectangular_domain(
   return is_rectangular_domain(tile_extents, r, start_tile, num_tiles);
 }
 
+template <sm::Datatype DT>
+static bool is_rectangular_domain(
+    const templates::Dimension<DT>& d1,
+    const templates::Dimension<DT>& d2,
+    uint64_t start_tile,
+    uint64_t num_tiles) {
+  using Coord = templates::Dimension<DT>::value_type;
+  const std::vector<Coord> extents = {d1.extent, d2.extent};
+  return is_rectangular_domain<Coord>(
+      extents,
+      d1.domain.lower_bound,
+      d1.domain.upper_bound,
+      d2.domain.lower_bound,
+      d2.domain.upper_bound,
+      start_tile,
+      num_tiles);
+}
+
+template <sm::Datatype DT>
+static bool is_rectangular_domain(
+    const templates::Dimension<DT>& d1,
+    const templates::Dimension<DT>& d2,
+    const templates::Dimension<DT>& d3,
+    uint64_t start_tile,
+    uint64_t num_tiles) {
+  using Coord = templates::Dimension<DT>::value_type;
+  const std::vector<Coord> extents = {d1.extent, d2.extent, d3.extent};
+  sm::NDRange r;
+  r.push_back(Range(d1.domain.lower_bound, d1.domain.upper_bound));
+  r.push_back(Range(d2.domain.lower_bound, d2.domain.upper_bound));
+  r.push_back(Range(d3.domain.lower_bound, d3.domain.upper_bound));
+  return is_rectangular_domain<Coord>(extents, r, start_tile, num_tiles);
+}
+
 // in one dimension all domains are rectangles
 TEST_CASE("is_rectangular_domain 1d", "[arithmetic]") {
   rc::prop(
@@ -164,14 +198,7 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
       []<typename Asserter = AsserterCatch>(Dim64 d1, Dim64 d2) {
         const std::vector<uint64_t> extents = {d1.extent, d2.extent};
         auto tt = [&](uint64_t start_tile, uint64_t num_tiles) -> bool {
-          return is_rectangular_domain<uint64_t>(
-              extents,
-              d1.domain.lower_bound,
-              d1.domain.upper_bound,
-              d2.domain.lower_bound,
-              d2.domain.upper_bound,
-              start_tile,
-              num_tiles);
+          return is_rectangular_domain(d1, d2, start_tile, num_tiles);
         };
 
         const uint64_t total_tiles = d1.num_tiles() * d2.num_tiles();
@@ -210,5 +237,107 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
     Dim64 d1 = *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {64});
     Dim64 d2 = *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {64});
     instance_is_rectangular_domain_2d.operator()<AsserterRapidcheck>(d1, d2);
+  });
+}
+
+TEST_CASE("is_rectangular_domain 3d", "[arithmetic]") {
+  using Dim64 = templates::Dimension<sm::Datatype::UINT64>;
+
+  /**
+   * 3D plane tiles (where the outermost dimension has extent 1)
+   * should produce the same results as rectangular tiles in the plane
+   */
+  rc::prop("plane tiles", [&]() {
+    Dim64 d1 = *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {1});
+    Dim64 d2 = *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {32});
+    Dim64 d3 = *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {32});
+
+    const uint64_t total_tiles =
+        d1.num_tiles() * d2.num_tiles() * d3.num_tiles();
+    for (uint64_t start_tile = 0; start_tile < total_tiles; start_tile++) {
+      for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
+           num_tiles++) {
+        const bool rectangle =
+            is_rectangular_domain(d2, d3, start_tile, num_tiles);
+        const bool plane =
+            is_rectangular_domain(d1, d2, d3, start_tile, num_tiles);
+
+        RC_ASSERT(rectangle == plane);
+      }
+    }
+  });
+
+  /**
+   * Runs over the possible `(start_tiles, num_tiles)` pairs for dimensions
+   * `{d1, d2, d3}` and asserts that `is_rectangular_domain` returns true if and
+   * only if the pair represents an expected rectangle.
+   */
+  auto instance_is_rectangular_domain_3d =
+      []<typename Asserter = AsserterCatch>(Dim64 d1, Dim64 d2, Dim64 d3) {
+        auto tt = [&](uint64_t start_tile, uint64_t num_tiles) -> bool {
+          return is_rectangular_domain(d1, d2, d3, start_tile, num_tiles);
+        };
+
+        const uint64_t total_tiles =
+            d1.num_tiles() * d2.num_tiles() * d3.num_tiles();
+        const uint64_t plane_tiles = d2.num_tiles() * d3.num_tiles();
+
+        for (uint64_t start_tile = 0; start_tile < total_tiles; start_tile++) {
+          for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
+               num_tiles++) {
+            if (start_tile % plane_tiles == 0) {
+              // aligned to a plane, several options to be a rectangle
+              if (num_tiles <= d3.num_tiles()) {
+                ASSERTER(tt(start_tile, num_tiles));
+              } else if (
+                  num_tiles <= plane_tiles && num_tiles % d3.num_tiles() == 0) {
+                ASSERTER(tt(start_tile, num_tiles));
+              } else if (num_tiles % (plane_tiles) == 0) {
+                ASSERTER(tt(start_tile, num_tiles));
+              } else {
+                ASSERTER(!tt(start_tile, num_tiles));
+              }
+            } else if (start_tile % d3.num_tiles() == 0) {
+              // aligned to a row within a plane, but not aligned to the plane
+              // this is a rectangle if it is an integral number of rows, or
+              // fits within a row
+              if (num_tiles <= d3.num_tiles()) {
+                ASSERTER(tt(start_tile, num_tiles));
+              } else if (
+                  num_tiles % d3.num_tiles() == 0 &&
+                  (start_tile % plane_tiles) + num_tiles <= plane_tiles) {
+                ASSERTER(tt(start_tile, num_tiles));
+              } else {
+                ASSERTER(!tt(start_tile, num_tiles));
+              }
+            } else {
+              // unaligned, only a rectangle if it doesn't advance rows
+              if (start_tile % d3.num_tiles() + num_tiles <= d3.num_tiles()) {
+                ASSERTER(tt(start_tile, num_tiles));
+              } else {
+                ASSERTER(!tt(start_tile, num_tiles));
+              }
+            }
+          }
+        }
+      };
+
+  SECTION("Shrinking") {
+    instance_is_rectangular_domain_3d(
+        Dim64(0, 1, 1), Dim64(0, 0, 1), Dim64(0, 1, 1));
+    instance_is_rectangular_domain_3d(
+        Dim64(0, 1, 1), Dim64(0, 2, 1), Dim64(0, 0, 1));
+  }
+
+  rc::prop("any tiles", [&]() {
+    const Dim64 d1 =
+        *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+    const Dim64 d2 =
+        *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+    const Dim64 d3 =
+        *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+
+    instance_is_rectangular_domain_3d.operator()<AsserterRapidcheck>(
+        d1, d2, d3);
   });
 }
