@@ -121,9 +121,8 @@ class SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(
+  virtual void prepare_config(
       tiledb_config_t* config, tiledb_error_t* error) = 0;
 
   /**
@@ -133,9 +132,8 @@ class SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
 
   /**
    * Removes bucket / container if exists
@@ -144,9 +142,8 @@ class SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
 
   /**
    * Get the name of the filesystem's directory
@@ -195,27 +192,25 @@ class SupportedFsS3 : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates bucket if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes bucket if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
@@ -282,27 +277,25 @@ class SupportedFsAzure : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates container if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes container if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
@@ -367,27 +360,25 @@ class SupportedFsGCS : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates bucket if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes bucket if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
@@ -458,27 +449,25 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * No-op
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * No-op
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
@@ -555,27 +544,25 @@ class SupportedFsMem : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates container if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes container if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
@@ -632,19 +619,11 @@ struct vfs_config {
     }
 
     if constexpr (tiledb::sm::filesystem::s3_enabled) {
-      SupportedFsS3 fs_s3;
-      auto st = fs_s3.prepare_config(config, error);
-      if (!st.ok()) {
-        throw std::runtime_error("error preparing S3 config");
-      }
+      SupportedFsS3().prepare_config(config, error);
     }
 
     if constexpr (tiledb::sm::filesystem::azure_enabled) {
-      SupportedFsAzure fs_azure;
-      auto st = fs_azure.prepare_config(config, error);
-      if (!st.ok()) {
-        throw std::runtime_error("error preparing Azure config");
-      }
+      SupportedFsAzure().prepare_config(config, error);
     }
   }
 
