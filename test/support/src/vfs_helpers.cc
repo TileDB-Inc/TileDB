@@ -169,6 +169,10 @@ void SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  if (rest_) {
+    // REST CI gets configured by environment variables.
+    return;
+  }
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -186,7 +190,6 @@ void SupportedFsS3::prepare_config(
 }
 
 void SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
@@ -210,7 +213,6 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 }
 
 void SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   CHECK(rc == TILEDB_OK);
