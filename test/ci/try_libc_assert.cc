@@ -12,10 +12,15 @@ int main(int, char**) {
   // _CALL_REPORTFAULT: Send an error report to Microsoft
   // The second parameter specifies which flags to change, and the first
   // the value of these flags.
-  _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+  _set_abort_behavior(
+      0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT | _CALL_REPORT_HOOK);
   // Configures assert() failures to write message to stderr and fail-fast.
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
   _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+  _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+  _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+  _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+  _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
 #endif
   std::vector<int> values;
 
