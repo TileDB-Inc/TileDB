@@ -1,5 +1,5 @@
 {
-    "builtin-baseline": "f993fc42532591aeb07328bbe0add868b0629d0f",
+    "builtin-baseline": "3b9d086009cc1c2256e9c28ad44a00036fbd9b26",
     "dependencies": [
         "bzip2",
         "lz4",
@@ -30,12 +30,6 @@
                         "storage"
                     ],
                     "default-features": false
-                },
-                {
-                    "name": "abseil",
-                    "features": [
-                        "cxx17"
-                    ]
                 }
             ]
         },
