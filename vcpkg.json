@@ -76,5 +76,12 @@
                 "libwebp"
             ]
         }
-    }
+    },
+    "overrides": [
+        {
+            "$note": "Remove this when the vcpkg copy provided by GitHub Actions on Windows gets updated.",
+            "name": "vcpkg-cmake",
+            "version": "2024-04-23"
+        }
+    ]
 }
