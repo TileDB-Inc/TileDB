@@ -61,7 +61,7 @@ OndemandFragmentMetadata::OndemandFragmentMetadata(
 void OndemandFragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
-  if (loaded_metadata_.rtree_) {
+  if (loaded_metadata_.rtree_ || parent_fragment_.dense()) {
     return;
   }
 

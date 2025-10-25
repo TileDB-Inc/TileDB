@@ -1274,7 +1274,8 @@ Status ArrayDirectory::is_fragment(
       name == constants::array_commits_dir_name ||
       name == constants::array_metadata_dir_name ||
       name == constants::array_fragments_dir_name ||
-      name == constants::array_fragment_meta_dir_name) {
+      name == constants::array_fragment_meta_dir_name ||
+      name == constants::array_dimension_labels_dir_name) {
     *is_fragment = 0;
     return Status::Ok();
   }
