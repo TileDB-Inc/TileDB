@@ -177,9 +177,8 @@ TEST_CASE(
   }
 
   // Consolidate
-  tiledb::Stats::enable();
   tiledb::Array::consolidate(ctx, array_name);
-  tiledb::Stats::dump();
+  std::cout << ctx.stats() << std::endl;
 
   // Vacuum
   tiledb::Array::vacuum(ctx, array_name);

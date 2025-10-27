@@ -335,7 +335,7 @@ TEST_CASE(
   std::string custom_dir = tempdir_.path();
 
   // Set the TILEDB_PROFILE_DIR environment variable
-  setenv_local("TILEDB_PROFILE_DIR", custom_dir.c_str());
+  auto _ = setenv_local("TILEDB_PROFILE_DIR", custom_dir.c_str());
 
   // Create a Profile without specifying a directory - it should use the env var
   Profile profile_with_env_var("test_profile", custom_dir);
@@ -373,7 +373,4 @@ TEST_CASE(
   REQUIRE(
       loaded_explicit_profile.get_param("rest.server_address") ==
       "https://explicit.server");
-
-  // Clean up: Unset the environment variable
-  setenv_local("TILEDB_PROFILE_DIR", "");
 }
