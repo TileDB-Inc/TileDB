@@ -540,7 +540,7 @@ TEST_CASE("domain_tile_offset 1d", "[arithmetic]") {
   using Dim64 = templates::Dimension<sm::Datatype::UINT64>;
 
   SECTION("Shrinking") {
-    instance_domain_tile_offset<Dim64::DATATYPE>({Dim64(0, 5, 2)});
+    instance_domain_tile_offset<Dim64::DATATYPE>({Dim64(0, 18, 5)});
   }
 
   rc::prop("any tiles", []() {
@@ -655,4 +655,11 @@ TEST_CASE("domain_tile_offset 2d", "[arithmetic]") {
       CHECK(r3 == std::optional<std::vector<Dom64>>{});
     }
   }
+
+  rc::prop("any tiles", []() {
+    const Dim64 d1 = *rc::make_dimension<Dim64::DATATYPE>(std::nullopt, {64});
+    const Dim64 d2 = *rc::make_dimension<Dim64::DATATYPE>(std::nullopt, {64});
+
+    instance_domain_tile_offset<Dim64::DATATYPE, AsserterRapidcheck>({d1, d2});
+  });
 }
