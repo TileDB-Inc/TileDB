@@ -41,23 +41,23 @@ class UntypedDatumView {
   size_t datum_size_;
 
  public:
-  UntypedDatumView(const void* content, size_t size)
+  constexpr UntypedDatumView(const void* content, size_t size)
       : datum_content_(content)
       , datum_size_(size) {
   }
-  UntypedDatumView(std::string_view ss)
+  constexpr UntypedDatumView(std::string_view ss)
       : datum_content_(ss.data())
       , datum_size_(ss.size()) {
   }
 
-  [[nodiscard]] inline const void* content() const {
+  [[nodiscard]] constexpr inline const void* content() const {
     return datum_content_;
   }
-  [[nodiscard]] inline size_t size() const {
+  [[nodiscard]] constexpr inline size_t size() const {
     return datum_size_;
   }
   template <class T>
-  [[nodiscard]] inline const T& value_as() const {
+  [[nodiscard]] constexpr inline const T& value_as() const {
     return *static_cast<const T*>(datum_content_);
   }
 };

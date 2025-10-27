@@ -97,6 +97,10 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileMaxVals";
     case MemoryType::TILE_MIN_VALS:
       return "TileMinVals";
+    case MemoryType::TILE_GLOBAL_ORDER_MAX_VALS:
+      return "TileGlobalOrderMaxVals";
+    case MemoryType::TILE_GLOBAL_ORDER_MIN_VALS:
+      return "TileGlobalOrderMinVals";
     case MemoryType::TILE_NULL_COUNTS:
       return "TileNullCounts";
     case MemoryType::TILE_OFFSETS:
