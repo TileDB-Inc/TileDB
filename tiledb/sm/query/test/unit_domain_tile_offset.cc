@@ -469,8 +469,12 @@ template <typename T, typename Asserter = AsserterCatch>
 void instance_domain_tile_offset(
     std::span<const T> tile_extents, const sm::NDRange& domain) {
   uint64_t total_tiles = 1;
-  for (const auto& d : tile_extents) {
-    total_tiles *= d;
+  for (uint64_t d = 0; d < tile_extents.size(); d++) {
+    const uint64_t num_tiles_this_dimension =
+        sm::Dimension::tile_idx<T>(
+            domain[d].end_as<T>(), domain[d].start_as<T>(), tile_extents[d]) +
+        1;
+    total_tiles *= num_tiles_this_dimension;
   }
   for (uint64_t start_tile = 0; start_tile < total_tiles; start_tile++) {
     for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
