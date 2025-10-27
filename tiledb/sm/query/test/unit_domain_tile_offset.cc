@@ -89,10 +89,11 @@ static std::optional<sm::NDRange> domain_tile_offset(
     const uint64_t outer_num_tiles = dimension_sizes[d];
     const uint64_t hyperrow_num_tiles = dimension_sizes[d + 1];
 
-    const T this_dimension_start_tile =
-        (start_tile / hyperrow_num_tiles) % outer_num_tiles;
+    const T this_dimension_start_tile = (start_tile / hyperrow_num_tiles) %
+                                        (outer_num_tiles / hyperrow_num_tiles);
     const T this_dimension_end_tile =
-        ((start_tile + num_tiles - 1) / hyperrow_num_tiles) % outer_num_tiles;
+        ((start_tile + num_tiles - 1) / hyperrow_num_tiles) %
+        (outer_num_tiles / hyperrow_num_tiles);
 
     if (start_tile % hyperrow_num_tiles == 0) {
       // aligned to the start of the hyperrow
@@ -661,5 +662,134 @@ TEST_CASE("domain_tile_offset 2d", "[arithmetic]") {
     const Dim64 d2 = *rc::make_dimension<Dim64::DATATYPE>(std::nullopt, {64});
 
     instance_domain_tile_offset<Dim64::DATATYPE, AsserterRapidcheck>({d1, d2});
+  });
+}
+
+TEST_CASE("domain_tile_offset 3d", "[arithmetic]") {
+  using Dim64 = templates::Dimension<sm::Datatype::UINT64>;
+  using Dom64 = Dim64::domain_type;
+
+  SECTION("Rectangular prism examples") {
+    const uint64_t d1_lower_bound = 0;  // GENERATE(0, 3);
+    const uint64_t d1_extent = 1;       // GENERATE(1, 4);
+    const uint64_t d2_lower_bound = 0;  // GENERATE(0, 3);
+    const uint64_t d2_extent = 1;       // GENERATE(1, 4);
+    const uint64_t d3_lower_bound = 0;  // GENERATE(0, 3);
+    const uint64_t d3_extent = 1;       // GENERATE(1, 4);
+
+    const Dim64 d1(
+        d1_lower_bound, d1_lower_bound + (3 * d1_extent) - 1, d1_extent);
+    const Dim64 d2(
+        d2_lower_bound, d2_lower_bound + (6 * d2_extent) - 1, d2_extent);
+    const Dim64 d3(
+        d3_lower_bound, d3_lower_bound + (7 * d3_extent) - 1, d3_extent);
+
+    auto make_d1 = [&](uint64_t h_start, uint64_t h_end) {
+      return Dom64(
+          d1_lower_bound + h_start * d1_extent,
+          d1_lower_bound + h_end * d1_extent + d1_extent - 1);
+    };
+    auto make_d2 = [&](uint64_t w_start, uint64_t w_end) {
+      return Dom64(
+          d2_lower_bound + w_start * d2_extent,
+          d2_lower_bound + w_end * d2_extent + d2_extent - 1);
+    };
+    auto make_d3 = [&](uint64_t l_start, uint64_t l_end) {
+      return Dom64(
+          d3_lower_bound + l_start * d3_extent,
+          d3_lower_bound + l_end * d3_extent + d3_extent - 1);
+    };
+
+    SECTION("Whole domain") {
+      const auto r = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2, d3}, 0, d1.num_tiles() * d2.num_tiles() * d3.num_tiles());
+      CHECK(r == std::vector<Dom64>{d1.domain, d2.domain, d3.domain});
+    }
+
+    SECTION("Plane") {
+      const auto r1 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 0, 42);
+      CHECK(r1 == std::vector<Dom64>{make_d1(0, 0), d2.domain, d3.domain});
+
+      const auto r2 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 42, 42);
+      CHECK(r2 == std::vector<Dom64>{make_d1(1, 1), d2.domain, d3.domain});
+
+      const auto r3 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 84, 42);
+      CHECK(r3 == std::vector<Dom64>{make_d1(2, 2), d2.domain, d3.domain});
+    }
+
+    SECTION("Rectangle") {
+      const auto r1 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 0, 14);
+      CHECK(r1 == std::vector<Dom64>{make_d1(0, 0), make_d2(0, 1), d3.domain});
+
+      const auto r2 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 70, 14);
+      CHECK(r2 == std::vector<Dom64>{make_d1(1, 1), make_d2(4, 5), d3.domain});
+    }
+
+    SECTION("Line") {
+      const auto r1 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 0, 4);
+      CHECK(
+          r1 ==
+          std::vector<Dom64>{make_d1(0, 0), make_d2(0, 0), make_d3(0, 3)});
+
+      const auto r2 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 8, 2);
+      CHECK(
+          r2 ==
+          std::vector<Dom64>{make_d1(0, 0), make_d2(1, 1), make_d3(1, 2)});
+
+      const auto r3 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 109, 3);
+      CHECK(
+          r3 ==
+          std::vector<Dom64>{make_d1(2, 2), make_d2(3, 3), make_d3(4, 6)});
+    }
+
+    SECTION("Align start but not end") {
+      const auto r1 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 0, 43);
+      CHECK(r1 == std::optional<std::vector<Dom64>>{});
+
+      const auto r2 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 42, 125);
+      CHECK(r2 == std::optional<std::vector<Dom64>>{});
+    }
+
+    SECTION("Cross row") {
+      const auto r1 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 0, 8);
+      CHECK(r1 == std::optional<std::vector<Dom64>>{});
+
+      const auto r2 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 23, 6);
+      CHECK(r2 == std::optional<std::vector<Dom64>>{});
+    }
+
+    SECTION("Cross plane") {
+      const auto r1 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 40, 3);
+      CHECK(r1 == std::optional<std::vector<Dom64>>{});
+
+      const auto r2 =
+          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 77, 8);
+      CHECK(r2 == std::optional<std::vector<Dom64>>{});
+    }
+  }
+
+  rc::prop("any tiles", []() {
+    const Dim64 d1 =
+        *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+    const Dim64 d2 =
+        *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+    const Dim64 d3 =
+        *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+
+    instance_domain_tile_offset<Dim64::DATATYPE, AsserterRapidcheck>(
+        {d1, d2, d3});
   });
 }
