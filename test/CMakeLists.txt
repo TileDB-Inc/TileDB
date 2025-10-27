@@ -114,6 +114,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
+  src/unit-query-add-predicate.cc
   src/unit-query-plan.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
