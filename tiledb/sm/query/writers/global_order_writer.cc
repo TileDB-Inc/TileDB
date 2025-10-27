@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/tile/arithmetic.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
@@ -61,11 +62,78 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-static NDRange domain_tile_offset(
+/**
+ * See `tiledb/sm/tile/arithmetic.h` function `is_rectangular_domain`.
+ *
+ * When writing multiple dense fragments the domain of each fragment
+ * must accurately reflect the coordinates contained in that fragment.
+ * This is called in `GlobalOrderWriter::identify_fragment_tile_boundaries` for
+ * each of the input tiles to determine whether a rectangle is formed and
+ * including a tile in a fragment is sound.
+ */
+static bool is_rectangular_domain(
     const ArraySchema& arrayschema,
     const NDRange& domain,
     uint64_t start_tile,
-    uint64_t num_tiles);
+    uint64_t num_tiles) {
+  const Domain& arraydomain = arrayschema.domain();
+
+  auto impl = [&]<typename T>(T) {
+    if constexpr (TileDBIntegral<T>) {
+      std::vector<T> tile_extents;
+      tile_extents.reserve(arraydomain.dim_num());
+      for (uint64_t d = 0; d < arraydomain.dim_num(); d++) {
+        tile_extents.push_back(arraydomain.tile_extent(d).rvalue_as<T>());
+      }
+
+      return is_rectangular_domain<T>(
+          arrayschema.tile_order(),
+          tile_extents,
+          domain,
+          start_tile,
+          num_tiles);
+    } else {
+      return false;
+    }
+  };
+  return apply_with_type(impl, arraydomain.dimension_ptr(0)->type());
+}
+
+/**
+ * See `tiledb/sm/tile/arithmetic.h` function `domain_tile_offset`.
+ *
+ * When writing multiple dense fragments the domain of each fragment
+ * must accurately reflect the coordinates contained in that fragment.
+ * This is called when starting a new fragment to update the domain of the
+ * previous fragment and set the correct starting domain of the new one.
+ */
+static std::optional<NDRange> domain_tile_offset(
+    const ArraySchema& arrayschema,
+    const NDRange& domain,
+    uint64_t start_tile,
+    uint64_t num_tiles) {
+  const Domain& arraydomain = arrayschema.domain();
+
+  auto impl = [&]<typename T>(T) {
+    if constexpr (TileDBIntegral<T>) {
+      std::vector<T> tile_extents;
+      tile_extents.reserve(arraydomain.dim_num());
+      for (uint64_t d = 0; d < arraydomain.dim_num(); d++) {
+        tile_extents.push_back(arraydomain.tile_extent(d).rvalue_as<T>());
+      }
+
+      return domain_tile_offset<T>(
+          arrayschema.tile_order(),
+          tile_extents,
+          domain,
+          start_tile,
+          num_tiles);
+    } else {
+      return std::optional<NDRange>{};
+    }
+  };
+  return apply_with_type(impl, arraydomain.dimension_ptr(0)->type());
+}
 
 class GlobalOrderWriterException : public StatusException {
  public:
@@ -716,12 +784,13 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   if (dense()) {
     const uint64_t num_tiles_in_fragment =
         meta->loaded_metadata()->tile_offsets()[0].size();
-    NDRange fragment_domain = domain_tile_offset(
+    std::optional<NDRange> fragment_domain = domain_tile_offset(
         array_schema_,
         subarray_.ndrange(0),
         global_write_state_->dense_.domain_tile_offset_,
         num_tiles_in_fragment);
-    meta->set_domain(fragment_domain);
+    iassert(fragment_domain.has_value());
+    meta->set_domain(std::move(fragment_domain.value()));
   }
 
   // Check that the same number of cells was written across attributes
@@ -1506,33 +1575,6 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 }
 
 /**
- * @return the number of tiles in a "hyper-row" of `subarray` within
- * `arrayschema`
- *
- * If a "hyper-rectangle" is a generalization of a rectangle to N dimensions,
- * then let's define a "hyper-row" to be a generalization of a row to N
- * dimensions. That is, a "hyper-row" is a hyper-rectangle whose length is 1 in
- * the outer-most dimension.
- */
-static uint64_t compute_hyperrow_num_tiles(
-    const ArraySchema& arrayschema, const NDRange& subarray) {
-  const uint64_t rdim =
-      (arrayschema.tile_order() == Layout::ROW_MAJOR ?
-           0 :
-           arrayschema.dim_num() - 1);
-
-  NDRange adjusted = subarray;
-
-  // normalize `adjusted` to a single hyper-row
-  memcpy(
-      adjusted[rdim].end_fixed(),
-      adjusted[rdim].start_fixed(),
-      adjusted[rdim].size() / 2);
-
-  return arrayschema.domain().tile_num(adjusted);
-}
-
-/**
  * Identifies the division of input cells into target fragments,
  * using `max_fragment_size_` as a hard limit on the target fragment size.
  *
@@ -1574,25 +1616,23 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t running_tiles_size = current_fragment_size_;
   uint64_t fragment_size = current_fragment_size_;
 
-  // NB: gcc has a false positive uninitialized use warning for `fragment_end`
+  std::optional<uint64_t> subarray_tile_offset;
+  if (dense()) {
+    if (global_write_state_->frag_meta_) {
+      subarray_tile_offset = global_write_state_->dense_.domain_tile_offset_ +
+                             global_write_state_->frag_meta_->tile_index_base();
+    } else {
+      subarray_tile_offset = 0;
+    }
+  }
+
+// NB: gcc has a false positive uninitialized use warning for `fragment_end`
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   uint64_t fragment_start = 0;
   std::optional<uint64_t> fragment_end;
   std::vector<uint64_t> fragments;
 #pragma GCC diagnostic pop
-
-  uint64_t hyperrow_offset = 0;
-  std::optional<uint64_t> hyperrow_num_tiles;
-  if (dense()) {
-    hyperrow_num_tiles =
-        compute_hyperrow_num_tiles(array_schema_, subarray_.ndrange(0));
-
-    if (global_write_state_->frag_meta_) {
-      hyperrow_offset = global_write_state_->dense_.domain_tile_offset_ +
-                        global_write_state_->frag_meta_->tile_index_base();
-    }
-  }
 
   // Make sure we don't write more than the desired fragment size.
   for (uint64_t t = 0; t < tile_num; t++) {
@@ -1624,10 +1664,12 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       fragment_end = std::nullopt;
     }
 
-    if (!hyperrow_num_tiles.has_value() ||
-        ((hyperrow_offset + t + 1) - fragment_start) %
-                hyperrow_num_tiles.value() ==
-            0) {
+    if (!subarray_tile_offset.has_value() ||
+        is_rectangular_domain(
+            array_schema_,
+            subarray_.ndrange(0),
+            subarray_tile_offset.value() + fragment_start,
+            t - fragment_start + 1)) {
       fragment_size = running_tiles_size + tile_size;
       fragment_end = t + 1;
     }
@@ -1645,62 +1687,6 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       .last_fragment_size_ = fragment_size};
 }
 
-/**
- * Splits a domain at a tile boundary and returns the two halves of the split.
- *
- * When writing multiple dense fragments the domain of each fragment
- * must accurately reflect the coordinates contained in that fragment.
- * This is called when starting a new fragment to update the domain of the
- * previous fragment and set the correct starting domain of the new one.
- *
- * @precondition `tile_offset` must be an offset which bisects the input
- * hyper-rectangle into two new hyper-rectangle
- */
-static NDRange domain_tile_offset(
-    const ArraySchema& arrayschema,
-    const NDRange& domain,
-    uint64_t start_tile,
-    uint64_t num_tiles) {
-  const Domain& arraydomain = arrayschema.domain();
-  const uint64_t domain_num_tiles = arraydomain.tile_num(domain);
-  const uint64_t hyperrow_num_tiles =
-      compute_hyperrow_num_tiles(arrayschema, domain);
-  iassert(domain_num_tiles % hyperrow_num_tiles == 0);
-  iassert(start_tile % hyperrow_num_tiles == 0);
-  iassert(num_tiles % hyperrow_num_tiles == 0);
-
-  const uint64_t start_hyperrow = start_tile / hyperrow_num_tiles;
-  const uint64_t num_hyperrows = num_tiles / hyperrow_num_tiles;
-  iassert(num_hyperrows > 0);
-
-  const uint64_t rdim =
-      (arrayschema.tile_order() == Layout::ROW_MAJOR ?
-           0 :
-           arrayschema.dim_num() - 1);
-
-  NDRange adjusted = domain;
-
-  auto fix_bounds = [&]<typename T>(T) {
-    const T extent = arraydomain.tile_extent(rdim).rvalue_as<T>();
-    const T lower_bound = *static_cast<const T*>(domain[rdim].start_fixed());
-    const T upper_bound = *static_cast<const T*>(domain[rdim].end_fixed());
-    T* start = static_cast<T*>(adjusted[rdim].start_fixed());
-    T* end = static_cast<T*>(adjusted[rdim].end_fixed());
-
-    // tiles begin at [LB, LB + E, LB + 2E, ...] where LB is lower bound, E is
-    // extent
-    auto align = [lower_bound, extent](T value) -> T {
-      return lower_bound + ((value - lower_bound) / extent) * extent;
-    };
-
-    *start = std::max<T>(lower_bound, align(*start + extent * start_hyperrow));
-    *end = std::min<T>(upper_bound, align(*start + extent * num_hyperrows) - 1);
-  };
-  apply_with_type(fix_bounds, arraydomain.dimension_ptr(rdim)->type());
-
-  return adjusted;
-}
-
 Status GlobalOrderWriter::start_new_fragment() {
   // finish off current fragment if there is one
   if (global_write_state_->frag_meta_) {
@@ -1714,12 +1700,13 @@ Status GlobalOrderWriter::start_new_fragment() {
     if (dense()) {
       const uint64_t num_tiles_in_fragment =
           frag_meta->loaded_metadata()->tile_offsets()[0].size();
-      NDRange fragment_domain = domain_tile_offset(
+      std::optional<NDRange> fragment_domain = domain_tile_offset(
           array_schema_,
           subarray_.ndrange(0),
           global_write_state_->dense_.domain_tile_offset_,
           num_tiles_in_fragment);
-      frag_meta->set_domain(fragment_domain);
+      iassert(fragment_domain.has_value());
+      frag_meta->set_domain(std::move(fragment_domain.value()));
 
       global_write_state_->dense_.domain_tile_offset_ += num_tiles_in_fragment;
     }
