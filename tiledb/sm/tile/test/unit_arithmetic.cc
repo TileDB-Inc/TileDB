@@ -580,12 +580,12 @@ TEST_CASE("domain_tile_offset 3d", "[arithmetic]") {
   using Dom64 = Dim64::domain_type;
 
   SECTION("Rectangular prism examples") {
-    const uint64_t d1_lower_bound = 0;  // GENERATE(0, 3);
-    const uint64_t d1_extent = 1;       // GENERATE(1, 4);
-    const uint64_t d2_lower_bound = 0;  // GENERATE(0, 3);
-    const uint64_t d2_extent = 1;       // GENERATE(1, 4);
-    const uint64_t d3_lower_bound = 0;  // GENERATE(0, 3);
-    const uint64_t d3_extent = 1;       // GENERATE(1, 4);
+    const uint64_t d1_lower_bound = GENERATE(0, 3);
+    const uint64_t d1_extent = GENERATE(1, 4);
+    const uint64_t d2_lower_bound = GENERATE(0, 3);
+    const uint64_t d2_extent = GENERATE(1, 4);
+    const uint64_t d3_lower_bound = GENERATE(0, 3);
+    const uint64_t d3_extent = GENERATE(1, 4);
 
     const Dim64 d1(
         d1_lower_bound, d1_lower_bound + (3 * d1_extent) - 1, d1_extent);
