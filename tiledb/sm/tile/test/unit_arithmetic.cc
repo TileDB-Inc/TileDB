@@ -4,121 +4,14 @@
 #include "test/support/src/array_schema_templates.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/tile/arithmetic.h"
 #include "tiledb/type/range/range.h"
 
 #include <span>
 
 using namespace tiledb;
+using namespace sm;
 using namespace tiledb::test;
-
-template <typename T>
-static bool is_rectangular_domain(
-    std::span<const T> tile_extents,
-    const sm::NDRange& domain,
-    uint64_t start_tile,
-    uint64_t num_tiles) {
-  for (uint64_t d_outer = 0; d_outer < tile_extents.size(); d_outer++) {
-    uint64_t hyperrow_num_tiles = 1;
-    for (uint64_t d_inner = d_outer + 1; d_inner < tile_extents.size();
-         d_inner++) {
-      const uint64_t d_inner_num_tiles = sm::Dimension::tile_idx<T>(
-                                             domain[d_inner].end_as<T>(),
-                                             domain[d_inner].start_as<T>(),
-                                             tile_extents[d_inner]) +
-                                         1;
-      hyperrow_num_tiles *= d_inner_num_tiles;
-    }
-
-    const uint64_t hyperrow_offset = start_tile % hyperrow_num_tiles;
-    if (hyperrow_offset + num_tiles > hyperrow_num_tiles) {
-      if (hyperrow_offset != 0) {
-        return false;
-      } else if (num_tiles % hyperrow_num_tiles != 0) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-/**
- * Compute the number of tiles per hyper-row for the given `domain` with tiles
- * given by `tile_extents`.
- *
- * For D dimensions, the returned vector contains `D+1` elements.
- * Position 0 is the number of tiles in `domain`.
- * For dimension `d`, position `d + 1` is the number of tiles in a hyper-row of
- * dimension `d` (and is thus always 1 for the final dimension).
- */
-template <typename T>
-std::vector<uint64_t> compute_hyperrow_sizes(
-    std::span<const T> tile_extents, const sm::NDRange& domain) {
-  std::vector<uint64_t> hyperrow_sizes(tile_extents.size() + 1, 1);
-  for (uint64_t d = 0; d < tile_extents.size(); d++) {
-    const uint64_t d_num_tiles =
-        sm::Dimension::tile_idx<T>(
-            domain[d].end_as<T>(), domain[d].start_as<T>(), tile_extents[d]) +
-        1;
-    hyperrow_sizes[d] = d_num_tiles;
-  }
-  for (uint64_t d = tile_extents.size(); d > 0; d--) {
-    hyperrow_sizes[d - 1] = hyperrow_sizes[d - 1] * hyperrow_sizes[d];
-  }
-
-  return hyperrow_sizes;
-}
-
-/**
- * @return a new range which is contained the rectangle within `domain` defined
- * by `[start_tile, start_tile + num_tiles)` for the tile sizes given by
- * `tile_extents`. If this does not represent a valid rectangle then
- * `std::nullopt` is returned instead.
- */
-template <typename T>
-static std::optional<sm::NDRange> domain_tile_offset(
-    std::span<const T> tile_extents,
-    const sm::NDRange& domain,
-    uint64_t start_tile,
-    uint64_t num_tiles) {
-  sm::NDRange r;
-
-  const std::vector<uint64_t> dimension_sizes =
-      compute_hyperrow_sizes(tile_extents, domain);
-
-  for (uint64_t d = 0; d < tile_extents.size(); d++) {
-    const uint64_t outer_num_tiles = dimension_sizes[d];
-    const uint64_t hyperrow_num_tiles = dimension_sizes[d + 1];
-
-    const T this_dimension_start_tile = (start_tile / hyperrow_num_tiles) %
-                                        (outer_num_tiles / hyperrow_num_tiles);
-    const T this_dimension_end_tile =
-        ((start_tile + num_tiles - 1) / hyperrow_num_tiles) %
-        (outer_num_tiles / hyperrow_num_tiles);
-
-    if (start_tile % hyperrow_num_tiles == 0) {
-      // aligned to the start of the hyperrow
-      if (num_tiles > hyperrow_num_tiles &&
-          num_tiles % hyperrow_num_tiles != 0) {
-        return std::nullopt;
-      }
-    } else {
-      // begins in the middle of the hyperrow
-      const uint64_t offset = start_tile % hyperrow_num_tiles;
-      if (offset + num_tiles > hyperrow_num_tiles) {
-        return std::nullopt;
-      }
-    }
-
-    const T start =
-        domain[d].start_as<T>() + (this_dimension_start_tile * tile_extents[d]);
-    const T end = domain[d].start_as<T>() +
-                  (this_dimension_end_tile * tile_extents[d]) +
-                  tile_extents[d] - 1;
-    r.push_back(Range(start, end));
-  }
-
-  return r;
-}
 
 template <typename T>
 static bool is_rectangular_domain(

@@ -123,10 +123,12 @@ struct Domain {
 /**
  * A description of a dimension as it pertains to its datatype.
  */
-template <tiledb::sm::Datatype DATATYPE>
+template <tiledb::sm::Datatype DT>
 struct Dimension {
-  using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
+  using value_type = tiledb::type::datatype_traits<DT>::value_type;
   using domain_type = Domain<value_type>;
+
+  static constexpr tiledb::sm::Datatype DATATYPE = DT;
 
   Dimension() = default;
   Dimension(Domain<value_type> domain, value_type extent)

@@ -27,7 +27,7 @@
 include(unit_test)
 
 commence(unit_test query)
-    this_target_sources(main.cc unit_validity_vector.cc unit_query_condition.cc unit_domain_tile_offset.cc)
+    this_target_sources(main.cc unit_validity_vector.cc unit_query_condition.cc)
     # Not actually testing a unit yet, but some things that ought to be units
     this_target_link_libraries(tiledb_test_support_lib)
     this_target_link_libraries(ast_test_support_lib)
