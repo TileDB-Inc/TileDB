@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/type/range/range.h"
 
@@ -43,6 +44,7 @@ namespace tiledb::sm {
  */
 template <typename T>
 static bool is_rectangular_domain(
+    Layout tile_order,
     std::span<const T> tile_extents,
     const sm::NDRange& domain,
     uint64_t start_tile,
@@ -51,11 +53,13 @@ static bool is_rectangular_domain(
     uint64_t hyperrow_num_tiles = 1;
     for (uint64_t d_inner = d_outer + 1; d_inner < tile_extents.size();
          d_inner++) {
-      const uint64_t d_inner_num_tiles = sm::Dimension::tile_idx<T>(
-                                             domain[d_inner].end_as<T>(),
-                                             domain[d_inner].start_as<T>(),
-                                             tile_extents[d_inner]) +
-                                         1;
+      const uint64_t d =
+          (tile_order == Layout::ROW_MAJOR ? d_inner :
+                                             tile_extents.size() - d_inner - 1);
+      const uint64_t d_inner_num_tiles =
+          sm::Dimension::tile_idx<T>(
+              domain[d].end_as<T>(), domain[d].start_as<T>(), tile_extents[d]) +
+          1;
       hyperrow_num_tiles *= d_inner_num_tiles;
     }
 
@@ -82,14 +86,18 @@ static bool is_rectangular_domain(
  */
 template <typename T>
 std::vector<uint64_t> compute_hyperrow_sizes(
-    std::span<const T> tile_extents, const sm::NDRange& domain) {
+    Layout tile_order,
+    std::span<const T> tile_extents,
+    const sm::NDRange& domain) {
   std::vector<uint64_t> hyperrow_sizes(tile_extents.size() + 1, 1);
-  for (uint64_t d = 0; d < tile_extents.size(); d++) {
+  for (uint64_t di = 0; di < tile_extents.size(); di++) {
+    const uint64_t d =
+        (tile_order == Layout::ROW_MAJOR ? di : tile_extents.size() - di - 1);
     const uint64_t d_num_tiles =
         sm::Dimension::tile_idx<T>(
             domain[d].end_as<T>(), domain[d].start_as<T>(), tile_extents[d]) +
         1;
-    hyperrow_sizes[d] = d_num_tiles;
+    hyperrow_sizes[di] = d_num_tiles;
   }
   for (uint64_t d = tile_extents.size(); d > 0; d--) {
     hyperrow_sizes[d - 1] = hyperrow_sizes[d - 1] * hyperrow_sizes[d];
@@ -106,18 +114,23 @@ std::vector<uint64_t> compute_hyperrow_sizes(
  */
 template <typename T>
 static std::optional<sm::NDRange> domain_tile_offset(
+    Layout tile_order,
     std::span<const T> tile_extents,
     const sm::NDRange& domain,
     uint64_t start_tile,
     uint64_t num_tiles) {
   sm::NDRange r;
+  r.resize(tile_extents.size());
 
   const std::vector<uint64_t> dimension_sizes =
-      compute_hyperrow_sizes(tile_extents, domain);
+      compute_hyperrow_sizes(tile_order, tile_extents, domain);
 
-  for (uint64_t d = 0; d < tile_extents.size(); d++) {
-    const uint64_t outer_num_tiles = dimension_sizes[d];
-    const uint64_t hyperrow_num_tiles = dimension_sizes[d + 1];
+  for (uint64_t di = 0; di < tile_extents.size(); di++) {
+    const uint64_t d =
+        (tile_order == Layout::ROW_MAJOR ? di : tile_extents.size() - di - 1);
+
+    const uint64_t outer_num_tiles = dimension_sizes[di];
+    const uint64_t hyperrow_num_tiles = dimension_sizes[di + 1];
 
     const T this_dimension_start_tile = (start_tile / hyperrow_num_tiles) %
                                         (outer_num_tiles / hyperrow_num_tiles);
@@ -144,7 +157,7 @@ static std::optional<sm::NDRange> domain_tile_offset(
     const T end = domain[d].start_as<T>() +
                   (this_dimension_end_tile * tile_extents[d]) +
                   tile_extents[d] - 1;
-    r.push_back(Range(start, end));
+    r[d] = Range(start, end);
   }
 
   return r;

@@ -19,10 +19,12 @@ static bool is_rectangular_domain(
     T lower_bound,
     T upper_bound,
     uint64_t start_tile,
-    uint64_t num_tiles) {
+    uint64_t num_tiles,
+    Layout tile_order = Layout::ROW_MAJOR) {
   sm::NDRange r;
   r.push_back(Range(lower_bound, upper_bound));
-  return is_rectangular_domain(tile_extents, r, start_tile, num_tiles);
+  return is_rectangular_domain(
+      tile_order, tile_extents, r, start_tile, num_tiles);
 }
 
 template <typename T>
@@ -33,11 +35,13 @@ static bool is_rectangular_domain(
     T d2_lower_bound,
     T d2_upper_bound,
     uint64_t start_tile,
-    uint64_t num_tiles) {
+    uint64_t num_tiles,
+    Layout tile_order = Layout::ROW_MAJOR) {
   sm::NDRange r;
   r.push_back(Range(d1_lower_bound, d1_upper_bound));
   r.push_back(Range(d2_lower_bound, d2_upper_bound));
-  return is_rectangular_domain(tile_extents, r, start_tile, num_tiles);
+  return is_rectangular_domain(
+      tile_order, tile_extents, r, start_tile, num_tiles);
 }
 
 template <sm::Datatype DT>
@@ -45,7 +49,8 @@ static bool is_rectangular_domain(
     const templates::Dimension<DT>& d1,
     const templates::Dimension<DT>& d2,
     uint64_t start_tile,
-    uint64_t num_tiles) {
+    uint64_t num_tiles,
+    Layout tile_order = Layout::ROW_MAJOR) {
   using Coord = templates::Dimension<DT>::value_type;
   const std::vector<Coord> extents = {d1.extent, d2.extent};
   return is_rectangular_domain<Coord>(
@@ -55,7 +60,8 @@ static bool is_rectangular_domain(
       d2.domain.lower_bound,
       d2.domain.upper_bound,
       start_tile,
-      num_tiles);
+      num_tiles,
+      tile_order);
 }
 
 template <sm::Datatype DT>
@@ -64,14 +70,16 @@ static bool is_rectangular_domain(
     const templates::Dimension<DT>& d2,
     const templates::Dimension<DT>& d3,
     uint64_t start_tile,
-    uint64_t num_tiles) {
+    uint64_t num_tiles,
+    Layout tile_order = Layout::ROW_MAJOR) {
   using Coord = templates::Dimension<DT>::value_type;
   const std::vector<Coord> extents = {d1.extent, d2.extent, d3.extent};
   sm::NDRange r;
   r.push_back(Range(d1.domain.lower_bound, d1.domain.upper_bound));
   r.push_back(Range(d2.domain.lower_bound, d2.domain.upper_bound));
   r.push_back(Range(d3.domain.lower_bound, d3.domain.upper_bound));
-  return is_rectangular_domain<Coord>(extents, r, start_tile, num_tiles);
+  return is_rectangular_domain<Coord>(
+      tile_order, extents, r, start_tile, num_tiles);
 }
 
 // in one dimension all domains are rectangles
@@ -319,11 +327,12 @@ std::optional<sm::NDRange> instance_domain_tile_offset(
     std::span<const T> tile_extents,
     const sm::NDRange& domain,
     uint64_t start_tile,
-    uint64_t num_tiles) {
-  const bool expect_rectangle =
-      is_rectangular_domain(tile_extents, domain, start_tile, num_tiles);
-  const std::optional<sm::NDRange> adjusted_domain =
-      domain_tile_offset(tile_extents, domain, start_tile, num_tiles);
+    uint64_t num_tiles,
+    Layout tile_order = Layout::ROW_MAJOR) {
+  const bool expect_rectangle = is_rectangular_domain(
+      tile_order, tile_extents, domain, start_tile, num_tiles);
+  const std::optional<sm::NDRange> adjusted_domain = domain_tile_offset(
+      tile_order, tile_extents, domain, start_tile, num_tiles);
   if (!expect_rectangle) {
     ASSERTER(!adjusted_domain.has_value());
     return std::nullopt;
@@ -344,15 +353,17 @@ std::optional<sm::NDRange> instance_domain_tile_offset(
   ASSERTER(num_tiles_result == num_tiles);
 
   const std::vector<uint64_t> hyperrow_sizes =
-      compute_hyperrow_sizes(tile_extents, domain);
+      compute_hyperrow_sizes(tile_order, tile_extents, domain);
 
   uint64_t start_tile_result = 0;
-  for (uint64_t d = 0; d < tile_extents.size(); d++) {
+  for (uint64_t di = 0; di < tile_extents.size(); di++) {
+    const uint64_t d =
+        (tile_order == Layout::ROW_MAJOR ? di : tile_extents.size() - di - 1);
     const uint64_t start_tile_this_dimension = sm::Dimension::tile_idx<T>(
         adjusted_domain.value()[d].start_as<T>(),
         domain[d].start_as<T>(),
         tile_extents[d]);
-    start_tile_result += start_tile_this_dimension * hyperrow_sizes[d + 1];
+    start_tile_result += start_tile_this_dimension * hyperrow_sizes[di + 1];
   }
   ASSERTER(start_tile_result == start_tile);
 
@@ -361,7 +372,9 @@ std::optional<sm::NDRange> instance_domain_tile_offset(
 
 template <typename T, typename Asserter = AsserterCatch>
 void instance_domain_tile_offset(
-    std::span<const T> tile_extents, const sm::NDRange& domain) {
+    std::span<const T> tile_extents,
+    const sm::NDRange& domain,
+    Layout tile_order = Layout::ROW_MAJOR) {
   uint64_t total_tiles = 1;
   for (uint64_t d = 0; d < tile_extents.size(); d++) {
     const uint64_t num_tiles_this_dimension =
@@ -374,7 +387,7 @@ void instance_domain_tile_offset(
     for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
          num_tiles++) {
       instance_domain_tile_offset<T, Asserter>(
-          tile_extents, domain, start_tile, num_tiles);
+          tile_extents, domain, start_tile, num_tiles, tile_order);
     }
   }
 }
@@ -385,7 +398,8 @@ std::optional<std::vector<
 instance_domain_tile_offset(
     const std::vector<templates::Dimension<DT>>& dims,
     uint64_t start_tile,
-    uint64_t num_tiles) {
+    uint64_t num_tiles,
+    Layout tile_order = Layout::ROW_MAJOR) {
   using Coord = typename templates::Dimension<DT>::value_type;
 
   std::vector<Coord> tile_extents;
@@ -399,7 +413,7 @@ instance_domain_tile_offset(
   }
 
   const auto range = instance_domain_tile_offset<Coord, Asserter>(
-      tile_extents, domain, start_tile, num_tiles);
+      tile_extents, domain, start_tile, num_tiles, tile_order);
   if (!range.has_value()) {
     return std::nullopt;
   }
@@ -414,7 +428,8 @@ instance_domain_tile_offset(
 
 template <sm::Datatype DT, typename Asserter = AsserterCatch>
 void instance_domain_tile_offset(
-    const std::vector<templates::Dimension<DT>>& dims) {
+    const std::vector<templates::Dimension<DT>>& dims,
+    Layout tile_order = Layout::ROW_MAJOR) {
   using Coord = templates::Dimension<DT>::value_type;
 
   std::vector<Coord> tile_extents;
@@ -427,7 +442,8 @@ void instance_domain_tile_offset(
     domain.push_back(Range(dim.domain.lower_bound, dim.domain.upper_bound));
   }
 
-  instance_domain_tile_offset<Coord, Asserter>(tile_extents, domain);
+  instance_domain_tile_offset<Coord, Asserter>(
+      tile_extents, domain, tile_order);
 }
 
 TEST_CASE("domain_tile_offset 1d", "[arithmetic]") {
@@ -459,70 +475,54 @@ TEST_CASE("domain_tile_offset 2d", "[arithmetic]") {
     const Dim64 d2(
         d2_lower_bound, d2_lower_bound + (4 * d2_extent) - 1, d2_extent);
 
+    auto make_d1 = [&](uint64_t r_start, uint64_t r_end) {
+      return Dom64(
+          d1_lower_bound + r_start * d1_extent,
+          d1_lower_bound + r_end * d1_extent + d1_extent - 1);
+    };
+    auto make_d2 = [&](uint64_t c_start, uint64_t c_end) {
+      return Dom64(
+          d2_lower_bound + c_start * d2_extent,
+          d2_lower_bound + c_end * d2_extent + d2_extent - 1);
+    };
+
     SECTION("Whole domain") {
-      const auto r =
-          instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 0, 20);
+      const Layout tile_order = GENERATE(Layout::ROW_MAJOR, Layout::COL_MAJOR);
+      const auto r = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2}, 0, 20, tile_order);
       CHECK(r == std::vector<Dom64>{d1.domain, d2.domain});
     }
 
     SECTION("Sub-rectangle") {
       const auto r1 =
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 4, 8);
-      CHECK(
-          r1 == std::vector<Dom64>{
-                    Dom64(
-                        d1_lower_bound + d1_extent,
-                        d1_lower_bound + 3 * d1_extent - 1),
-                    d2.domain});
+      CHECK(r1 == std::vector<Dom64>{make_d1(1, 2), d2.domain});
 
       const auto r2 =
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 8, 4);
-      CHECK(
-          r2 == std::vector<Dom64>{
-                    Dom64(
-                        d1_lower_bound + 2 * d1_extent,
-                        d1_lower_bound + 3 * d1_extent - 1),
-                    d2.domain});
+      CHECK(r2 == std::vector<Dom64>{make_d1(2, 2), d2.domain});
 
       const auto r3 =
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 8, 12);
-      CHECK(
-          r3 == std::vector<Dom64>{
-                    Dom64(
-                        d1_lower_bound + 2 * d1_extent,
-                        d1_lower_bound + 5 * d1_extent - 1),
-                    d2.domain});
+      CHECK(r3 == std::vector<Dom64>{make_d1(2, 4), d2.domain});
     }
 
     SECTION("Line") {
       const auto r1 =
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 0, 2);
-      CHECK(
-          r1 == std::vector<Dom64>{
-                    Dom64(d1_lower_bound, d1_lower_bound + d1_extent - 1),
-                    Dom64(
-                        d2_lower_bound + 0 * d2_extent,
-                        d2_lower_bound + 2 * d2_extent - 1)});
+      CHECK(r1 == std::vector<Dom64>{make_d1(0, 0), make_d2(0, 1)});
 
       const auto r2 =
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 1, 2);
       CHECK(
           r2 == std::vector<Dom64>{
-                    Dom64(d1_lower_bound, d1_lower_bound + d1_extent - 1),
-                    Dom64(
-                        d2_lower_bound + 1 * d2_extent,
-                        d2_lower_bound + 3 * d2_extent - 1)});
+                    make_d1(0, 0),
+                    make_d2(1, 2),
+                });
 
       const auto r3 =
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 9, 3);
-      CHECK(
-          r3 == std::vector<Dom64>{
-                    Dom64(
-                        d1_lower_bound + 2 * d1_extent,
-                        d1_lower_bound + 3 * d1_extent - 1),
-                    Dom64(
-                        d2_lower_bound + 1 * d2_extent,
-                        d2_lower_bound + 4 * d2_extent - 1)});
+      CHECK(r3 == std::vector<Dom64>{make_d1(2, 2), make_d2(1, 3)});
     }
 
     SECTION("Align start but not end") {
@@ -548,13 +548,30 @@ TEST_CASE("domain_tile_offset 2d", "[arithmetic]") {
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2}, 5, 8);
       CHECK(r3 == std::optional<std::vector<Dom64>>{});
     }
+
+    SECTION("Column major") {
+      const auto r1 = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2}, 0, 10, Layout::COL_MAJOR);
+      CHECK(r1 == std::vector<Dom64>{d1.domain, make_d2(0, 1)});
+
+      const auto r2 = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2}, 11, 4, Layout::COL_MAJOR);
+      CHECK(r2 == std::vector<Dom64>{make_d1(1, 4), make_d2(2, 2)});
+
+      const auto r3 = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2}, 11, 5, Layout::COL_MAJOR);
+      CHECK(r3 == std::optional<std::vector<Dom64>>{});
+    }
   }
 
   rc::prop("any tiles", []() {
     const Dim64 d1 = *rc::make_dimension<Dim64::DATATYPE>(std::nullopt, {64});
     const Dim64 d2 = *rc::make_dimension<Dim64::DATATYPE>(std::nullopt, {64});
+    const Layout tile_order =
+        *rc::gen::element(Layout::ROW_MAJOR, Layout::COL_MAJOR);
 
-    instance_domain_tile_offset<Dim64::DATATYPE, AsserterRapidcheck>({d1, d2});
+    instance_domain_tile_offset<Dim64::DATATYPE, AsserterRapidcheck>(
+        {d1, d2}, tile_order);
   });
 }
 
@@ -594,8 +611,12 @@ TEST_CASE("domain_tile_offset 3d", "[arithmetic]") {
     };
 
     SECTION("Whole domain") {
+      const Layout tile_order = GENERATE(Layout::ROW_MAJOR, Layout::COL_MAJOR);
       const auto r = instance_domain_tile_offset<Dim64::DATATYPE>(
-          {d1, d2, d3}, 0, d1.num_tiles() * d2.num_tiles() * d3.num_tiles());
+          {d1, d2, d3},
+          0,
+          d1.num_tiles() * d2.num_tiles() * d3.num_tiles(),
+          tile_order);
       CHECK(r == std::vector<Dom64>{d1.domain, d2.domain, d3.domain});
     }
 
@@ -672,6 +693,16 @@ TEST_CASE("domain_tile_offset 3d", "[arithmetic]") {
           instance_domain_tile_offset<Dim64::DATATYPE>({d1, d2, d3}, 77, 8);
       CHECK(r2 == std::optional<std::vector<Dom64>>{});
     }
+
+    SECTION("Column major") {
+      const auto r1 = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2, d3}, 54, 36, Layout::COL_MAJOR);
+      CHECK(r1 == std::vector<Dom64>{d1.domain, d2.domain, make_d3(3, 4)});
+
+      const auto r2 = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d1, d2, d3}, 78, 12, Layout::COL_MAJOR);
+      CHECK(r2 == std::vector<Dom64>{d1.domain, make_d2(2, 5), make_d3(4, 4)});
+    }
   }
 
   rc::prop("any tiles", []() {
@@ -681,8 +712,10 @@ TEST_CASE("domain_tile_offset 3d", "[arithmetic]") {
         *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
     const Dim64 d3 =
         *rc::make_dimension<sm::Datatype::UINT64>(std::nullopt, {16});
+    const Layout tile_order =
+        *rc::gen::element(Layout::ROW_MAJOR, Layout::COL_MAJOR);
 
     instance_domain_tile_offset<Dim64::DATATYPE, AsserterRapidcheck>(
-        {d1, d2, d3});
+        {d1, d2, d3}, tile_order);
   });
 }
