@@ -38,6 +38,7 @@
 #include "test/support/src/array_templates.h"
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
+#include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/common/arithmetic.h"
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
@@ -45,6 +46,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/tile/test/arithmetic.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <numeric>
@@ -599,6 +601,8 @@ instance_dense_global_order(
     num_tiles_per_hyperrow *= dimensions[dim].num_tiles(subarray[dim]);
   }
 
+  sm::NDRange smsubarray;
+
   // write data, should be split into multiple fragments
   {
     Array array(ctx, array_name, TILEDB_WRITE);
@@ -661,6 +665,8 @@ instance_dense_global_order(
     }
 
     query.finalize();
+
+    smsubarray = sub.ptr()->subarray()->ndrange(0);
   }
 
   // then read back
@@ -699,59 +705,69 @@ instance_dense_global_order(
   }
 
   // the fragments are not always emitted in the same order, sort them
-  std::sort(
-      fragment_domains.begin(),
-      fragment_domains.end(),
-      [&](const auto& left, const auto& right) -> bool {
-        for (uint64_t d = 0; d < dimensions.size(); d++) {
-          if (left[d].lower_bound < right[d].lower_bound) {
-            return true;
-          } else if (left[d].lower_bound > right[d].lower_bound) {
-            return false;
-          } else if (left[d].upper_bound < right[d].upper_bound) {
-            return true;
-          } else if (left[d].upper_bound > right[d].upper_bound) {
-            return false;
-          }
-        }
+  auto domain_cmp = [&](const auto& left, const auto& right) {
+    for (uint64_t d = 0; d < dimensions.size(); d++) {
+      if (left[d].lower_bound < right[d].lower_bound) {
+        return true;
+      } else if (left[d].lower_bound > right[d].lower_bound) {
         return false;
+      } else if (left[d].upper_bound < right[d].upper_bound) {
+        return true;
+      } else if (left[d].upper_bound > right[d].upper_bound) {
+        return false;
+      }
+    }
+    return false;
+  };
+  std::vector<uint32_t> fragments_in_order(finfo.fragment_num());
+  std::iota(fragments_in_order.begin(), fragments_in_order.end(), 0);
+  std::sort(
+      fragments_in_order.begin(),
+      fragments_in_order.end(),
+      [&](const uint32_t f_left, const uint32_t f_right) -> bool {
+        const auto& left = fragment_domains[f_left];
+        const auto& right = fragment_domains[f_right];
+        return domain_cmp(left, right);
       });
+  std::sort(fragment_domains.begin(), fragment_domains.end(), domain_cmp);
+
+  std::vector<uint64_t> tile_extents;
+  for (const auto& dimension : dimensions) {
+    tile_extents.push_back(dimension.extent);
+  }
 
   // validate fragment domains
   ASSERTER(!fragment_domains.empty());
-  ASSERTER(fragment_domains[0][0].lower_bound == subarray[0].lower_bound);
-  ASSERTER(fragment_domains.back()[0].upper_bound == subarray[0].upper_bound);
-  for (uint32_t f = 0; f < fragment_domains.size(); f++) {
-    if (tile_order == TILEDB_ROW_MAJOR) {
-      // first dimension is ranging and contiguous
-      if (f > 0) {
-        ASSERTER(
-            fragment_domains[f - 1][0].upper_bound + 1 ==
-            fragment_domains[f][0].lower_bound);
-      }
-      // non-first dimensions should match
-      for (uint64_t d = 1; d < dimensions.size(); d++) {
-        ASSERTER(fragment_domains[f][d] == subarray[d]);
-      }
-    } else {
-      // last dimension is ranging and contiguous
-      const uint64_t num_dims = dimensions.size();
-      if (f > 0) {
-        ASSERTER(
-            fragment_domains[f - 1][num_dims - 1].upper_bound + 1 ==
-            fragment_domains[f][num_dims - 1].lower_bound);
-      }
-      // non-last dimensions should match
-      for (uint64_t d = 0; d < num_dims - 1; d++) {
-        ASSERTER(fragment_domains[f][d] == subarray[d]);
-      }
-    }
-  }
 
-  auto meta_size = [&finfo](uint32_t f) -> uint64_t {
+  // fragment domains should be contiguous in global order and cover the whole
+  // subarray
+  uint64_t subarray_tile_offset = 0;
+  for (uint32_t f = 0; f < fragments_in_order.size(); f++) {
+    const sm::NDRange& internal_domain =
+        finfo.ptr()
+            ->fragment_info()
+            ->single_fragment_info_vec()[fragments_in_order[f]]
+            .non_empty_domain();
+
+    const uint64_t f_num_tiles =
+        compute_num_tiles<uint64_t>(tile_extents, internal_domain);
+    const uint64_t f_start_tile = compute_start_tile<uint64_t>(
+        static_cast<sm::Layout>(tile_order),
+        tile_extents,
+        smsubarray,
+        internal_domain);
+
+    ASSERTER(f_start_tile == subarray_tile_offset);
+    subarray_tile_offset += f_num_tiles;
+  }
+  ASSERTER(
+      subarray_tile_offset ==
+      compute_num_tiles<uint64_t>(tile_extents, smsubarray));
+
+  auto meta_size = [&](uint32_t f) -> uint64_t {
     return finfo.ptr()
         ->fragment_info()
-        ->single_fragment_info_vec()[f]
+        ->single_fragment_info_vec()[fragments_in_order[f]]
         .meta()
         ->fragment_meta_size();
   };
@@ -799,6 +815,8 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
                       << ", cell_order = "
                       << sm::layout_str(static_cast<sm::Layout>(cell_order))) {
     // each tile is a full row of a 2D array
+    // NB: since each tile is a whole row we observe the same results regardless
+    // of tile order
     SECTION("Row tiles") {
       using Dim = templates::Dimension<Datatype::UINT64>;
       using Dom = templates::Domain<uint64_t>;
@@ -820,54 +838,24 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
       DYNAMIC_SECTION(
           "num_rows = " << num_rows << ", write_unit_num_cells = "
                         << write_unit_num_cells) {
-        if (tile_order == TILEDB_COL_MAJOR && num_rows > 1) {
-          // Consider the following example:
-          //
-          // [ 1  1  1  1  2  2  2  2 ]
-          // [ 3  3  3  3  4  4  4  4 ]
-          // [ 5  5  5  5  6  6  6  6 ]
-          // [ 7  7  7  7  8  8  8  8 ]
-          //
-          // In row major order we can see that there are two tiles per
-          // "hyper-row". In column major order instead the tiles are placed [1
-          // 3 5 7 2 4 6 8]. A "hyperrow" is not formed until tile 7 is
-          // written... i.e the number of rows.
-          //
-          // But wait, this example only has one tile per row! And indeed this
-          // does mean that each tile can be its own hyper-row again. For
-          // simplicity we elect not to implement that special case.
-          const auto expect = Catch::Matchers::ContainsSubstring(
-              "Fragment size is too small to subdivide dense subarray into "
-              "multiple fragments");
-          REQUIRE_THROWS(
-              instance_dense_global_order<AsserterCatch>(
-                  ctx,
-                  tile_order,
-                  cell_order,
-                  max_fragment_size,
-                  dimensions,
-                  subarray),
-              expect);
-        } else {
-          const auto actual = instance_dense_global_order<AsserterCatch>(
-              ctx,
-              tile_order,
-              cell_order,
-              max_fragment_size,
-              dimensions,
-              subarray,
-              write_unit_num_cells == 0 ?
-                  std::nullopt :
-                  std::optional<uint64_t>{write_unit_num_cells});
+        const auto actual = instance_dense_global_order<AsserterCatch>(
+            ctx,
+            tile_order,
+            cell_order,
+            max_fragment_size,
+            dimensions,
+            subarray,
+            write_unit_num_cells == 0 ?
+                std::nullopt :
+                std::optional<uint64_t>{write_unit_num_cells});
 
-          std::vector<std::vector<Dom>> expect;
-          for (uint64_t r = 0; r < num_rows; r++) {
-            expect.push_back(
-                {Dom(base_d1 + r, base_d1 + r), Dom(0, span_d2 - 1)});
-          }
-
-          CHECK(expect == actual);
+        std::vector<std::vector<Dom>> expect;
+        for (uint64_t r = 0; r < num_rows; r++) {
+          expect.push_back(
+              {Dom(base_d1 + r, base_d1 + r), Dom(0, span_d2 - 1)});
         }
+
+        CHECK(expect == actual);
       }
     }
 
