@@ -159,7 +159,9 @@ static std::optional<sm::NDRange> domain_tile_offset(
     const T end = domain[d].start_as<T>() +
                   (this_dimension_end_tile * tile_extents[d]) +
                   tile_extents[d] - 1;
-    r[d] = Range(start, end);
+    r[d] = Range(
+        std::max<T>(domain[d].start_as<T>(), start),
+        std::min<T>(domain[d].end_as<T>(), end));
   }
 
   return r;
