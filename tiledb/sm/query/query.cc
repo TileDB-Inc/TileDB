@@ -132,7 +132,6 @@ Query::Query(
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
-    , fragment_size_(std::numeric_limits<uint64_t>::max())
     , memory_budget_(memory_budget)
     , query_remote_buffer_storage_(std::nullopt)
     , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
@@ -1638,7 +1637,7 @@ Status Query::submit() {
   }
 
   // Make sure fragment size is only set for global order.
-  if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
+  if (fragment_size_.has_value() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
     throw QueryException(
         "[submit] Fragment size is only supported for global order writes.");

@@ -180,7 +180,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
     StrategyParams& params,
-    uint64_t fragment_size,
+    std::optional<uint64_t> fragment_size,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
@@ -1643,7 +1643,8 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
 
     // NB: normally this should only hit once, but if there is a single
     // tile larger than the max fragment size it could hit twice and error
-    while (running_tiles_size + tile_size > max_fragment_size_) {
+    while (running_tiles_size + tile_size >
+           max_fragment_size_.value_or(std::numeric_limits<uint64_t>::max())) {
       if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
@@ -1664,7 +1665,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       fragment_end = std::nullopt;
     }
 
-    if (!subarray_tile_offset.has_value() ||
+    if (!subarray_tile_offset.has_value() || !max_fragment_size_.has_value() ||
         is_rectangular_domain(
             array_schema_,
             subarray_.ndrange(0),

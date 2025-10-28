@@ -1110,7 +1110,7 @@ class Query {
    *
    * Note: This is only used for global order writes.
    */
-  uint64_t fragment_size_;
+  std::optional<uint64_t> fragment_size_;
 
   /**
    * Memory budget. If set to nullopt, the value will be obtained from the

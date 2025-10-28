@@ -145,7 +145,7 @@ class GlobalOrderWriter : public WriterBase {
       stats::Stats* stats,
       shared_ptr<Logger> logger,
       StrategyParams& params,
-      uint64_t fragment_size,
+      std::optional<uint64_t> fragment_size,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       std::vector<std::string>& processed_conditions,
@@ -237,7 +237,7 @@ class GlobalOrderWriter : public WriterBase {
    * The desired fragment size, in bytes. The writer will create a new fragment
    * once this size has been reached.
    */
-  uint64_t max_fragment_size_;
+  std::optional<uint64_t> max_fragment_size_;
 
   /**
    * Size currently written to the fragment.
