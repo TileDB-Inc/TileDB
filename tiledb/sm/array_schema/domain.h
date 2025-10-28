@@ -496,7 +496,7 @@ class Domain {
   shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The number of cells per tile. Meaningful only for the **dense** case. */
-  std::optional<uint64_t> cell_num_per_tile_;
+  uint64_t cell_num_per_tile_;
 
   /** The cell order of the array the domain belongs to. */
   Layout cell_order_;
@@ -599,7 +599,7 @@ class Domain {
       const Dimension* dim, const void* coord_a, const void* coord_b);
 
   /** Compute the number of cells per tile. */
-  std::optional<uint64_t> compute_cell_num_per_tile() const;
+  void compute_cell_num_per_tile();
 
   /**
    * Compute the number of cells per tile.
@@ -608,12 +608,7 @@ class Domain {
    * @return void
    */
   template <class T>
-  std::optional<uint64_t> compute_cell_num_per_tile() const;
-
-  /**
-   * Computes and updates the number of cells per tile.
-   */
-  void update_cell_num_per_tile();
+  void compute_cell_num_per_tile();
 
   /** Prepares the comparator functions for each dimension. */
   void set_tile_cell_order_cmp_funcs();
