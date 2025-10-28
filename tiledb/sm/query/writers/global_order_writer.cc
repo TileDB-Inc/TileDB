@@ -78,6 +78,11 @@ static bool is_rectangular_domain(
     uint64_t num_tiles) {
   const Domain& arraydomain = arrayschema.domain();
 
+  // NB: ordinary write subarray must be tile aligned but the consolidation
+  // subarray is not required to be
+  NDRange arraydomain_aligned = domain;
+  arraydomain.expand_to_tiles_when_no_current_domain(arraydomain_aligned);
+
   auto impl = [&]<typename T>(T) {
     if constexpr (TileDBIntegral<T>) {
       std::vector<T> tile_extents;
@@ -89,7 +94,7 @@ static bool is_rectangular_domain(
       return is_rectangular_domain<T>(
           arrayschema.tile_order(),
           tile_extents,
-          domain,
+          arraydomain_aligned,
           start_tile,
           num_tiles);
     } else {
@@ -114,6 +119,11 @@ static std::optional<NDRange> domain_tile_offset(
     uint64_t num_tiles) {
   const Domain& arraydomain = arrayschema.domain();
 
+  // NB: ordinary write subarray must be tile aligned but the consolidation
+  // subarray is not required to be
+  NDRange arraydomain_aligned = domain;
+  arraydomain.expand_to_tiles_when_no_current_domain(arraydomain_aligned);
+
   auto impl = [&]<typename T>(T) {
     if constexpr (TileDBIntegral<T>) {
       std::vector<T> tile_extents;
@@ -125,7 +135,7 @@ static std::optional<NDRange> domain_tile_offset(
       return domain_tile_offset<T>(
           arrayschema.tile_order(),
           tile_extents,
-          domain,
+          arraydomain_aligned,
           start_tile,
           num_tiles);
     } else {
