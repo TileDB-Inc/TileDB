@@ -909,16 +909,18 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
           // with new inputs which are offset within a tile
           const auto expect = Catch::Matchers::ContainsSubstring(
               "the subarray must coincide with the tile bounds");
-          REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
-              ctx,
-              tile_order,
-              cell_order,
-              max_fragment_size,
-              dimensions,
-              subarray,
-              write_unit_num_cells == 0 ?
-                  std::nullopt :
-                  std::optional<uint64_t>(write_unit_num_cells)));
+          REQUIRE_THROWS(
+              instance_dense_global_order<AsserterCatch>(
+                  ctx,
+                  tile_order,
+                  cell_order,
+                  max_fragment_size,
+                  dimensions,
+                  subarray,
+                  write_unit_num_cells == 0 ?
+                      std::nullopt :
+                      std::optional<uint64_t>(write_unit_num_cells)),
+              expect);
         } else {
           std::vector<std::vector<Dom>> expect;
           if (tile_order == TILEDB_ROW_MAJOR) {
