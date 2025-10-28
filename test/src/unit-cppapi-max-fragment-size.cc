@@ -956,6 +956,118 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
         }
       }
     }
+
+    // Each tile is a rectangular prism of height 1
+    // Use the same inputs as above except there is a third outer dimension with
+    // extent 1
+    SECTION("Flat rectangular prism tiles") {
+      using Dim = templates::Dimension<Datatype::UINT64>;
+      using Dom = templates::Domain<uint64_t>;
+
+      const uint64_t d0_extent = 1;
+      const Dom d0_height(0, 0);
+
+      const uint64_t d1_extent = GENERATE(8, 4);
+      constexpr size_t d2_span = 10000;
+      REQUIRE(d2_span % d1_extent == 0);  // for row major
+
+      const uint64_t d1_subarray = 16;
+      REQUIRE(d2_span % d1_subarray == 0);  // for column major
+
+      const std::vector<Dim> dimensions = {
+          Dim(0, std::numeric_limits<uint64_t>::max() - 1, d0_extent),
+          Dim(0, std::numeric_limits<uint64_t>::max() - 1, d1_extent),
+          Dim(0, d2_span - 1, d2_span / d1_extent)};
+
+      const uint64_t d1_start_offset = GENERATE(0, 1);
+      const uint64_t d1_end_offset = GENERATE(0, 1);
+      const uint64_t d1_start = 100 + d1_start_offset;
+      const uint64_t d1_end = d1_start + d1_subarray - 1 - d1_end_offset;
+      const std::vector<Dom> subarray = {
+          d0_height, Dom(d1_start, d1_end), Dom(0, d2_span - 1)};
+
+      const uint64_t max_fragment_size = 4 * 64 * 1024;
+
+      const uint64_t write_unit_num_cells = GENERATE(0, 64, 1024, 1024 * 1024);
+
+      DYNAMIC_SECTION(
+          "start_offset = "
+          << d1_start_offset << ", end_offset = " << d1_end_offset
+          << ", extent = " << d1_extent
+          << ", write_unit_num_cells = " << write_unit_num_cells) {
+        if (d1_extent == 8) {
+          const auto expect = Catch::Matchers::ContainsSubstring(
+              "Fragment size is too small to subdivide dense subarray into "
+              "multiple fragments");
+          REQUIRE_THROWS(
+              instance_dense_global_order<AsserterCatch>(
+                  ctx,
+                  tile_order,
+                  cell_order,
+                  max_fragment_size,
+                  dimensions,
+                  subarray),
+              expect);
+        } else if (d1_start_offset + d1_end_offset > 0) {
+          // if this constraint is ever relaxed this test must be extended
+          // with new inputs which are offset within a tile
+          const auto expect = Catch::Matchers::ContainsSubstring(
+              "the subarray must coincide with the tile bounds");
+          REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
+              ctx,
+              tile_order,
+              cell_order,
+              max_fragment_size,
+              dimensions,
+              subarray,
+              write_unit_num_cells == 0 ?
+                  std::nullopt :
+                  std::optional<uint64_t>(write_unit_num_cells)));
+        } else {
+          std::vector<std::vector<Dom>> expect;
+          if (tile_order == TILEDB_ROW_MAJOR) {
+            expect = {
+                {d0_height,
+                 Dom(d1_start + 0 * d1_extent, d1_start + 1 * d1_extent - 1),
+                 Dom(0, d2_span - 1)},
+                {d0_height,
+                 Dom(d1_start + 1 * d1_extent, d1_start + 2 * d1_extent - 1),
+                 Dom(0, d2_span - 1)},
+                {d0_height,
+                 Dom(d1_start + 2 * d1_extent, d1_start + 3 * d1_extent - 1),
+                 Dom(0, d2_span - 1)},
+                {d0_height,
+                 Dom(d1_start + 3 * d1_extent, d1_start + 4 * d1_extent - 1),
+                 Dom(0, d2_span - 1)}};
+          } else {
+            expect = {
+                {d0_height,
+                 Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(0 * (d2_span / 4), 1 * (d2_span / 4) - 1)},
+                {d0_height,
+                 Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(1 * (d2_span / 4), 2 * (d2_span / 4) - 1)},
+                {d0_height,
+                 Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(2 * (d2_span / 4), 3 * (d2_span / 4) - 1)},
+                {d0_height,
+                 Dom(d1_start, d1_start + d1_subarray - 1),
+                 Dom(3 * (d2_span / 4), 4 * (d2_span / 4) - 1)},
+            };
+          }
+
+          const auto actual = instance_dense_global_order<AsserterCatch>(
+              ctx,
+              tile_order,
+              cell_order,
+              max_fragment_size,
+              dimensions,
+              subarray);
+
+          CHECK(expect == actual);
+        }
+      }
+    }
   }
 
   // examples found from the rapidcheck test
