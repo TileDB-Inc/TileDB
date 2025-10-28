@@ -107,7 +107,7 @@ Status vfs_test_init(
   }
 
   for (auto& supported_fs : fs_vec) {
-    REQUIRE(supported_fs->prepare_config(config_tmp, error).ok());
+    supported_fs->prepare_config(config_tmp, error);
     REQUIRE(error == nullptr);
   }
 
@@ -118,7 +118,7 @@ Status vfs_test_init(
   }
 
   for (auto& supported_fs : fs_vec) {
-    REQUIRE(supported_fs->init(*ctx, *vfs).ok());
+    supported_fs->init(*ctx, *vfs);
   }
 
   return Status::Ok();
@@ -129,7 +129,7 @@ Status vfs_test_close(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs) {
   for (auto& fs : fs_vec) {
-    RETURN_NOT_OK(fs->close(ctx, vfs));
+    fs->close(ctx, vfs);
   }
 
   return Status::Ok();
@@ -165,10 +165,14 @@ std::string vfs_array_uri(
   }
 }
 
-Status SupportedFsS3::prepare_config(
+void SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  if (rest_) {
+    // REST CI gets configured by environment variables.
+    return;
+  }
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -183,11 +187,9 @@ Status SupportedFsS3::prepare_config(
       tiledb_config_set(config, "ssl.verify", "false", &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 #endif
-
-  return Status::Ok();
 }
 
-Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
@@ -208,11 +210,9 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_bucket);
-
-  return Status::Ok();
 }
 
-Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   CHECK(rc == TILEDB_OK);
@@ -223,8 +223,6 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_bucket);
-
-  return Status::Ok();
 }
 
 std::string SupportedFsS3::temp_dir() {
@@ -235,7 +233,7 @@ bool SupportedFsS3::is_rest() {
   return rest_;
 }
 
-Status SupportedFsAzure::prepare_config(
+void SupportedFsAzure::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
   REQUIRE(
       tiledb_config_set(
@@ -256,10 +254,9 @@ Status SupportedFsAzure::prepare_config(
           "vfs.azure.blob_endpoint",
           "http://127.0.0.1:10000/devstoreaccount1",
           &error) == TILEDB_OK);
-  return Status::Ok();
 }
 
-Status SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_container = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, container_.c_str(), &is_container);
   REQUIRE(rc == TILEDB_OK);
@@ -267,35 +264,29 @@ Status SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     rc = tiledb_vfs_create_bucket(ctx, vfs, container_.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
-
-  return Status::Ok();
 }
 
-Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_container = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, container_.c_str(), &is_container);
   CHECK(rc == TILEDB_OK);
   if (is_container) {
     CHECK(tiledb_vfs_remove_bucket(ctx, vfs, container_.c_str()) == TILEDB_OK);
   }
-
-  return Status::Ok();
 }
 
 std::string SupportedFsAzure::temp_dir() {
   return temp_dir_;
 }
 
-Status SupportedFsGCS::prepare_config(
+void SupportedFsGCS::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
   REQUIRE(
       tiledb_config_set(config, "vfs.gcs.project_id", "TODO", &error) ==
       TILEDB_OK);
-
-  return Status::Ok();
 }
 
-Status SupportedFsGCS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsGCS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
@@ -303,42 +294,28 @@ Status SupportedFsGCS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     rc = tiledb_vfs_create_bucket(ctx, vfs, bucket_.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
-
-  return Status::Ok();
 }
 
-Status SupportedFsGCS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsGCS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, bucket_.c_str(), &is_bucket);
   CHECK(rc == TILEDB_OK);
   if (is_bucket) {
     CHECK(tiledb_vfs_remove_bucket(ctx, vfs, bucket_.c_str()) == TILEDB_OK);
   }
-
-  return Status::Ok();
 }
 
 std::string SupportedFsGCS::temp_dir() {
   return temp_dir_;
 }
 
-Status SupportedFsLocal::prepare_config(
-    tiledb_config_t* config, tiledb_error_t* error) {
-  (void)config;
-  (void)error;
-  return Status::Ok();
+void SupportedFsLocal::prepare_config(tiledb_config_t*, tiledb_error_t*) {
 }
 
-Status SupportedFsLocal::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
+void SupportedFsLocal::init(tiledb_ctx_t*, tiledb_vfs_t*) {
 }
 
-Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
+void SupportedFsLocal::close(tiledb_ctx_t*, tiledb_vfs_t*) {
 }
 
 #ifdef _WIN32
@@ -363,23 +340,13 @@ std::string SupportedFsLocal::file_prefix() {
 
 #endif
 
-Status SupportedFsMem::prepare_config(
-    tiledb_config_t* config, tiledb_error_t* error) {
-  (void)config;
-  (void)error;
-  return Status::Ok();
+void SupportedFsMem::prepare_config(tiledb_config_t*, tiledb_error_t*) {
 }
 
-Status SupportedFsMem::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
+void SupportedFsMem::init(tiledb_ctx_t*, tiledb_vfs_t*) {
 }
 
-Status SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
+void SupportedFsMem::close(tiledb_ctx_t*, tiledb_vfs_t*) {
 }
 
 std::string SupportedFsMem::temp_dir() {
@@ -423,7 +390,10 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
 }
 
 VFSTestBase::VFSTestBase(
-    const std::vector<size_t>& test_tree, const std::string& prefix)
+    const std::vector<size_t>& test_tree,
+    const std::string& prefix,
+    const std::string& vfs_backend,
+    bool skip_vfs_config)
     : test_tree_(test_tree)
     , compute_(4)
     , io_(4)
@@ -432,18 +402,20 @@ VFSTestBase::VFSTestBase(
           tiledb::test::g_helper_logger().get(),
           &io_,
           &compute_,
-          create_test_config())
+          skip_vfs_config ? tiledb::sm::Config() : create_test_config())
     , prefix_(prefix)
     , temp_dir_(tiledb::test::test_dir(prefix_))
     , is_supported_(vfs_.supports_uri_scheme(temp_dir_)) {
-  // TODO: Throw when we can provide a list of supported filesystems to Catch2.
+  if (!is_g_vfs_enabled(vfs_backend)) {
+    SKIP("backend disabled by command line");
+  }
 }
 
 VFSTestBase::~VFSTestBase() {
   try {
     if (vfs_.supports_uri_scheme(temp_dir_)) {
       if (vfs_.is_dir(temp_dir_)) {
-        REQUIRE_NOTHROW(vfs_.remove_dir(temp_dir_));
+        vfs_.remove_dir(temp_dir_);
       }
     }
   } catch (const std::exception& e) {
@@ -471,37 +443,8 @@ tiledb::sm::Config VFSTestBase::create_test_config() {
   return cfg;
 }
 
-VFSTest::VFSTest(
-    const std::vector<size_t>& test_tree, const std::string& prefix)
-    : VFSTestBase(test_tree, prefix) {
-  if (!is_supported()) {
-    return;
-  }
-
-  if (temp_dir_.is_file() || temp_dir_.is_memfs()) {
-    REQUIRE_NOTHROW(vfs_.create_dir(temp_dir_));
-  } else {
-    REQUIRE_NOTHROW(vfs_.create_bucket(temp_dir_));
-  }
-  for (size_t i = 1; i <= test_tree_.size(); i++) {
-    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
-    // VFS::create_dir is a no-op for S3.
-    REQUIRE_NOTHROW(vfs_.create_dir(path));
-    for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
-      auto object_uri = path.join_path("test_file_" + std::to_string(j));
-      REQUIRE_NOTHROW(vfs_.touch(object_uri));
-      std::string data(j * 10, 'a');
-      vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
-      REQUIRE_NOTHROW(vfs_.write(object_uri, data.data(), data.size()));
-      vfs_.close_file(object_uri).ok();
-      expected_results_.emplace_back(object_uri.to_string(), data.size());
-    }
-  }
-  std::sort(expected_results_.begin(), expected_results_.end());
-}
-
 S3Test::S3Test(const std::vector<size_t>& test_tree)
-    : VFSTestBase(test_tree, "s3://")
+    : VFSTestBase(test_tree, "s3://", "s3")
     , S3_within_VFS(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
 #ifdef HAVE_S3
   s3().create_bucket(temp_dir_);
@@ -528,7 +471,7 @@ S3Test::S3Test(const std::vector<size_t>& test_tree)
 }
 
 LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
-    : VFSTestBase(test_tree, "file://") {
+    : VFSTestBase(test_tree, "file://", "native") {
 #ifdef _WIN32
   temp_dir_ =
       tiledb::test::test_dir(prefix_ + tiledb::sm::Win::current_dir() + "/");
@@ -558,6 +501,31 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
 
 bool VFSTestSetup::is_legacy_rest() {
   return is_rest() && ctx_c->rest_client().rest_legacy();
+}
+
+TileDBFSTest::TileDBFSTest(const std::vector<size_t>& test_tree)
+    : VFSTestBase(
+          test_tree,
+          "tiledb://unit-workspace/unit-teamspace/",
+          "rest-s3",
+          true) {
+  for (size_t i = 1; i <= test_tree_.size(); i++) {
+    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+    // VFS::create_dir is a no-op for Azure; Just create objects.
+    if (test_tree_[i - 1] > 0) {
+      // Do not include an empty prefix in expected results.
+      expected_results_.emplace_back(path.to_string(), 0);
+    }
+    for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+      auto object_uri = path.join_path("test_file_" + std::to_string(j));
+      vfs_.touch(object_uri);
+      std::string data(j * 10, 'a');
+      vfs_.write(object_uri, data.data(), data.size());
+      vfs_.close_file(object_uri).ok();
+      expected_results_.emplace_back(object_uri.to_string(), data.size());
+    }
+  }
+  std::sort(expected_results_.begin(), expected_results_.end());
 }
 
 }  // namespace tiledb::test

@@ -521,6 +521,9 @@ class S3Scanner : public LsScanner {
   /** Iterators for the current objects fetched from S3. */
   typename Iterator::pointer begin_, end_;
 
+  /** The input URI's prococol (might be s3:// or tiledb://). */
+  const std::string protocol_;
+
   /** The current request being scanned. */
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
   /** The current request outcome being scanned. */
