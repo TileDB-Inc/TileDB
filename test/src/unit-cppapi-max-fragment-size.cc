@@ -1229,10 +1229,24 @@ void rapidcheck_dense_array(
 TEST_CASE(
     "C++ API: Max fragment size dense array rapidcheck 1d",
     "[cppapi][max-frag-size][rapidcheck]") {
+  static constexpr auto DT = sm::Datatype::UINT64;
+  using Dim64 = templates::Dimension<DT>;
+  using Dom64 = Dim64::domain_type;
+
   Context ctx;
+
+  SECTION("Shrinking") {
+    instance_dense_global_order<AsserterCatch>(
+        ctx,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        2396,
+        {Dim64(0, 8929, 594)},
+        {Dom64(0, 2969)});
+  }
+
   rc::prop("max fragment size dense 1d", [&ctx]() {
-    static constexpr auto DT = sm::Datatype::UINT64;
-    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(8192);
+    Dim64 d1 = *rc::make_dimension<DT>(8192);
 
     rapidcheck_dense_array<DT>(ctx, {d1});
   });
@@ -1241,11 +1255,25 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Max fragment size dense array rapidcheck 2d",
     "[cppapi][max-frag-size][rapidcheck]") {
+  static constexpr auto DT = sm::Datatype::UINT64;
+  using Dim64 = templates::Dimension<DT>;
+  using Dom64 = Dim64::domain_type;
+
   Context ctx;
+
+  SECTION("Shrinking") {
+    instance_dense_global_order<AsserterCatch>(
+        ctx,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR,
+        48,
+        {Dim64(0, 116, 1), Dim64(0, 0, 1)},
+        {Dom64(2, 20), Dom64(0, 0)});
+  }
+
   rc::prop("max fragment size dense 2d", [&ctx]() {
-    static constexpr auto DT = sm::Datatype::UINT64;
-    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(128);
-    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(128);
+    Dim64 d1 = *rc::make_dimension<DT>(128);
+    Dim64 d2 = *rc::make_dimension<DT>(128);
 
     rapidcheck_dense_array<DT>(ctx, {d1, d2});
   });
@@ -1254,12 +1282,26 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Max fragment size dense array rapidcheck 3d",
     "[cppapi][max-frag-size][rapidcheck]") {
+  static constexpr auto DT = sm::Datatype::UINT64;
+  using Dim64 = templates::Dimension<DT>;
+  using Dom64 = Dim64::domain_type;
+
   Context ctx;
+
+  SECTION("Shrinking") {
+    instance_dense_global_order<AsserterCatch>(
+        ctx,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        2160,
+        {Dim64(0, 85, 5), Dim64(0, 102, 2), Dim64(0, 37, 1)},
+        {Dom64(5, 19), Dom64(4, 15), Dom64(1, 6)});
+  }
+
   rc::prop("max fragment size dense 3d", [&ctx]() {
-    static constexpr auto DT = sm::Datatype::UINT64;
-    templates::Dimension<DT> d1 = *rc::make_dimension<DT>(32);
-    templates::Dimension<DT> d2 = *rc::make_dimension<DT>(32);
-    templates::Dimension<DT> d3 = *rc::make_dimension<DT>(32);
+    Dim64 d1 = *rc::make_dimension<DT>(32);
+    Dim64 d2 = *rc::make_dimension<DT>(32);
+    Dim64 d3 = *rc::make_dimension<DT>(32);
 
     rapidcheck_dense_array<DT>(ctx, {d1, d2, d3});
   });
