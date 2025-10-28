@@ -30,6 +30,8 @@
  * This file provides template definitions for doing tile arithmetic,
  * e.g. computing new domains based on offsets and such.
  */
+#ifndef TILEDB_TILE_ARITHMETIC_H
+#define TILEDB_TILE_ARITHMETIC_H
 
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/layout.h"
@@ -164,3 +166,5 @@ static std::optional<sm::NDRange> domain_tile_offset(
 }
 
 }  // namespace tiledb::sm
+
+#endif

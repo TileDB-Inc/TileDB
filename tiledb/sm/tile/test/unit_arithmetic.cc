@@ -5,6 +5,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/tile/arithmetic.h"
+#include "tiledb/sm/tile/test/arithmetic.h"
 #include "tiledb/type/range/range.h"
 
 #include <span>
@@ -340,31 +341,12 @@ std::optional<sm::NDRange> instance_domain_tile_offset(
 
   ASSERTER(adjusted_domain.has_value());
 
-  uint64_t num_tiles_result = 1;
-  for (uint64_t d = 0; d < tile_extents.size(); d++) {
-    const uint64_t num_tiles_this_dimension =
-        sm::Dimension::tile_idx<T>(
-            adjusted_domain.value()[d].end_as<T>(),
-            adjusted_domain.value()[d].start_as<T>(),
-            tile_extents[d]) +
-        1;
-    num_tiles_result *= num_tiles_this_dimension;
-  }
+  const uint64_t num_tiles_result =
+      compute_num_tiles(tile_extents, adjusted_domain.value());
   ASSERTER(num_tiles_result == num_tiles);
 
-  const std::vector<uint64_t> hyperrow_sizes =
-      compute_hyperrow_sizes(tile_order, tile_extents, domain);
-
-  uint64_t start_tile_result = 0;
-  for (uint64_t di = 0; di < tile_extents.size(); di++) {
-    const uint64_t d =
-        (tile_order == Layout::ROW_MAJOR ? di : tile_extents.size() - di - 1);
-    const uint64_t start_tile_this_dimension = sm::Dimension::tile_idx<T>(
-        adjusted_domain.value()[d].start_as<T>(),
-        domain[d].start_as<T>(),
-        tile_extents[d]);
-    start_tile_result += start_tile_this_dimension * hyperrow_sizes[di + 1];
-  }
+  const uint64_t start_tile_result = compute_start_tile(
+      tile_order, tile_extents, domain, adjusted_domain.value());
   ASSERTER(start_tile_result == start_tile);
 
   return adjusted_domain;
