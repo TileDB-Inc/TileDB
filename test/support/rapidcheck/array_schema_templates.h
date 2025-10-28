@@ -76,24 +76,6 @@ struct Arbitrary<templates::Domain<D>> {
   }
 };
 
-/**
- * @return `a - b` if it does not overflow, `std::nullopt` if it does
- */
-template <std::integral T>
-std::optional<T> checked_sub(T a, T b) {
-  if (!std::is_signed<T>::value) {
-    return (b > a ? std::nullopt : std::optional(a - b));
-  } else if (b < 0) {
-    return (
-        std::numeric_limits<T>::max() + b < a ? std::nullopt :
-                                                std::optional(a - b));
-  } else {
-    return (
-        std::numeric_limits<T>::min() - b > a ? std::nullopt :
-                                                std::optional(a - b));
-  }
-}
-
 template <DimensionType D>
 Gen<D> make_extent(
     const templates::Domain<D>& domain, std::optional<D> bound = std::nullopt) {
@@ -118,8 +100,8 @@ Gen<D> make_extent(
   D extent_lower_bound = 1;
   D extent_upper_bound;
 
-  const auto bound_distance =
-      checked_sub(domain.upper_bound, domain.lower_bound);
+  const auto bound_distance = tiledb::common::checked_arithmetic<D>::sub(
+      domain.upper_bound, domain.lower_bound);
   if (bound_distance.has_value()) {
     extent_upper_bound =
         (bound_distance.value() < extent_bound ? bound_distance.value() + 1 :
