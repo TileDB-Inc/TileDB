@@ -37,6 +37,7 @@
 #include "test/support/src/array_helpers.h"
 #include "test/support/src/array_templates.h"
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/common/arithmetic.h"
@@ -46,6 +47,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/tile/arithmetic.h"
 #include "tiledb/sm/tile/test/arithmetic.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -594,11 +596,9 @@ instance_dense_global_order(
     api_subarray.push_back(sub_dim.upper_bound);
   }
 
-  uint64_t num_tiles_per_hyperrow = 1;
-  for (uint64_t i = 0; i < dimensions.size() - 1; i++) {
-    const uint64_t dim =
-        (tile_order == TILEDB_ROW_MAJOR ? i + 1 : dimensions.size() - i - 2);
-    num_tiles_per_hyperrow *= dimensions[dim].num_tiles(subarray[dim]);
+  std::vector<uint64_t> tile_extents;
+  for (const auto& dimension : dimensions) {
+    tile_extents.push_back(dimension.extent);
   }
 
   sm::NDRange smsubarray;
@@ -614,6 +614,15 @@ instance_dense_global_order(
     query.set_layout(TILEDB_GLOBAL_ORDER);
     query.set_subarray(sub);
     query.ptr().get()->query_->set_fragment_size(max_fragment_size);
+
+    smsubarray = sub.ptr()->subarray()->ndrange(0);
+
+    sm::NDRange smsubarray_aligned = smsubarray;
+    array.schema()
+        .ptr()
+        ->array_schema()
+        ->domain()
+        .expand_to_tiles_when_no_current_domain(smsubarray_aligned);
 
     uint64_t cells_written = 0;
     while (cells_written < a_write.size()) {
@@ -659,14 +668,26 @@ instance_dense_global_order(
       }
       // it should be an error if they exceed the max fragment size
       ASSERTER(in_memory_size <= max_fragment_size);
+
       // and if they form a rectangle then we could have written some out
       ASSERTER(in_memory_num_tiles.has_value());
-      ASSERTER(in_memory_num_tiles.value() < num_tiles_per_hyperrow);
+      for (uint64_t num_tiles = 0; num_tiles < in_memory_num_tiles.value();
+           num_tiles++) {
+        const bool rectangle = sm::is_rectangular_domain<uint64_t>(
+            static_cast<sm::Layout>(tile_order),
+            tile_extents,
+            smsubarray_aligned,
+            g->dense_.domain_tile_offset_,
+            g->frag_meta_->tile_index_base() + num_tiles);
+        if (num_tiles == 0) {
+          ASSERTER(rectangle);
+        } else {
+          ASSERTER(!rectangle);
+        }
+      }
     }
 
     query.finalize();
-
-    smsubarray = sub.ptr()->subarray()->ndrange(0);
   }
 
   // then read back
@@ -730,11 +751,6 @@ instance_dense_global_order(
         return domain_cmp(left, right);
       });
   std::sort(fragment_domains.begin(), fragment_domains.end(), domain_cmp);
-
-  std::vector<uint64_t> tile_extents;
-  for (const auto& dimension : dimensions) {
-    tile_extents.push_back(dimension.extent);
-  }
 
   // validate fragment domains
   ASSERTER(!fragment_domains.empty());
