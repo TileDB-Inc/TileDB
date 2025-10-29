@@ -41,11 +41,11 @@ class UntypedDatumView {
   size_t datum_size_;
 
  public:
-  UntypedDatumView(const void* content, size_t size)
+  constexpr UntypedDatumView(const void* content, size_t size)
       : datum_content_(content)
       , datum_size_(size) {
   }
-  UntypedDatumView(std::string_view ss)
+  constexpr UntypedDatumView(std::string_view ss)
       : datum_content_(ss.data())
       , datum_size_(ss.size()) {
   }
