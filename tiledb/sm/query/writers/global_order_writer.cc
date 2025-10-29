@@ -1618,13 +1618,18 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
     }
   }
 
+  uint64_t fragment_start = 0;
+  std::vector<uint64_t> fragments;
+
 // NB: gcc has a false positive uninitialized use warning for `fragment_end`
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-  uint64_t fragment_start = 0;
   std::optional<uint64_t> fragment_end;
-  std::vector<uint64_t> fragments;
 #pragma GCC diagnostic pop
+#else
+  std::optional<uint64_t> fragment_end;
+#endif
 
   // Make sure we don't write more than the desired fragment size.
   for (uint64_t t = 0; t < tile_num; t++) {
