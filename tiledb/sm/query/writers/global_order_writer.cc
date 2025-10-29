@@ -120,7 +120,7 @@ static std::optional<NDRange> domain_tile_offset(
   const Domain& arraydomain = arrayschema.domain();
 
   // NB: ordinary write subarray must be tile aligned but the consolidation
-  // subarray is not required to be
+  // subarray is not required to be. Align for purposes of tile arithmetic.
   NDRange arraydomain_aligned = domain;
   arraydomain.expand_to_tiles_when_no_current_domain(arraydomain_aligned);
 
@@ -132,16 +132,25 @@ static std::optional<NDRange> domain_tile_offset(
         tile_extents.push_back(arraydomain.tile_extent(d).rvalue_as<T>());
       }
 
-      return domain_tile_offset<T>(
+      std::optional<NDRange> r = domain_tile_offset<T>(
           arrayschema.tile_order(),
           tile_extents,
           arraydomain_aligned,
           start_tile,
           num_tiles);
+      if (r.has_value()) {
+        // aligning to the array domain may have extended beyond the subarray,
+        // clamp the result back within the subarray bounds
+        for (uint64_t d = 0; d < arraydomain.dim_num(); d++) {
+          tiledb::type::crop_range<T>(domain[d], r.value()[d]);
+        }
+      }
+      return r;
     } else {
       return std::optional<NDRange>{};
     }
   };
+
   return apply_with_type(impl, arraydomain.dimension_ptr(0)->type());
 }
 
