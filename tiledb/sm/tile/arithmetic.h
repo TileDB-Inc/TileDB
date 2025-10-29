@@ -29,6 +29,20 @@
  *
  * This file provides template definitions for doing tile arithmetic,
  * e.g. computing new domains based on offsets and such.
+ *
+ * Definitions:
+ *
+ * **Hyperrectangle**:
+ * The generalization of a rectangle to higher dimensions.
+ * This is a standard term from mathematical literature.
+ *
+ * **Hyperrow**:
+ * The generalization of a row to higher dimensions.
+ * This does not appear to be a standard term from mathematical literature.
+ * A row in a 2D domain is a rectangle of height 1, i.e. spanning a single
+ * coordinate of the outermost "row" dimension. So, in a higher-dimensional
+ * plane, a hyperrow is a hyperrectangle which spans a single coordinate of the
+ * outermost dimension. For example, in a 3D domain a hyperrow is a plane.
  */
 #ifndef TILEDB_TILE_ARITHMETIC_H
 #define TILEDB_TILE_ARITHMETIC_H
@@ -78,12 +92,12 @@ static bool is_rectangular_domain(
 }
 
 /**
- * Compute the number of tiles per hyper-row for the given `domain` with tiles
+ * Compute the number of tiles per hyperrow for the given `domain` with tiles
  * given by `tile_extents`.
  *
  * For D dimensions, the returned vector contains `D+1` elements.
  * Position 0 is the number of tiles in `domain`.
- * For dimension `d`, position `d + 1` is the number of tiles in a hyper-row of
+ * For dimension `d`, position `d + 1` is the number of tiles in a hyperrow of
  * dimension `d` (and is thus always 1 for the final dimension).
  */
 template <typename T>
