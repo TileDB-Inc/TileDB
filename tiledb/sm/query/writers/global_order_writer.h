@@ -46,10 +46,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-namespace global_order_writer {
-struct FragmentTileBoundaries;
-}
-
 /** Processes write queries. */
 class GlobalOrderWriter : public WriterBase {
  public:
@@ -125,6 +121,24 @@ class GlobalOrderWriter : public WriterBase {
 
     /**
      * State for writing dense fragments.
+     *
+     * Dense fragments use the bounding rectangle as a precise determination
+     * of where the contents of the fragment are in the domain, and as such
+     * it must be written correctly. This is usually not a problem, however
+     * global order writes can:
+     * 1) split up a single write into multiple fragments in order to satisfy
+     *    the `max_fragment_size_` parameter
+     * 2) write into a single domain over the course of multiple `submit`
+     *    calls which each write an arbitrary subset of the domain,
+     *    re-using the buffers
+     *
+     * Both of these make it non-trivial to determine what the domain written
+     * into a fragment actually was, when the fragment fills up
+     * `max_fragment_size`.
+     *
+     * The fields of this struct, as well as `last_tiles_` of the outer struct,
+     * are used to track the amount of data which the writer has already
+     * processed so as to keep the correct position in the target subarray.
      */
     struct DenseWriteState {
       /**
@@ -400,6 +414,32 @@ class GlobalOrderWriter : public WriterBase {
       WriterTileTupleVector* tiles) const;
 
   /**
+   * Contains the return values of
+   * `GlobalOrderWriter::identify_fragment_tile_boundaries`.
+   */
+  struct FragmentTileBoundaries {
+    /**
+     * The offsets where each complete fragment starts.
+     */
+    std::vector<uint64_t> tile_offsets_;
+
+    /**
+     * The number of writeable tiles.
+     * For sparse arrays this is the number of tiles of input.
+     * For dense arrays this may be less if there is a trail of tiles which
+     * cannot be guaranteed to fit within `max_fragment_size` while also forming
+     * a rectangular domain.
+     */
+    uint64_t num_writeable_tiles_;
+
+    /**
+     * The size in bytes of the filtered tiles which are written to the last
+     * fragment. The last fragment may be resumed by a subsequent `submit`.
+     */
+    uint64_t last_fragment_size_;
+  };
+
+  /**
    * Identify the manner in which the filtered input tiles map onto target
    * fragments. If `max_fragment_size_` is much larger than the input, this may
    * return just one result.
@@ -409,10 +449,10 @@ class GlobalOrderWriter : public WriterBase {
    * corresponds to that fragment.
    *
    * @param tiles Map of vector of tiles, per attributes.
-   * @return a list of `(fragment_size, start_tile)` pairs ordered on
-   * `start_tile`
+   *
+   * @return see `FragmentTileBoundaries` documentation
    */
-  global_order_writer::FragmentTileBoundaries identify_fragment_tile_boundaries(
+  FragmentTileBoundaries identify_fragment_tile_boundaries(
       const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
       const;
 

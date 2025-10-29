@@ -161,36 +161,6 @@ class GlobalOrderWriterException : public StatusException {
   }
 };
 
-namespace global_order_writer {
-
-/**
- * Contains the return values of
- * `GlobalOrderWriter::identify_fragment_tile_boundaries`.
- */
-struct FragmentTileBoundaries {
-  /**
-   * The offsets where each complete fragment starts.
-   */
-  std::vector<uint64_t> tile_offsets_;
-
-  /**
-   * The number of writeable tiles.
-   * For sparse arrays this is the number of tiles of input.
-   * For dense arrays this may be less if there is a trail of tiles which cannot
-   * be guaranteed to fit within `max_fragment_size` while also forming a
-   * rectangular domain.
-   */
-  uint64_t num_writeable_tiles_;
-
-  /**
-   * The size in bytes of the filtered tiles which are written to the last
-   * fragment. The last fragment may be resumed by a subsequent `submit`.
-   */
-  uint64_t last_fragment_size_;
-};
-
-}  // namespace global_order_writer
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -772,9 +742,12 @@ Status GlobalOrderWriter::finalize_global_write_state() {
       iassert(global_write_state_->frag_meta_);
       throw_if_not_ok(populate_fragment(
           global_write_state_->last_tiles_, 0, num_remaining));
-      // NB: there is a possibility here that we write a tile bigger than the
+
+      // FIXME: there is a possibility here that we write a tile bigger than the
       // max fragment size if these remaining tiles fill it up and then the last
-      // tile runs over... we can live with that right?
+      // tile runs over... in this case we need to do the rectangle thing all
+      // over again so as to avoid writing a fragment which exceeds the max
+      // fragment size.
     }
   } else {
     iassert(global_write_state_->last_tiles_.begin()->second.size() <= 1);
@@ -1606,7 +1579,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
  * @return a list of (fragment size, tile offset) pairs identifying the division
  * of input data into target fragments
  */
-global_order_writer::FragmentTileBoundaries
+GlobalOrderWriter::FragmentTileBoundaries
 GlobalOrderWriter::identify_fragment_tile_boundaries(
     const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
     const {
@@ -1701,7 +1674,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
     fragments.push_back(fragment_start);
   }
 
-  return global_order_writer::FragmentTileBoundaries{
+  return GlobalOrderWriter::FragmentTileBoundaries{
       .tile_offsets_ = fragments,
       .num_writeable_tiles_ = fragment_end.value_or(fragment_start),
       .last_fragment_size_ = fragment_size};
