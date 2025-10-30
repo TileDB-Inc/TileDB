@@ -1546,7 +1546,7 @@ void write_fragment(
     const Fragment& fragment,
     Array& forwrite,
     tiledb_layout_t layout = TILEDB_UNORDERED) {
-  Query query(forwrite.context(), forwrite, TILEDB_WRITE);
+  Query query(forwrite);
   query.set_layout(layout);
 
   auto field_sizes = make_field_sizes<Asserter>(fragment);
