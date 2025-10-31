@@ -79,7 +79,9 @@ collect_and_validate_fragment_domains(
 
   // the fragments are not always emitted in the same order, sort them
   auto domain_cmp = [&](const auto& left, const auto& right) {
-    for (uint64_t d = 0; d < num_dimensions; d++) {
+    for (uint64_t di = 0; di < num_dimensions; di++) {
+      const uint64_t d =
+          (tile_order == sm::Layout::ROW_MAJOR ? di : num_dimensions - di - 1);
       if (left[d].lower_bound < right[d].lower_bound) {
         return true;
       } else if (left[d].lower_bound > right[d].lower_bound) {
