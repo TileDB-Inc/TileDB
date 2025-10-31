@@ -1150,7 +1150,7 @@ void rapidcheck_dense_array(
   }
 
   auto gen_fragment_size = rc::gen::inRange(
-      num_tiles_per_hyperrow * estimate_single_tile_fragment_size * 1,
+      estimate_single_tile_fragment_size,
       num_tiles_per_hyperrow * estimate_single_tile_fragment_size * 8);
   const uint64_t max_fragment_size = *gen_fragment_size;
 
@@ -1194,13 +1194,25 @@ TEST_CASE(
   Context ctx;
 
   SECTION("Shrinking") {
-    instance_dense_global_order<AsserterCatch>(
-        ctx,
-        TILEDB_ROW_MAJOR,
-        TILEDB_COL_MAJOR,
-        48,
-        {Dim64(0, 116, 1), Dim64(0, 0, 1)},
-        {Dom64(2, 20), Dom64(0, 0)});
+    SECTION("Example 1") {
+      instance_dense_global_order<AsserterCatch>(
+          ctx,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR,
+          48,
+          {Dim64(0, 116, 1), Dim64(0, 0, 1)},
+          {Dom64(2, 20), Dom64(0, 0)});
+    }
+
+    SECTION("Example 2") {
+      instance_dense_global_order<AsserterCatch>(
+          ctx,
+          TILEDB_COL_MAJOR,
+          TILEDB_ROW_MAJOR,
+          24,
+          {Dim64(0, 60, 1), Dim64(0, 20, 1)},
+          {Dom64(0, 1), Dom64(0, 1)});
+    }
   }
 
   rc::prop("max fragment size dense 2d", [&ctx]() {
