@@ -139,7 +139,19 @@ Gen<D> make_coordinate(const templates::Domain<D>& domain) {
   // whereas the domain upper bound is inclusive.
   // As a result some contortion is required to deal
   // with numeric_limits.
-  if (std::is_signed<D>::value) {
+  if constexpr (std::is_same_v<D, StringDimensionCoordType>) {
+    // NB: poor performance with small domains for sure
+    return gen::suchThat(
+        gen::map(
+            gen::string<std::string>(),
+            [](std::string s) {
+              StringDimensionCoordType v(s.begin(), s.end());
+              return v;
+            }),
+        [domain](const StringDimensionCoordType& s) {
+          return domain.lower_bound <= s && s <= domain.upper_bound;
+        });
+  } else if constexpr (std::is_signed<D>::value) {
     if (int64_t(domain.upper_bound) < std::numeric_limits<int64_t>::max()) {
       return gen::cast<D>(gen::inRange(
           int64_t(domain.lower_bound), int64_t(domain.upper_bound + 1)));
@@ -185,7 +197,11 @@ Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
 
     std::apply(
         [&](std::vector<D> tup_d1, auto... tup_atts) {
-          coords.values_ = tup_d1;
+          if constexpr (std::is_same_v<D, StringDimensionCoordType>) {
+            coords = query_buffers<D>(tup_d1);
+          } else {
+            coords.values_ = tup_d1;
+          }
           atts = std::apply(
               [&]<typename... Ts>(std::vector<Ts>... att) {
                 return std::make_tuple(query_buffers<Ts>(att)...);
@@ -195,7 +211,7 @@ Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
         stdx::transpose(cells));
 
     return Fragment1D<D, typename Att::cell_type...>{
-        .dim_ = coords, .atts_ = atts};
+        std::make_tuple(coords), atts};
   });
 }
 
@@ -233,13 +249,127 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
         stdx::transpose(cells));
 
     return Fragment2D<D1, D2, Att...>{
-        .d1_ = coords_d1, .d2_ = coords_d2, .atts_ = atts};
+        std::make_tuple(coords_d1, coords_d2), atts};
   });
 }
 
-template <>
-void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os) {
-  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
+template <
+    DimensionType D1,
+    DimensionType D2,
+    DimensionType D3,
+    AttributeType... Att>
+Gen<Fragment3D<D1, D2, D3, Att...>> make_fragment_3d(
+    bool allow_duplicates,
+    std::optional<Domain<D1>> d1,
+    std::optional<Domain<D2>> d2,
+    std::optional<Domain<D3>> d3) {
+  auto coord_d1 =
+      (d1.has_value() ? make_coordinate(d1.value()) : gen::arbitrary<D1>());
+  auto coord_d2 =
+      (d2.has_value() ? make_coordinate(d2.value()) : gen::arbitrary<D2>());
+  auto coord_d3 =
+      (d3.has_value() ? make_coordinate(d3.value()) : gen::arbitrary<D3>());
+
+  using Cell = std::tuple<D1, D2, D3, Att...>;
+
+  auto cell =
+      gen::tuple(coord_d1, coord_d2, coord_d3, gen::arbitrary<Att>()...);
+
+  auto uniqueCoords = [](const Cell& cell) {
+    return std::make_tuple(
+        std::get<0>(cell), std::get<1>(cell), std::get<2>(cell));
+  };
+
+  auto cells = gen::nonEmpty(
+      allow_duplicates ? gen::container<std::vector<Cell>>(cell) :
+                         gen::uniqueBy<std::vector<Cell>>(cell, uniqueCoords));
+
+  return gen::map(cells, [](std::vector<Cell> cells) {
+    std::vector<D1> coords_d1;
+    std::vector<D2> coords_d2;
+    std::vector<D3> coords_d3;
+    std::tuple<std::vector<Att>...> atts;
+
+    std::apply(
+        [&](std::vector<D1> tup_d1,
+            std::vector<D2> tup_d2,
+            std::vector<D3> tup_d3,
+            auto... tup_atts) {
+          coords_d1 = tup_d1;
+          coords_d2 = tup_d2;
+          coords_d3 = tup_d3;
+          atts = std::make_tuple(tup_atts...);
+        },
+        stdx::transpose(cells));
+
+    return Fragment3D<D1, D2, D3, Att...>{
+        std::make_tuple(coords_d1, coords_d2, coords_d3), atts};
+  });
+}
+
+void showValue(const templates::Domain<int>& domain, std::ostream& os);
+void showValue(const templates::Domain<int64_t>& domain, std::ostream& os);
+void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os);
+
+namespace detail {
+
+/**
+ * Specialization of `rc::detail::ShowDefault` for `query_buffers` of
+ * fundamental cell type.
+ *
+ * Parameters `A` and `B` are SFINAE which in principle allow less verbose
+ * alternative paths to providing this custom functionality.
+ */
+template <stdx::is_fundamental T, bool A, bool B>
+struct ShowDefault<templates::query_buffers<T>, A, B> {
+  static void show(const query_buffers<T>& value, std::ostream& os) {
+    ::rc::show<decltype(value.values_)>(value.values_, os);
+  }
+};
+
+/**
+ * Specialization of `rc::detail::ShowDefault` for
+ * `query_buffers<std::vector<char>>`.
+ *
+ * Parameters `A` and `B` are SFINAE which in principle allow less verbose
+ * alternative paths to providing this custom functionality.
+ */
+template <bool A, bool B>
+struct ShowDefault<templates::query_buffers<std::vector<char>>, A, B> {
+  static void show(
+      const query_buffers<std::vector<char>>& value, std::ostream& os) {
+    std::vector<std::string> values;
+    for (uint64_t c = 0; c < value.num_cells(); c++) {
+      values.push_back(std::string(value[c].begin(), value[c].end()));
+    }
+    ::rc::show<decltype(values)>(values, os);
+  }
+};
+
+}  // namespace detail
+
+/**
+ * Generic logic to for showing a `templates::FragmentType`.
+ */
+template <typename DimensionTuple, typename AttributeTuple>
+void showFragment(
+    const templates::Fragment<DimensionTuple, AttributeTuple>& value,
+    std::ostream& os) {
+  auto showField = [&]<typename T>(const query_buffers<T>& field) {
+    os << "\t\t";
+    show(field, os);
+    os << std::endl;
+  };
+  os << "{" << std::endl << "\t\"dimensions\": [" << std::endl;
+  std::apply(
+      [&](const auto&... dimension) { (showField(dimension), ...); },
+      value.dimensions());
+  os << "\t]" << std::endl;
+  os << "\t\"attributes\": [" << std::endl;
+  std::apply(
+      [&](const auto&... attribute) { (showField(attribute), ...); },
+      value.attributes());
+  os << "\t]" << std::endl << "}" << std::endl;
 }
 
 }  // namespace rc
