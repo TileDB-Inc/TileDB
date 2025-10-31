@@ -313,6 +313,13 @@ void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os);
 
 namespace detail {
 
+/**
+ * Specialization of `rc::detail::ShowDefault` for `query_buffers` of
+ * fundamental cell type.
+ *
+ * Parameters `A` and `B` are SFINAE which in principle allow less verbose
+ * alternative paths to providing this custom functionality.
+ */
 template <stdx::is_fundamental T, bool A, bool B>
 struct ShowDefault<templates::query_buffers<T>, A, B> {
   static void show(const query_buffers<T>& value, std::ostream& os) {
@@ -320,6 +327,13 @@ struct ShowDefault<templates::query_buffers<T>, A, B> {
   }
 };
 
+/**
+ * Specialization of `rc::detail::ShowDefault` for
+ * `query_buffers<std::vector<char>>`.
+ *
+ * Parameters `A` and `B` are SFINAE which in principle allow less verbose
+ * alternative paths to providing this custom functionality.
+ */
 template <bool A, bool B>
 struct ShowDefault<templates::query_buffers<std::vector<char>>, A, B> {
   static void show(
