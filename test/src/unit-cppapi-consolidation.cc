@@ -779,24 +779,12 @@ TEST_CASE(
       // unfiltered, each row takes `100000 * sizeof(int)` bytes, plus some
       // padding
       const uint64_t tile_size = (row.extent * col.extent * sizeof(int)) + 92;
-      uint64_t max_fragment_size;
-
-      SECTION("Too small") {
-        max_fragment_size = tile_size - 1;
-      }
-      SECTION("Snug fit") {
-        max_fragment_size = tile_size;
-      }
-      SECTION("Not quite two rows") {
-        max_fragment_size = (2 * tile_size) - 1;
-      }
-      SECTION("Two rows") {
-        max_fragment_size = 2 * tile_size;
-      }
+      const uint64_t max_fragment_size = GENERATE_COPY(
+          tile_size - 1, tile_size, (2 * tile_size) - 1, 2 * tile_size);
 
       const uint64_t rows_per_fragment = max_fragment_size / tile_size;
       DYNAMIC_SECTION(
-          "rows_per_fragment = " + std::to_string(rows_per_fragment)) {
+          "max_fragment_size = " + std::to_string(max_fragment_size)) {
         if (rows_per_fragment == 0) {
           const auto expect = Catch::Matchers::ContainsSubstring(
               "Fragment size is too small to subdivide dense subarray into "
