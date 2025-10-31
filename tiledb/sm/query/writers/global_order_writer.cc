@@ -1621,15 +1621,9 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t fragment_start = 0;
   std::vector<uint64_t> fragments;
 
-// NB: gcc has a false positive uninitialized use warning for `fragment_end`
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-  std::optional<uint64_t> fragment_end;
-#pragma GCC diagnostic pop
-#else
-  std::optional<uint64_t> fragment_end;
-#endif
+  // NB: this really wants to be `std::option` but some versions of gcc have a
+  // false positive uninitialized use warning
+  int64_t fragment_end = -1;
 
   // Make sure we don't write more than the desired fragment size.
   for (uint64_t t = 0; t < tile_num; t++) {
@@ -1645,7 +1639,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       if (running_tiles_size == 0) {
         throw GlobalOrderWriterException(
             "Fragment size is too small to write a single tile");
-      } else if (!fragment_end.has_value()) {
+      } else if (fragment_end < 0) {
         if (fragment_size == 0) {
           throw GlobalOrderWriterException(
               "Fragment size is too small to subdivide dense subarray into "
@@ -1658,8 +1652,9 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       iassert(running_tiles_size >= fragment_size);
       running_tiles_size -= fragment_size;
 
-      fragment_start = fragment_end.value_or(0);
-      fragment_end = std::nullopt;
+      fragment_start =
+          static_cast<uint64_t>(std::max<int64_t>(0, fragment_end));
+      fragment_end = -1;
     }
 
     if (!subarray_tile_offset.has_value() || !max_fragment_size_.has_value() ||
@@ -1669,19 +1664,21 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
             subarray_tile_offset.value() + fragment_start,
             t - fragment_start + 1)) {
       fragment_size = running_tiles_size + tile_size;
-      fragment_end = t + 1;
+      fragment_end = static_cast<int64_t>(t + 1);
     }
 
     running_tiles_size += tile_size;
   }
 
-  if (fragment_end.has_value()) {
+  if (fragment_end >= 0) {
     fragments.push_back(fragment_start);
   }
 
   return GlobalOrderWriter::FragmentTileBoundaries{
       .tile_offsets_ = fragments,
-      .num_writeable_tiles_ = fragment_end.value_or(fragment_start),
+      .num_writeable_tiles_ =
+          (fragment_end < 0 ? fragment_start :
+                              static_cast<uint64_t>(fragment_end)),
       .last_fragment_size_ = fragment_size};
 }
 
