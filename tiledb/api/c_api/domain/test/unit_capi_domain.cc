@@ -238,7 +238,8 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("C API: tiledb_domain_dump argument validation", "[capi][domain]") {
+TEST_CASE(
+    "C API: tiledb_domain_dump_str argument validation", "[capi][domain]") {
   ordinary_domain dom{};
   auto ctx{dom.ctx.context};
   /*
