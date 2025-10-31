@@ -62,12 +62,12 @@ uint64_t compute_num_tiles(
  * sizes in `tile_extents`
  */
 template <typename T>
-uint64_t compute_start_tile(
+std::optional<uint64_t> compute_start_tile(
     sm::Layout tile_order,
     std::span<const T> tile_extents,
     const sm::NDRange& domain,
     const sm::NDRange& subrectangle) {
-  const std::vector<uint64_t> hyperrow_sizes =
+  const std::vector<std::optional<uint64_t>> hyperrow_sizes =
       sm::compute_hyperrow_sizes(tile_order, tile_extents, domain);
 
   uint64_t start_tile_result = 0;
@@ -79,7 +79,12 @@ uint64_t compute_start_tile(
         subrectangle[d].start_as<T>(),
         domain[d].start_as<T>(),
         tile_extents[d]);
-    start_tile_result += start_tile_this_dimension * hyperrow_sizes[di + 1];
+    if (hyperrow_sizes[di + 1].has_value()) {
+      start_tile_result +=
+          start_tile_this_dimension * hyperrow_sizes[di + 1].value();
+    } else {
+      return std::nullopt;
+    }
   }
 
   return start_tile_result;

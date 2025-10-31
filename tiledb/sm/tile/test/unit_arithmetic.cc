@@ -345,7 +345,7 @@ std::optional<sm::NDRange> instance_domain_tile_offset(
       compute_num_tiles(tile_extents, adjusted_domain.value());
   ASSERTER(num_tiles_result == num_tiles);
 
-  const uint64_t start_tile_result = compute_start_tile(
+  const std::optional<uint64_t> start_tile_result = compute_start_tile(
       tile_order, tile_extents, domain, adjusted_domain.value());
   ASSERTER(start_tile_result == start_tile);
 
@@ -543,6 +543,51 @@ TEST_CASE("domain_tile_offset 2d", "[arithmetic]") {
       const auto r3 = instance_domain_tile_offset<Dim64::DATATYPE>(
           {d1, d2}, 11, 5, Layout::COL_MAJOR);
       CHECK(r3 == std::optional<std::vector<Dom64>>{});
+    }
+  }
+
+  SECTION("CORE-290 Example") {
+    const Dim64 row(0, std::numeric_limits<uint64_t>::max() - 1, 4);
+    const Dim64 col(0, 99999, 100000 / row.extent);
+
+    auto make_row = [&](uint64_t r_start, uint64_t r_end) {
+      return Dom64(
+          row.domain.lower_bound + r_start * row.extent,
+          row.domain.lower_bound + r_end * row.extent + row.extent - 1);
+    };
+
+    const auto r1 = instance_domain_tile_offset<Dim64::DATATYPE>(
+        {row, col}, 0, 4, Layout::ROW_MAJOR);
+    CHECK(r1 == std::vector<Dom64>{make_row(0, 0), col.domain});
+  }
+
+  SECTION("Hyperrow overflow") {
+    const uint64_t target_tiles_in_domain = 1 << 16;
+    const uint64_t lower_bound = 0;
+    const uint64_t upper_bound = std::numeric_limits<uint64_t>::max() - 1;
+    const uint64_t extent =
+        (upper_bound - lower_bound + 1) / target_tiles_in_domain;
+    const Dim64 d(lower_bound, upper_bound, extent);
+
+    SECTION("Not overflow") {
+      const auto r = instance_domain_tile_offset<Dim64::DATATYPE>(
+          {d, d, d, d}, 0, 1, Layout::ROW_MAJOR);
+      CHECK(
+          r == std::vector<Dom64>{
+                   Dom64(0, extent - 1),
+                   Dom64(0, extent - 1),
+                   Dom64(0, extent - 1),
+                   Dom64(0, extent - 1)});
+    }
+
+    SECTION("Overflow") {
+      const auto expect = Catch::Matchers::ContainsSubstring(
+          "Fragment size is too small to subdivide dense subarray into "
+          "multiple fragments");
+      REQUIRE_THROWS(
+          instance_domain_tile_offset<Dim64::DATATYPE>(
+              {d, d, d, d, d}, 0, 1, Layout::ROW_MAJOR),
+          expect);
     }
   }
 

@@ -119,7 +119,7 @@ collect_and_validate_fragment_domains(
 
     const uint64_t f_num_tiles =
         compute_num_tiles<D>(tile_extents, internal_domain);
-    const uint64_t f_start_tile = compute_start_tile<D>(
+    const std::optional<uint64_t> f_start_tile = compute_start_tile<D>(
         tile_order, tile_extents, expect_domain, internal_domain);
 
     ASSERTER(f_start_tile == subarray_tile_offset);
