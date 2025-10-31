@@ -860,9 +860,6 @@ TEST_CASE(
     }
 
     SECTION("Rectangle tiles") {
-      // FIXME
-      SKIP("Fails with FPE due to overflow in compute_hyperrow_sizes");
-
       const Dim64 row(0, std::numeric_limits<uint64_t>::max() - 1, 4);
       const Dim64 col(0, 99999, 100000 / row.extent);
 
@@ -923,14 +920,14 @@ TEST_CASE(
         const auto output_fragments = instance_dense_consolidation<
             sm::Datatype::UINT64,
             DenseFragmentFixed>(
-            ctx, array_name, {row, col}, input_fragments, tile_size);
+            ctx, array_name, {row, col}, input_fragments, 2 * tile_size);
       }
       SECTION("Three tiles") {
         // now we have some trouble, each row is 4 tiles, 3 of them fit,
         // so we will alternate fragments with 3 tiles and fragments with 1
         // tile to fill out the row, yikes
         std::vector<std::vector<Dom64>> expect;
-        for (uint64_t r = 0; r < num_fragments * 4; r++) {
+        for (uint64_t r = 0; r < num_fragments; r++) {
           expect.push_back(
               {Dom64(r * 4, r * 4 + 3), Dom64(0, (col.extent * 3) - 1)});
           expect.push_back(
@@ -940,7 +937,7 @@ TEST_CASE(
         const auto output_fragments = instance_dense_consolidation<
             sm::Datatype::UINT64,
             DenseFragmentFixed>(
-            ctx, array_name, {row, col}, input_fragments, tile_size);
+            ctx, array_name, {row, col}, input_fragments, 3 * tile_size);
         CHECK(output_fragments == expect);
       }
       SECTION("Four tiles") {
@@ -951,7 +948,7 @@ TEST_CASE(
         const auto output_fragments = instance_dense_consolidation<
             sm::Datatype::UINT64,
             DenseFragmentFixed>(
-            ctx, array_name, {row, col}, input_fragments, tile_size);
+            ctx, array_name, {row, col}, input_fragments, 4 * tile_size);
         CHECK(output_fragments == expect);
       }
       SECTION("Five tiles") {
@@ -963,7 +960,7 @@ TEST_CASE(
         const auto output_fragments = instance_dense_consolidation<
             sm::Datatype::UINT64,
             DenseFragmentFixed>(
-            ctx, array_name, {row, col}, input_fragments, tile_size);
+            ctx, array_name, {row, col}, input_fragments, 5 * tile_size);
         CHECK(output_fragments == expect);
       }
     }
