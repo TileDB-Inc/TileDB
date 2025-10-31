@@ -75,6 +75,16 @@ class GlobalOrderWriter : public WriterBase {
      * attributes/dimensions, the first tile is the offsets tile, whereas the
      * second tile is the values tile. In both cases, the third tile stores a
      * validity tile for nullable attributes.
+     *
+     * For sparse arrays, each `WriterTileTupleVector` contains up to one tile,
+     * which is the data from the previous `submit` which did not fill a tile.
+     *
+     * For dense arrays, each `WriterTileTupleVector` contains any tiles which
+     * were not guaranteed to fit into `max_fragment_size_` while also forming
+     * a bounding rectangle. Written fragments always have a rectangular domain,
+     * and it is necessary to buffer tiles this way to avoid flushing data
+     * which might later require a fragment to exceed `max_fragment_size_`
+     * in order to represent a rectangular domain.
      */
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector> last_tiles_;
 
@@ -108,6 +118,36 @@ class GlobalOrderWriter : public WriterBase {
      */
     std::unordered_map<std::string, VFS::MultiPartUploadState>
         multipart_upload_state_;
+
+    /**
+     * State for writing dense fragments.
+     *
+     * Dense fragments use the bounding rectangle as a precise determination
+     * of where the contents of the fragment are in the domain, and as such
+     * it must be written correctly. This is usually not a problem, however
+     * global order writes can:
+     * 1) split up a single write into multiple fragments in order to satisfy
+     *    the `max_fragment_size_` parameter
+     * 2) write into a single domain over the course of multiple `submit`
+     *    calls which each write an arbitrary subset of the domain,
+     *    re-using the buffers
+     *
+     * Both of these make it non-trivial to determine what the domain written
+     * into a fragment actually was, when the fragment fills up
+     * `max_fragment_size`.
+     *
+     * The fields of this struct, as well as `last_tiles_` of the outer struct,
+     * are used to track the amount of data which the writer has already
+     * processed so as to keep the correct position in the target subarray.
+     */
+    struct DenseWriteState {
+      /**
+       * Tile offset in the subarray domain which the current fragment began
+       * writing to.
+       */
+      uint64_t domain_tile_offset_;
+    };
+    DenseWriteState dense_;
   };
 
   /* ********************************* */
@@ -119,7 +159,7 @@ class GlobalOrderWriter : public WriterBase {
       stats::Stats* stats,
       shared_ptr<Logger> logger,
       StrategyParams& params,
-      uint64_t fragment_size,
+      std::optional<uint64_t> fragment_size,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       std::vector<std::string>& processed_conditions,
@@ -157,6 +197,9 @@ class GlobalOrderWriter : public WriterBase {
 
   /** Returns a bare pointer to the global state. */
   GlobalWriteState* get_global_state();
+
+  /** Returns a bare pointer to the global state. */
+  const GlobalWriteState* get_global_state() const;
 
   /**
    * Used in serialization to share the multipart upload state
@@ -208,7 +251,7 @@ class GlobalOrderWriter : public WriterBase {
    * The desired fragment size, in bytes. The writer will create a new fragment
    * once this size has been reached.
    */
-  uint64_t fragment_size_;
+  std::optional<uint64_t> max_fragment_size_;
 
   /**
    * Size currently written to the fragment.
@@ -371,19 +414,59 @@ class GlobalOrderWriter : public WriterBase {
       WriterTileTupleVector* tiles) const;
 
   /**
-   * Return the number of tiles to write depending on the desired fragment
-   * size. The tiles passed in as an argument should have already been
-   * filtered.
-   *
-   * @param start Current tile index.
-   * @param tile_num Number of tiles in the tiles vectors.
-   * @param tiles Map of vector of tiles, per attributes.
-   * @return Number of tiles to write.
+   * Contains the return values of
+   * `GlobalOrderWriter::identify_fragment_tile_boundaries`.
    */
-  uint64_t num_tiles_to_write(
-      uint64_t start,
-      uint64_t tile_num,
-      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles);
+  struct FragmentTileBoundaries {
+    /**
+     * The offsets where each complete fragment starts.
+     */
+    std::vector<uint64_t> tile_offsets_;
+
+    /**
+     * The number of writeable tiles.
+     * For sparse arrays this is the number of tiles of input.
+     * For dense arrays this may be less if there is a trail of tiles which
+     * cannot be guaranteed to fit within `max_fragment_size` while also forming
+     * a rectangular domain.
+     */
+    uint64_t num_writeable_tiles_;
+
+    /**
+     * The size in bytes of the filtered tiles which are written to the last
+     * fragment. The last fragment may be resumed by a subsequent `submit`.
+     */
+    uint64_t last_fragment_size_;
+  };
+
+  /**
+   * Identify the manner in which the filtered input tiles map onto target
+   * fragments. If `max_fragment_size_` is much larger than the input, this may
+   * return just one result.
+   *
+   * Each element of the returned vector is a pair `(fragment_size, start_tile)`
+   * indicating the size of the fragment, and the first tile offset which
+   * corresponds to that fragment.
+   *
+   * @param tiles Map of vector of tiles, per attributes.
+   *
+   * @return see `FragmentTileBoundaries` documentation
+   */
+  FragmentTileBoundaries identify_fragment_tile_boundaries(
+      const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const;
+
+  /**
+   * Writes cells from the indicated slice of `tiles` into the current fragment.
+   *
+   * @param tiles the source of cells organized into filtered tiles
+   * @param tile_offset the tile from which to begin writing
+   * @param num_tiles the number of tiles to write
+   */
+  Status populate_fragment(
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
+      uint64_t tile_offset,
+      uint64_t num_tiles);
 
   /**
    * Close the current fragment and start a new one. The closed fragment will
@@ -391,6 +474,13 @@ class GlobalOrderWriter : public WriterBase {
    * be written at once.
    */
   Status start_new_fragment();
+
+  /**
+   * @return true if this write is to a dense fragment
+   */
+  bool dense() const {
+    return !coords_info_.has_coords_;
+  }
 };
 
 }  // namespace sm

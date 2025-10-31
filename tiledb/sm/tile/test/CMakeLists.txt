@@ -29,7 +29,10 @@ include(unit_test)
 commence(unit_test tile)
     this_target_sources(
         main.cc
+        unit_arithmetic.cc
         unit_tile.cc
+        ${CMAKE_SOURCE_DIR}/test/support/rapidcheck/show/array_schema_templates.cc
     )
     this_target_object_libraries(tile mem_helpers)
+    this_target_link_libraries(rapidcheck)
 conclude(unit_test)

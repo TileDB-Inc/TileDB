@@ -42,6 +42,7 @@
 #include "tiledb/type/range/range.h"
 
 #include <test/support/assert_helpers.h>
+#include <test/support/src/array_schema_templates.h>
 #include <test/support/src/error_helpers.h>
 #include <test/support/src/helpers.h>
 #include <test/support/stdx/fold.h>
@@ -58,9 +59,6 @@ class Dimension;
 }
 
 namespace tiledb::test::templates {
-
-using StringDimensionCoordType = std::vector<char>;
-using StringDimensionCoordView = std::span<const char>;
 
 /**
  * Adapts a `std::tuple` whose fields are all `GlobalCellCmp`
@@ -124,26 +122,6 @@ template <typename T>
 struct query_buffers {};
 
 /**
- * Constrains types which can be used as the physical type of a dimension.
- */
-template <typename D>
-concept DimensionType =
-    std::is_same_v<D, StringDimensionCoordType> or requires(const D& coord) {
-      typename std::is_signed<D>;
-      { coord < coord } -> std::same_as<bool>;
-      { D(int64_t(coord)) } -> std::same_as<D>;
-    };
-
-/**
- * Constrains types which can be used as the physical type of an attribute.
- *
- * Right now this doesn't constrain anything, it is just a marker for
- * readability, and someday we might want it do require something.
- */
-template <typename T>
-concept AttributeType = requires(T) { typename query_buffers<T>::cell_type; };
-
-/**
  * Constrains types which can be used as columnar data fragment input.
  *
  * Methods `dimensions` and `attributes` return tuples whose fields are each
@@ -165,139 +143,7 @@ concept FragmentType = requires(const T& fragment) {
 };
 
 /**
- * A generic, statically-typed range which is inclusive on both ends.
- */
-template <DimensionType D>
-struct Domain {
-  D lower_bound;
-  D upper_bound;
-
-  Domain() {
-  }
-
-  Domain(D d1, D d2)
-      : lower_bound(std::min(d1, d2))
-      , upper_bound(std::max(d1, d2)) {
-  }
-
-  uint64_t num_cells() const {
-    // FIXME: this is incorrect for 64-bit domains which need to check overflow
-    if (std::is_signed<D>::value) {
-      return static_cast<int64_t>(upper_bound) -
-             static_cast<int64_t>(lower_bound) + 1;
-    } else {
-      return static_cast<uint64_t>(upper_bound) -
-             static_cast<uint64_t>(lower_bound) + 1;
-    }
-  }
-
-  bool contains(D point) const {
-    return lower_bound <= point && point <= upper_bound;
-  }
-
-  bool intersects(const Domain<D>& other) const {
-    return (other.lower_bound <= lower_bound &&
-            lower_bound <= other.upper_bound) ||
-           (other.lower_bound <= upper_bound &&
-            upper_bound <= other.upper_bound) ||
-           (lower_bound <= other.lower_bound &&
-            other.lower_bound <= upper_bound) ||
-           (lower_bound <= other.upper_bound &&
-            other.upper_bound <= upper_bound);
-  }
-
-  tiledb::type::Range range() const {
-    return tiledb::type::Range(lower_bound, upper_bound);
-  }
-};
-
-/**
- * A description of a dimension as it pertains to its datatype.
- */
-template <tiledb::sm::Datatype DATATYPE>
-struct Dimension {
-  using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
-
-  Dimension() = default;
-  Dimension(Domain<value_type> domain, value_type extent)
-      : domain(domain)
-      , extent(extent) {
-  }
-
-  Domain<value_type> domain;
-  value_type extent;
-};
-
-template <>
-struct Dimension<tiledb::sm::Datatype::STRING_ASCII> {
-  using value_type = StringDimensionCoordType;
-
-  Dimension() {
-  }
-
-  Dimension(const Domain<value_type>& domain)
-      : domain(domain) {
-  }
-
-  std::optional<Domain<value_type>> domain;
-};
-
-template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
-struct static_attribute {};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, 1, false> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = 1;
-  static constexpr bool nullable = false;
-
-  using value_type =
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
-  using cell_type = value_type;
-};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, 1, true> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = 1;
-  static constexpr bool nullable = true;
-
-  using value_type = std::optional<
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type>;
-  using cell_type = value_type;
-};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, tiledb::sm::cell_val_num_var, false> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = tiledb::sm::cell_val_num_var;
-  static constexpr bool nullable = false;
-
-  using value_type =
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
-  using cell_type = std::vector<value_type>;
-};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, tiledb::sm::cell_val_num_var, true> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = tiledb::sm::cell_val_num_var;
-  static constexpr bool nullable = true;
-
-  using value_type =
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
-  using cell_type = std::optional<std::vector<value_type>>;
-};
-
-template <typename static_attribute>
-constexpr std::tuple<Datatype, uint32_t, bool> attribute_properties() {
-  return {
-      static_attribute::datatype,
-      static_attribute::cell_val_num,
-      static_attribute::nullable};
-}
-
-/**
+2D)
  * Schema of named fields for simple evaluation of a query condition
  */
 template <FragmentType Fragment>
@@ -413,7 +259,7 @@ struct QueryConditionEvalSchema {
    */
   bool test(
       const Fragment& fragment,
-      int record,
+      uint64_t record,
       const tiledb::sm::ASTNode& condition) const {
     using DimensionTuple = stdx::decay_tuple<decltype(fragment.dimensions())>;
     using AttributeTuple = stdx::decay_tuple<decltype(fragment.attributes())>;
@@ -1288,6 +1134,11 @@ struct Fragment {
         },
         std::tuple_cat(dimensions(), attributes()));
   }
+
+  bool operator==(const self_type& other) const {
+    return dimensions() == other.dimensions() &&
+           attributes() == other.attributes();
+  }
 };
 
 /**
@@ -1569,7 +1420,7 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
 }
 
 /**
- * Writes a fragment to an array.
+ * Writes a fragment to a sparse array.
  */
 template <typename Asserter, FragmentType Fragment>
 void write_fragment(
@@ -1604,9 +1455,89 @@ void write_fragment(
   ASSERTER(num_cells == expect_num_cells);
 }
 
+/**
+ * Writes a fragment to a dense array.
+ */
+template <typename Asserter, FragmentType Fragment, DimensionType Coord>
+void write_fragment(
+    const Fragment& fragment,
+    Array& forwrite,
+    const sm::NDRange& subarray,
+    tiledb_layout_t layout = TILEDB_ROW_MAJOR) {
+  Query query(forwrite.context(), forwrite, TILEDB_WRITE);
+  query.set_layout(layout);
+
+  std::vector<Coord> coords;
+  for (const auto& dim : subarray) {
+    coords.push_back(dim.start_as<Coord>());
+    coords.push_back(dim.end_as<Coord>());
+  }
+
+  Subarray sub(query.ctx(), forwrite);
+  sub.set_subarray(coords);
+  query.set_subarray(sub);
+
+  auto field_sizes =
+      make_field_sizes<Asserter, Fragment>(const_cast<Fragment&>(fragment));
+  templates::query::set_fields<Asserter, Fragment>(
+      query.ctx().ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      const_cast<Fragment&>(fragment),
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); });
+
+  const auto status = query.submit();
+  ASSERTER(status == Query::Status::COMPLETE);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query.finalize();
+  }
+
+  // check that sizes match what we expect
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t num_cells =
+      templates::query::num_cells<Asserter>(fragment, field_sizes);
+
+  ASSERTER(num_cells == expect_num_cells);
+}
+
 }  // namespace query
 
 namespace ddl {
+
+template <typename T>
+struct cell_type_traits;
+
+template <>
+struct cell_type_traits<int> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::INT32;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <>
+struct cell_type_traits<uint64_t> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::UINT64;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <FragmentType F>
+std::vector<std::tuple<Datatype, uint32_t, bool>> physical_type_attributes() {
+  std::vector<std::tuple<Datatype, uint32_t, bool>> ret;
+  auto attr = [&]<typename T>(const T&) {
+    ret.push_back(std::make_tuple(
+        cell_type_traits<std::decay_t<T>>::physical_type,
+        cell_type_traits<std::decay_t<T>>::cell_val_num,
+        cell_type_traits<std::decay_t<T>>::is_nullable));
+  };
+  std::apply(
+      [&](const auto&... value) { (attr(value), ...); },
+      typename F::AttributeTuple());
+
+  return ret;
+}
 
 /**
  * Creates an array with a schema whose dimensions and attributes

@@ -34,6 +34,7 @@
 #ifndef TILEDB_RAPIDCHECK_ARRAY_H
 #define TILEDB_RAPIDCHECK_ARRAY_H
 
+#include <test/support/rapidcheck/array_schema_templates.h>
 #include <test/support/src/array_templates.h>
 #include <test/support/stdx/tuple.h>
 #include <test/support/tdb_rapidcheck.h>
@@ -42,139 +43,6 @@ namespace rc {
 
 using namespace tiledb::test;
 using namespace tiledb::test::templates;
-
-template <DimensionType D>
-struct Arbitrary<templates::Domain<D>> {
-  static Gen<templates::Domain<D>> arbitrary() {
-    // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
-    // inclusive. So we have to use `int64_t` to avoid overflow.
-    auto bounds = gen::mapcat(gen::arbitrary<D>(), [](D lb) {
-      if constexpr (std::is_same<D, int64_t>::value) {
-        return gen::pair(
-            gen::just(lb), gen::inRange(lb, std::numeric_limits<D>::max()));
-      } else if constexpr (std::is_same<D, uint64_t>::value) {
-        return gen::pair(
-            gen::just(lb), gen::inRange(lb, std::numeric_limits<D>::max()));
-      } else {
-        auto ub_limit = int64_t(std::numeric_limits<D>::max()) + 1;
-        return gen::pair(
-            gen::just(lb), gen::cast<D>(gen::inRange(int64_t(lb), ub_limit)));
-      }
-    });
-
-    return gen::map(bounds, [](std::pair<D, D> bounds) {
-      return templates::Domain<D>(bounds.first, bounds.second);
-    });
-  }
-};
-
-/**
- * @return `a - b` if it does not overflow, `std::nullopt` if it does
- */
-template <std::integral T>
-std::optional<T> checked_sub(T a, T b) {
-  if (!std::is_signed<T>::value) {
-    return (b > a ? std::nullopt : std::optional(a - b));
-  } else if (b < 0) {
-    return (
-        std::numeric_limits<T>::max() + b < a ? std::nullopt :
-                                                std::optional(a - b));
-  } else {
-    return (
-        std::numeric_limits<T>::min() - b > a ? std::nullopt :
-                                                std::optional(a - b));
-  }
-}
-
-template <DimensionType D>
-Gen<D> make_extent(const templates::Domain<D>& domain) {
-  // upper bound on all possible extents to avoid unreasonably
-  // huge tile sizes
-  static constexpr D extent_limit = static_cast<D>(
-      std::is_signed<D>::value ?
-          std::min(
-              static_cast<int64_t>(std::numeric_limits<D>::max()),
-              static_cast<int64_t>(1024 * 16)) :
-          std::min(
-              static_cast<uint64_t>(std::numeric_limits<D>::max()),
-              static_cast<uint64_t>(1024 * 16)));
-
-  // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
-  // inclusive. So we have to be careful to avoid overflow.
-
-  D extent_lower_bound = 1;
-  D extent_upper_bound;
-
-  const auto bound_distance =
-      checked_sub(domain.upper_bound, domain.lower_bound);
-  if (bound_distance.has_value()) {
-    extent_upper_bound =
-        (bound_distance.value() < extent_limit ? bound_distance.value() + 1 :
-                                                 extent_limit);
-  } else {
-    extent_upper_bound = extent_limit;
-  }
-
-  return gen::inRange(extent_lower_bound, extent_upper_bound + 1);
-}
-
-template <tiledb::sm::Datatype D>
-struct Arbitrary<templates::Dimension<D>> {
-  static Gen<templates::Dimension<D>> arbitrary() {
-    using CoordType = templates::Dimension<D>::value_type;
-    auto tup = gen::mapcat(
-        gen::arbitrary<Domain<CoordType>>(), [](Domain<CoordType> domain) {
-          return gen::pair(gen::just(domain), make_extent(domain));
-        });
-
-    return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
-      return templates::Dimension<D>(tup.first, tup.second);
-    });
-  }
-};
-
-template <DimensionType D>
-Gen<D> make_coordinate(const templates::Domain<D>& domain) {
-  // `gen::inRange` does an exclusive upper bound,
-  // whereas the domain upper bound is inclusive.
-  // As a result some contortion is required to deal
-  // with numeric_limits.
-  if constexpr (std::is_same_v<D, StringDimensionCoordType>) {
-    // NB: poor performance with small domains for sure
-    return gen::suchThat(
-        gen::map(
-            gen::string<std::string>(),
-            [](std::string s) {
-              StringDimensionCoordType v(s.begin(), s.end());
-              return v;
-            }),
-        [domain](const StringDimensionCoordType& s) {
-          return domain.lower_bound <= s && s <= domain.upper_bound;
-        });
-  } else if constexpr (std::is_signed<D>::value) {
-    if (int64_t(domain.upper_bound) < std::numeric_limits<int64_t>::max()) {
-      return gen::cast<D>(gen::inRange(
-          int64_t(domain.lower_bound), int64_t(domain.upper_bound + 1)));
-    } else {
-      return gen::inRange(domain.lower_bound, domain.upper_bound);
-    }
-  } else {
-    if (uint64_t(domain.upper_bound) < std::numeric_limits<uint64_t>::max()) {
-      return gen::cast<D>(gen::inRange(
-          uint64_t(domain.lower_bound), uint64_t(domain.upper_bound + 1)));
-    } else {
-      return gen::inRange(domain.lower_bound, domain.upper_bound);
-    }
-  }
-}
-
-template <DimensionType D>
-Gen<templates::Domain<D>> make_range(const templates::Domain<D>& domain) {
-  return gen::apply(
-      [](D p1, D p2) { return templates::Domain<D>(p1, p2); },
-      make_coordinate<D>(domain),
-      make_coordinate<D>(domain));
-}
 
 template <DimensionType D, typename... Att>
 Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
@@ -306,10 +174,6 @@ Gen<Fragment3D<D1, D2, D3, Att...>> make_fragment_3d(
         std::make_tuple(coords_d1, coords_d2, coords_d3), atts};
   });
 }
-
-void showValue(const templates::Domain<int>& domain, std::ostream& os);
-void showValue(const templates::Domain<int64_t>& domain, std::ostream& os);
-void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os);
 
 namespace detail {
 

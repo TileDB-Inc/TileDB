@@ -459,6 +459,13 @@ class WriterTile : public TileBase {
   }
 
   /**
+   * Returns the buffer that contains the filtered, on-disk format.
+   */
+  inline const FilteredBuffer& filtered_buffer() const {
+    return filtered_buffer_;
+  }
+
+  /**
    * Write method used for var data. Resizes the internal buffer if needed.
    *
    * @param data Pointer to the data to write.

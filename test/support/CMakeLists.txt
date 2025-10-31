@@ -36,7 +36,8 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api")
 
 # Gather the test source files
 set(TILEDB_TEST_SUPPORT_SOURCES
-  rapidcheck/show.cc
+  rapidcheck/show/array_schema_templates.cc
+  rapidcheck/show/query_ast.cc
   src/array_helpers.cc
   src/array_schema_helpers.cc
   src/ast_helpers.h
