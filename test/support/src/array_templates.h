@@ -259,7 +259,7 @@ struct QueryConditionEvalSchema {
    */
   bool test(
       const Fragment& fragment,
-      int record,
+      uint64_t record,
       const tiledb::sm::ASTNode& condition) const {
     using DimensionTuple = stdx::decay_tuple<decltype(fragment.dimensions())>;
     using AttributeTuple = stdx::decay_tuple<decltype(fragment.attributes())>;
