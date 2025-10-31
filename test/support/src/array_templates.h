@@ -1134,6 +1134,11 @@ struct Fragment {
         },
         std::tuple_cat(dimensions(), attributes()));
   }
+
+  bool operator==(const self_type& other) const {
+    return dimensions() == other.dimensions() &&
+           attributes() == other.attributes();
+  }
 };
 
 /**
@@ -1415,7 +1420,7 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
 }
 
 /**
- * Writes a fragment to an array.
+ * Writes a fragment to a sparse array.
  */
 template <typename Asserter, FragmentType Fragment>
 void write_fragment(
@@ -1450,9 +1455,89 @@ void write_fragment(
   ASSERTER(num_cells == expect_num_cells);
 }
 
+/**
+ * Writes a fragment to a dense array.
+ */
+template <typename Asserter, FragmentType Fragment, DimensionType Coord>
+void write_fragment(
+    const Fragment& fragment,
+    Array& forwrite,
+    const sm::NDRange& subarray,
+    tiledb_layout_t layout = TILEDB_ROW_MAJOR) {
+  Query query(forwrite.context(), forwrite, TILEDB_WRITE);
+  query.set_layout(layout);
+
+  std::vector<Coord> coords;
+  for (const auto& dim : subarray) {
+    coords.push_back(dim.start_as<Coord>());
+    coords.push_back(dim.end_as<Coord>());
+  }
+
+  Subarray sub(query.ctx(), forwrite);
+  sub.set_subarray(coords);
+  query.set_subarray(sub);
+
+  auto field_sizes =
+      make_field_sizes<Asserter, Fragment>(const_cast<Fragment&>(fragment));
+  templates::query::set_fields<Asserter, Fragment>(
+      query.ctx().ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      const_cast<Fragment&>(fragment),
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); });
+
+  const auto status = query.submit();
+  ASSERTER(status == Query::Status::COMPLETE);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query.finalize();
+  }
+
+  // check that sizes match what we expect
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t num_cells =
+      templates::query::num_cells<Asserter>(fragment, field_sizes);
+
+  ASSERTER(num_cells == expect_num_cells);
+}
+
 }  // namespace query
 
 namespace ddl {
+
+template <typename T>
+struct cell_type_traits;
+
+template <>
+struct cell_type_traits<int> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::INT32;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <>
+struct cell_type_traits<uint64_t> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::UINT64;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <FragmentType F>
+std::vector<std::tuple<Datatype, uint32_t, bool>> physical_type_attributes() {
+  std::vector<std::tuple<Datatype, uint32_t, bool>> ret;
+  auto attr = [&]<typename T>(const T&) {
+    ret.push_back(std::make_tuple(
+        cell_type_traits<std::decay_t<T>>::physical_type,
+        cell_type_traits<std::decay_t<T>>::cell_val_num,
+        cell_type_traits<std::decay_t<T>>::is_nullable));
+  };
+  std::apply(
+      [&](const auto&... value) { (attr(value), ...); },
+      typename F::AttributeTuple());
+
+  return ret;
+}
 
 /**
  * Creates an array with a schema whose dimensions and attributes

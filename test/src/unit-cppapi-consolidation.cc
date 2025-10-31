@@ -32,10 +32,15 @@
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/array_helpers.h"
+#include "test/support/src/array_templates.h"
+#include "test/support/src/fragment_info_helpers.h"
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 void remove_array(const std::string& array_name) {
   Context ctx;
@@ -537,4 +542,397 @@ TEST_CASE(
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
   remove_array(array_name);
+}
+
+template <sm::Datatype DT, templates::FragmentType F>
+void instance_dense_consolidation_create_array(
+    Context& ctx,
+    const std::string& array_name,
+    const std::vector<templates::Dimension<DT>>& domain) {
+  using Coord = templates::Dimension<DT>::value_type;
+
+  // create array
+  Domain arraydomain(ctx);
+  for (uint64_t d = 0; d < domain.size(); d++) {
+    const std::string dname = "d" + std::to_string(d + 1);
+    auto dd = Dimension::create<Coord>(
+        ctx,
+        dname,
+        {domain[d].domain.lower_bound, domain[d].domain.upper_bound},
+        domain[d].extent);
+    arraydomain.add_dimension(dd);
+  }
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(arraydomain);
+
+  const std::vector<std::tuple<Datatype, uint32_t, bool>> attributes =
+      templates::ddl::physical_type_attributes<F>();
+  for (uint64_t a = 0; a < attributes.size(); a++) {
+    const std::string aname = "a" + std::to_string(a + 1);
+    auto aa = Attribute::create(
+                  ctx,
+                  aname,
+                  static_cast<tiledb_datatype_t>(std::get<0>(attributes[a])))
+                  .set_cell_val_num(std::get<1>(attributes[a]))
+                  .set_nullable(std::get<2>(attributes[a]));
+    schema.add_attribute(aa);
+  }
+
+  Array::create(array_name, schema);
+}
+
+/**
+ * Runs an instance of a dense consolidation test.
+ * The `fragments` are written in ascending order from the beginning of the
+ * array domain.
+ *
+ * Asserts that after consolidation we get fragments which appropriately satisfy
+ * `max_fragment_size`:
+ * 1) no fragment is larger than that size
+ * 2) if the union of two adjacent fragments can form a rectangular domain, then
+ *    the sum of their sizes must exceed the maximum fragment size (else they
+ *    should be one fragment)
+ *
+ * @precondition the `fragments` each have a number of cells which is an
+ * integral number of tiles
+ */
+template <
+    sm::Datatype DT,
+    templates::FragmentType F,
+    typename Asserter = AsserterCatch>
+std::vector<std::vector<typename templates::Dimension<DT>::domain_type>>
+instance_dense_consolidation(
+    Context& ctx,
+    const std::string& array_name,
+    const std::vector<templates::Dimension<DT>>& domain,
+    std::vector<F>& fragments,
+    uint64_t max_fragment_size) {
+  using Coord = templates::Dimension<DT>::value_type;
+
+  // create array
+  instance_dense_consolidation_create_array<DT, F>(ctx, array_name, domain);
+
+  DeleteArrayGuard arrayguard(ctx.ptr().get(), array_name.c_str());
+
+  sm::NDRange array_domain;
+  for (const auto& dim : domain) {
+    array_domain.push_back(
+        Range(dim.domain.lower_bound, dim.domain.upper_bound));
+  }
+
+  uint64_t num_cells_per_tile = 1;
+  std::vector<Coord> tile_extents;
+  for (const auto& dim : domain) {
+    tile_extents.push_back(dim.extent);
+    num_cells_per_tile *= static_cast<uint64_t>(dim.extent);
+  }
+
+  // populate array
+  uint64_t start_tile = 0;
+  {
+    Array forwrite(ctx, array_name, TILEDB_WRITE);
+    for (auto& f : fragments) {
+      const uint64_t f_num_tiles = f.num_cells() / num_cells_per_tile;
+
+      const std::optional<sm::NDRange> subarray = domain_tile_offset<Coord>(
+          sm::Layout::ROW_MAJOR,
+          tile_extents,
+          array_domain,
+          start_tile,
+          f_num_tiles);
+      ASSERTER(subarray.has_value());
+
+      templates::query::write_fragment<Asserter, F, Coord>(
+          f, forwrite, subarray.value());
+
+      start_tile += f_num_tiles;
+    }
+  }
+
+  sm::NDRange non_empty_domain;
+  {
+    std::optional<sm::NDRange> maybe = domain_tile_offset<Coord>(
+        sm::Layout::ROW_MAJOR, tile_extents, array_domain, 0, start_tile);
+    ASSERTER(maybe.has_value());
+    non_empty_domain = maybe.value();
+  }
+
+  // consolidate
+  Config cconfig;
+  cconfig["sm.consolidation.max_fragment_size"] =
+      std::to_string(max_fragment_size);
+  Array::consolidate(ctx, array_name, &cconfig);
+
+  Array forread(ctx, array_name, TILEDB_READ);
+
+  // sanity check the non-empty domain
+  // NB: cannot use `==` for some reason, the array `non_empty_domain` method
+  // returns `range_start_size_` zero
+  {
+    const auto actual_domain = forread.ptr()->array()->non_empty_domain();
+    for (uint64_t d = 0; d < domain.size(); d++) {
+      ASSERTER(
+          non_empty_domain[d].start_as<Coord>() ==
+          actual_domain[d].start_as<Coord>());
+      ASSERTER(
+          non_empty_domain[d].end_as<Coord>() ==
+          actual_domain[d].end_as<Coord>());
+    }
+  }
+
+  // check fragment info
+  FragmentInfo finfo(ctx, array_name);
+  finfo.load();
+
+  const auto fragment_domains =
+      collect_and_validate_fragment_domains<Coord, Asserter>(
+          ctx,
+          sm::Layout::ROW_MAJOR,
+          array_name,
+          tile_extents,
+          non_empty_domain,
+          max_fragment_size);
+
+  // read back fragments to check contents
+  std::vector<Coord> api_subarray;
+  api_subarray.reserve(2 * domain.size());
+  for (uint64_t d = 0; d < domain.size(); d++) {
+    api_subarray.push_back(non_empty_domain[d].start_as<Coord>());
+    api_subarray.push_back(non_empty_domain[d].end_as<Coord>());
+  }
+
+  F input_concatenated, output;
+  for (const auto& f : fragments) {
+    input_concatenated.extend(f);
+  }
+  output = input_concatenated;
+
+  Subarray sub(ctx, forread);
+  sub.set_subarray(api_subarray);
+
+  Query query(forread.context(), forread);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_subarray(sub);
+
+  // make field size locations
+  templates::query::fragment_field_sizes_t<F> field_sizes =
+      templates::query::make_field_sizes<Asserter>(output, output.num_cells());
+
+  // add fields to query
+  auto outcursor = templates::query::fragment_field_sizes_t<F>();
+  templates::query::set_fields<Asserter, F>(
+      ctx.ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      output,
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); },
+      outcursor);
+
+  const auto status = query.submit();
+  ASSERTER(status == Query::Status::COMPLETE);
+
+  // resize according to what was found
+  templates::query::apply_cursor<F>(output, outcursor, field_sizes);
+
+  ASSERTER(output == input_concatenated);
+
+  return fragment_domains;
+}
+
+/**
+ * Test case inspired by CORE-290.
+ *
+ */
+TEST_CASE(
+    "C++ API: Test consolidation dense array with max fragment size",
+    "[cppapi][consolidation][rest]") {
+  using Dim64 = templates::Dimension<sm::Datatype::UINT64>;
+  using Dom64 = Dim64::domain_type;
+  using DenseFragmentFixed = templates::Fragment<std::tuple<>, std::tuple<int>>;
+
+  const std::string array_name = "cppapi_consolidation_dense";
+
+  Context ctx;
+
+  SECTION("2D") {
+    SECTION("Row tiles") {
+      const Dim64 row(0, std::numeric_limits<uint64_t>::max() - 1, 1);
+      const Dim64 col(0, 99999, 100000);
+
+      const uint64_t num_fragments = 32;
+
+      // each input fragment is a single row
+      std::vector<DenseFragmentFixed> input_fragments;
+      for (uint64_t f = 0; f < num_fragments; f++) {
+        DenseFragmentFixed fdata;
+        fdata.resize(row.extent * col.domain.num_cells());
+
+        auto& att = std::get<0>(fdata.attributes());
+        std::iota(
+            att.begin(), att.end(), static_cast<int>(f) * fdata.num_cells());
+
+        input_fragments.push_back(fdata);
+      }
+
+      // unfiltered, each row takes `100000 * sizeof(int)` bytes, plus some
+      // padding
+      const uint64_t tile_size = (row.extent * col.extent * sizeof(int)) + 92;
+      uint64_t max_fragment_size;
+
+      SECTION("Too small") {
+        max_fragment_size = tile_size - 1;
+      }
+      SECTION("Snug fit") {
+        max_fragment_size = tile_size;
+      }
+      SECTION("Not quite two rows") {
+        max_fragment_size = (2 * tile_size) - 1;
+      }
+      SECTION("Two rows") {
+        max_fragment_size = 2 * tile_size;
+      }
+
+      const uint64_t rows_per_fragment = max_fragment_size / tile_size;
+      DYNAMIC_SECTION(
+          "rows_per_fragment = " + std::to_string(rows_per_fragment)) {
+        if (rows_per_fragment == 0) {
+          const auto expect = Catch::Matchers::ContainsSubstring(
+              "Fragment size is too small to subdivide dense subarray into "
+              "multiple fragments");
+          REQUIRE_THROWS(
+              instance_dense_consolidation<
+                  sm::Datatype::UINT64,
+                  DenseFragmentFixed>(
+                  ctx,
+                  array_name,
+                  {row, col},
+                  input_fragments,
+                  max_fragment_size),
+              expect);
+        } else {
+          const auto output_fragments = instance_dense_consolidation<
+              sm::Datatype::UINT64,
+              DenseFragmentFixed>(
+              ctx, array_name, {row, col}, input_fragments, max_fragment_size);
+
+          std::vector<std::vector<Dom64>> expect;
+          for (uint64_t r = 0; r < num_fragments; r += rows_per_fragment) {
+            expect.push_back({Dom64(r, r + rows_per_fragment - 1), col.domain});
+          }
+          CHECK(output_fragments == expect);
+        }
+      }
+    }
+
+    SECTION("Rectangle tiles") {
+      // FIXME
+      SKIP("Fails with FPE due to overflow in compute_hyperrow_sizes");
+
+      const Dim64 row(0, std::numeric_limits<uint64_t>::max() - 1, 4);
+      const Dim64 col(0, 99999, 100000 / row.extent);
+
+      const uint64_t num_fragments = 32;
+
+      // each input fragment is 4 tiles, covering 4 rows of cells
+      std::vector<DenseFragmentFixed> input_fragments;
+      for (uint64_t f = 0; f < num_fragments; f++) {
+        DenseFragmentFixed fdata;
+        fdata.resize(row.extent * col.extent * row.extent);
+
+        auto& att = std::get<0>(fdata.attributes());
+        std::iota(
+            att.begin(), att.end(), static_cast<int>(f) * fdata.num_cells());
+
+        input_fragments.push_back(fdata);
+      }
+
+      // unfiltered, each row takes `100000 * sizeof(int)` bytes, plus some
+      // padding
+      const uint64_t tile_size = (row.extent * col.extent * sizeof(int)) + 92;
+
+      SECTION("Too small") {
+        const auto expect = Catch::Matchers::ContainsSubstring(
+            "Fragment size is too small to subdivide dense subarray into "
+            "multiple fragments");
+        REQUIRE_THROWS(
+            instance_dense_consolidation<
+                sm::Datatype::UINT64,
+                DenseFragmentFixed>(
+                ctx, array_name, {row, col}, input_fragments, tile_size - 1),
+            expect);
+      }
+      SECTION("One tile") {
+        std::vector<std::vector<Dom64>> expect;
+        for (uint64_t r = 0; r < num_fragments; r++) {
+          for (uint64_t c = 0; c < 4; c++) {
+            expect.push_back(
+                {Dom64(r * 4, r * 4 + 3),
+                 Dom64(col.extent * c, (col.extent * (c + 1)) - 1)});
+          }
+        }
+        const auto output_fragments = instance_dense_consolidation<
+            sm::Datatype::UINT64,
+            DenseFragmentFixed>(
+            ctx, array_name, {row, col}, input_fragments, tile_size);
+        CHECK(output_fragments == expect);
+      }
+      SECTION("Two tiles") {
+        std::vector<std::vector<Dom64>> expect;
+        for (uint64_t r = 0; r < num_fragments; r++) {
+          expect.push_back(
+              {Dom64(r * 4, r * 4 + 3), Dom64(0, (col.extent * 2) - 1)});
+          expect.push_back(
+              {Dom64(r * 4, r * 4 + 3),
+               Dom64(col.extent * 2, (col.extent * 4) - 1)});
+        }
+        const auto output_fragments = instance_dense_consolidation<
+            sm::Datatype::UINT64,
+            DenseFragmentFixed>(
+            ctx, array_name, {row, col}, input_fragments, tile_size);
+      }
+      SECTION("Three tiles") {
+        // now we have some trouble, each row is 4 tiles, 3 of them fit,
+        // so we will alternate fragments with 3 tiles and fragments with 1
+        // tile to fill out the row, yikes
+        std::vector<std::vector<Dom64>> expect;
+        for (uint64_t r = 0; r < num_fragments * 4; r++) {
+          expect.push_back(
+              {Dom64(r * 4, r * 4 + 3), Dom64(0, (col.extent * 3) - 1)});
+          expect.push_back(
+              {Dom64(r * 4, r * 4 + 3),
+               Dom64(col.extent * 3, (col.extent * 4) - 1)});
+        }
+        const auto output_fragments = instance_dense_consolidation<
+            sm::Datatype::UINT64,
+            DenseFragmentFixed>(
+            ctx, array_name, {row, col}, input_fragments, tile_size);
+        CHECK(output_fragments == expect);
+      }
+      SECTION("Four tiles") {
+        std::vector<std::vector<Dom64>> expect;
+        for (uint64_t f = 0; f < num_fragments; f++) {
+          expect.push_back({Dom64(f * 4, f * 4 + 3), col.domain});
+        }
+        const auto output_fragments = instance_dense_consolidation<
+            sm::Datatype::UINT64,
+            DenseFragmentFixed>(
+            ctx, array_name, {row, col}, input_fragments, tile_size);
+        CHECK(output_fragments == expect);
+      }
+      SECTION("Five tiles") {
+        // since we need rectangle domains this is the same as four tiles
+        std::vector<std::vector<Dom64>> expect;
+        for (uint64_t f = 0; f < num_fragments; f++) {
+          expect.push_back({Dom64(f * 4, f * 4 + 3), col.domain});
+        }
+        const auto output_fragments = instance_dense_consolidation<
+            sm::Datatype::UINT64,
+            DenseFragmentFixed>(
+            ctx, array_name, {row, col}, input_fragments, tile_size);
+        CHECK(output_fragments == expect);
+      }
+    }
+  }
 }
