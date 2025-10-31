@@ -610,6 +610,8 @@ instance_dense_consolidation(
     uint64_t max_fragment_size) {
   using Coord = templates::Dimension<DT>::value_type;
 
+  static constexpr sm::Layout tile_order = sm::Layout::ROW_MAJOR;
+
   // create array
   instance_dense_consolidation_create_array<DT, F>(ctx, array_name, domain);
 
@@ -636,11 +638,7 @@ instance_dense_consolidation(
       const uint64_t f_num_tiles = f.num_cells() / num_cells_per_tile;
 
       const std::optional<sm::NDRange> subarray = domain_tile_offset<Coord>(
-          sm::Layout::ROW_MAJOR,
-          tile_extents,
-          array_domain,
-          start_tile,
-          f_num_tiles);
+          tile_order, tile_extents, array_domain, start_tile, f_num_tiles);
       ASSERTER(subarray.has_value());
 
       templates::query::write_fragment<Asserter, F, Coord>(
@@ -653,7 +651,7 @@ instance_dense_consolidation(
   sm::NDRange non_empty_domain;
   {
     std::optional<sm::NDRange> maybe = domain_tile_offset<Coord>(
-        sm::Layout::ROW_MAJOR, tile_extents, array_domain, 0, start_tile);
+        tile_order, tile_extents, array_domain, 0, start_tile);
     ASSERTER(maybe.has_value());
     non_empty_domain = maybe.value();
   }
@@ -688,7 +686,7 @@ instance_dense_consolidation(
   const auto fragment_domains =
       collect_and_validate_fragment_domains<Coord, Asserter>(
           ctx,
-          sm::Layout::ROW_MAJOR,
+          tile_order,
           array_name,
           tile_extents,
           non_empty_domain,
