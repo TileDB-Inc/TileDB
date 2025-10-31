@@ -1170,7 +1170,7 @@ struct query_buffers<std::optional<std::vector<T>>> {
   }
 };
 
-template <typename DimensionTuple, typename AttributeTuple>
+template <typename _DimensionTuple, typename _AttributeTuple>
 struct Fragment {
  private:
   template <typename... Ts>
@@ -1207,6 +1207,9 @@ struct Fragment {
       decltype(f_qb_const_ref(std::declval<T>()));
 
  public:
+  using DimensionTuple = _DimensionTuple;
+  using AttributeTuple = _AttributeTuple;
+
   using self_type = Fragment<DimensionTuple, AttributeTuple>;
 
   using DimensionBuffers = value_tuple_query_buffers<DimensionTuple>;
@@ -1469,16 +1472,43 @@ namespace query {
 template <typename Asserter, FragmentType F>
 auto make_field_sizes(
     F& fragment, uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  typename F::DimensionBuffersRef dims = fragment.dimensions();
+  typename F::AttributeBuffersRef atts = fragment.attributes();
   return [cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
     return query_applicator<Asserter, Ts...>::make_field_sizes(
         fields, cell_limit);
-  }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+  }(std::tuple_cat(dims, atts));
 }
 
 template <FragmentType F>
 using fragment_field_sizes_t =
     decltype(make_field_sizes<AsserterRuntimeException, F>(
         std::declval<F&>(), std::declval<uint64_t>()));
+
+/**
+ * Apply field cursor and sizes to each field of `fragment`.
+ */
+template <FragmentType F>
+void apply_cursor(
+    F& fragment,
+    const fragment_field_sizes_t<F>& cursor,
+    const fragment_field_sizes_t<F>& field_sizes) {
+  typename F::DimensionBuffersRef dims = fragment.dimensions();
+  typename F::AttributeBuffersRef atts = fragment.attributes();
+  std::apply(
+      [&](auto&... field) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              std::apply(
+                  [&](const auto&... field_size) {
+                    (field.apply_cursor(field_cursor, field_size), ...);
+                  },
+                  field_sizes);
+            },
+            cursor);
+      },
+      std::tuple_cat(dims, atts));
+}
 
 /**
  * Set buffers on `query` for the tuple of field columns
@@ -1549,12 +1579,13 @@ void write_fragment(
   Query query(forwrite);
   query.set_layout(layout);
 
-  auto field_sizes = make_field_sizes<Asserter>(fragment);
+  auto field_sizes =
+      make_field_sizes<Asserter, Fragment>(const_cast<Fragment&>(fragment));
   templates::query::set_fields<Asserter, Fragment>(
       query.ctx().ptr().get(),
       query.ptr().get(),
       field_sizes,
-      fragment,
+      const_cast<Fragment&>(fragment),
       [](unsigned d) { return "d" + std::to_string(d + 1); },
       [](unsigned a) { return "a" + std::to_string(a + 1); });
 
