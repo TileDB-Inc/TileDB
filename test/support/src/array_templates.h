@@ -112,6 +112,27 @@ struct global_cell_cmp_std_tuple {
 };
 
 /**
+ * Adapts a span of coordinates for comparison using `GlobalCellCmp`.
+ */
+template <typename Coord>
+struct global_cell_cmp_span {
+  global_cell_cmp_span(std::span<const Coord> values)
+      : values_(values) {
+  }
+
+  tiledb::common::UntypedDatumView dimension_datum(
+      const tiledb::sm::Dimension&, unsigned dim_idx) const {
+    return UntypedDatumView(&values_[dim_idx], sizeof(Coord));
+  }
+
+  const void* coord(unsigned dim) const {
+    return &values_[dim];
+  }
+
+  std::span<const Coord> values_;
+};
+
+/**
  * Forward declaration of query_buffers
  * which will be specialized.
  *

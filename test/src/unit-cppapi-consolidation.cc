@@ -38,6 +38,7 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/comparators.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -704,6 +705,52 @@ instance_dense_consolidation(
   for (const auto& f : fragments) {
     input_concatenated.extend(f);
   }
+
+  // sort in global order
+  {
+    std::vector<uint64_t> idxs(input_concatenated.size());
+    std::iota(idxs.begin(), idxs.end(), 0);
+
+    std::vector<Coord> next_coord;
+    next_coord.reserve(domain.size());
+    for (uint64_t d = 0; d < domain.size(); d++) {
+      next_coord.push_back(domain[d].domain.lower_bound);
+    }
+
+    std::vector<std::vector<Coord>> coords;
+    coords.reserve(input_concatenated.size());
+    for (uint64_t i = 0; i < input_concatenated.size(); i++) {
+      coords.push_back(next_coord);
+      for (uint64_t di = 0; di < domain.size(); di++) {
+        const uint64_t d = domain.size() - di - 1;
+        if (next_coord[d] < domain[d].domain.upper_bound) {
+          ++next_coord[d];
+          break;
+        } else {
+          next_coord[d] = 0;
+        }
+      }
+    }
+
+    sm::GlobalCellCmp globalcmp(
+        forread.ptr()->array()->array_schema_latest().domain());
+
+    const auto hyperrow_sizes = compute_hyperrow_sizes<Coord>(
+        tile_order, tile_extents, non_empty_domain);
+
+    auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
+      const auto sa = templates::global_cell_cmp_span<Coord>(coords[ia]);
+      const auto sb = templates::global_cell_cmp_span<Coord>(coords[ib]);
+      return globalcmp(sa, sb);
+    };
+
+    std::sort(idxs.begin(), idxs.end(), icmp);
+
+    input_concatenated.attributes() = stdx::select(
+        stdx::reference_tuple(input_concatenated.attributes()),
+        std::span(idxs));
+  }
+
   output = input_concatenated;
 
   Subarray sub(ctx, forread);
