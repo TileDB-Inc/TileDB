@@ -1149,13 +1149,29 @@ void rapidcheck_dense_array(
     num_tiles_per_hyperrow *= dimensions[dim].num_tiles(subarray[dim]);
   }
 
+  const uint64_t num_tiles_total =
+      num_tiles_per_hyperrow *
+      (tile_order == TILEDB_ROW_MAJOR ?
+           (dimensions[0].num_tiles(subarray[0])) :
+           (dimensions.back().num_tiles(subarray.back())));
+
   auto gen_fragment_size = rc::gen::inRange(
       estimate_single_tile_fragment_size,
       num_tiles_per_hyperrow * estimate_single_tile_fragment_size * 8);
   const uint64_t max_fragment_size = *gen_fragment_size;
 
+  auto gen_write_unit_num_cells =
+      rc::gen::inRange<uint64_t>(1, num_tiles_total * num_cells_per_tile);
+  const uint64_t write_unit_num_cells = *gen_write_unit_num_cells;
+
   instance_dense_global_order<AsserterRapidcheck>(
-      ctx, tile_order, cell_order, max_fragment_size, dimensions, subarray);
+      ctx,
+      tile_order,
+      cell_order,
+      max_fragment_size,
+      dimensions,
+      subarray,
+      write_unit_num_cells);
 }
 
 TEST_CASE(
@@ -1212,6 +1228,17 @@ TEST_CASE(
           24,
           {Dim64(0, 60, 1), Dim64(0, 20, 1)},
           {Dom64(0, 1), Dom64(0, 1)});
+    }
+
+    SECTION("Example 3") {
+      instance_dense_global_order<AsserterCatch>(
+          ctx,
+          TILEDB_ROW_MAJOR,
+          TILEDB_ROW_MAJOR,
+          48,
+          {Dim64(0, 35, 1), Dim64(0, 420, 1)},
+          {Dom64(0, 1), Dom64(0, 4)},
+          1);
     }
   }
 
