@@ -651,8 +651,8 @@ instance_dense_global_order(
       uint64_t in_memory_size = 0;
       std::optional<uint64_t> in_memory_num_tiles;
       for (const auto& field : g->last_tiles_) {
-        // NB: there should always be at least one tile which contains the state
-        // of the current fragment
+        // NB: there should always be at least one tile which contains the
+        // state of the current fragment
         ASSERTER(!field.second.empty());
 
         for (uint64_t t = 0; t < field.second.size() - 1; t++) {
@@ -1239,6 +1239,21 @@ TEST_CASE(
           {Dim64(0, 35, 1), Dim64(0, 420, 1)},
           {Dom64(0, 1), Dom64(0, 4)},
           1);
+    }
+
+    SECTION("Example 4") {
+      /*
+       * In this example we end up with a fragment which fills all but one tile
+       * of a single row. The last tile in the row has to be its own fragment.
+       */
+      auto fragments = instance_dense_global_order<AsserterCatch>(
+          ctx,
+          TILEDB_ROW_MAJOR,
+          TILEDB_ROW_MAJOR,
+          924,
+          {Dim64(0, 304, 8), Dim64(0, 147, 2)},
+          {Dom64(0, 31), Dom64(0, 23)},
+          41);
     }
   }
 

@@ -980,15 +980,6 @@ Status GlobalOrderWriter::global_write() {
 
     const uint64_t offset_not_written = fragments.num_writeable_tiles_;
 
-    if (!global_write_state_->frag_meta_ ||
-        fragments.tile_offsets_.size() > 1) {
-      RETURN_CANCEL_OR_ERROR(start_new_fragment());
-    }
-
-    global_write_state_->frag_meta_->set_num_tiles(
-        global_write_state_->frag_meta_->tile_index_base() + tile_num -
-        offset_not_written);
-
     // Dense array does not have bounding rectangles.
     // If there were any other tile metadata which we needed to draw from the
     // un-filtered tiles, we would have to store that in the global write state
@@ -1608,14 +1599,12 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
   uint64_t running_tiles_size = current_fragment_size_;
   uint64_t fragment_size = current_fragment_size_;
 
-  std::optional<uint64_t> subarray_tile_offset;
-  if (dense()) {
-    if (global_write_state_->frag_meta_) {
-      subarray_tile_offset = global_write_state_->dense_.domain_tile_offset_ +
-                             global_write_state_->frag_meta_->tile_index_base();
-    } else {
-      subarray_tile_offset = 0;
-    }
+  uint64_t write_state_start_tile =
+      global_write_state_->dense_.domain_tile_offset_;
+  uint64_t current_fragment_num_tiles_already_written = 0;
+  if (dense() && global_write_state_->frag_meta_) {
+    current_fragment_num_tiles_already_written =
+        global_write_state_->frag_meta_->tile_index_base();
   }
 
   uint64_t fragment_start = 0;
@@ -1655,14 +1644,27 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       fragment_start =
           static_cast<uint64_t>(std::max<int64_t>(0, fragment_end));
       fragment_end = -1;
+
+      write_state_start_tile += current_fragment_num_tiles_already_written;
+      current_fragment_num_tiles_already_written = 0;
     }
 
-    if (!subarray_tile_offset.has_value() || !max_fragment_size_.has_value() ||
-        is_rectangular_domain(
-            array_schema_,
-            subarray_.ndrange(0),
-            subarray_tile_offset.value() + fragment_start,
-            t - fragment_start + 1)) {
+    bool is_part_of_fragment = true;
+    if (dense() && max_fragment_size_.has_value()) {
+      // Dense fragments must have a rectangular domain.
+      // And all fragments must be smaller than `max_fragment_size_`.
+      // We must identify the highest tile number which satisfies both criteria.
+      const uint64_t fragment_start_tile =
+          write_state_start_tile + fragment_start;
+      const uint64_t maybe_num_tiles =
+          current_fragment_num_tiles_already_written + t - fragment_start + 1;
+      is_part_of_fragment = is_rectangular_domain(
+          array_schema_,
+          subarray_.ndrange(0),
+          fragment_start_tile,
+          maybe_num_tiles);
+    }
+    if (is_part_of_fragment) {
       fragment_size = running_tiles_size + tile_size;
       fragment_end = static_cast<int64_t>(t + 1);
     }
