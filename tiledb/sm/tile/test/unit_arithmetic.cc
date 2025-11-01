@@ -157,7 +157,7 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
           if (num_tiles < 3 || num_tiles % 3 == 0) {
             CHECK(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
           } else {
-            CHECK(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
+            CHECK(tt(start_tile, num_tiles) == IsRectangularDomain::No);
           }
         }
       }
@@ -169,7 +169,7 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
           if ((start_tile % 3) + num_tiles <= 3) {
             CHECK(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
           } else {
-            CHECK(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
+            CHECK(tt(start_tile, num_tiles) == IsRectangularDomain::Never);
           }
         }
       }
@@ -196,7 +196,7 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
                 num_tiles % d2.num_tiles() == 0) {
               ASSERTER(tt(t, num_tiles) == IsRectangularDomain::Yes);
             } else {
-              ASSERTER(tt(t, num_tiles) != IsRectangularDomain::Yes);
+              ASSERTER(tt(t, num_tiles) == IsRectangularDomain::No);
             }
           }
           // other tiles
@@ -206,7 +206,7 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
               if (((t + o) % d2.num_tiles()) + num_tiles <= d2.num_tiles()) {
                 ASSERTER(tt(t + o, num_tiles) == IsRectangularDomain::Yes);
               } else {
-                ASSERTER(tt(t + o, num_tiles) != IsRectangularDomain::Yes);
+                ASSERTER(tt(t + o, num_tiles) == IsRectangularDomain::Never);
               }
             }
           }
@@ -257,56 +257,59 @@ TEST_CASE("is_rectangular_domain 3d", "[arithmetic]") {
    * `{d1, d2, d3}` and asserts that `is_rectangular_domain` returns true if and
    * only if the pair represents an expected rectangle.
    */
-  auto instance_is_rectangular_domain_3d =
-      []<typename Asserter = AsserterCatch>(Dim64 d1, Dim64 d2, Dim64 d3) {
-        auto tt = [&](uint64_t start_tile,
-                      uint64_t num_tiles) -> IsRectangularDomain {
-          return is_rectangular_domain(d1, d2, d3, start_tile, num_tiles);
-        };
+  auto instance_is_rectangular_domain_3d = []<typename Asserter =
+                                                  AsserterCatch>(
+                                               Dim64 d1, Dim64 d2, Dim64 d3) {
+    auto tt = [&](uint64_t start_tile,
+                  uint64_t num_tiles) -> IsRectangularDomain {
+      return is_rectangular_domain(d1, d2, d3, start_tile, num_tiles);
+    };
 
-        const uint64_t total_tiles =
-            d1.num_tiles() * d2.num_tiles() * d3.num_tiles();
-        const uint64_t plane_tiles = d2.num_tiles() * d3.num_tiles();
+    const uint64_t total_tiles =
+        d1.num_tiles() * d2.num_tiles() * d3.num_tiles();
+    const uint64_t plane_tiles = d2.num_tiles() * d3.num_tiles();
 
-        for (uint64_t start_tile = 0; start_tile < total_tiles; start_tile++) {
-          for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
-               num_tiles++) {
-            if (start_tile % plane_tiles == 0) {
-              // aligned to a plane, several options to be a rectangle
-              if (num_tiles <= d3.num_tiles()) {
-                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
-              } else if (
-                  num_tiles <= plane_tiles && num_tiles % d3.num_tiles() == 0) {
-                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
-              } else if (num_tiles % (plane_tiles) == 0) {
-                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
-              } else {
-                ASSERTER(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
-              }
-            } else if (start_tile % d3.num_tiles() == 0) {
-              // aligned to a row within a plane, but not aligned to the plane
-              // this is a rectangle if it is an integral number of rows, or
-              // fits within a row
-              if (num_tiles <= d3.num_tiles()) {
-                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
-              } else if (
-                  num_tiles % d3.num_tiles() == 0 &&
-                  (start_tile % plane_tiles) + num_tiles <= plane_tiles) {
-                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
-              } else {
-                ASSERTER(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
-              }
-            } else {
-              // unaligned, only a rectangle if it doesn't advance rows
-              if (start_tile % d3.num_tiles() + num_tiles <= d3.num_tiles()) {
-                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
-              } else {
-                ASSERTER(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
-              }
-            }
+    for (uint64_t start_tile = 0; start_tile < total_tiles; start_tile++) {
+      for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
+           num_tiles++) {
+        if (start_tile % plane_tiles == 0) {
+          // aligned to a plane, several options to be a rectangle
+          if (num_tiles <= d3.num_tiles()) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
+          } else if (
+              num_tiles <= plane_tiles && num_tiles % d3.num_tiles() == 0) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
+          } else if (num_tiles % plane_tiles == 0) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
+          } else {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::No);
+          }
+        } else if (start_tile % d3.num_tiles() == 0) {
+          // aligned to a row within a plane, but not aligned to the plane
+          // this is a rectangle if it is an integral number of rows, or
+          // fits within a row
+          if (num_tiles <= d3.num_tiles()) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
+          } else if (
+              num_tiles % d3.num_tiles() == 0 &&
+              (start_tile % plane_tiles) + num_tiles <= plane_tiles) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
+          } else if ((start_tile % plane_tiles) + num_tiles <= plane_tiles) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::No);
+          } else {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Never);
+          }
+        } else {
+          // unaligned, only a rectangle if it doesn't advance rows
+          if (start_tile % d3.num_tiles() + num_tiles <= d3.num_tiles()) {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
+          } else {
+            ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Never);
           }
         }
-      };
+      }
+    }
+  };
 
   SECTION("Shrinking") {
     instance_is_rectangular_domain_3d(
