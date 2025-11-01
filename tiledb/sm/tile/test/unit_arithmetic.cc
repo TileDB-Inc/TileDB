@@ -15,7 +15,7 @@ using namespace sm;
 using namespace tiledb::test;
 
 template <typename T>
-static bool is_rectangular_domain(
+static IsRectangularDomain is_rectangular_domain(
     std::span<const T> tile_extents,
     T lower_bound,
     T upper_bound,
@@ -29,7 +29,7 @@ static bool is_rectangular_domain(
 }
 
 template <typename T>
-static bool is_rectangular_domain(
+static IsRectangularDomain is_rectangular_domain(
     std::span<const T> tile_extents,
     T d1_lower_bound,
     T d1_upper_bound,
@@ -46,7 +46,7 @@ static bool is_rectangular_domain(
 }
 
 template <sm::Datatype DT>
-static bool is_rectangular_domain(
+static IsRectangularDomain is_rectangular_domain(
     const templates::Dimension<DT>& d1,
     const templates::Dimension<DT>& d2,
     uint64_t start_tile,
@@ -66,7 +66,7 @@ static bool is_rectangular_domain(
 }
 
 template <sm::Datatype DT>
-static bool is_rectangular_domain(
+static IsRectangularDomain is_rectangular_domain(
     const templates::Dimension<DT>& d1,
     const templates::Dimension<DT>& d2,
     const templates::Dimension<DT>& d3,
@@ -94,12 +94,13 @@ TEST_CASE("is_rectangular_domain 1d", "[arithmetic]") {
             *rc::gen::inRange<uint64_t>(1, dimension.num_tiles() - start_tile);
 
         const std::vector<uint64_t> extents = {dimension.extent};
-        RC_ASSERT(is_rectangular_domain<uint64_t>(
-            extents,
-            dimension.domain.lower_bound,
-            dimension.domain.upper_bound,
-            start_tile,
-            num_tiles));
+        RC_ASSERT(
+            is_rectangular_domain<uint64_t>(
+                extents,
+                dimension.domain.lower_bound,
+                dimension.domain.upper_bound,
+                start_tile,
+                num_tiles) == IsRectangularDomain::Yes);
       });
 }
 
@@ -119,14 +120,15 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
         for (uint64_t num_tiles = 1; start_tile + num_tiles <= 16;
              num_tiles++) {
           CAPTURE(start_tile, num_tiles);
-          CHECK(is_rectangular_domain<uint64_t>(
-              extents,
-              d1_lower,
-              d1_upper,
-              d2_lower,
-              d2_upper,
-              start_tile,
-              num_tiles));
+          CHECK(
+              is_rectangular_domain<uint64_t>(
+                  extents,
+                  d1_lower,
+                  d1_upper,
+                  d2_lower,
+                  d2_upper,
+                  start_tile,
+                  num_tiles) == IsRectangularDomain::Yes);
         }
       }
     }
@@ -135,7 +137,8 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
       // 7x7 tiles will subdivide the 16x16 square into 3x3 tiles
       const std::vector<uint64_t> extents = {7, 7};
 
-      auto tt = [&](uint64_t start_tile, uint64_t num_tiles) -> bool {
+      auto tt = [&](uint64_t start_tile,
+                    uint64_t num_tiles) -> IsRectangularDomain {
         return is_rectangular_domain<uint64_t>(
             extents,
             d1_lower,
@@ -152,9 +155,9 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
         for (uint64_t num_tiles = 1; start_tile + num_tiles <= 9; num_tiles++) {
           CAPTURE(start_tile, num_tiles);
           if (num_tiles < 3 || num_tiles % 3 == 0) {
-            CHECK(tt(start_tile, num_tiles));
+            CHECK(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
           } else {
-            CHECK(!tt(start_tile, num_tiles));
+            CHECK(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
           }
         }
       }
@@ -164,9 +167,9 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
         for (uint64_t num_tiles = 1; start_tile + num_tiles <= 9; num_tiles++) {
           CAPTURE(start_tile, num_tiles);
           if ((start_tile % 3) + num_tiles <= 3) {
-            CHECK(tt(start_tile, num_tiles));
+            CHECK(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
           } else {
-            CHECK(!tt(start_tile, num_tiles));
+            CHECK(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
           }
         }
       }
@@ -178,7 +181,8 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
   auto instance_is_rectangular_domain_2d =
       []<typename Asserter = AsserterCatch>(Dim64 d1, Dim64 d2) {
         const std::vector<uint64_t> extents = {d1.extent, d2.extent};
-        auto tt = [&](uint64_t start_tile, uint64_t num_tiles) -> bool {
+        auto tt = [&](uint64_t start_tile,
+                      uint64_t num_tiles) -> IsRectangularDomain {
           return is_rectangular_domain(d1, d2, start_tile, num_tiles);
         };
 
@@ -190,9 +194,9 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
                num_tiles++) {
             if (num_tiles <= d2.num_tiles() ||
                 num_tiles % d2.num_tiles() == 0) {
-              ASSERTER(tt(t, num_tiles));
+              ASSERTER(tt(t, num_tiles) == IsRectangularDomain::Yes);
             } else {
-              ASSERTER(!tt(t, num_tiles));
+              ASSERTER(tt(t, num_tiles) != IsRectangularDomain::Yes);
             }
           }
           // other tiles
@@ -200,9 +204,9 @@ TEST_CASE("is_rectangular_domain 2d", "[arithmetic]") {
             for (uint64_t num_tiles = 1; t + o + num_tiles <= total_tiles;
                  num_tiles++) {
               if (((t + o) % d2.num_tiles()) + num_tiles <= d2.num_tiles()) {
-                ASSERTER(tt(t + o, num_tiles));
+                ASSERTER(tt(t + o, num_tiles) == IsRectangularDomain::Yes);
               } else {
-                ASSERTER(!tt(t + o, num_tiles));
+                ASSERTER(tt(t + o, num_tiles) != IsRectangularDomain::Yes);
               }
             }
           }
@@ -238,9 +242,9 @@ TEST_CASE("is_rectangular_domain 3d", "[arithmetic]") {
     for (uint64_t start_tile = 0; start_tile < total_tiles; start_tile++) {
       for (uint64_t num_tiles = 1; start_tile + num_tiles <= total_tiles;
            num_tiles++) {
-        const bool rectangle =
+        const IsRectangularDomain rectangle =
             is_rectangular_domain(d2, d3, start_tile, num_tiles);
-        const bool plane =
+        const IsRectangularDomain plane =
             is_rectangular_domain(d1, d2, d3, start_tile, num_tiles);
 
         RC_ASSERT(rectangle == plane);
@@ -255,7 +259,8 @@ TEST_CASE("is_rectangular_domain 3d", "[arithmetic]") {
    */
   auto instance_is_rectangular_domain_3d =
       []<typename Asserter = AsserterCatch>(Dim64 d1, Dim64 d2, Dim64 d3) {
-        auto tt = [&](uint64_t start_tile, uint64_t num_tiles) -> bool {
+        auto tt = [&](uint64_t start_tile,
+                      uint64_t num_tiles) -> IsRectangularDomain {
           return is_rectangular_domain(d1, d2, d3, start_tile, num_tiles);
         };
 
@@ -269,34 +274,34 @@ TEST_CASE("is_rectangular_domain 3d", "[arithmetic]") {
             if (start_tile % plane_tiles == 0) {
               // aligned to a plane, several options to be a rectangle
               if (num_tiles <= d3.num_tiles()) {
-                ASSERTER(tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
               } else if (
                   num_tiles <= plane_tiles && num_tiles % d3.num_tiles() == 0) {
-                ASSERTER(tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
               } else if (num_tiles % (plane_tiles) == 0) {
-                ASSERTER(tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
               } else {
-                ASSERTER(!tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
               }
             } else if (start_tile % d3.num_tiles() == 0) {
               // aligned to a row within a plane, but not aligned to the plane
               // this is a rectangle if it is an integral number of rows, or
               // fits within a row
               if (num_tiles <= d3.num_tiles()) {
-                ASSERTER(tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
               } else if (
                   num_tiles % d3.num_tiles() == 0 &&
                   (start_tile % plane_tiles) + num_tiles <= plane_tiles) {
-                ASSERTER(tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
               } else {
-                ASSERTER(!tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
               }
             } else {
               // unaligned, only a rectangle if it doesn't advance rows
               if (start_tile % d3.num_tiles() + num_tiles <= d3.num_tiles()) {
-                ASSERTER(tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) == IsRectangularDomain::Yes);
               } else {
-                ASSERTER(!tt(start_tile, num_tiles));
+                ASSERTER(tt(start_tile, num_tiles) != IsRectangularDomain::Yes);
               }
             }
           }
@@ -330,11 +335,11 @@ std::optional<sm::NDRange> instance_domain_tile_offset(
     uint64_t start_tile,
     uint64_t num_tiles,
     Layout tile_order = Layout::ROW_MAJOR) {
-  const bool expect_rectangle = is_rectangular_domain(
+  const IsRectangularDomain expect_rectangle = is_rectangular_domain(
       tile_order, tile_extents, domain, start_tile, num_tiles);
   const std::optional<sm::NDRange> adjusted_domain = domain_tile_offset(
       tile_order, tile_extents, domain, start_tile, num_tiles);
-  if (!expect_rectangle) {
+  if (expect_rectangle != IsRectangularDomain::Yes) {
     ASSERTER(!adjusted_domain.has_value());
     return std::nullopt;
   }

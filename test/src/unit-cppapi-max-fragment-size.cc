@@ -674,16 +674,17 @@ instance_dense_global_order(
       ASSERTER(in_memory_num_tiles.has_value());
       for (uint64_t num_tiles = 0; num_tiles < in_memory_num_tiles.value();
            num_tiles++) {
-        const bool rectangle = sm::is_rectangular_domain<uint64_t>(
-            static_cast<sm::Layout>(tile_order),
-            tile_extents,
-            smsubarray_aligned,
-            g->dense_.domain_tile_offset_,
-            g->frag_meta_->tile_index_base() + num_tiles);
+        const sm::IsRectangularDomain rectangle =
+            sm::is_rectangular_domain<uint64_t>(
+                static_cast<sm::Layout>(tile_order),
+                tile_extents,
+                smsubarray_aligned,
+                g->dense_.domain_tile_offset_,
+                g->frag_meta_->tile_index_base() + num_tiles);
         if (num_tiles == 0) {
-          ASSERTER(rectangle);
+          ASSERTER(rectangle == sm::IsRectangularDomain::Yes);
         } else {
-          ASSERTER(!rectangle);
+          ASSERTER(rectangle != sm::IsRectangularDomain::Yes);
         }
       }
     }

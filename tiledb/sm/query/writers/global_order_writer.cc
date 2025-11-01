@@ -71,7 +71,7 @@ namespace tiledb::sm {
  * each of the input tiles to determine whether a rectangle is formed and
  * including a tile in a fragment is sound.
  */
-static bool is_rectangular_domain(
+static IsRectangularDomain is_rectangular_domain(
     const ArraySchema& arrayschema,
     const NDRange& domain,
     uint64_t start_tile,
@@ -98,7 +98,7 @@ static bool is_rectangular_domain(
           start_tile,
           num_tiles);
     } else {
-      return false;
+      return IsRectangularDomain::Never;
     }
   };
   return apply_with_type(impl, arraydomain.dimension_ptr(0)->type());
@@ -1658,11 +1658,12 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
           write_state_start_tile + fragment_start;
       const uint64_t maybe_num_tiles =
           current_fragment_num_tiles_already_written + t - fragment_start + 1;
-      is_part_of_fragment = is_rectangular_domain(
-          array_schema_,
-          subarray_.ndrange(0),
-          fragment_start_tile,
-          maybe_num_tiles);
+      is_part_of_fragment =
+          (is_rectangular_domain(
+               array_schema_,
+               subarray_.ndrange(0),
+               fragment_start_tile,
+               maybe_num_tiles) == IsRectangularDomain::Yes);
     }
     if (is_part_of_fragment) {
       fragment_size = running_tiles_size + tile_size;

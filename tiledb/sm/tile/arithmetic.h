@@ -56,11 +56,25 @@
 namespace tiledb::sm {
 
 /**
+ * Ternary value for the result of `is_rectangular_domain`.
+ * Describes whether a `[start_tile, start_tile + num_tiles)` range
+ * over a given domain forms a rectangle.
+ */
+enum class IsRectangularDomain {
+  /** The range is not a rectangle, but extending it could create one. */
+  No,
+  /** The range is not a rectangle, and extending it can never create one. */
+  Never,
+  /** The range is a rectangle. */
+  Yes
+};
+
+/**
  * @return true if the range `[start_tile, start_tile + num_tiles)` represents
  * a hyper-rectangle inside `domain` with tile sizes given by `tile_extents`
  */
 template <typename T>
-static bool is_rectangular_domain(
+static IsRectangularDomain is_rectangular_domain(
     Layout tile_order,
     std::span<const T> tile_extents,
     const sm::NDRange& domain,
@@ -92,13 +106,13 @@ static bool is_rectangular_domain(
     const uint64_t hyperrow_offset = start_tile % hyperrow_num_tiles;
     if (hyperrow_offset + num_tiles > hyperrow_num_tiles) {
       if (hyperrow_offset != 0) {
-        return false;
+        return IsRectangularDomain::Never;
       } else if (num_tiles % hyperrow_num_tiles != 0) {
-        return false;
+        return IsRectangularDomain::No;
       }
     }
   }
-  return true;
+  return IsRectangularDomain::Yes;
 }
 
 /**
