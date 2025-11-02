@@ -684,7 +684,9 @@ instance_dense_global_order(
         if (num_tiles == 0) {
           ASSERTER(rectangle == sm::IsRectangularDomain::Yes);
         } else {
-          ASSERTER(rectangle != sm::IsRectangularDomain::Yes);
+          // if `Never` then we should have started a new fragment
+          // to avoid buffering up until we hit the tile size
+          ASSERTER(rectangle == sm::IsRectangularDomain::No);
         }
       }
     }

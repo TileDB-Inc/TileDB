@@ -1621,14 +1621,19 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       tile_size += writer_tile_vectors[a]->at(t).filtered_size().value();
     }
 
+    if (tile_size >
+        max_fragment_size_.value_or(std::numeric_limits<uint64_t>::max())) {
+      throw GlobalOrderWriterException(
+          "Fragment size is too small to write a single tile");
+    }
+
+    bool should_start_new_fragment = false;
+
     // NB: normally this should only hit once, but if there is a single
     // tile larger than the max fragment size it could hit twice and error
-    while (running_tiles_size + tile_size >
-           max_fragment_size_.value_or(std::numeric_limits<uint64_t>::max())) {
-      if (running_tiles_size == 0) {
-        throw GlobalOrderWriterException(
-            "Fragment size is too small to write a single tile");
-      } else if (fragment_end < 0) {
+    if (running_tiles_size + tile_size >
+        max_fragment_size_.value_or(std::numeric_limits<uint64_t>::max())) {
+      if (fragment_end < 0) {
         if (fragment_size == 0) {
           throw GlobalOrderWriterException(
               "Fragment size is too small to subdivide dense subarray into "
@@ -1636,6 +1641,24 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
         }
       }
 
+      should_start_new_fragment = true;
+    } else if (dense() && max_fragment_size_.has_value()) {
+      // Dense fragments must have a rectangular domain.
+      // And all fragments must be smaller than `max_fragment_size_`.
+      // We must identify the highest tile number which satisfies both criteria.
+      const uint64_t fragment_start_tile =
+          write_state_start_tile + fragment_start;
+      const uint64_t maybe_num_tiles =
+          current_fragment_num_tiles_already_written + t - fragment_start + 1;
+      should_start_new_fragment =
+          (is_rectangular_domain(
+               array_schema_,
+               subarray_.ndrange(0),
+               fragment_start_tile,
+               maybe_num_tiles) == IsRectangularDomain::Never);
+    }
+
+    if (should_start_new_fragment) {
       fragments.push_back(fragment_start);
 
       iassert(running_tiles_size >= fragment_size);
@@ -1649,7 +1672,7 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
       current_fragment_num_tiles_already_written = 0;
     }
 
-    bool is_part_of_fragment = true;
+    bool extends_fragment = true;
     if (dense() && max_fragment_size_.has_value()) {
       // Dense fragments must have a rectangular domain.
       // And all fragments must be smaller than `max_fragment_size_`.
@@ -1658,14 +1681,14 @@ GlobalOrderWriter::identify_fragment_tile_boundaries(
           write_state_start_tile + fragment_start;
       const uint64_t maybe_num_tiles =
           current_fragment_num_tiles_already_written + t - fragment_start + 1;
-      is_part_of_fragment =
+      extends_fragment =
           (is_rectangular_domain(
                array_schema_,
                subarray_.ndrange(0),
                fragment_start_tile,
                maybe_num_tiles) == IsRectangularDomain::Yes);
     }
-    if (is_part_of_fragment) {
+    if (extends_fragment) {
       fragment_size = running_tiles_size + tile_size;
       fragment_end = static_cast<int64_t>(t + 1);
     }
