@@ -152,7 +152,6 @@ jobs:
         ci9,
         ci_manylinux,
         ci_msvc,
-        ci_rest,
         backward_compatibility,
         standalone
       ]
