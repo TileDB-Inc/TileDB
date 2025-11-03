@@ -110,21 +110,11 @@ class BitshuffleFilter : public Filter {
    * @param filter_data_type Datatype of the data to be shuffled.
    * @param part Buffer containing data to be shuffled.
    * @param output Buffer to hold shuffled data.
+   * @param invert If true, performs a bit unshuffle instead of a bit shuffle.
    * @return Status
    */
   static Status shuffle_part(
-      Datatype filter_data_type, const ConstBuffer& part, Buffer& output);
-
-  /**
-   * Perform bit unshuffling on the given input buffer.
-   *
-   * @param filter_data_type Datatype of the data to be unshuffled.
-   * @param part Buffer containing shuffled data.
-   * @param output Buffer to hold unshuffled data.
-   * @return Status
-   */
-  static Status unshuffle_part(
-      Datatype filter_data_type, const ConstBuffer& part, Buffer& output);
+      Datatype filter_data_type, const ConstBuffer& part, Buffer& output, bool invert);
 
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */

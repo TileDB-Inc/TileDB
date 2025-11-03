@@ -44,6 +44,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+// https://github.com/kiyo-masui/bitshuffle/blob/526440a16baff44bd405e0741ebd285858a5408d/src/bitshuffle_internals.h#L36
+static constexpr size_t BSHUF_TARGET_BLOCK_SIZE_B = 8192;
+
 BitshuffleFilter::BitshuffleFilter(Datatype filter_data_type)
     : Filter(FilterType::FILTER_BITSHUFFLE, filter_data_type) {
 }
@@ -91,7 +94,8 @@ void BitshuffleFilter::run_forward(
       // Can't shuffle: just copy.
       std::memcpy(output_buf->cur_data(), part.data(), part_size);
     } else {
-      throw_if_not_ok(shuffle_part(filter_data_type_, part, *output_buf));
+      throw_if_not_ok(
+          shuffle_part(filter_data_type_, part, *output_buf, false));
     }
 
     if (output_buf->owns_data())
@@ -122,25 +126,42 @@ Status BitshuffleFilter::compute_parts(
 }
 
 Status BitshuffleFilter::shuffle_part(
-    Datatype filter_data_type, const ConstBuffer& part, Buffer& output) {
+    Datatype filter_data_type,
+    const ConstBuffer& part,
+    Buffer& output,
+    bool invert) {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type));
-  auto bytes_processed = blosc2_bitshuffle(
-      tile_type_size,
-      part.size(),
-      (uint8_t*)part.data(),
-      (uint8_t*)output.cur_data());
+  auto input_data = (uint8_t*)part.data();
+  auto output_data = (uint8_t*)output.cur_data();
+  auto remaining_bytes = part.size();
 
-  if (bytes_processed < 0) {
-    return LOG_STATUS(Status_FilterError(
-        std::string("Bitshuffle error; ") +
-        blosc2_error_string(bytes_processed)));
+  while (remaining_bytes > 0) {
+    // For compatibility with kiyo-masui/bitshuffle, process input in blocks of
+    // BSHUF_TARGET_BLOCK_SIZE_B bytes. That library's functions accepted
+    // elements in its size argument instead of bytes, so the
+    // bshuf_default_block_size function does not have to be copied here.
+    auto part_size =
+        (int32_t)std::min<uint64_t>(remaining_bytes, BSHUF_TARGET_BLOCK_SIZE_B);
+    auto bytes_processed =
+        invert ? blosc2_bitunshuffle(
+                     tile_type_size, part_size, input_data, output_data) :
+                 blosc2_bitshuffle(
+                     tile_type_size, part_size, input_data, output_data);
+    if (bytes_processed < 0) {
+      return LOG_STATUS(Status_FilterError(
+          std::string("Bitshuffle error; ") +
+          blosc2_error_string(bytes_processed)));
+    }
+
+    if (bytes_processed != part_size)
+      return LOG_STATUS(Status_FilterError(
+          "Bitshuffle error; Unhandled internal error code " +
+          std::to_string(bytes_processed)));
+
+    input_data += part_size;
+    output_data += part_size;
+    remaining_bytes -= part_size;
   }
-
-  if (bytes_processed != (int64_t)part.size())
-    return LOG_STATUS(Status_FilterError(
-        "Bitshuffle error; Unhandled internal error code " +
-        std::to_string(bytes_processed)));
-
   return Status::Ok();
 }
 
@@ -172,7 +193,7 @@ Status BitshuffleFilter::run_reverse(
       // Part was not shuffled; just copy.
       std::memcpy(output_buf->cur_data(), part.data(), part_size);
     } else {
-      RETURN_NOT_OK(unshuffle_part(filter_data_type_, part, *output_buf));
+      RETURN_NOT_OK(shuffle_part(filter_data_type_, part, *output_buf, true));
     }
 
     if (output_buf->owns_data())
@@ -186,29 +207,6 @@ Status BitshuffleFilter::run_reverse(
   auto md_offset = input_metadata->offset();
   RETURN_NOT_OK(output_metadata->append_view(
       input_metadata, md_offset, input_metadata->size() - md_offset));
-
-  return Status::Ok();
-}
-
-Status BitshuffleFilter::unshuffle_part(
-    Datatype filter_data_type, const ConstBuffer& part, Buffer& output) {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type));
-  auto bytes_processed = blosc2_bitunshuffle(
-      tile_type_size,
-      part.size(),
-      (uint8_t*)part.data(),
-      (uint8_t*)output.cur_data());
-
-  if (bytes_processed < 0) {
-    return LOG_STATUS(Status_FilterError(
-        std::string("Bitunshuffle error; ") +
-        blosc2_error_string(bytes_processed)));
-  }
-
-  if (bytes_processed != (int64_t)part.size())
-    return LOG_STATUS(Status_FilterError(
-        "Bitshuffle error; Unhandled internal error code " +
-        std::to_string(bytes_processed)));
 
   return Status::Ok();
 }
