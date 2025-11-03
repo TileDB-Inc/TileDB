@@ -278,6 +278,11 @@ Status GlobalOrderWriter::alloc_global_write_state() {
                            "properly finalized"));
   global_write_state_.reset(tdb_new(GlobalWriteState, query_memory_tracker_));
 
+  // Alloc FragmentMetadata object
+  global_write_state_->frag_meta_ = this->create_fragment_metadata();
+  // Used in serialization when FragmentMetadata is built from ground up
+  global_write_state_->frag_meta_->set_context_resources(&resources_);
+
   return Status::Ok();
 }
 
@@ -889,6 +894,7 @@ Status GlobalOrderWriter::global_write() {
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_) {
     RETURN_CANCEL_OR_ERROR(alloc_global_write_state());
+    RETURN_NOT_OK(create_fragment(dense(), global_write_state_->frag_meta_));
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   }
 
