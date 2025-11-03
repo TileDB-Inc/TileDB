@@ -38,6 +38,7 @@
 #include "test/support/src/array_templates.h"
 #include "test/support/src/fragment_info_helpers.h"
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
@@ -551,14 +552,13 @@ template <typename Asserter>
 std::vector<std::vector<templates::Domain<uint64_t>>>
 instance_dense_global_order(
     const Context& ctx,
+    const std::string& array_name,
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order,
     uint64_t max_fragment_size,
     const std::vector<templates::Dimension<Datatype::UINT64>>& dimensions,
     const std::vector<templates::Domain<uint64_t>>& subarray,
     std::optional<uint64_t> write_unit_num_cells = std::nullopt) {
-  const std::string array_name = "max_fragment_size_dense_global_order";
-
   const std::optional<uint64_t> num_cells = subarray_num_cells(subarray);
   ASSERTER(num_cells.has_value());
 
@@ -733,10 +733,11 @@ instance_dense_global_order(
  * for global order writes to dense arrays.
  */
 TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
-  const std::string array_name =
-      "cppapi_consolidation_dense_domain_arithmetic_overflow";
-
+  VFSTestSetup vfs;
   Context ctx;
+
+  const std::string array_name =
+      vfs.array_uri("max_fragment_size_dense_global_order");
 
   const tiledb_layout_t tile_order =
       GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
@@ -773,6 +774,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
                         << write_unit_num_cells) {
         const auto actual = instance_dense_global_order<AsserterCatch>(
             ctx,
+            array_name,
             tile_order,
             cell_order,
             max_fragment_size,
@@ -831,6 +833,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
           REQUIRE_THROWS(
               instance_dense_global_order<AsserterCatch>(
                   ctx,
+                  array_name,
                   tile_order,
                   cell_order,
                   max_fragment_size,
@@ -845,6 +848,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
           REQUIRE_THROWS(
               instance_dense_global_order<AsserterCatch>(
                   ctx,
+                  array_name,
                   tile_order,
                   cell_order,
                   max_fragment_size,
@@ -881,6 +885,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
 
           const auto actual = instance_dense_global_order<AsserterCatch>(
               ctx,
+              array_name,
               tile_order,
               cell_order,
               max_fragment_size,
@@ -937,6 +942,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
           REQUIRE_THROWS(
               instance_dense_global_order<AsserterCatch>(
                   ctx,
+                  array_name,
                   tile_order,
                   cell_order,
                   max_fragment_size,
@@ -950,6 +956,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
               "the subarray must coincide with the tile bounds");
           REQUIRE_THROWS(instance_dense_global_order<AsserterCatch>(
               ctx,
+              array_name,
               tile_order,
               cell_order,
               max_fragment_size,
@@ -993,6 +1000,7 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
 
           const auto actual = instance_dense_global_order<AsserterCatch>(
               ctx,
+              array_name,
               tile_order,
               cell_order,
               max_fragment_size,
@@ -1018,7 +1026,13 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
       const uint64_t max_fragment_size = 24;
 
       instance_dense_global_order<AsserterCatch>(
-          ctx, tile_order, cell_order, max_fragment_size, {d1, d2}, {s1, s2});
+          ctx,
+          array_name,
+          tile_order,
+          cell_order,
+          max_fragment_size,
+          {d1, d2},
+          {s1, s2});
     }
 
     SECTION("Example 2") {
@@ -1029,7 +1043,13 @@ TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
       const uint64_t max_fragment_size = 28;
 
       instance_dense_global_order<AsserterCatch>(
-          ctx, tile_order, cell_order, max_fragment_size, {d1, d2}, {s1, s2});
+          ctx,
+          array_name,
+          tile_order,
+          cell_order,
+          max_fragment_size,
+          {d1, d2},
+          {s1, s2});
     }
   }
 }
@@ -1119,7 +1139,9 @@ make_tile_aligned_subarray(
  */
 template <sm::Datatype DTYPE>
 void rapidcheck_dense_array(
-    Context& ctx, const std::vector<templates::Dimension<DTYPE>>& dimensions) {
+    Context& ctx,
+    const std::string& array_name,
+    const std::vector<templates::Dimension<DTYPE>>& dimensions) {
   uint64_t num_cells_per_tile = 1;
   for (const auto& dim : dimensions) {
     num_cells_per_tile *= dim.extent;
@@ -1169,6 +1191,7 @@ void rapidcheck_dense_array(
 
   instance_dense_global_order<AsserterRapidcheck>(
       ctx,
+      array_name,
       tile_order,
       cell_order,
       max_fragment_size,
@@ -1184,11 +1207,16 @@ TEST_CASE(
   using Dim64 = templates::Dimension<DT>;
   using Dom64 = Dim64::domain_type;
 
+  VFSTestSetup vfs;
   Context ctx;
+
+  const std::string array_name =
+      vfs.array_uri("max_fragment_size_dense_global_order_rapidcheck_1d");
 
   SECTION("Shrinking") {
     instance_dense_global_order<AsserterCatch>(
         ctx,
+        array_name,
         TILEDB_ROW_MAJOR,
         TILEDB_ROW_MAJOR,
         2396,
@@ -1196,10 +1224,10 @@ TEST_CASE(
         {Dom64(0, 2969)});
   }
 
-  rc::prop("max fragment size dense 1d", [&ctx]() {
+  rc::prop("max fragment size dense 1d", [&]() {
     Dim64 d1 = *rc::make_dimension<DT>(8192);
 
-    rapidcheck_dense_array<DT>(ctx, {d1});
+    rapidcheck_dense_array<DT>(ctx, array_name, {d1});
   });
 }
 
@@ -1210,12 +1238,17 @@ TEST_CASE(
   using Dim64 = templates::Dimension<DT>;
   using Dom64 = Dim64::domain_type;
 
+  VFSTestSetup vfs;
   Context ctx;
+
+  const std::string array_name =
+      vfs.array_uri("max_fragment_size_dense_global_order_rapidcheck_2d");
 
   SECTION("Shrinking") {
     SECTION("Example 1") {
       instance_dense_global_order<AsserterCatch>(
           ctx,
+          array_name,
           TILEDB_ROW_MAJOR,
           TILEDB_COL_MAJOR,
           48,
@@ -1226,6 +1259,7 @@ TEST_CASE(
     SECTION("Example 2") {
       instance_dense_global_order<AsserterCatch>(
           ctx,
+          array_name,
           TILEDB_COL_MAJOR,
           TILEDB_ROW_MAJOR,
           24,
@@ -1236,6 +1270,7 @@ TEST_CASE(
     SECTION("Example 3") {
       instance_dense_global_order<AsserterCatch>(
           ctx,
+          array_name,
           TILEDB_ROW_MAJOR,
           TILEDB_ROW_MAJOR,
           48,
@@ -1251,6 +1286,7 @@ TEST_CASE(
        */
       auto fragments = instance_dense_global_order<AsserterCatch>(
           ctx,
+          array_name,
           TILEDB_ROW_MAJOR,
           TILEDB_ROW_MAJOR,
           924,
@@ -1260,11 +1296,11 @@ TEST_CASE(
     }
   }
 
-  rc::prop("max fragment size dense 2d", [&ctx]() {
+  rc::prop("max fragment size dense 2d", [&]() {
     Dim64 d1 = *rc::make_dimension<DT>(128);
     Dim64 d2 = *rc::make_dimension<DT>(128);
 
-    rapidcheck_dense_array<DT>(ctx, {d1, d2});
+    rapidcheck_dense_array<DT>(ctx, array_name, {d1, d2});
   });
 }
 
@@ -1275,11 +1311,16 @@ TEST_CASE(
   using Dim64 = templates::Dimension<DT>;
   using Dom64 = Dim64::domain_type;
 
+  VFSTestSetup vfs;
   Context ctx;
+
+  const std::string array_name =
+      vfs.array_uri("max_fragment_size_dense_global_order_rapidcheck_3d");
 
   SECTION("Shrinking") {
     instance_dense_global_order<AsserterCatch>(
         ctx,
+        array_name,
         TILEDB_ROW_MAJOR,
         TILEDB_ROW_MAJOR,
         2160,
@@ -1287,11 +1328,11 @@ TEST_CASE(
         {Dom64(5, 19), Dom64(4, 15), Dom64(1, 6)});
   }
 
-  rc::prop("max fragment size dense 3d", [&ctx]() {
+  rc::prop("max fragment size dense 3d", [&]() {
     Dim64 d1 = *rc::make_dimension<DT>(32);
     Dim64 d2 = *rc::make_dimension<DT>(32);
     Dim64 d3 = *rc::make_dimension<DT>(32);
 
-    rapidcheck_dense_array<DT>(ctx, {d1, d2, d3});
+    rapidcheck_dense_array<DT>(ctx, array_name, {d1, d2, d3});
   });
 }
