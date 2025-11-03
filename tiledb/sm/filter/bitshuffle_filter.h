@@ -114,7 +114,10 @@ class BitshuffleFilter : public Filter {
    * @return Status
    */
   static Status shuffle_part(
-      Datatype filter_data_type, const ConstBuffer& part, Buffer& output, bool invert);
+      Datatype filter_data_type,
+      const ConstBuffer& part,
+      Buffer& output,
+      bool invert);
 
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
