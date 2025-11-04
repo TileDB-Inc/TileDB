@@ -1183,7 +1183,7 @@ struct Fragment {
     if constexpr (std::tuple_size<DimensionBuffers>::value == 0) {
       return std::get<0>(atts_).num_cells();
     } else {
-      return std::get<0>(atts_).num_cells();
+      return std::get<0>(dims_).num_cells();
     }
   }
 
