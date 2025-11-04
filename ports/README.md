@@ -32,12 +32,4 @@ For ease of review when patching existing ports, you are recommended to make one
 
 | Port          | Reason                                                                   |
 |---------------|--------------------------------------------------------------------------|
-| `aws-c-cal`   | Patching to remove unused OpenSSL dependency on Windows (vcpkg PR 44996) |
-| `aws-sdk-cpp` | Patching to fix MinGW build failures.                                    |
-| `blosc2`      | Patching to update to version 2.21.0 (vcpkg PR 46957)                    |
-| `capnproto`   | Patching to fix compatibility with CMake 4.0 (PR 2272)                   |
-| `crc32c`      | Patching to fix compatibility with CMake 4.0 (PR 68)                     |
-| `fmt`         | Patching to update to version 1.11.4 (vcpkg PR 44774)                    |
 | `libfaketime` | Port does not yet exist upstream                                         |
-| `s2n`         | Patching to fix compatibility with CMake 4.0 (PR 4933)                   |
-| `spdlog`      | Patching to compile with `-fvisibility=hidden`                           |

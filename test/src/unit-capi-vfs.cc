@@ -107,9 +107,6 @@ TEST_CASE("C API: Test virtual filesystem config", "[capi][vfs]") {
 }
 
 TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
-  tiledb_stats_enable();
-  tiledb_stats_reset();
-
   vfs_config v;
   auto config = v.config;
   tiledb_error_t* error = nullptr;
