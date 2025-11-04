@@ -1642,6 +1642,13 @@ template <typename T>
 struct cell_type_traits;
 
 template <>
+struct cell_type_traits<char> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::CHAR;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <>
 struct cell_type_traits<int> {
   static constexpr sm::Datatype physical_type = sm::Datatype::INT32;
   static constexpr uint32_t cell_val_num = 1;
@@ -1652,6 +1659,14 @@ template <>
 struct cell_type_traits<uint64_t> {
   static constexpr sm::Datatype physical_type = sm::Datatype::UINT64;
   static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <typename T>
+struct cell_type_traits<std::vector<T>> {
+  static constexpr sm::Datatype physical_type =
+      cell_type_traits<T>::physical_type;
+  static constexpr uint32_t cell_val_num = std::numeric_limits<uint32_t>::max();
   static constexpr bool is_nullable = false;
 };
 

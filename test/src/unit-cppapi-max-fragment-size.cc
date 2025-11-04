@@ -1411,6 +1411,70 @@ TEST_CASE(
   });
 }
 
+/**
+ * Test some edge cases induced by variable-length tiles
+ */
+TEST_CASE(
+    "C++ API: Max fragment size dense array var size tiles",
+    "[cppapi][max-frag-size]") {
+  VFSTestSetup vfs;
+  Context ctx;
+  const std::string array_name =
+      vfs.array_uri("max_fragment_size_dense_global_order_var");
+
+  using Dim64 = templates::Dimension<Datatype::UINT64>;
+  using Dom64 = Dim64::domain_type;
+
+  using F = templates::Fragment<std::tuple<>, std::tuple<std::vector<char>>>;
+
+  const tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  const tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+
+  SECTION("Rectangle tiles") {
+    const uint64_t d1_extent = 8;
+    const uint64_t d2_span = 10000;
+    REQUIRE(d2_span % d1_extent == 0);
+
+    const uint64_t d2_extent = d2_span / d1_extent;
+
+    const Dim64 row(0, std::numeric_limits<uint64_t>::max() - 1, d1_extent);
+    const Dim64 col(0, d2_span - 1, d2_extent);
+
+    const Dom64 subrow(0, d1_extent - 1);
+    const Dom64 subcol = (col.domain);
+
+    const std::optional<uint64_t> num_cells =
+        subarray_num_cells(std::vector<Dom64>{subrow, subcol});
+    REQUIRE(num_cells.has_value());
+
+    F attributes;
+    attributes.reserve(num_cells.value());
+    for (uint64_t c = 0; c < num_cells.value(); c++) {
+      const std::string str = std::to_string(c);
+      std::get<0>(attributes.attributes())
+          .push_back(std::span<const char>(str.begin(), str.end()));
+    }
+
+    const uint64_t max_fragment_size = 4 * 64 * 1024;
+
+    const auto actual = instance_dense_global_order<F>(
+        ctx,
+        array_name,
+        tile_order,
+        cell_order,
+        max_fragment_size,
+        {row, col},
+        {subrow, subcol},
+        attributes);
+
+    std::vector<std::vector<Dom64>> expect;
+    expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
+    expect.push_back(
+        {subrow, Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
+    CHECK(expect == actual);
+  }
+}
+
 TEST_CASE(
     "C++ API: Max fragment size dense unsupported on REST", "[cppapi][rest]") {
   VFSTestSetup vfs;
@@ -1447,3 +1511,4 @@ TEST_CASE(
           {s1, s2}),
       expect);
 }
+
