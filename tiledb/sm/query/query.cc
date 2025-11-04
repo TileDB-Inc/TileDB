@@ -1637,10 +1637,19 @@ Status Query::submit() {
   }
 
   // Make sure fragment size is only set for global order.
-  if (fragment_size_.has_value() &&
-      (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
-    throw QueryException(
-        "[submit] Fragment size is only supported for global order writes.");
+  if (fragment_size_.has_value()) {
+    if (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE) {
+      throw QueryException(
+          "[submit] Fragment size is only supported for global order writes.");
+    } else if (array_schema_->dense() && array_->is_remote()) {
+      // For dense arrays, `max_fragment_size_` requires buffering of a trail of
+      // filtered tiles which may not fit in a target fragment. This trail of
+      // tiles is not serializable. As such `max_fragment_size` cannot be used
+      // with remote dense array writes.
+      throw QueryException(
+          "[submit] Fragment size is not supported for remote global order "
+          "writes to dense arrays.");
+    }
   }
 
   // Check attribute/dimensions buffers completeness before query submits

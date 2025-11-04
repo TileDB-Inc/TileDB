@@ -1336,3 +1336,40 @@ TEST_CASE(
     rapidcheck_dense_array<DT>(ctx, array_name, {d1, d2, d3});
   });
 }
+
+TEST_CASE(
+    "C++ API: Max fragment size dense unsupported on REST", "[cppapi][rest]") {
+  VFSTestSetup vfs;
+  if (!vfs.is_rest()) {
+    SKIP("Test is only applicable to REST client");
+  }
+
+  const std::string array_name =
+      vfs.array_uri("max_fragment_size_dense_global_order_rest_support");
+
+  Context ctx;
+
+  using Dim = templates::Dimension<sm::Datatype::UINT64>;
+  using Dom = Dim::domain_type;
+
+  Dim d1(0, 0, 1);
+  Dim d2(0, 0, 1);
+  Dom s1(0, 0);
+  Dom s2(0, 0);
+  const uint64_t max_fragment_size = 24;
+
+  const auto expect = Catch::Matchers::ContainsSubstring(
+      "Fragment size is not supported for remote global order writes to dense "
+      "arrays.");
+
+  REQUIRE_THROWS(
+      instance_dense_global_order<AsserterCatch>(
+          ctx,
+          array_name,
+          TILEDB_ROW_MAJOR,
+          TILEDB_ROW_MAJOR,
+          max_fragment_size,
+          {d1, d2},
+          {s1, s2}),
+      expect);
+}
