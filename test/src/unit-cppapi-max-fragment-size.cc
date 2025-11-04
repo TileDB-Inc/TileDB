@@ -1441,8 +1441,11 @@ TEST_CASE(
     const Dim64 row(0, std::numeric_limits<uint64_t>::max() - 1, d1_extent);
     const Dim64 col(0, d2_span - 1, d2_extent);
 
-    const Dom64 subrow(0, d1_extent - 1);
-    const Dom64 subcol = (col.domain);
+    const Dom64 subrow(0, 2 * d1_extent - 1);
+    const Dom64 subcol = col.domain;
+
+    const Dom64 subrow_0(0, d1_extent - 1);
+    const Dom64 subrow_1(d1_extent, 2 * d1_extent - 1);
 
     const std::optional<uint64_t> num_cells =
         subarray_num_cells(std::vector<Dom64>{subrow, subcol});
@@ -1482,10 +1485,20 @@ TEST_CASE(
             write_unit_num_cells);
 
         std::vector<std::vector<Dom64>> expect;
-        expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
+        expect.push_back({subrow_0, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_0,
              Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
+        expect.push_back(
+            {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
+        expect.push_back(
+            {subrow_1,
+             Dom64(
+                 d2_extent * d1_extent * 3 / 8,
+                 d2_extent * d1_extent * 3 / 4 - 1)});
+        expect.push_back(
+            {subrow_1,
+             Dom64(d2_extent * d1_extent * 3 / 4, d2_extent * d1_extent - 1)});
         CHECK(expect == actual);
       }
 
@@ -1512,14 +1525,24 @@ TEST_CASE(
 
         std::vector<std::vector<Dom64>> expect;
         expect.push_back(
-            {subrow, Dom64(0, (d2_extent * d1_extent * 1 / 4) - 1)});
+            {subrow_0, Dom64(0, (d2_extent * d1_extent * 1 / 4) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_0,
              Dom64(
                  d2_extent * d1_extent * 1 / 4,
                  (d2_extent * d1_extent * 3 / 4) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_0,
+             Dom64(d2_extent * d1_extent * 3 / 4, d2_extent * d1_extent - 1)});
+        expect.push_back(
+            {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
+        expect.push_back(
+            {subrow_1,
+             Dom64(
+                 d2_extent * d1_extent * 3 / 8,
+                 d2_extent * d1_extent * 3 / 4 - 1)});
+        expect.push_back(
+            {subrow_1,
              Dom64(d2_extent * d1_extent * 3 / 4, d2_extent * d1_extent - 1)});
         CHECK(expect == actual);
       }
@@ -1547,14 +1570,25 @@ TEST_CASE(
             write_unit_num_cells);
 
         std::vector<std::vector<Dom64>> expect;
-        expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 4) - 1)});
+        expect.push_back({subrow_0, Dom64(0, (d2_extent * d1_extent / 4) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_0,
              Dom64(
                  d2_extent * d1_extent * 1 / 4,
                  (d2_extent * d1_extent * 3 / 4) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_0,
+             Dom64(
+                 d2_extent * d1_extent * 3 / 4, (d2_extent * d1_extent) - 1)});
+        expect.push_back(
+            {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
+        expect.push_back(
+            {subrow_1,
+             Dom64(
+                 d2_extent * d1_extent * 3 / 8,
+                 d2_extent * d1_extent * 3 / 4 - 1)});
+        expect.push_back(
+            {subrow_1,
              Dom64(d2_extent * d1_extent * 3 / 4, d2_extent * d1_extent - 1)});
         CHECK(expect == actual);
       }
@@ -1582,14 +1616,24 @@ TEST_CASE(
             write_unit_num_cells);
 
         std::vector<std::vector<Dom64>> expect;
-        expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
+        expect.push_back({subrow_0, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_0,
+             Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
+        expect.push_back(
+            {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
+        expect.push_back(
+            {subrow_1,
              Dom64(
-                 d2_extent * d1_extent / 2,
-                 (d2_extent * d1_extent * 7 / 8) - 1)});
+                 d2_extent * d1_extent * 3 / 8,
+                 (d2_extent * d1_extent * 3 / 4) - 1)});
         expect.push_back(
-            {subrow,
+            {subrow_1,
+             Dom64(
+                 d2_extent * d1_extent * 3 / 4,
+                 d2_extent * d1_extent * 7 / 8 - 1)});
+        expect.push_back(
+            {subrow_1,
              Dom64(d2_extent * d1_extent * 7 / 8, d2_extent * d1_extent - 1)});
         CHECK(expect == actual);
       }
