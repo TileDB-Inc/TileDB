@@ -800,13 +800,20 @@ struct query_buffers<std::vector<T>> {
 
   query_field_size_type make_field_size(
       uint64_t cell_offset, uint64_t cell_limit) const {
-    const uint64_t offsets_size =
-        sizeof(uint64_t) *
+    const uint64_t num_cells =
         std::min<uint64_t>(cell_limit, offsets_.size() - cell_offset);
 
-    // NB: unlike `offsets_size` this can just be the whole buffer
-    // since offsets is what determines the values
-    const uint64_t values_size = sizeof(T) * values_.size();
+    const uint64_t offsets_size =
+        sizeof(uint64_t) *
+        std::min<uint64_t>(num_cells, offsets_.size() - cell_offset);
+
+    uint64_t values_size;
+    if (cell_offset + num_cells + 1 < offsets_.size()) {
+      values_size = sizeof(T) *
+                    (offsets_[cell_offset + num_cells] - offsets_[cell_offset]);
+    } else {
+      values_size = sizeof(T) * (values_.size() - offsets_[cell_offset]);
+    }
 
     return std::make_pair(values_size, offsets_size);
   }
