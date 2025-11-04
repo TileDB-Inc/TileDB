@@ -1283,7 +1283,7 @@ struct query_applicator {
    * @return a tuple containing the size of each input field
    */
   static auto make_field_sizes(
-      const std::tuple<std::decay_t<Ts>&...> fields,
+      const std::tuple<const std::decay_t<Ts>&...> fields,
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
     auto make_field_size = [&]<typename T>(const query_buffers<T>& field) {
@@ -1408,9 +1408,10 @@ namespace query {
  */
 template <typename Asserter, FragmentType F>
 auto make_field_sizes(
-    F& fragment, uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
-  typename F::DimensionBuffersRef dims = fragment.dimensions();
-  typename F::AttributeBuffersRef atts = fragment.attributes();
+    const F& fragment,
+    uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  typename F::DimensionBuffersConstRef dims = fragment.dimensions();
+  typename F::AttributeBuffersConstRef atts = fragment.attributes();
   return [cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
     return query_applicator<Asserter, Ts...>::make_field_sizes(
         fields, cell_limit);
@@ -1420,7 +1421,7 @@ auto make_field_sizes(
 template <FragmentType F>
 using fragment_field_sizes_t =
     decltype(make_field_sizes<AsserterRuntimeException, F>(
-        std::declval<F&>(), std::declval<uint64_t>()));
+        std::declval<const F&>(), std::declval<uint64_t>()));
 
 template <typename Asserter, FragmentType F>
 fragment_field_sizes_t<F> write_make_field_sizes(
