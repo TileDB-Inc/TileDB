@@ -393,8 +393,13 @@ struct query_buffers<T> {
     return *this;
   }
 
+  query_field_size_type make_field_size(
+      uint64_t offset, uint64_t cell_limit) const {
+    return sizeof(T) * std::min<uint64_t>(cell_limit, values_.size() - offset);
+  }
+
   query_field_size_type make_field_size(uint64_t cell_limit) const {
-    return sizeof(T) * std::min<uint64_t>(cell_limit, values_.size());
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -426,11 +431,12 @@ struct query_buffers<T> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     cursor += field_sizes;
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     resize(cursor / sizeof(T));
   }
 
@@ -632,12 +638,18 @@ struct query_buffers<std::optional<T>> {
     return *this;
   }
 
-  query_field_size_type make_field_size(uint64_t cell_limit) const {
+  query_field_size_type make_field_size(
+      uint64_t offset, uint64_t cell_limit) const {
     const uint64_t values_size =
-        sizeof(T) * std::min<uint64_t>(cell_limit, values_.size());
+        sizeof(T) * std::min<uint64_t>(cell_limit, values_.size() - offset);
     const uint64_t validity_size =
-        sizeof(uint8_t) * std::min<uint64_t>(cell_limit, validity_.size());
+        sizeof(uint8_t) *
+        std::min<uint64_t>(cell_limit, validity_.size() - offset);
     return std::make_pair(values_size, validity_size);
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -681,12 +693,13 @@ struct query_buffers<std::optional<T>> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     std::get<0>(cursor) += std::get<0>(field_sizes);
     std::get<1>(cursor) += std::get<1>(field_sizes);
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     resize(std::get<0>(cursor) / sizeof(T));
   }
 };
@@ -785,11 +798,24 @@ struct query_buffers<std::vector<T>> {
     return *this;
   }
 
-  query_field_size_type make_field_size(uint64_t cell_limit) const {
-    const uint64_t values_size = sizeof(T) * values_.size();
+  query_field_size_type make_field_size(
+      uint64_t cell_offset, uint64_t cell_limit) const {
     const uint64_t offsets_size =
-        sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
+        sizeof(uint64_t) *
+        std::min<uint64_t>(cell_limit, offsets_.size() - cell_offset);
+
+    uint64_t values_size;
+    if (offsets_.size() - cell_offset <= cell_limit) {
+      values_size = sizeof(T) * (values_.size() - cell_offset);
+    } else {
+      values_size = sizeof(T) * (offsets_[cell_offset + cell_limit] -
+                                 offsets_[cell_offset]);
+    }
     return std::make_pair(values_size, offsets_size);
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -841,12 +867,13 @@ struct query_buffers<std::vector<T>> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     std::get<0>(cursor) += std::get<0>(field_sizes);
     std::get<1>(cursor) += std::get<1>(field_sizes);
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     values_.resize(std::get<0>(cursor) / sizeof(T));
     offsets_.resize(std::get<1>(cursor) / sizeof(uint64_t));
   }
@@ -953,13 +980,27 @@ struct query_buffers<std::optional<std::vector<T>>> {
     return *this;
   }
 
-  query_field_size_type make_field_size(uint64_t cell_limit) const {
-    const uint64_t values_size = sizeof(T) * values_.size();
+  query_field_size_type make_field_size(
+      uint64_t cell_offset, uint64_t cell_limit) const {
     const uint64_t offsets_size =
         sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
     const uint64_t validity_size =
-        sizeof(uint8_t) * std::min<uint64_t>(cell_limit, validity_.size());
+        sizeof(uint8_t) *
+        std::min<uint64_t>(cell_limit, validity_.size() - cell_offset);
+
+    uint64_t values_size;
+    if (offsets_.size() - cell_offset <= cell_limit) {
+      values_size = sizeof(T) * (values_.size() - cell_offset);
+    } else {
+      values_size = sizeof(T) * (offsets_[cell_offset + cell_limit] -
+                                 offsets_[cell_offset]);
+    }
+
     return std::make_tuple(values_size, offsets_size, validity_size);
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -1024,13 +1065,14 @@ struct query_buffers<std::optional<std::vector<T>>> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     std::get<0>(cursor) += std::get<0>(field_sizes);
     std::get<1>(cursor) += std::get<1>(field_sizes);
     std::get<2>(cursor) += std::get<2>(field_sizes);
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     values_.resize(std::get<0>(cursor) / sizeof(T));
     offsets_.resize(std::get<1>(cursor) / sizeof(uint64_t));
     validity_.resize(std::get<2>(cursor) / sizeof(uint8_t));
@@ -1264,6 +1306,28 @@ struct query_applicator {
   }
 
   /**
+   * @return a tuple containing the size of each input field to write for a
+   * range of input cells [cell_offset, cell_offset + cell_limit]
+   */
+  static auto write_make_field_sizes(
+      const std::tuple<const std::decay_t<Ts>&...> fields,
+      uint64_t cell_offset,
+      uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+    std::optional<uint64_t> num_cells;
+    auto write_make_field_size = [&]<typename T>(
+                                     const query_buffers<T>& field) {
+      const auto field_size = field.make_field_size(cell_offset, cell_limit);
+      return field_size;
+    };
+
+    return std::apply(
+        [&](const auto&... field) {
+          return std::make_tuple(write_make_field_size(field)...);
+        },
+        fields);
+  }
+
+  /**
    * Sets buffers on `query` for the variadic `fields` and `fields_sizes`
    */
   static void set(
@@ -1357,6 +1421,19 @@ using fragment_field_sizes_t =
     decltype(make_field_sizes<AsserterRuntimeException, F>(
         std::declval<F&>(), std::declval<uint64_t>()));
 
+template <typename Asserter, FragmentType F>
+fragment_field_sizes_t<F> write_make_field_sizes(
+    const F& fragment,
+    uint64_t cell_offset,
+    uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  typename F::DimensionBuffersConstRef dims = fragment.dimensions();
+  typename F::AttributeBuffersConstRef atts = fragment.attributes();
+  return [cell_offset, cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
+    return query_applicator<Asserter, std::remove_cvref_t<Ts>...>::
+        write_make_field_sizes(fields, cell_offset, cell_limit);
+  }(std::tuple_cat(dims, atts));
+}
+
 /**
  * Apply field cursor and sizes to each field of `fragment`.
  */
@@ -1380,6 +1457,46 @@ void apply_cursor(
             cursor);
       },
       std::tuple_cat(dims, atts));
+}
+
+/**
+ * Advances field cursors `cursor` over `fragment` by the amount of data from
+ * `field_sizes`
+ */
+template <FragmentType F>
+void accumulate_cursor(
+    const F& fragment,
+    fragment_field_sizes_t<F>& cursor,
+    const fragment_field_sizes_t<F>& field_sizes) {
+  std::apply(
+      [&](auto&... field) {
+        std::apply(
+            [&](auto&... field_cursor) {
+              std::apply(
+                  [&](const auto&... field_size) {
+                    (field.accumulate_cursor(field_cursor, field_size), ...);
+                  },
+                  field_sizes);
+            },
+            cursor);
+      },
+      std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+}
+
+/**
+ * Resizes the fields of `fragment` to the sizes given by `cursor`.
+ */
+template <FragmentType F>
+void resize(F& fragment, const fragment_field_sizes_t<F>& cursor) {
+  std::apply(
+      [cursor](auto&... field) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              (field.resize_to_cursor(field_cursor), ...);
+            },
+            cursor);
+      },
+      std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
 /**

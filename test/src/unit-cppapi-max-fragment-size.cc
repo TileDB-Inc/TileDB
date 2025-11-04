@@ -548,7 +548,7 @@ std::optional<uint64_t> subarray_num_cells(
  *
  * @return a list of the domains written to each fragment in ascending order
  */
-template <typename Asserter>
+template <templates::FragmentType F, typename Asserter = AsserterCatch>
 std::vector<std::vector<templates::Domain<uint64_t>>>
 instance_dense_global_order(
     const Context& ctx,
@@ -558,10 +558,8 @@ instance_dense_global_order(
     uint64_t max_fragment_size,
     const std::vector<templates::Dimension<Datatype::UINT64>>& dimensions,
     const std::vector<templates::Domain<uint64_t>>& subarray,
+    const F& attributes,
     std::optional<uint64_t> write_unit_num_cells = std::nullopt) {
-  const std::optional<uint64_t> num_cells = subarray_num_cells(subarray);
-  ASSERTER(num_cells.has_value());
-
   Domain domain(ctx);
   for (uint64_t d = 0; d < dimensions.size(); d++) {
     const std::string dname = "d" + std::to_string(d);
@@ -573,22 +571,27 @@ instance_dense_global_order(
     domain.add_dimension(dim);
   }
 
-  auto a = Attribute::create<int>(ctx, "a");
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.set_tile_order(tile_order);
   schema.set_cell_order(cell_order);
-  schema.add_attributes(a);
+
+  const std::vector<std::tuple<Datatype, uint32_t, bool>> ddl_attributes =
+      templates::ddl::physical_type_attributes<F>();
+  for (uint64_t a = 0; a < ddl_attributes.size(); a++) {
+    const std::string aname = "a" + std::to_string(a + 1);
+    auto aa =
+        Attribute::create(
+            ctx,
+            aname,
+            static_cast<tiledb_datatype_t>(std::get<0>(ddl_attributes[a])))
+            .set_cell_val_num(std::get<1>(ddl_attributes[a]))
+            .set_nullable(std::get<2>(ddl_attributes[a]));
+    schema.add_attribute(aa);
+  }
 
   Array::create(array_name, schema);
   test::DeleteArrayGuard del(ctx.ptr().get(), array_name.c_str());
-
-  const int a_offset = 77;
-  std::vector<int> a_write;
-  a_write.reserve(num_cells.value());
-  for (int i = 0; i < static_cast<int64_t>(num_cells.value()); i++) {
-    a_write.push_back(a_offset + i);
-  }
 
   std::vector<uint64_t> api_subarray;
   api_subarray.reserve(2 * subarray.size());
@@ -605,6 +608,7 @@ instance_dense_global_order(
   sm::NDRange smsubarray;
 
   // write data, should be split into multiple fragments
+  templates::query::fragment_field_sizes_t<F> cursor;
   {
     Array array(ctx, array_name, TILEDB_WRITE);
 
@@ -626,16 +630,39 @@ instance_dense_global_order(
         .expand_to_tiles_when_no_current_domain(smsubarray_aligned);
 
     uint64_t cells_written = 0;
-    while (cells_written < a_write.size()) {
+    while (templates::query::num_cells<Asserter>(attributes, cursor) <
+           attributes.num_cells()) {
       const uint64_t cells_this_write = std::min(
-          a_write.size() - cells_written,
-          write_unit_num_cells.value_or(a_write.size()));
-      query.set_data_buffer("a", &a_write[cells_written], cells_this_write);
+          attributes.num_cells() - cells_written,
+          write_unit_num_cells.value_or(attributes.num_cells()));
+
+      auto field_sizes = templates::query::write_make_field_sizes<Asserter, F>(
+          attributes,
+          cells_written,
+          write_unit_num_cells.value_or(attributes.num_cells()));
+
+      templates::query::set_fields<Asserter, F>(
+          ctx.ptr().get(),
+          query.ptr().get(),
+          field_sizes,
+          const_cast<F&>(attributes),
+          [](unsigned d) { return "d" + std::to_string(d + 1); },
+          [](unsigned a) { return "a" + std::to_string(a + 1); },
+          cursor);
 
       const auto status = query.submit();
       ASSERTER(status == Query::Status::COMPLETE);
 
-      cells_written += cells_this_write;
+      templates::query::accumulate_cursor(attributes, cursor, field_sizes);
+
+      const uint64_t cells_written_this_write =
+          templates::query::num_cells<Asserter>(attributes, field_sizes);
+      ASSERTER(cells_written_this_write == cells_this_write);
+
+      cells_written += cells_written_this_write;
+      ASSERTER(
+          cells_written ==
+          templates::query::num_cells<Asserter>(attributes, cursor));
 
       const auto w = dynamic_cast<const sm::GlobalOrderWriter*>(
           query.ptr()->query_->strategy());
@@ -695,9 +722,9 @@ instance_dense_global_order(
   }
 
   // then read back
-  std::vector<int> a_read;
+  F read;
   {
-    a_read.resize(a_write.size());
+    templates::query::resize(read, cursor);
 
     Array array(ctx, array_name, TILEDB_READ);
 
@@ -707,10 +734,21 @@ instance_dense_global_order(
     Query query(ctx, array, TILEDB_READ);
     query.set_layout(TILEDB_GLOBAL_ORDER);
     query.set_subarray(sub);
-    query.set_data_buffer("a", a_read);
+
+    auto read_field_sizes =
+        templates::query::make_field_sizes<Asserter, F>(read);
+    templates::query::set_fields<Asserter>(
+        ctx.ptr().get(),
+        query.ptr().get(),
+        read_field_sizes,
+        read,
+        [](unsigned d) { return "d" + std::to_string(d + 1); },
+        [](unsigned a) { return "a" + std::to_string(a + 1); });
 
     auto st = query.submit();
     ASSERTER(st == Query::Status::COMPLETE);
+
+    ASSERTER(read_field_sizes == cursor);
   }
 
   const std::vector<std::vector<templates::Domain<uint64_t>>> fragment_domains =
@@ -723,9 +761,45 @@ instance_dense_global_order(
           max_fragment_size);
 
   // this is last because a fragment domain mismatch is more informative
-  ASSERTER(a_read == a_write);
+  ASSERTER(read == attributes);
 
   return fragment_domains;
+}
+
+template <typename Asserter>
+std::vector<std::vector<templates::Domain<uint64_t>>>
+instance_dense_global_order(
+    const Context& ctx,
+    const std::string& array_name,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t max_fragment_size,
+    const std::vector<templates::Dimension<Datatype::UINT64>>& dimensions,
+    const std::vector<templates::Domain<uint64_t>>& subarray,
+    std::optional<uint64_t> write_unit_num_cells = std::nullopt) {
+  const std::optional<uint64_t> num_cells = subarray_num_cells(subarray);
+  ASSERTER(num_cells.has_value());
+
+  const int a_offset = 77;
+  std::vector<int> a_write;
+  a_write.reserve(num_cells.value());
+  for (int i = 0; i < static_cast<int64_t>(num_cells.value()); i++) {
+    a_write.push_back(a_offset + i);
+  }
+
+  templates::Fragment<std::tuple<>, std::tuple<int>> attributes;
+  std::get<0>(attributes.attributes()) = a_write;
+
+  return instance_dense_global_order<decltype(attributes), Asserter>(
+      ctx,
+      array_name,
+      tile_order,
+      cell_order,
+      max_fragment_size,
+      dimensions,
+      subarray,
+      attributes,
+      write_unit_num_cells);
 }
 
 /**
