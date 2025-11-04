@@ -77,7 +77,7 @@ commence(unit_test bitshuffle_compat)
         ${BITSHUFFLE_SOURCE_ROOT}/iochain.cc
         )
     this_target_sources(unit_bitshuffle_compat.cc ${BITSHUFFLE_SOURCES})
-    this_target_object_libraries(tiledb_crypto bitshuffle_filter)
+    this_target_object_libraries(bitshuffle_filter)
     this_target_link_libraries(Blosc2::blosc2)
     set_source_files_properties(
         unit_bitshuffle_compat.cc ${BITSHUFFLE_SOURCES}
