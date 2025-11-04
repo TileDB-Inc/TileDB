@@ -1447,31 +1447,140 @@ TEST_CASE(
         subarray_num_cells(std::vector<Dom64>{subrow, subcol});
     REQUIRE(num_cells.has_value());
 
-    F attributes;
-    attributes.reserve(num_cells.value());
-    for (uint64_t c = 0; c < num_cells.value(); c++) {
-      const std::string str = std::to_string(c);
-      std::get<0>(attributes.attributes())
-          .push_back(std::span<const char>(str.begin(), str.end()));
-    }
-
     const uint64_t max_fragment_size = 4 * 64 * 1024;
 
-    const auto actual = instance_dense_global_order<F>(
-        ctx,
-        array_name,
-        tile_order,
-        cell_order,
-        max_fragment_size,
-        {row, col},
-        {subrow, subcol},
-        attributes);
+    SECTION("Even") {
+      F attributes;
+      attributes.reserve(num_cells.value());
+      for (uint64_t c = 0; c < num_cells.value(); c++) {
+        const std::string str = std::to_string(c);
+        std::get<0>(attributes.attributes())
+            .push_back(std::span<const char>(str.begin(), str.end()));
+      }
 
-    std::vector<std::vector<Dom64>> expect;
-    expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
-    expect.push_back(
-        {subrow, Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
-    CHECK(expect == actual);
+      const auto actual = instance_dense_global_order<F>(
+          ctx,
+          array_name,
+          tile_order,
+          cell_order,
+          max_fragment_size,
+          {row, col},
+          {subrow, subcol},
+          attributes);
+
+      std::vector<std::vector<Dom64>> expect;
+      expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
+      CHECK(expect == actual);
+    }
+
+    const uint64_t num_cells_per_tile = d1_extent * d2_extent;
+
+    F attributes;
+    attributes.reserve(num_cells.value());
+
+    SECTION("Skew first tile") {
+      // inflate all the records of the first tile
+      for (uint64_t c = 0; c < num_cells.value(); c++) {
+        const std::string str =
+            (c < num_cells_per_tile ? "foobargubquux" + std::to_string(c) :
+                                      std::to_string(c));
+        std::get<0>(attributes.attributes())
+            .push_back(std::span<const char>(str.begin(), str.end()));
+      }
+
+      const auto actual = instance_dense_global_order<F>(
+          ctx,
+          array_name,
+          tile_order,
+          cell_order,
+          max_fragment_size,
+          {row, col},
+          {subrow, subcol},
+          attributes);
+
+      std::vector<std::vector<Dom64>> expect;
+      expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent * 1 / 4) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(
+               d2_extent * d1_extent * 1 / 4,
+               (d2_extent * d1_extent * 3 / 4) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(d2_extent * d1_extent * 3 / 4, d2_extent * d1_extent - 1)});
+      CHECK(expect == actual);
+    }
+
+    SECTION("Skew second tile") {
+      // inflate all the records of the second tile
+      for (uint64_t c = 0; c < num_cells.value(); c++) {
+        const std::string str =
+            (num_cells_per_tile <= c && c < 2 * num_cells_per_tile ?
+                 "foobargubquux" + std::to_string(c) :
+                 std::to_string(c));
+        std::get<0>(attributes.attributes())
+            .push_back(std::span<const char>(str.begin(), str.end()));
+      }
+
+      const auto actual = instance_dense_global_order<F>(
+          ctx,
+          array_name,
+          tile_order,
+          cell_order,
+          max_fragment_size,
+          {row, col},
+          {subrow, subcol},
+          attributes);
+
+      std::vector<std::vector<Dom64>> expect;
+      expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 4) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(
+               d2_extent * d1_extent * 1 / 4,
+               (d2_extent * d1_extent * 3 / 4) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(d2_extent * d1_extent * 3 / 4, d2_extent * d1_extent - 1)});
+      CHECK(expect == actual);
+    }
+
+    SECTION("Skew last tile") {
+      // inflate all the records of the last tile
+      for (uint64_t c = 0; c < num_cells.value(); c++) {
+        const std::string str =
+            (num_cells.value() - num_cells_per_tile <= c ?
+                 "foobargubquux" + std::to_string(c) :
+                 std::to_string(c));
+        std::get<0>(attributes.attributes())
+            .push_back(std::span<const char>(str.begin(), str.end()));
+      }
+
+      const auto actual = instance_dense_global_order<F>(
+          ctx,
+          array_name,
+          tile_order,
+          cell_order,
+          max_fragment_size,
+          {row, col},
+          {subrow, subcol},
+          attributes);
+
+      std::vector<std::vector<Dom64>> expect;
+      expect.push_back({subrow, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(
+               d2_extent * d1_extent / 2,
+               (d2_extent * d1_extent * 7 / 8) - 1)});
+      expect.push_back(
+          {subrow,
+           Dom64(d2_extent * d1_extent * 7 / 8, d2_extent * d1_extent - 1)});
+      CHECK(expect == actual);
+    }
   }
 }
 
