@@ -804,13 +804,10 @@ struct query_buffers<std::vector<T>> {
         sizeof(uint64_t) *
         std::min<uint64_t>(cell_limit, offsets_.size() - cell_offset);
 
-    uint64_t values_size;
-    if (offsets_.size() - cell_offset <= cell_limit) {
-      values_size = sizeof(T) * (values_.size() - cell_offset);
-    } else {
-      values_size = sizeof(T) * (offsets_[cell_offset + cell_limit] -
-                                 offsets_[cell_offset]);
-    }
+    // NB: unlike `offsets_size` this can just be the whole buffer
+    // since offsets is what determines the values
+    const uint64_t values_size = sizeof(T) * values_.size();
+
     return std::make_pair(values_size, offsets_size);
   }
 
@@ -983,18 +980,15 @@ struct query_buffers<std::optional<std::vector<T>>> {
   query_field_size_type make_field_size(
       uint64_t cell_offset, uint64_t cell_limit) const {
     const uint64_t offsets_size =
-        sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
+        sizeof(uint64_t) *
+        std::min<uint64_t>(cell_limit, offsets_.size() - cell_offset);
     const uint64_t validity_size =
         sizeof(uint8_t) *
         std::min<uint64_t>(cell_limit, validity_.size() - cell_offset);
 
-    uint64_t values_size;
-    if (offsets_.size() - cell_offset <= cell_limit) {
-      values_size = sizeof(T) * (values_.size() - cell_offset);
-    } else {
-      values_size = sizeof(T) * (offsets_[cell_offset + cell_limit] -
-                                 offsets_[cell_offset]);
-    }
+    // NB: unlike the above this can just be the whole buffer
+    // since offsets is what determines the values
+    const uint64_t values_size = sizeof(T) * values_.size();
 
     return std::make_tuple(values_size, offsets_size, validity_size);
   }
