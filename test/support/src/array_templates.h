@@ -448,6 +448,12 @@ struct query_buffers<T> {
     values_.insert(std::forward<Args>(args)...);
   }
 
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    return self_type(std::vector<value_type>(
+        values_.begin() + cell_start,
+        values_.begin() + cell_start + num_cells));
+  }
+
   auto begin() {
     return values_.begin();
   }
@@ -632,6 +638,15 @@ struct query_buffers<std::optional<T>> {
         validity_.end(), from.validity_.begin(), from.validity_.end());
   }
 
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    self_type ret;
+    ret.values_ = std::vector<value_type>(
+        values_.begin() + cell_start, values_.begin() + num_cells);
+    ret.validity_ = std::vector<uint8_t>(
+        validity_.begin() + cell_start, validity_.begin() + num_cells);
+    return ret;
+  }
+
   self_type& operator=(const self_type& other) {
     values_ = other.values_;
     validity_ = other.validity_;
@@ -790,6 +805,31 @@ struct query_buffers<std::vector<T>> {
     }
 
     values_.insert(values_.end(), from.values_.begin(), from.values_.end());
+  }
+
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    std::vector<uint64_t> slice_offsets(
+        offsets_.begin() + cell_start,
+        offsets_.begin() + cell_start + num_cells);
+    std::vector<T> slice_values;
+    for (uint64_t o = cell_start; o < cell_start + num_cells; o++) {
+      const uint64_t end =
+          (o + 1 == offsets_.size() ? values_.size() : offsets_[o + 1]);
+      slice_values.insert(
+          slice_values.end(),
+          values_.begin() + offsets_[o],
+          values_.begin() + end);
+    }
+
+    const uint64_t offset_adjustment = slice_offsets[0];
+    for (uint64_t& offset : slice_offsets) {
+      offset -= offset_adjustment;
+    }
+
+    self_type ret;
+    ret.offsets_ = slice_offsets;
+    ret.values_ = slice_values;
+    return ret;
   }
 
   self_type& operator=(const self_type& other) {
@@ -1197,6 +1237,25 @@ struct Fragment {
               std::tuple_cat(other.dimensions(), other.attributes()));
         },
         std::tuple_cat(dimensions(), attributes()));
+  }
+
+  /**
+   * @return a new fragment containing the cells in the range `[cell_start,
+   * cell_start + num_cells)`
+   */
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    const auto dims = std::apply(
+        [&]<typename... Ts>(Ts&... dst) {
+          return std::make_tuple(dst.slice(cell_start, num_cells)...);
+        },
+        dimensions());
+    const auto atts = std::apply(
+        [&]<typename... Ts>(Ts&... dst) {
+          return std::make_tuple(dst.slice(cell_start, num_cells)...);
+        },
+        attributes());
+
+    return self_type{.dims_ = dims, .atts_ = atts};
   }
 
   bool operator==(const self_type& other) const {
