@@ -110,7 +110,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     write_buffer[i] = (char)('a' + (i % 26));
 
   for (const int nth_failure : {2, 5, 10}) {
-    UnitTestConfig::instance().s3_fail_every_nth_upload_request.set(
+    auto _ = UnitTestConfig::instance().s3_fail_every_nth_upload_request.set(
         nth_failure);
 
     // Write one large file, the write will fail
