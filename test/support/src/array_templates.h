@@ -36,12 +36,14 @@
 
 #include "tiledb.h"
 #include "tiledb/common/unreachable.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
 
 #include <test/support/assert_helpers.h>
 #include <test/support/src/error_helpers.h>
+#include <test/support/src/helpers.h>
 #include <test/support/stdx/fold.h>
 #include <test/support/stdx/span.h>
 #include <test/support/stdx/traits.h>
@@ -57,6 +59,9 @@ class Dimension;
 
 namespace tiledb::test::templates {
 
+using StringDimensionCoordType = std::vector<char>;
+using StringDimensionCoordView = std::span<const char>;
+
 /**
  * Adapts a `std::tuple` whose fields are all `GlobalCellCmp`
  * to itself be `GlobalCellCmp`.
@@ -67,26 +72,42 @@ struct global_cell_cmp_std_tuple {
       : tup_(tup) {
   }
 
+ private:
+  template <typename T>
+  static constexpr tiledb::common::UntypedDatumView static_coord_datum(
+      const T& field) {
+    static_assert(
+        stdx::is_fundamental<T> ||
+        std::is_same_v<T, StringDimensionCoordView> ||
+        std::is_same_v<T, StringDimensionCoordType>);
+    if constexpr (stdx::is_fundamental<T>) {
+      return UntypedDatumView(&field, sizeof(T));
+    } else {
+      return UntypedDatumView(field.data(), field.size());
+    }
+  }
+
+  template <unsigned I>
+  static tiledb::common::UntypedDatumView try_dimension_datum(
+      const StdTuple& tup, unsigned dim) {
+    if (dim == I) {
+      return static_coord_datum(std::get<I>(tup));
+    } else if constexpr (I + 1 < std::tuple_size_v<StdTuple>) {
+      return try_dimension_datum<I + 1>(tup, dim);
+    } else {
+      // NB: probably not reachable in practice
+      throw std::logic_error("Out of bounds access to dimension tuple");
+    }
+  }
+
+ public:
   tiledb::common::UntypedDatumView dimension_datum(
       const tiledb::sm::Dimension&, unsigned dim_idx) const {
-    return std::apply(
-        [&](const auto&... field) {
-          size_t sizes[] = {sizeof(std::decay_t<decltype(field)>)...};
-          const void* const ptrs[] = {
-              static_cast<const void*>(std::addressof(field))...};
-          return UntypedDatumView(ptrs[dim_idx], sizes[dim_idx]);
-        },
-        tup_);
+    return try_dimension_datum<0>(tup_, dim_idx);
   }
 
   const void* coord(unsigned dim) const {
-    return std::apply(
-        [&](const auto&... field) {
-          const void* const ptrs[] = {
-              static_cast<const void*>(std::addressof(field))...};
-          return ptrs[dim];
-        },
-        tup_);
+    return try_dimension_datum<0>(tup_, dim).content();
   }
 
   StdTuple tup_;
@@ -106,11 +127,12 @@ struct query_buffers {};
  * Constrains types which can be used as the physical type of a dimension.
  */
 template <typename D>
-concept DimensionType = requires(const D& coord) {
-  typename std::is_signed<D>;
-  { coord < coord } -> std::same_as<bool>;
-  { D(int64_t(coord)) } -> std::same_as<D>;
-};
+concept DimensionType =
+    std::is_same_v<D, StringDimensionCoordType> or requires(const D& coord) {
+      typename std::is_signed<D>;
+      { coord < coord } -> std::same_as<bool>;
+      { D(int64_t(coord)) } -> std::same_as<D>;
+    };
 
 /**
  * Constrains types which can be used as the physical type of an attribute.
@@ -204,6 +226,20 @@ struct Dimension {
 
   Domain<value_type> domain;
   value_type extent;
+};
+
+template <>
+struct Dimension<tiledb::sm::Datatype::STRING_ASCII> {
+  using value_type = StringDimensionCoordType;
+
+  Dimension() {
+  }
+
+  Dimension(const Domain<value_type>& domain)
+      : domain(domain) {
+  }
+
+  std::optional<Domain<value_type>> domain;
 };
 
 template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
@@ -436,6 +472,10 @@ struct query_buffers<T> {
       : values_(cells) {
   }
 
+  query_buffers(std::initializer_list<T> cells)
+      : values_(cells) {
+  }
+
   bool operator==(const self_type&) const = default;
 
   uint64_t num_cells() const {
@@ -477,6 +517,11 @@ struct query_buffers<T> {
   }
 
   self_type& operator=(const std::vector<T>& values) {
+    values_ = values;
+    return *this;
+  }
+
+  self_type& operator=(const std::initializer_list<T>& values) {
     values_ = values;
     return *this;
   }
@@ -1125,42 +1170,139 @@ struct query_buffers<std::optional<std::vector<T>>> {
   }
 };
 
+template <typename _DimensionTuple, typename _AttributeTuple>
+struct Fragment {
+ private:
+  template <typename... Ts>
+  struct to_query_buffers {
+    using value_type = std::tuple<query_buffers<Ts>...>;
+    using ref_type = std::tuple<query_buffers<Ts>&...>;
+    using const_ref_type = std::tuple<const query_buffers<Ts>&...>;
+  };
+
+  template <typename... Ts>
+  static to_query_buffers<Ts...>::value_type f_qb_value(std::tuple<Ts...>) {
+    return std::declval<to_query_buffers<Ts...>::value_type>();
+  }
+
+  template <typename... Ts>
+  static to_query_buffers<Ts...>::ref_type f_qb_ref(std::tuple<Ts...>) {
+    return std::declval<to_query_buffers<Ts...>::ref_type>();
+  }
+
+  template <typename... Ts>
+  static to_query_buffers<Ts...>::const_ref_type f_qb_const_ref(
+      std::tuple<Ts...>) {
+    return std::declval<to_query_buffers<Ts...>::const_ref_type>();
+  }
+
+  template <typename T>
+  using value_tuple_query_buffers = decltype(f_qb_value(std::declval<T>()));
+
+  template <typename T>
+  using ref_tuple_query_buffers = decltype(f_qb_ref(std::declval<T>()));
+
+  template <typename T>
+  using const_ref_tuple_query_buffers =
+      decltype(f_qb_const_ref(std::declval<T>()));
+
+ public:
+  using DimensionTuple = _DimensionTuple;
+  using AttributeTuple = _AttributeTuple;
+
+  using self_type = Fragment<DimensionTuple, AttributeTuple>;
+
+  using DimensionBuffers = value_tuple_query_buffers<DimensionTuple>;
+  using DimensionBuffersRef = ref_tuple_query_buffers<DimensionTuple>;
+  using DimensionBuffersConstRef =
+      const_ref_tuple_query_buffers<DimensionTuple>;
+
+  using AttributeBuffers = value_tuple_query_buffers<AttributeTuple>;
+  using AttributeBuffersRef = ref_tuple_query_buffers<AttributeTuple>;
+  using AttributeBuffersConstRef =
+      const_ref_tuple_query_buffers<AttributeTuple>;
+
+  DimensionBuffers dims_;
+  AttributeBuffers atts_;
+
+  uint64_t num_cells() const {
+    static_assert(
+        std::tuple_size<DimensionBuffers>::value > 0 ||
+        std::tuple_size<AttributeBuffers>::value > 0);
+
+    if constexpr (std::tuple_size<DimensionBuffers>::value == 0) {
+      return std::get<0>(atts_).num_cells();
+    } else {
+      return std::get<0>(atts_).num_cells();
+    }
+  }
+
+  uint64_t size() const {
+    return num_cells();
+  }
+
+  const DimensionBuffersConstRef dimensions() const {
+    return std::apply(
+        [](const auto&... field) { return std::forward_as_tuple(field...); },
+        dims_);
+  }
+
+  DimensionBuffersRef dimensions() {
+    return std::apply(
+        [](auto&... field) { return std::forward_as_tuple(field...); }, dims_);
+  }
+
+  const AttributeBuffersConstRef attributes() const {
+    return std::apply(
+        [](const auto&... field) { return std::forward_as_tuple(field...); },
+        atts_);
+  }
+
+  AttributeBuffersRef attributes() {
+    return std::apply(
+        [](auto&... field) { return std::forward_as_tuple(field...); }, atts_);
+  }
+
+  void reserve(uint64_t num_cells) {
+    std::apply(
+        [num_cells]<typename... Ts>(Ts&... field) {
+          (field.reserve(num_cells), ...);
+        },
+        std::tuple_cat(dimensions(), attributes()));
+  }
+
+  void resize(uint64_t num_cells) {
+    std::apply(
+        [num_cells]<typename... Ts>(Ts&... field) {
+          (field.resize(num_cells), ...);
+        },
+        std::tuple_cat(dimensions(), attributes()));
+  }
+
+  void extend(const self_type& other) {
+    std::apply(
+        [&]<typename... Ts>(Ts&... dst) {
+          std::apply(
+              [&]<typename... Us>(const Us&... src) { (dst.extend(src), ...); },
+              std::tuple_cat(other.dimensions(), other.attributes()));
+        },
+        std::tuple_cat(dimensions(), attributes()));
+  }
+};
+
 /**
  * Data for a one-dimensional array
  */
 template <DimensionType D, AttributeType... Att>
-struct Fragment1D {
+struct Fragment1D : public Fragment<std::tuple<D>, std::tuple<Att...>> {
   using DimensionType = D;
 
-  query_buffers<D> dim_;
-  std::tuple<query_buffers<Att>...> atts_;
-
-  uint64_t size() const {
-    return dim_.num_cells();
+  const query_buffers<D>& dimension() const {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<const query_buffers<D>&> dimensions() const {
-    return std::tuple<const query_buffers<D>&>(dim_);
-  }
-
-  std::tuple<const query_buffers<Att>&...> attributes() const {
-    return std::apply(
-        [](const query_buffers<Att>&... attribute) {
-          return std::tuple<const query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
-  }
-
-  std::tuple<query_buffers<D>&> dimensions() {
-    return std::tuple<query_buffers<D>&>(dim_);
-  }
-
-  std::tuple<query_buffers<Att>&...> attributes() {
-    return std::apply(
-        [](query_buffers<Att>&... attribute) {
-          return std::tuple<query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
+  query_buffers<D>& dimension() {
+    return std::get<0>(this->dimensions());
   }
 };
 
@@ -1168,39 +1310,52 @@ struct Fragment1D {
  * Data for a two-dimensional array
  */
 template <DimensionType D1, DimensionType D2, typename... Att>
-struct Fragment2D {
-  query_buffers<D1> d1_;
-  query_buffers<D2> d2_;
-  std::tuple<query_buffers<Att>...> atts_;
-
-  uint64_t size() const {
-    return d1_.num_cells();
+struct Fragment2D : public Fragment<std::tuple<D1, D2>, std::tuple<Att...>> {
+  const query_buffers<D1>& d1() const {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<const query_buffers<D1>&, const query_buffers<D2>&> dimensions()
-      const {
-    return std::tuple<const query_buffers<D1>&, const query_buffers<D2>&>(
-        d1_, d2_);
+  const query_buffers<D2>& d2() const {
+    return std::get<1>(this->dimensions());
   }
 
-  std::tuple<query_buffers<D1>&, query_buffers<D2>&> dimensions() {
-    return std::tuple<query_buffers<D1>&, query_buffers<D2>&>(d1_, d2_);
+  query_buffers<D1>& d1() {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<const query_buffers<Att>&...> attributes() const {
-    return std::apply(
-        [](const query_buffers<Att>&... attribute) {
-          return std::tuple<const query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
+  query_buffers<D2>& d2() {
+    return std::get<1>(this->dimensions());
+  }
+};
+
+/**
+ * Data for a three-dimensional array
+ */
+template <DimensionType D1, DimensionType D2, DimensionType D3, typename... Att>
+struct Fragment3D
+    : public Fragment<std::tuple<D1, D2, D3>, std::tuple<Att...>> {
+  const query_buffers<D1>& d1() const {
+    return std::get<0>(this->dimensions());
   }
 
-  std::tuple<query_buffers<Att>&...> attributes() {
-    return std::apply(
-        [](query_buffers<Att>&... attribute) {
-          return std::tuple<query_buffers<Att>&...>(attribute...);
-        },
-        atts_);
+  const query_buffers<D2>& d2() const {
+    return std::get<1>(this->dimensions());
+  }
+
+  const query_buffers<D3>& d3() const {
+    return std::get<2>(this->dimensions());
+  }
+
+  query_buffers<D1>& d1() {
+    return std::get<0>(this->dimensions());
+  }
+
+  query_buffers<D2>& d2() {
+    return std::get<1>(this->dimensions());
+  }
+
+  query_buffers<D3>& d3() {
+    return std::get<2>(this->dimensions());
   }
 };
 
@@ -1317,16 +1472,43 @@ namespace query {
 template <typename Asserter, FragmentType F>
 auto make_field_sizes(
     F& fragment, uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  typename F::DimensionBuffersRef dims = fragment.dimensions();
+  typename F::AttributeBuffersRef atts = fragment.attributes();
   return [cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
     return query_applicator<Asserter, Ts...>::make_field_sizes(
         fields, cell_limit);
-  }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+  }(std::tuple_cat(dims, atts));
 }
 
 template <FragmentType F>
 using fragment_field_sizes_t =
     decltype(make_field_sizes<AsserterRuntimeException, F>(
         std::declval<F&>(), std::declval<uint64_t>()));
+
+/**
+ * Apply field cursor and sizes to each field of `fragment`.
+ */
+template <FragmentType F>
+void apply_cursor(
+    F& fragment,
+    const fragment_field_sizes_t<F>& cursor,
+    const fragment_field_sizes_t<F>& field_sizes) {
+  typename F::DimensionBuffersRef dims = fragment.dimensions();
+  typename F::AttributeBuffersRef atts = fragment.attributes();
+  std::apply(
+      [&](auto&... field) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              std::apply(
+                  [&](const auto&... field_size) {
+                    (field.apply_cursor(field_cursor, field_size), ...);
+                  },
+                  field_sizes);
+            },
+            cursor);
+      },
+      std::tuple_cat(dims, atts));
+}
 
 /**
  * Set buffers on `query` for the tuple of field columns
@@ -1349,24 +1531,31 @@ void set_fields(
       std::decay_t<decltype(field_cursors)>,
       std::tuple_size_v<decltype(fragment.dimensions())>>::value(field_cursors);
 
-  [&]<typename... Ts>(std::tuple<Ts...> fields) {
-    query_applicator<Asserter, Ts...>::set(
-        ctx,
-        query,
-        split_sizes.first,
-        fields,
-        dimension_name,
-        split_cursors.first);
-  }(fragment.dimensions());
-  [&]<typename... Ts>(std::tuple<Ts...> fields) {
-    query_applicator<Asserter, Ts...>::set(
-        ctx,
-        query,
-        split_sizes.second,
-        fields,
-        attribute_name,
-        split_cursors.second);
-  }(fragment.attributes());
+  if constexpr (!std::
+                    is_same_v<decltype(fragment.dimensions()), std::tuple<>>) {
+    [&]<typename... Ts>(std::tuple<Ts...> fields) {
+      query_applicator<Asserter, Ts...>::set(
+          ctx,
+          query,
+          split_sizes.first,
+          fields,
+          dimension_name,
+          split_cursors.first);
+    }(fragment.dimensions());
+  }
+
+  if constexpr (!std::
+                    is_same_v<decltype(fragment.attributes()), std::tuple<>>) {
+    [&]<typename... Ts>(std::tuple<Ts...> fields) {
+      query_applicator<Asserter, Ts...>::set(
+          ctx,
+          query,
+          split_sizes.second,
+          fields,
+          attribute_name,
+          split_cursors.second);
+    }(fragment.attributes());
+  }
 }
 
 /**
@@ -1379,7 +1568,125 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
   }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
+/**
+ * Writes a fragment to an array.
+ */
+template <typename Asserter, FragmentType Fragment>
+void write_fragment(
+    const Fragment& fragment,
+    Array& forwrite,
+    tiledb_layout_t layout = TILEDB_UNORDERED) {
+  Query query(forwrite);
+  query.set_layout(layout);
+
+  auto field_sizes =
+      make_field_sizes<Asserter, Fragment>(const_cast<Fragment&>(fragment));
+  templates::query::set_fields<Asserter, Fragment>(
+      query.ctx().ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      const_cast<Fragment&>(fragment),
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); });
+
+  const auto status = query.submit();
+  ASSERTER(status == Query::Status::COMPLETE);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query.finalize();
+  }
+
+  // check that sizes match what we expect
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t num_cells =
+      templates::query::num_cells<Asserter>(fragment, field_sizes);
+
+  ASSERTER(num_cells == expect_num_cells);
+}
+
 }  // namespace query
+
+namespace ddl {
+
+/**
+ * Creates an array with a schema whose dimensions and attributes
+ * come from the simplified arguments.
+ * The names of the dimensions are d1, d2, etc.
+ * The names of the attributes are a1, a2, etc.
+ */
+template <Datatype... DimensionDatatypes>
+void create_array(
+    const std::string& array_name,
+    const Context& context,
+    const std::tuple<const Dimension<DimensionDatatypes>&...> dimensions,
+    std::vector<std::tuple<Datatype, uint32_t, bool>> attributes,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t tile_capacity,
+    bool allow_duplicates) {
+  std::vector<std::string> dimension_names;
+  std::vector<tiledb_datatype_t> dimension_types;
+  std::vector<void*> dimension_ranges;
+  std::vector<void*> dimension_extents;
+  auto add_dimension = [&]<Datatype D>(
+                           const templates::Dimension<D>& dimension) {
+    using CoordType = templates::Dimension<D>::value_type;
+    dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
+    dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
+    if constexpr (std::is_same_v<CoordType, StringDimensionCoordType>) {
+      dimension_ranges.push_back(nullptr);
+      dimension_extents.push_back(nullptr);
+    } else {
+      dimension_ranges.push_back(
+          const_cast<CoordType*>(&dimension.domain.lower_bound));
+      dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
+    }
+  };
+  std::apply(
+      [&]<Datatype... Ds>(const templates::Dimension<Ds>&... dimension) {
+        (add_dimension(dimension), ...);
+      },
+      dimensions);
+
+  std::vector<std::string> attribute_names;
+  std::vector<tiledb_datatype_t> attribute_types;
+  std::vector<uint32_t> attribute_cell_val_nums;
+  std::vector<bool> attribute_nullables;
+  std::vector<std::pair<tiledb_filter_type_t, int>> attribute_compressors;
+  auto add_attribute = [&](Datatype datatype,
+                           uint32_t cell_val_num,
+                           bool nullable) {
+    attribute_names.push_back("a" + std::to_string(attribute_names.size() + 1));
+    attribute_types.push_back(static_cast<tiledb_datatype_t>(datatype));
+    attribute_cell_val_nums.push_back(cell_val_num);
+    attribute_nullables.push_back(nullable);
+    attribute_compressors.push_back(std::make_pair(TILEDB_FILTER_NONE, -1));
+  };
+  for (const auto& [datatype, cell_val_num, nullable] : attributes) {
+    add_attribute(datatype, cell_val_num, nullable);
+  }
+
+  tiledb::test::create_array(
+      context.ptr().get(),
+      array_name,
+      TILEDB_SPARSE,
+      dimension_names,
+      dimension_types,
+      dimension_ranges,
+      dimension_extents,
+      attribute_names,
+      attribute_types,
+      attribute_cell_val_nums,
+      attribute_compressors,
+      tile_order,
+      cell_order,
+      tile_capacity,
+      allow_duplicates,
+      false,
+      {attribute_nullables});
+}
+
+}  // namespace ddl
 
 }  // namespace tiledb::test::templates
 
