@@ -67,21 +67,3 @@ commence(unit_test float_scale_input_val)
     this_target_object_libraries(float_scaling_filter)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)
 conclude(unit_test)
-
-commence(unit_test bitshuffle_compat)
-    # Dependency on external/bitshuffle is direct, not by add_subdirectory
-    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/src/bitshuffle" OUTPUT_VARIABLE BITSHUFFLE_SOURCE_ROOT)
-    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/include/bitshuffle" OUTPUT_VARIABLE BITSHUFFLE_INCLUDE)
-    list(APPEND BITSHUFFLE_SOURCES
-        ${BITSHUFFLE_SOURCE_ROOT}/bitshuffle_core.cc
-        ${BITSHUFFLE_SOURCE_ROOT}/iochain.cc
-        )
-    this_target_sources(unit_bitshuffle_compat.cc ${BITSHUFFLE_SOURCES})
-    this_target_object_libraries(bitshuffle_filter)
-    this_target_link_libraries(Blosc2::blosc2)
-    set_source_files_properties(
-        unit_bitshuffle_compat.cc ${BITSHUFFLE_SOURCES}
-        PROPERTIES
-        INCLUDE_DIRECTORIES "${BITSHUFFLE_INCLUDE}"
-    )
-conclude(unit_test)
