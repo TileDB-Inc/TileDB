@@ -319,6 +319,11 @@ class Array {
     return std::string(uri);
   }
 
+  /** Get the Context for the array. */
+  const Context& context() const {
+    return ctx_.get();
+  }
+
   /** Get the ArraySchema for the array. **/
   ArraySchema schema() const {
     auto& ctx = ctx_.get();

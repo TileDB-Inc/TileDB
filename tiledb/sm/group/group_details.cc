@@ -88,7 +88,7 @@ void GroupDetails::mark_member_for_addition(
     std::optional<std::string>& name,
     std::optional<ObjectType> type) {
   std::lock_guard<std::mutex> lck(mtx_);
-  ObjectType obj_type;
+  ObjectType obj_type = ObjectType::INVALID;
   if (type.has_value()) {
     obj_type = type.value();
   } else {
@@ -97,15 +97,14 @@ void GroupDetails::mark_member_for_addition(
       absolute_group_member_uri =
           group_uri_.join_path(group_member_uri.to_string());
     }
-    obj_type = object_type(resources, absolute_group_member_uri);
-  }
 
-  if (obj_type == ObjectType::INVALID) {
-    throw GroupDetailsException(
-        "Cannot add group member " + group_member_uri.to_string() +
-        ", type is INVALID. The member likely does not exist.");
+    // 3.0 REST will identify the object type server side.
+    if (!absolute_group_member_uri.is_tiledb() ||
+        (resources.rest_client()->rest_enabled() &&
+         resources.rest_client()->rest_legacy())) {
+      obj_type = object_type(resources, absolute_group_member_uri);
+    }
   }
-
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, obj_type, relative, name, false);
 
@@ -301,7 +300,8 @@ GroupDetails::member_by_name(const std::string& name) {
 
   auto member = it->second;
   std::string uri = member->uri().to_string();
-  if (member->relative()) {
+  // Relative tiledb URIs are returned in the expected format from REST.
+  if (!member->uri().is_tiledb() && member->relative()) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 

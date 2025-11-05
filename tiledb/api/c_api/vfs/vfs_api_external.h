@@ -430,8 +430,8 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_copy_file(
     const char* new_uri) TILEDB_NOEXCEPT;
 
 /**
- * Copies a directory. If the destination directory exists, it will be
- * overwritten.
+ * Copies the files of a directory to another directory. If a file in the
+ * destination directory exists, it will be overwritten.
  *
  * **Example:**
  *

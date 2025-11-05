@@ -1,5 +1,7 @@
 #[cxx::bridge]
 mod ffi {
+    #![allow(unused_attributes)]
+
     #[namespace = "tiledb::sm"]
     extern "C++" {
         type Datatype = crate::sm::enums::Datatype;
@@ -359,7 +361,7 @@ impl ArraySchema {
     }
 
     /// Returns an iterator over all of the fields of this schema.
-    pub fn fields(&self) -> impl Iterator<Item = Field> {
+    pub fn fields(&self) -> impl Iterator<Item = Field<'_>> {
         self.domain()
             .dimensions()
             .map(Field::Dimension)

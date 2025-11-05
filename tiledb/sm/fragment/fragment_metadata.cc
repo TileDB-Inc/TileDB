@@ -386,7 +386,7 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
         loaded_metadata_ptr_->fragment_null_counts()[idx] = std::accumulate(
             loaded_metadata_ptr_->tile_null_counts()[idx].begin(),
             loaded_metadata_ptr_->tile_null_counts()[idx].end(),
-            0);
+            0ull);
 
         if (var_size) {
           min_max_var(name);
@@ -673,14 +673,7 @@ uint64_t FragmentMetadata::fragment_size() const {
   for (const auto& file_validity_size : file_validity_sizes_)
     size += file_validity_size;
 
-  // The fragment metadata file size can be empty when we've loaded consolidated
-  // metadata
-  uint64_t meta_file_size = meta_file_size_;
-  if (meta_file_size == 0) {
-    auto meta_uri = fragment_uri_.join_path(
-        std::string(constants::fragment_metadata_filename));
-    meta_file_size = resources_->vfs().file_size(meta_uri);
-  }
+  const uint64_t meta_file_size = fragment_meta_size();
   // Validate that the meta_file_size is not zero, either preloaded or fetched
   // above
   iassert(meta_file_size != 0);
@@ -691,13 +684,28 @@ uint64_t FragmentMetadata::fragment_size() const {
   return size;
 }
 
-void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
-  auto& domain{array_schema_->domain()};
+uint64_t FragmentMetadata::fragment_meta_size() const {
+  // The fragment metadata file size can be empty when we've loaded consolidated
+  // metadata
+  if (meta_file_size_ == 0) {
+    auto meta_uri = fragment_uri_.join_path(
+        std::string(constants::fragment_metadata_filename));
+    meta_file_size_ = resources_->vfs().file_size(meta_uri);
+  }
+  return meta_file_size_;
+}
 
+void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
   // Sanity check
   iassert(!non_empty_domain.empty());
   iassert(non_empty_domain_.empty());
   iassert(domain_.empty());
+
+  set_domain(non_empty_domain);
+}
+
+void FragmentMetadata::set_domain(const NDRange& non_empty_domain) {
+  auto& domain{array_schema_->domain()};
 
   // Set non-empty domain for dense arrays (for sparse it will be calculated
   // via the MBRs)
@@ -841,6 +849,32 @@ void FragmentMetadata::load(
 }
 
 void FragmentMetadata::store(const EncryptionKey& encryption_key) {
+  // integrity checks
+  if (dense_) {
+    const uint64_t dense_tile_num = tile_num();
+
+    for (const auto& tile_offsets : loaded_metadata_ptr_->tile_offsets()) {
+      iassert(tile_offsets.size() == dense_tile_num);
+    }
+    for (const auto& tile_var_offsets :
+         loaded_metadata_ptr_->tile_var_offsets()) {
+      iassert(tile_var_offsets.size() == dense_tile_num);
+    }
+    for (const auto& tile_var_sizes : loaded_metadata_ptr_->tile_var_sizes()) {
+      iassert(tile_var_sizes.size() == dense_tile_num);
+    }
+    for (const auto& tile_validity_offsets :
+         loaded_metadata_ptr_->tile_validity_offsets()) {
+      iassert(tile_validity_offsets.size() == dense_tile_num);
+    }
+    for (const auto& tile_null_counts :
+         loaded_metadata_ptr_->tile_null_counts()) {
+      if (!tile_null_counts.empty()) {
+        iassert(tile_null_counts.size() == dense_tile_num);
+      }
+    }
+  }
+
   auto timer_se = resources_->stats().start_timer("write_store_frag_meta");
 
   // Make sure the data fits in the current domain before we commit to disk.
@@ -1194,6 +1228,11 @@ void FragmentMetadata::store_v15_or_higher(
 }
 
 void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
+  if (dense_) {
+    const uint64_t dense_tile_num = tile_num();
+    iassert(num_tiles <= dense_tile_num);
+  }
+
   for (auto& it : idx_map_) {
     auto i = it.second;
     iassert(num_tiles >= loaded_metadata_ptr_->tile_offsets()[i].size());
@@ -1679,7 +1718,7 @@ void FragmentMetadata::get_footer_offset_and_size(
     URI fragment_metadata_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
     uint64_t size_offset = meta_file_size_ - sizeof(uint64_t);
-    throw_if_not_ok(resources_->vfs().read(
+    throw_if_not_ok(resources_->vfs().read_exactly(
         fragment_metadata_uri, size_offset, size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     resources_->stats().add_counter("read_frag_meta_size", sizeof(uint64_t));
@@ -2758,7 +2797,7 @@ void FragmentMetadata::read_file_footer(
   }
 
   // Read footer
-  throw_if_not_ok(resources_->vfs().read(
+  throw_if_not_ok(resources_->vfs().read_exactly(
       fragment_metadata_uri,
       *footer_offset,
       tile->data_as<uint8_t>(),

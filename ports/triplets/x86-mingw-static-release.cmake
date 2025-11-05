@@ -6,3 +6,6 @@ set(VCPKG_ENV_PASSTHROUGH PATH)
 set(VCPKG_CMAKE_SYSTEM_NAME MinGW)
 
 set(VCPKG_BUILD_TYPE release)
+
+# Fix CMake 4.0 errors in ports supporting very old CMake verions.
+set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")

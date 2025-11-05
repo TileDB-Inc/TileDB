@@ -77,7 +77,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi][config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 67);
+  CHECK(names.size() == 68);
 }
 
 TEST_CASE("C++ API: Config Environment Variables", "[cppapi][config]") {
@@ -85,11 +85,11 @@ TEST_CASE("C++ API: Config Environment Variables", "[cppapi][config]") {
   auto readInvalidKey = [&config]() { std::string result1 = config["foo"]; };
   REQUIRE_THROWS_AS(readInvalidKey(), tiledb::TileDBError);
 
-  setenv_local("TILEDB_FOO", "bar");
+  auto _1 = setenv_local("TILEDB_FOO", "bar");
   std::string result1 = config["foo"];
   CHECK(result1 == "bar");
 
-  setenv_local("TILEDB_FOO", "bar2");
+  auto _2 = setenv_local("TILEDB_FOO", "bar2");
   std::string result2 = config["foo"];
   CHECK(result2 == "bar2");
 
@@ -97,7 +97,7 @@ TEST_CASE("C++ API: Config Environment Variables", "[cppapi][config]") {
   auto readInvalidKey2 = [&config]() { std::string result2 = config["foo"]; };
   REQUIRE_THROWS_AS(readInvalidKey2(), tiledb::TileDBError);
 
-  setenv_local("TILEDB_TEST_FOO", "bar3");
+  auto _3 = setenv_local("TILEDB_TEST_FOO", "bar3");
   std::string result3 = config["foo"];
   CHECK(result3 == "bar3");
 }
@@ -113,7 +113,7 @@ TEST_CASE(
   CHECK(result1 == std::to_string(threads));
 
   const std::string value2 = std::to_string(threads + 1);
-  setenv_local("TILEDB_SM_IO_CONCURRENCY_LEVEL", value2.c_str());
+  auto _ = setenv_local("TILEDB_SM_IO_CONCURRENCY_LEVEL", value2.c_str());
   const std::string result2 = config[key];
   CHECK(result2 == value2);
 
@@ -154,7 +154,7 @@ TEST_CASE(
   profile2.save();
 
   // Set the environment variable to select profile1
-  setenv_local("TILEDB_PROFILE_NAME", profile1_name.c_str());
+  auto _ = setenv_local("TILEDB_PROFILE_NAME", profile1_name.c_str());
 
   // Create config and set profile_dir
   tiledb::Config config;
@@ -168,9 +168,6 @@ TEST_CASE(
 
   // Should pick up profile2, overriding the env variable
   CHECK(config.get(key) == profile2_value);
-
-  // Unset the profile name environment variable
-  setenv_local("TILEDB_PROFILE_NAME", "");
 }
 
 TEST_CASE(
@@ -209,7 +206,7 @@ TEST_CASE(
 
   // set an env variable using setenv_local("TILEDB_REST_SERVER_ADDRESS",
   // "test") to check the priority
-  setenv_local("TILEDB_REST_SERVER_ADDRESS", env_value.c_str());
+  auto _ = setenv_local("TILEDB_REST_SERVER_ADDRESS", env_value.c_str());
   // Check the config value after setting the env variable
   // This should be still coming from the config since it has priority over both
   // the profile and the env variable

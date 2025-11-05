@@ -58,11 +58,11 @@ jobs:
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux_2_28_x86_64
           - platform: linux-aarch64
-            os: linux-arm64-ubuntu24
+            os: ubuntu-24.04-arm
             triplet: arm64-linux-release
             manylinux: quay.io/pypa/manylinux_2_28_aarch64
           - platform: macos-x86_64
-            os: macos-13
+            os: macos-latest
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
             MACOSX_DEPLOYMENT_TARGET: 11
             triplet: x64-osx-release
@@ -80,8 +80,10 @@ jobs:
       - name: Checkout TileDB
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v3
-      - name: 'Homebrew setup'
-        run: brew install automake ninja
+      - name: 'Homebrew and SDKROOT setup on macOS'
+        run: |
+          brew install automake ninja
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
       - name: Set variables
         id: get-values

@@ -33,6 +33,6 @@
 
 #include "hook_common.h"
 
-TEST_CASE("Compile definition - without hook") {
-  CHECK(compiled_with_hook == false);
+TEST_CASE("Compile definition - no hook") {
+  STATIC_REQUIRE(which_hook == WhichHook::None);
 }

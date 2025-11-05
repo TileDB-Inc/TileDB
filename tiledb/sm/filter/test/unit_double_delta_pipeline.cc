@@ -117,7 +117,7 @@ static bool expect_overflow(
     }
     for (uint64_t i = 1; i < values.size(); i++) {
       std::optional<int64_t> delta =
-          checked_arithmetic<int64_t>::sub_signed(values[i], values[i - 1]);
+          checked_arithmetic<uint64_t>::sub_signed(values[i], values[i - 1]);
       if (delta.has_value()) {
         deltae.push_back(delta.value());
       } else {
@@ -227,6 +227,13 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
         0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 128};
     doit.operator()<tiledb::test::AsserterCatch>(
         Datatype::DATETIME_MONTH, Datatype::UINT64, data);
+  }
+
+  SECTION("Shrinking CORE-407") {
+    const std::vector<uint8_t> data = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::TIME_NS, Datatype::UINT64, data);
   }
 
   SECTION("Rapidcheck all") {

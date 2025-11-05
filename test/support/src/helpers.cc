@@ -60,12 +60,42 @@
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
-int setenv_local(const char* __name, const char* __value) {
+static int setenv(const char* __name, const char* __value) {
 #ifdef _WIN32
   return _putenv_s(__name, __value);
 #else
   return ::setenv(__name, __value, 1);
 #endif
+}
+
+#ifdef _WIN32
+static int unsetenv(const char* __name) {
+  auto val = std::string(__name) + "=";
+  return _putenv(val.c_str());
+}
+#endif
+
+SetEnvScope setenv_local(const char* __name, const char* __value) {
+  std::optional<std::string> old_value;
+  if (auto ptr = ::getenv(__name); ptr != nullptr) {
+    old_value.emplace(ptr);
+  }
+  if (int result = setenv(__name, __value); result != 0) {
+    throw std::runtime_error("Failed to set environment variable");
+  }
+  return SetEnvScope(__name, std::move(old_value));
+}
+
+SetEnvScope::~SetEnvScope() {
+  if (name_ == nullptr) {
+    // The object was moved to somewhere else; don't run destructor.
+    return;
+  }
+  if (old_value_.has_value()) {
+    setenv(name_, old_value_.value().c_str());
+  } else {
+    unsetenv(name_);
+  }
 }
 
 std::mutex catch2_macro_mutex;
@@ -1649,6 +1679,19 @@ void schema_equiv(
   CHECK(schema1.tile_order() == schema2.tile_order());
   CHECK(schema1.allows_dups() == schema2.allows_dups());
   CHECK(schema1.array_uri().to_string() == schema2.array_uri().to_string());
+}
+
+std::string build_tiledb_uri(
+    const URI& uri, const std::string& path, bool include_storage) {
+  URI::RESTURIComponents components;
+  CHECK(uri.get_rest_components(false, &components).ok());
+  const auto trim = components.server_path.find_first_of('/');
+  components.server_path.resize(trim == std::string::npos ? 0 : trim);
+  components.server_path += path.starts_with('/') ? path : "/" + path;
+  std::string result =
+      "tiledb://" + components.server_namespace + "/" + components.server_path;
+
+  return include_storage ? result + "/" + components.asset_storage : result;
 }
 
 template void check_subarray<int8_t>(

@@ -30,14 +30,19 @@
  * This file implements class RestProfile.
  */
 
+#include "rest_profile.h"
+
 #include <filesystem>
 #include <iostream>
 
-#include "rest_profile.h"
 #include "tiledb/common/random/random_label.h"
+
+#include <nlohmann/json.hpp>
 
 using namespace tiledb::common;
 using namespace tiledb::common::filesystem;
+
+using json = nlohmann::json;
 
 namespace tiledb::sm {
 
@@ -125,6 +130,13 @@ RestProfile::RestProfile(
               RestProfile::DEFAULT_PROFILE_NAME) {
   if (dir.has_value() && !dir.value().empty()) {
     dir_ = ensure_trailing_slash(dir.value());
+  } else if (getenv("TILEDB_PROFILE_DIR") != nullptr) {
+    // If the user has set the TILEDB_PROFILE_DIR environment variable,
+    // use that as the directory to store the profiles file.
+    // Note: the TILEDB_ prefix is just the default and can change on a config
+    // level. Since a Profile object is not tied to a Config object, we use this
+    // hardcoded value here.
+    dir_ = ensure_trailing_slash(std::string(getenv("TILEDB_PROFILE_DIR")));
   } else {
     // We don't want to directly interact with the home directory of the user,
     // so we create a folder in the user's home directory.
@@ -221,8 +233,12 @@ void RestProfile::save_to_file(const bool overwrite) {
   write_file(data, filepath_);
 }
 
+bool RestProfile::file_exists() const {
+  return std::filesystem::exists(filepath_);
+}
+
 void RestProfile::load_from_file() {
-  if (std::filesystem::exists(filepath_)) {
+  if (file_exists()) {
     // If the local file exists, load the profile with the given name.
     load_from_json_file(filepath_);
   } else {

@@ -51,6 +51,27 @@
 #include <string>
 #include <thread>
 
+class [[nodiscard]] SetEnvScope {
+ public:
+  SetEnvScope(SetEnvScope&& other)
+      : name_(std::exchange(other.name_, nullptr))
+      , old_value_(std::move(other.old_value_)) {
+  }
+
+  ~SetEnvScope();
+
+ private:
+  friend SetEnvScope setenv_local(const char*, const char*);
+
+  SetEnvScope(const char* name, std::optional<std::string>&& old_value)
+      : name_(name)
+      , old_value_(std::move(old_value)) {
+  }
+
+  const char* name_;
+  const std::optional<std::string> old_value_;
+};
+
 /**
  * Helper function to set environment variables across platforms.
  *
@@ -58,7 +79,7 @@
  * @param __value Value of the environment variable.
  * @return 0 on success, -1 on error.
  */
-int setenv_local(const char* __name, const char* __value);
+SetEnvScope setenv_local(const char* __name, const char* __value);
 
 // A mutex for protecting the thread-unsafe Catch2 macros.
 extern std::mutex catch2_macro_mutex;
@@ -964,6 +985,22 @@ void read_sparse_v11(
  */
 void schema_equiv(
     const sm::ArraySchema& schema1, const sm::ArraySchema& schema2);
+
+/**
+ * Helper function to build a tiledb URI using the provided asset path,
+ * following the randomly generated top-level directory used in all 3.0 REST
+ * tests.
+ *
+ * This helper only applies to 3.0 REST, there is no concept of asset paths in
+ * legacy REST.
+ *
+ * @param uri The URI to update.
+ * @param path The new asset path to use after the randomly generated top-level
+ *    directory.
+ * @return The tiledb URI built from the provided asset path.
+ */
+std::string build_tiledb_uri(
+    const sm::URI& uri, const std::string& path, bool include_storage = false);
 
 }  // namespace tiledb::test
 

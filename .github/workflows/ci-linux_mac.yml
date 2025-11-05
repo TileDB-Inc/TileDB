@@ -143,18 +143,19 @@ jobs:
         if: inputs.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core perl-IPC-Cmd curl zip unzip tar
+          yum install -y redhat-lsb-core perl-IPC-Cmd perl-Time-Piece curl zip unzip tar
 
       # This must happen after checkout, because checkout would remove the directory.
       - name: Install Ninja
         if: inputs.cmake_generator == 'Ninja'
         uses: seanmiddleditch/gha-setup-ninja@v4
 
-      - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
+      - name: 'Homebrew and SDKROOT setup on macOS' # x-ref c8e49ba8f8b9ce
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
         run: |
           set -e pipefail
           brew install automake
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 
       - name: 'Configure libtiledb'
         id: configure
@@ -188,7 +189,7 @@ jobs:
         shell: bash
         env:
           ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
-          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.6' || '' }}
+          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.8' || '' }}
           VCPKG_TARGET_TRIPLET: ${{ runner.os == 'Linux' && 'x64-linux' || 'x64-osx' }}
         run: |
           set -e pipefail

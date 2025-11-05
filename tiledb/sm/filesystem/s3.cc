@@ -62,7 +62,6 @@
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <aws/sts/STSClient.h>
-#include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
 
@@ -346,6 +345,10 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
+bool S3::supports_uri(const URI& uri) const {
+  return uri.is_s3();
+}
+
 void S3::create_bucket(const URI& bucket) const {
   throw_if_not_ok(init_client());
 
@@ -444,13 +447,13 @@ void S3::move_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void S3::copy_file(const URI& old_uri, const URI& new_uri) const {
+void S3::copy_file(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(init_client());
 
   throw_if_not_ok(copy_object(old_uri, new_uri));
 }
 
-void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void S3::copy_dir(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(init_client());
 
   std::string old_uri_string = old_uri.to_string();
@@ -473,14 +476,38 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void S3::read(
-    const URI& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    bool) const {
-  uint64_t nbytes_read = 0;
-  throw_if_not_ok(read_impl(uri, offset, buffer, nbytes, 0, &nbytes_read));
+uint64_t S3::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+  throw_if_not_ok(init_client());
+
+  if (!uri.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
+  }
+
+  Aws::Http::URI aws_uri = uri.c_str();
+  Aws::S3::Model::GetObjectRequest get_object_request;
+  get_object_request.WithBucket(aws_uri.GetAuthority())
+      .WithKey(aws_uri.GetPath());
+  get_object_request.SetRange(Aws::String(
+      "bytes=" + std::to_string(offset) + "-" +
+      std::to_string(offset + nbytes - 1)));
+  get_object_request.SetResponseStreamFactory([buffer, nbytes]() {
+    return Aws::New<PreallocatedIOStream>(
+        constants::s3_allocation_tag.c_str(), buffer, nbytes);
+  });
+
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    get_object_request.SetRequestPayer(request_payer_);
+
+  auto get_object_outcome = client_->GetObject(get_object_request);
+  if (!get_object_outcome.IsSuccess()) {
+    throw S3Exception(std::string(
+        std::string("Failed to read S3 object ") + uri.c_str() +
+        outcome_error_message(get_object_outcome)));
+  }
+
+  return static_cast<uint64_t>(
+      get_object_outcome.GetResult().GetContentLength());
 }
 
 void S3::remove_bucket(const URI& bucket) const {
@@ -859,14 +886,19 @@ void S3::finalize_and_flush_object(const URI& uri) {
     std::vector<std::byte> merged(sum_sizes);
     throw_if_not_ok(parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-          uint64_t length_returned;
-          throw_if_not_ok(read_impl(
+          uint64_t nbytes = intermediate_chunks[i].size;
+          uint64_t length_read = read(
               URI(intermediate_chunks[i].uri),
               0,
               merged.data() + offsets[i],
-              intermediate_chunks[i].size,
-              0,
-              &length_returned));
+              nbytes);
+          if (length_read < nbytes) {
+            return Status_S3Error(
+                "The read did not return the correct number of bytes. "
+                "Expected: " +
+                std::to_string(nbytes) +
+                " Actual: " + std::to_string(length_read));
+          }
           return Status::Ok();
         }));
 
@@ -1111,56 +1143,6 @@ uint64_t S3::file_size(const URI& uri) const {
       head_object_outcome.GetResult().GetContentLength());
 }
 
-Status S3::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
-  RETURN_NOT_OK(init_client());
-
-  if (!uri.is_s3()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
-  }
-
-  Aws::Http::URI aws_uri = uri.c_str();
-  Aws::S3::Model::GetObjectRequest get_object_request;
-  get_object_request.WithBucket(aws_uri.GetAuthority())
-      .WithKey(aws_uri.GetPath());
-  get_object_request.SetRange(Aws::String(
-      "bytes=" + std::to_string(offset) + "-" +
-      std::to_string(offset + length + read_ahead_length - 1)));
-  get_object_request.SetResponseStreamFactory(
-      [buffer, length, read_ahead_length]() {
-        return Aws::New<PreallocatedIOStream>(
-            constants::s3_allocation_tag.c_str(),
-            buffer,
-            length + read_ahead_length);
-      });
-
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
-    get_object_request.SetRequestPayer(request_payer_);
-
-  auto get_object_outcome = client_->GetObject(get_object_request);
-  if (!get_object_outcome.IsSuccess()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Failed to read S3 object ") + uri.c_str() +
-        outcome_error_message(get_object_outcome)));
-  }
-
-  *length_returned =
-      static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
-  if (*length_returned < length) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Read operation returned different size of bytes ") +
-        std::to_string(*length_returned) + " vs " + std::to_string(length)));
-  }
-
-  return Status::Ok();
-}
-
 void S3::global_order_write_buffered(
     const URI& uri, const void* buffer, uint64_t length) {
   throw_if_not_ok(init_client());
@@ -1262,14 +1244,19 @@ void S3::global_order_write(
   std::vector<std::byte> merged(sum_sizes);
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        uint64_t length_returned;
-        throw_if_not_ok(read_impl(
+        uint64_t nbytes = intermediate_chunks[i].size;
+        uint64_t length_read = read(
             URI(intermediate_chunks[i].uri),
             0,
             merged.data() + offsets[i],
-            intermediate_chunks[i].size,
-            0,
-            &length_returned));
+            nbytes);
+        if (length_read < nbytes) {
+          return Status_S3Error(
+              "The read did not return the correct number of bytes. "
+              "Expected: " +
+              std::to_string(nbytes) +
+              " Actual: " + std::to_string(length_read));
+        }
         return Status::Ok();
       }));
   std::memcpy(merged.data() + offsets.back(), buffer, length);
@@ -1809,10 +1796,8 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
 
   Aws::S3::Model::PutObjectRequest put_object_request;
 
-  auto stream = shared_ptr<Aws::IOStream>(
-      new boost::interprocess::bufferstream((char*)buffer, length));
-
-  put_object_request.SetBody(stream);
+  put_object_request.SetBody(
+      make_shared<PreallocatedIOStream>(HERE(), buffer, length));
   put_object_request.SetContentLength(length);
 
   put_object_request.SetContentType("application/octet-stream");
@@ -1973,15 +1958,13 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
     const uint64_t length,
     const Aws::String& upload_id,
     const int upload_part_num) {
-  auto stream = shared_ptr<Aws::IOStream>(
-      new boost::interprocess::bufferstream((char*)buffer, length));
-
   Aws::S3::Model::UploadPartRequest upload_part_request;
   upload_part_request.SetBucket(aws_uri.GetAuthority());
   upload_part_request.SetKey(aws_uri.GetPath());
   upload_part_request.SetPartNumber(upload_part_num);
   upload_part_request.SetUploadId(upload_id);
-  upload_part_request.SetBody(stream);
+  upload_part_request.SetBody(
+      make_shared<PreallocatedIOStream>(HERE(), buffer, length));
   upload_part_request.SetContentLength(length);
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     upload_part_request.SetRequestPayer(request_payer_);
@@ -1998,6 +1981,7 @@ Status S3::get_make_upload_part_req(
 
   const auto& upload_part_outcome = ctx.upload_part_outcome;
   bool success = upload_part_outcome.IsSuccess();
+  bool induced_failure = false;
 
   static const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
   if (unit_test_cfg.s3_fail_every_nth_upload_request.is_set() &&
@@ -2005,6 +1989,7 @@ Status S3::get_make_upload_part_req(
               unit_test_cfg.s3_fail_every_nth_upload_request.get() ==
           0) {
     success = false;
+    induced_failure = true;
   }
 
   if (!success) {
@@ -2015,7 +2000,9 @@ Status S3::get_make_upload_part_req(
     if (ctx.upload_part_num > max_multipart_part_num) {
       msg +=
           " This error might be resolved by increasing the value of the "
-          "'vfs.s3.multipart_part_size' config option";
+          "'vfs.s3.multipart_part_size' config option.";
+    } else if (induced_failure) {
+      msg += " Failure induced by unit test configuration.";
     }
     Status st = Status_S3Error(msg);
     // Lock multipart state
@@ -2093,6 +2080,188 @@ URI S3::generate_chunk_uri(
   auto buffering_dir = fragment_uri.join_path(
       tiledb::sm::constants::s3_multipart_buffering_dirname);
   return buffering_dir.join_path(chunk_name);
+}
+
+S3Scanner::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    ResultFilter&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client) {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+S3Scanner::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    ResultFilterV2&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client) {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+S3Scanner::Iterator::pointer& S3Scanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.SetKey(collected_prefixes_.extract(next).value());
+    object.SetSize(0);
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
+typename S3Scanner::Iterator::pointer S3Scanner::fetch_results() {
+  if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
+    // Filter prefixes if there are no more results to fetch from S3.
+    return build_prefix_vector();
+  } else if (!is_recursive_ && response_contains_prefixes_) {
+    // If using V2 APIs, collect common prefix results for non-recursive scan.
+    response_contains_prefixes_ = false;
+    const auto& aws_prefixes =
+        list_objects_outcome_.GetResult().GetCommonPrefixes();
+    common_prefixes_.resize(aws_prefixes.size());
+    for (size_t i = 0; i < common_prefixes_.size(); i++) {
+      common_prefixes_[i].SetKey(
+          S3::remove_trailing_slash(aws_prefixes[i].GetPrefix()));
+      common_prefixes_[i].SetSize(0);
+    }
+    end_ = common_prefixes_.end();
+    return begin_ = common_prefixes_.begin();
+  } else if (more_to_fetch()) {
+    // If results are truncated on a subsequent request, we set the next
+    // continuation token before resubmitting our request.
+    Aws::String next_marker =
+        list_objects_outcome_.GetResult().GetNextContinuationToken();
+    if (next_marker.empty()) {
+      throw S3Exception(
+          "Failed to retrieve next continuation token for ListObjectsV2 "
+          "request.");
+    }
+    list_objects_request_.SetContinuationToken(std::move(next_marker));
+  } else if (list_objects_outcome_.IsSuccess()) {
+    // If we have previously submitted a successful request and there are no
+    // more results, we've reached the end of the scan.
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+  result_type_ = OBJECT;
+
+  list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+  if (!list_objects_outcome_.IsSuccess()) {
+    throw S3Exception(
+        std::string("Error while listing with prefix '") +
+        this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+        delimiter() + "'" + outcome_error_message(list_objects_outcome_));
+  }
+  response_contains_prefixes_ =
+      !is_recursive_ &&
+      !list_objects_outcome_.GetResult().GetCommonPrefixes().empty();
+
+  // Update pointers to the newly fetched results.
+  begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+  end_ = list_objects_outcome_.GetResult().GetContents().end();
+
+  if (list_objects_outcome_.GetResult().GetContents().empty()) {
+    if (result_filter_v2_ && !collected_prefixes_.empty()) {
+      return build_prefix_vector();
+    }
+
+    // If the request returned no results, we've reached the end of the scan.
+    // We hit this case when the number of objects in the bucket is a multiple
+    // of the current max_keys.
+    return end_;
+  }
+
+  return begin_;
+}
+
+void S3Scanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  std::string bucket = "s3://" + std::string(list_objects_request_.GetBucket());
+  while (ptr != end_) {
+    auto object = *ptr;
+    uint64_t size = object.GetSize();
+    // The object key does not contain s3:// prefix or the bucket name.
+    std::string path =
+        bucket + S3::add_front_slash(std::string(object.GetKey()));
+
+    // Store each unique prefix while scanning S3 objects.
+    if (result_filter_v2_ && result_type_ == OBJECT) {
+      std::string prefix = object.GetKey();
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != Aws::String::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        auto full_uri = bucket + S3::add_front_slash(prefix);
+        // Do not accept the prefix we are scanning.
+        if (full_uri == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
+          break;
+        } else if (result_filter_v2_(full_uri, 0, true)) {
+          collected_prefixes_.emplace(prefix, 0);
+        }
+      }
+    }
+
+    // Advance until we reach a result accepted by a filter predicate.
+    // Prefix results have already been filtered by the predicate.
+    if (!result_filter_v2_ && result_filter_(path, size)) {
+      return;
+    } else if (
+        result_filter_v2_ &&
+        (result_type_ == PREFIX || result_filter_v2_(path, size, false))) {
+      return;
+    } else {
+      advance(ptr);
+    }
+  }
 }
 
 }  // namespace tiledb::sm

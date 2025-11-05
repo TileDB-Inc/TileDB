@@ -37,12 +37,11 @@
 #include "tiledb/sm/filesystem/uri.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <functional>
 #include <stdexcept>
 
 /**
- * Inclusion predicate for objects collected by ls.
+ * Inclusion predicate for objects collected by ls_recursive.
  *
  * The predicate accepts:
  * - A string_view of the path to the object.
@@ -52,22 +51,22 @@
  * and false otherwise.
  */
 template <class F>
-concept FilePredicate = std::predicate<F, const std::string_view, uint64_t>;
+concept FilterPredicate = std::predicate<F, const std::string_view, uint64_t>;
 
 /**
- * Recursion predicate for directories collected by ls.
+ * Inclusion predicate for objects collected by ls_recursive_v2.
  *
  * The predicate accepts:
- * - A string_view of the path to the directory.
+ * - A string_view of the path to the object.
+ * - The size of the object in bytes.
+ * - Whether or not the current object is a directory / prefix.
  *
- * The predicate returns true if items inside the directory should be traversed,
+ * The predicate returns true if the object should be included in the results,
  * and false otherwise.
- *
- * Directory pruning is currently supported only in local filesystem, and not
- * exposed in the user-facing C API.
  */
-template <class D>
-concept DirectoryPredicate = std::predicate<D, const std::string_view>;
+template <class F>
+concept FilterPredicateV2 =
+    std::predicate<F, const std::string_view, uint64_t, uint8_t>;
 
 namespace tiledb::sm {
 class LsScanException : public StatusException {
@@ -90,17 +89,26 @@ class LsStopTraversal : public LsScanException {
   }
 };
 
-using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
-[[maybe_unused]] static bool accept_all_files(
-    const std::string_view&, uint64_t) {
-  return true;
-}
+/**
+ * Typedef for filter callback invoked on each object collected by ls_recursive.
+ *
+ * @param path The path of the visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @return True if the result should be included, else False.
+ */
+using ResultFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
-using DirectoryFilter = std::function<bool(const std::string_view&)>;
-/** Static DirectoryFilter used as default argument. */
-[[maybe_unused]] static bool accept_all_dirs(const std::string_view&) {
-  return true;
-}
+/**
+ * Typedef for filter callback invoked on each object collected by
+ * ls_recursive_v2.
+ *
+ * @param path The path of the visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param is_dir Whether or not the current object is a directory / prefix.
+ * @return True if the result should be included, else False.
+ */
+using ResultFilterV2 =
+    std::function<bool(const std::string_view&, uint64_t, bool)>;
 
 /**
  * Typedef for ls C API callback as std::function for passing to C++
@@ -113,6 +121,20 @@ using DirectoryFilter = std::function<bool(const std::string_view&)>;
  *      traversal, or -1 if an error occurred.
  */
 using LsCallback = std::function<int32_t(const char*, size_t, uint64_t, void*)>;
+
+/**
+ * Typedef for ls C API callback as std::function for passing to C++
+ *
+ * @param path The path of a visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param object_size The size of the object at the current path.
+ * @param is_dir Whether or not the current object is a directory / prefix.
+ * @param data Data passed to the callback used to store collected results.
+ * @return 1 if the callback should continue to the next object, 0 to stop
+ *      traversal, or -1 if an error occurred.
+ */
+using LsCallbackV2 =
+    std::function<int32_t(const char*, size_t, uint64_t, uint8_t, void*)>;
 
 /** Type defintion for objects returned from ls_recursive. */
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
@@ -260,31 +282,60 @@ class LsScanIterator {
  * the given file and directory predicates. This should be used as a common
  * base class for future filesystem scanner implementations, similar to
  * S3Scanner.
- *
- * @tparam F The FilePredicate type used to filter object results.
- * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
-template <FilePredicate F, DirectoryPredicate D>
 class LsScanner {
  public:
   /** Constructor. */
   LsScanner(
-      const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
+      const URI& prefix, ResultFilter&& result_filter, bool recursive = false)
       : prefix_(prefix)
-      , file_filter_(file_filter)
-      , dir_filter_(dir_filter)
+      , result_filter_(std::move(result_filter))
       , is_recursive_(recursive) {
+  }
+
+  LsScanner(
+      const URI& prefix, ResultFilterV2&& result_filter, bool recursive = false)
+      : prefix_(prefix)
+      , result_filter_v2_(std::move(result_filter))
+      , is_recursive_(recursive)
+      , result_type_(OBJECT) {
+  }
+
+  /** Accept all files and directories from ls_recursive. */
+  static bool accept_all(const std::string_view&, uint64_t) {
+    return true;
+  }
+
+  /** Accept all files and directories from ls_recursive_v2. */
+  static bool accept_all_v2(const std::string_view&, uint64_t, bool) {
+    return true;
+  }
+
+  /** Accept only files from ls_recursive_v2, returning no directories. */
+  static bool accept_all_files(const std::string_view&, uint64_t, bool is_dir) {
+    return !is_dir;
+  }
+
+  /** Accept only directories from ls_recursive_v2, returning no files. */
+  static bool accept_all_dirs(const std::string_view&, uint64_t, bool is_dir) {
+    return is_dir;
   }
 
  protected:
   /** URI prefix being scanned and filtered for results. */
   const URI prefix_;
-  /** File predicate used to filter file or object results. */
-  const F file_filter_;
-  /** Directory predicate used to prune directory or prefix results. */
-  const D dir_filter_;
+  /** Predicate used to filter results. */
+  const ResultFilter result_filter_;
+  /** Predicate used to filter results. */
+  const ResultFilterV2 result_filter_v2_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
+
+  /** Collect up to max_keys prefixes in this set before filtering. */
+  std::unordered_set<std::string> collected_prefixes_;
+
+  /** The result type contained by the Iterator used in ls_recursive_v2. */
+  enum ResultType { OBJECT, PREFIX } result_type_;
 };
 
 /**
@@ -301,13 +352,19 @@ class CallbackWrapperCAPI {
       , data_(data) {
     if (cb_ == nullptr) {
       throw LsScanException("ls_recursive callback function cannot be null");
-    } else if (data_ == nullptr) {
-      throw LsScanException("ls_recursive data cannot be null");
+    }
+  }
+
+  CallbackWrapperCAPI(LsCallbackV2 cb, void* data)
+      : cb_v2_(std::move(cb))
+      , data_(data) {
+    if (cb_v2_ == nullptr) {
+      throw LsScanException("ls_recursive_v2 callback function cannot be null");
     }
   }
 
   /**
-   * Operator to wrap the FilePredicate used in the C++ API.
+   * Operator to wrap the FilterPredicate used in the C++ API.
    * This will throw a LsStopTraversal exception if the user callback returns 0,
    * and will throw a LsScanException if the user callback returns -1.
    *
@@ -327,64 +384,36 @@ class CallbackWrapperCAPI {
     return ret;
   }
 
+  /**
+   * Operator to wrap the FilterPredicate used in the C++ API.
+   * This will throw a LsStopTraversal exception if the user callback returns 0,
+   * and will throw a LsScanException if the user callback returns -1.
+   *
+   * @param path The path of the object.
+   * @param size The size of the object in bytes.
+   * @return True if the object should be included, False otherwise.
+   */
+  bool operator()(
+      std::string_view path, const uint64_t size, const uint8_t is_dir) const {
+    int ret = cb_v2_(path.data(), path.size(), size, is_dir, data_);
+    if (ret == 0) {
+      // Throw an exception to stop traversal, which will be caught by the C++
+      // internal ls_recursive implementation to stop traversal.
+      throw LsStopTraversal();
+    } else if (ret == -1) {
+      throw LsScanException("Error in user callback");
+    }
+    return ret;
+  }
+
  private:
   /** CAPI callback as function object */
   LsCallback cb_;
+  /** CAPI callback for ls_recursive including directories and prefixes. */
+  LsCallbackV2 cb_v2_;
   /** User data for callback */
   void* data_;
 };
-
-/**
- * Implements the `ls_filtered` function for `std::filesystem` which can be used
- * for Posix and Win32
- */
-template <FilePredicate F, DirectoryPredicate D>
-LsObjects std_filesystem_ls_filtered(
-    const URI& parent, F file_filter, D directory_filter, bool recursive) {
-  /*
-   * The input URI was useful to the top-level VFS to identify this is a
-   * regular filesystem path, but we don't need the "file://" qualifier
-   * anymore and can reason with unqualified strings for the rest of the
-   * function.
-   */
-  const auto parentstr = parent.to_path();
-
-  LsObjects qualifyingPaths;
-
-  // awkward way of iterating, avoids bug in OSX
-  auto begin = std::filesystem::recursive_directory_iterator(parentstr);
-  auto end = std::filesystem::recursive_directory_iterator();
-
-  for (auto iter = begin; iter != end; ++iter) {
-    auto& entry = *iter;
-    const auto abspath = entry.path().string();
-    const auto absuri = URI(abspath);
-    if (entry.is_directory()) {
-      if (file_filter(absuri, 0) || directory_filter(absuri)) {
-        qualifyingPaths.push_back(
-            std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
-        if (!recursive) {
-          iter.disable_recursion_pending();
-        }
-      } else {
-        /* do not descend into directories which don't qualify */
-        iter.disable_recursion_pending();
-      }
-    } else {
-      /*
-       * A leaf of the filesystem
-       * (or symbolic link - split to a separate case if we want to descend into
-       * them)
-       */
-      if (file_filter(absuri, entry.file_size())) {
-        qualifyingPaths.push_back(
-            std::make_pair(absuri.to_string(), entry.file_size()));
-      }
-    }
-  }
-
-  return qualifyingPaths;
-}
 
 }  // namespace tiledb::sm
 

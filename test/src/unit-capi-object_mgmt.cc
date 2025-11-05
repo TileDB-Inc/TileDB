@@ -160,7 +160,7 @@ void ObjectMgmtFx::check_object_type(const std::string& path) {
 
 void ObjectMgmtFx::check_delete(const std::string& path) {
   std::string group, array, invalid;
-  tiledb_object_t type;
+  tiledb_object_t type = TILEDB_INVALID;
 
   // Check simple delete
   group = path + "group/";

@@ -486,17 +486,41 @@ void Curl::set_curl_request_options(
         "Cannot make curl request; curl instance is null.");
   }
   /* set url to fetch */
-  curl_easy_setopt(curl, CURLOPT_URL, url);
+  CURLcode rc = curl_easy_setopt(curl, CURLOPT_URL, url);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set URL to fetch, libcurl error "
+        "message: " +
+        get_curl_errstr(rc));
+  }
 
   /* set callback function */
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+  rc = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set callback function, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* pass fetch buffer pointer */
-  curl_easy_setopt(
+  rc = curl_easy_setopt(
       curl, CURLOPT_WRITEDATA, static_cast<void*>(&write_cb_state));
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to fetch buffer pointer, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* Set curl verbose mode */
-  curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
+  rc = curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set curl verbose mode, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* set compression */
   const char* compressor = nullptr;
@@ -513,21 +537,49 @@ void Curl::set_curl_request_options(
       if (comp == "any") {
         comp = "";
       }
-      curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
+      rc = curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
+      if (rc != CURLE_OK) {
+        throw CurlException(
+            "Error initializing libcurl; failed to set encoding, libcurl error "
+            "message: " +
+            get_curl_errstr(rc));
+      }
     }
   }
 
   /* enable location redirects */
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+  rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to fetch buffer pointer, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 
   /* set maximum allowed redirects */
-  curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
-
+  rc = curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set maximum allowed redirects, "
+        "libcurl error message: " +
+        get_curl_errstr(rc));
+  }
   /* enable forwarding auth to redirects */
-  curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
-
+  rc = curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to enable forwarding auth to "
+        "redirects, libcurl error message: " +
+        get_curl_errstr(rc));
+  }
   /* Set max buffer size */
-  curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, curl_buffer_size_);
+  rc = curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, curl_buffer_size_);
+  if (rc != CURLE_OK) {
+    throw CurlException(
+        "Error initializing libcurl; failed to set max buffer size, libcurl "
+        "error message: " +
+        get_curl_errstr(rc));
+  }
 }
 
 Status Curl::make_curl_request_common(
@@ -641,11 +693,29 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
   switch (curl_code) {
     // Curl status of okay or non transient errors shouldn't be retried
     case CURLE_OK:
-    case CURLE_URL_MALFORMAT:       /* 3 */
+    case CURLE_URL_MALFORMAT:        /* 3 */
+    case CURLE_SSL_ENGINE_NOTFOUND:  /* 53 - SSL crypto engine not found */
+    case CURLE_SSL_ENGINE_SETFAILED: /* 54 - can not set SSL crypto engine as
+                                       default */
+    case CURLE_SSL_CERTPROBLEM: /* 58 - problem with the local certificate */
+    case CURLE_SSL_CIPHER:      /* 59 - couldn't use specified cipher */
+    case CURLE_PEER_FAILED_VERIFICATION: /* 60 - peer's certificate or
+                                           fingerprint wasn't verified fine */
+    case CURLE_SSL_ENGINE_INITFAILED:    /* 66 - failed to initialise ENGINE */
+    case CURLE_SSL_CACERT_BADFILE:  /* 77 - could not load CACERT file, missing
+                                      or wrong format */
     case CURLE_SSL_SHUTDOWN_FAILED: /* 80 - Failed to shut down the SSL
                                       connection */
-    case CURLE_AUTH_ERROR: /* 94 - an authentication function returned an
-                             error */
+    case CURLE_SSL_CRL_BADFILE:     /* 82 - could not load CRL file, missing or
+                                      wrong format (Added in 7.19.0) */
+    case CURLE_SSL_ISSUER_ERROR:    /* 83 - Issuer check failed.  (Added in
+                                      7.19.0) */
+    case CURLE_SSL_PINNEDPUBKEYNOTMATCH: /* 90 - specified pinned public key did
+                                         not match */
+    case CURLE_SSL_INVALIDCERTSTATUS:    /* 91 - invalid certificate status */
+    case CURLE_AUTH_ERROR:     /* 94 - an authentication function returned an
+                                 error */
+    case CURLE_SSL_CLIENTCERT: /* 98 - client-side certificate required */
       return false;
     case CURLE_UNSUPPORTED_PROTOCOL:  /* 1 */
     case CURLE_FAILED_INIT:           /* 2 */
@@ -706,23 +776,15 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
     case CURLE_OBSOLETE50:           /* 50 - NOT USED */
     case CURLE_OBSOLETE51:           /* 51 - NOT USED */
     case CURLE_GOT_NOTHING:          /* 52 - when this is a specific error */
-    case CURLE_SSL_ENGINE_NOTFOUND:  /* 53 - SSL crypto engine not found */
-    case CURLE_SSL_ENGINE_SETFAILED: /* 54 - can not set SSL crypto engine as
-                                       default */
     case CURLE_SEND_ERROR:           /* 55 - failed sending network data */
-    case CURLE_RECV_ERROR:      /* 56 - failure in receiving network data */
-    case CURLE_OBSOLETE57:      /* 57 - NOT IN USE */
-    case CURLE_SSL_CERTPROBLEM: /* 58 - problem with the local certificate */
-    case CURLE_SSL_CIPHER:      /* 59 - couldn't use specified cipher */
-    case CURLE_PEER_FAILED_VERIFICATION: /* 60 - peer's certificate or
-                                           fingerprint wasn't verified fine */
-    case CURLE_BAD_CONTENT_ENCODING:     /* 61 - Unrecognized/bad encoding */
-    case CURLE_OBSOLETE62:               /* 62 - NOT IN USE since 7.82.0 */
-    case CURLE_FILESIZE_EXCEEDED:        /* 63 - Maximum file size exceeded */
+    case CURLE_RECV_ERROR: /* 56 - failure in receiving network data */
+    case CURLE_OBSOLETE57: /* 57 - NOT IN USE */
+    case CURLE_BAD_CONTENT_ENCODING:  /* 61 - Unrecognized/bad encoding */
+    case CURLE_OBSOLETE62:            /* 62 - NOT IN USE since 7.82.0 */
+    case CURLE_FILESIZE_EXCEEDED:     /* 63 - Maximum file size exceeded */
     case CURLE_USE_SSL_FAILED:        /* 64 - Requested FTP SSL level failed */
     case CURLE_SEND_FAIL_REWIND:      /* 65 - Sending the data requires a rewind
                                         that failed */
-    case CURLE_SSL_ENGINE_INITFAILED: /* 66 - failed to initialise ENGINE */
     case CURLE_LOGIN_DENIED:          /* 67 - user, password or similar was not
                                         accepted and we failed to login */
     case CURLE_TFTP_NOTFOUND:         /* 68 - file not found on server */
@@ -734,8 +796,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
     case CURLE_TFTP_NOSUCHUSER:       /* 74 - No such user */
     case CURLE_OBSOLETE75:            /* 75 - NOT IN USE since 7.82.0 */
     case CURLE_OBSOLETE76:            /* 76 - NOT IN USE since 7.82.0 */
-    case CURLE_SSL_CACERT_BADFILE: /* 77 - could not load CACERT file, missing
-                                     or wrong format */
     case CURLE_REMOTE_FILE_NOT_FOUND: /* 78 - remote file not found */
     case CURLE_SSH:                   /* 79 - error from the SSH layer, somewhat
                                         generic so the error message will be of
@@ -744,20 +804,13 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
     case CURLE_AGAIN:              /* 81 - socket is not ready for send/recv,
                                      wait till it's ready and try again (Added
                                      in 7.18.2) */
-    case CURLE_SSL_CRL_BADFILE:    /* 82 - could not load CRL file, missing or
-                                     wrong format (Added in 7.19.0) */
-    case CURLE_SSL_ISSUER_ERROR:   /* 83 - Issuer check failed.  (Added in
-                                     7.19.0) */
     case CURLE_FTP_PRET_FAILED:    /* 84 - a PRET command failed */
     case CURLE_RTSP_CSEQ_ERROR:    /* 85 - mismatch of RTSP CSeq numbers */
     case CURLE_RTSP_SESSION_ERROR: /* 86 - mismatch of RTSP Session Ids */
     case CURLE_FTP_BAD_FILE_LIST:  /* 87 - unable to parse FTP file list */
     case CURLE_CHUNK_FAILED:       /* 88 - chunk callback reported error */
-    case CURLE_NO_CONNECTION_AVAILABLE:  /* 89 - No connection available, the
-                                         session will be queued */
-    case CURLE_SSL_PINNEDPUBKEYNOTMATCH: /* 90 - specified pinned public key did
-                                         not match */
-    case CURLE_SSL_INVALIDCERTSTATUS:    /* 91 - invalid certificate status */
+    case CURLE_NO_CONNECTION_AVAILABLE: /* 89 - No connection available, the
+                                        session will be queued */
     case CURLE_HTTP2_STREAM:       /* 92 - stream error in HTTP/2 framing layer
                                     */
     case CURLE_RECURSIVE_API_CALL: /* 93 - an api function was called from
@@ -765,7 +818,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
     case CURLE_HTTP3:              /* 95 - An HTTP/3 layer problem */
     case CURLE_QUIC_CONNECT_ERROR: /* 96 - QUIC connection error */
     case CURLE_PROXY:              /* 97 - proxy handshake error */
-    case CURLE_SSL_CLIENTCERT:     /* 98 - client-side certificate required */
     case CURLE_UNRECOVERABLE_POLL: /* 99 - poll/select returned fatal error */
     case CURLE_TOO_LARGE:          /* 100 - a value/data met its maximum */
     case CURLE_ECH_REQUIRED:       /* 101 - ECH tried but failed */
@@ -1011,7 +1063,13 @@ void Curl::get_data(
     throw_if_not_ok(set_content_type(serialization_type, &headers));
 
     // Pass our list of custom-made headers.
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    CURLcode rc = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    if (rc != CURLE_OK) {
+      throw CurlException(
+          "Error initializing libcurl; failed to set custom headers, libcurl "
+          "error message: " +
+          get_curl_errstr(rc));
+    }
 
     headerData.uri = &res_ns_uri;
     throw_if_not_ok(

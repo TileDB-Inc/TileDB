@@ -1,13 +1,17 @@
 {
-    "builtin-baseline": "ea2a964f9303270322cf3f2d51c265ba146c422d",
+    "builtin-baseline": "3b9d086009cc1c2256e9c28ad44a00036fbd9b26",
     "dependencies": [
+        {
+            "name": "blosc2",
+            "default-features": false
+        },
         "bzip2",
-        "libmagic",
         "lz4",
         {
             "name": "openssl",
             "platform": "!windows"
         },
+        "nlohmann-json",
         "spdlog",
         "zlib",
         "zstd"
@@ -17,6 +21,7 @@
             "description": "Support Azure Blob Storage",
             "dependencies": [
                 "azure-storage-blobs-cpp",
+                "azure-storage-files-datalake-cpp",
                 "azure-identity-cpp"
             ]
         },
@@ -29,12 +34,6 @@
                         "storage"
                     ],
                     "default-features": false
-                },
-                {
-                    "name": "abseil",
-                    "features": [
-                        "cxx17"
-                    ]
                 }
             ]
         },
@@ -84,9 +83,9 @@
     },
     "overrides": [
         {
-            "$note": "Remove this when the custom port for libmagic gets removed",
-            "name": "dirent",
-            "version": "1.23.2#3"
+            "$note": "Remove this when the vcpkg copy provided by GitHub Actions on Windows gets updated.",
+            "name": "vcpkg-cmake",
+            "version": "2024-04-23"
         }
     ]
 }

@@ -242,6 +242,10 @@ Status GCS::init_client() const {
   return Status::Ok();
 }
 
+bool GCS::supports_uri(const URI& uri) const {
+  return uri.is_gcs();
+}
+
 void GCS::create_bucket(const URI& uri) const {
   throw_if_not_ok(init_client());
 
@@ -513,13 +517,11 @@ std::vector<directory_entry> GCS::ls_with_sizes(const URI& uri) const {
   return ls_with_sizes(uri, "/", -1);
 }
 
-LsObjects GCS::ls_filtered_impl(
-    const URI& uri,
-    std::function<bool(const std::string_view, uint64_t)> file_filter,
-    bool recursive) const {
+LsObjects GCS::ls_filtered(
+    const URI& parent, ResultFilter result_filter, bool recursive) const {
   throw_if_not_ok(init_client());
 
-  const URI uri_dir = uri.add_trailing_slash();
+  const URI uri_dir = parent.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
     throw GCSException(
@@ -548,12 +550,12 @@ LsObjects GCS::ls_filtered_impl(
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
-            "List objects failed on: " + uri.to_string() + " (" +
+            "List objects failed on: " + parent.to_string() + " (" +
             object_metadata.status().message() + ")"));
       }
 
       auto entry = to_directory_entry(*object_metadata);
-      if (file_filter(entry.first, entry.second)) {
+      if (result_filter(entry.first, entry.second)) {
         result.emplace_back(std::move(entry));
       }
     }
@@ -565,7 +567,7 @@ LsObjects GCS::ls_filtered_impl(
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
         throw GCSException(std::string(
-            "List objects failed on: " + uri.to_string() + " (" +
+            "List objects failed on: " + parent.to_string() + " (" +
             object_metadata.status().message() + ")"));
       }
 
@@ -578,10 +580,111 @@ LsObjects GCS::ls_filtered_impl(
       } else {
         entry = {
             prefix + bucket_name + "/" +
-                absl::get<std::string>(*object_metadata),
+                remove_front_slash(remove_trailing_slash(
+                    absl::get<std::string>(*object_metadata))),
             0};
       }
-      if (file_filter(entry.first, entry.second)) {
+      if (result_filter(entry.first, entry.second)) {
+        result.push_back(std::move(entry));
+      }
+    }
+  }
+
+  return result;
+}
+
+LsObjects GCS::ls_filtered_v2(
+    const URI& parent, ResultFilterV2 result_filter, bool recursive) const {
+  throw_if_not_ok(init_client());
+
+  const URI uri_dir = parent.add_trailing_slash();
+
+  if (!uri_dir.is_gcs()) {
+    throw GCSException(
+        std::string("URI is not a GCS URI: " + uri_dir.to_string()));
+  }
+
+  std::string prefix = uri_dir.backend_name() + "://";
+  std::string bucket_name;
+  std::string object_path;
+  throw_if_not_ok(parse_gcs_uri(uri_dir, &bucket_name, &object_path));
+
+  LsObjects result;
+
+  auto to_directory_entry =
+      [&bucket_name, &prefix](const google::cloud::storage::ObjectMetadata& obj)
+      -> LsObjects::value_type {
+    return {
+        prefix + bucket_name + "/" +
+            remove_front_slash(remove_trailing_slash(obj.name())),
+        obj.size()};
+  };
+
+  if (recursive) {
+    auto it = client_->ListObjects(
+        bucket_name, google::cloud::storage::Prefix(std::move(object_path)));
+
+    std::unordered_set<std::string> collected_prefixes;
+    for (const auto& object_metadata : it) {
+      if (!object_metadata) {
+        throw GCSException(std::string(
+            "List objects failed on: " + parent.to_string() + " (" +
+            object_metadata.status().message() + ")"));
+      }
+
+      auto entry = to_directory_entry(*object_metadata);
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      auto entry_prefix = entry.first;
+      for (auto pos = entry_prefix.rfind('/'); pos != std::string::npos;
+           pos = entry_prefix.rfind('/')) {
+        entry_prefix = entry_prefix.substr(0, pos);
+        // Do not accept the prefix we are scanning.
+        if (entry_prefix == parent.to_string() ||
+            collected_prefixes.contains(entry_prefix)) {
+          break;
+        } else if (result_filter(entry_prefix, 0, true)) {
+          collected_prefixes.emplace(entry_prefix, 0);
+        }
+      }
+
+      if (result_filter(entry.first, entry.second, false)) {
+        result.emplace_back(std::move(entry));
+      }
+    }
+
+    // Insert the collected prefixes into the results.
+    for (auto& p : collected_prefixes) {
+      result.emplace_back(std::move(p), 0);
+    }
+  } else {
+    auto it = client_->ListObjectsAndPrefixes(
+        bucket_name,
+        google::cloud::storage::Prefix(std::move(object_path)),
+        google::cloud::storage::Delimiter("/"));
+    for (const auto& object_metadata : it) {
+      if (!object_metadata) {
+        throw GCSException(std::string(
+            "List objects failed on: " + parent.to_string() + " (" +
+            object_metadata.status().message() + ")"));
+      }
+
+      LsObjects::value_type entry;
+      bool is_object =
+          absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
+              *object_metadata);
+      if (is_object) {
+        entry = to_directory_entry(
+            absl::get<google::cloud::storage::ObjectMetadata>(
+                *object_metadata));
+      } else {
+        entry = {
+            prefix + bucket_name + "/" +
+                remove_front_slash(remove_trailing_slash(
+                    absl::get<std::string>(*object_metadata))),
+            0};
+      }
+      if (result_filter(entry.first, entry.second, !is_object)) {
         result.push_back(std::move(entry));
       }
     }
@@ -596,9 +699,9 @@ void GCS::move_file(const URI& old_uri, const URI& new_uri) const {
   remove_file(old_uri);
 }
 
-void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void GCS::copy_dir(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(init_client());
-  auto paths = ls_filtered(old_uri, accept_all_files, accept_all_dirs, true);
+  auto paths = ls_filtered(old_uri, LsScanner::accept_all, true);
   for (auto& path : paths) {
     std::string path_str = std::get<0>(path);
     std::string filename = path_str.substr(old_uri.to_string().length());
@@ -606,7 +709,7 @@ void GCS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void GCS::copy_file(const URI& old_uri, const URI& new_uri) const {
+void GCS::copy_file(const URI& old_uri, const URI& new_uri) {
   throw_if_not_ok(copy_object(old_uri, new_uri));
 }
 
@@ -1234,14 +1337,13 @@ Status GCS::flush_object_direct(const URI& uri) {
   return wait_for_object_to_propagate(bucket_name, object_path);
 }
 
-Status GCS::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
-  RETURN_NOT_OK(init_client());
+uint64_t GCS::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+  // ReadRange will return an error on 0-byte reads. Instead, just return here.
+  if (offset + nbytes == 0) {
+    return 0;
+  }
+  throw_if_not_ok(init_client());
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not an GCS URI: " + uri.to_string());
@@ -1249,13 +1351,12 @@ Status GCS::read_impl(
 
   std::string bucket_name;
   std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  throw_if_not_ok(parse_gcs_uri(uri, &bucket_name, &object_path));
 
   google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
       bucket_name,
       object_path,
-      google::cloud::storage::ReadRange(
-          offset, offset + length + read_ahead_length));
+      google::cloud::storage::ReadRange(offset, offset + nbytes));
 
   if (!stream.status().ok()) {
     throw GCSException(
@@ -1263,16 +1364,10 @@ Status GCS::read_impl(
         stream.status().message() + ")");
   }
 
-  stream.read(static_cast<char*>(buffer), length + read_ahead_length);
-  *length_returned = stream.gcount();
-
+  stream.read(static_cast<char*>(buffer), nbytes);
+  uint64_t length_returned = stream.gcount();
   stream.Close();
-
-  if (*length_returned < length) {
-    throw GCSException("Read operation read unexpected number of bytes.");
-  }
-
-  return Status::Ok();
+  return length_returned;
 }
 
 Status GCS::parse_gcs_uri(

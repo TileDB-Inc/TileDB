@@ -14,12 +14,12 @@
 if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   include(CMakeFindDependencyMacro)
   find_dependency(Threads)
+  find_dependency(Blosc2)
   find_dependency(BZip2)
   find_dependency(lz4)
   find_dependency(spdlog)
   find_dependency(ZLIB)
   find_dependency(zstd)
-  find_dependency(unofficial-libmagic)
   if(NOT WIN32)
     find_dependency(OpenSSL)
   endif()
@@ -29,6 +29,7 @@ if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   if(@TILEDB_AZURE@) # TILEDB_AZURE
     find_dependency(azure-identity-cpp)
     find_dependency(azure-storage-blobs-cpp)
+    find_dependency(azure-storage-files-datalake-cpp)
   endif()
   if(@TILEDB_GCS@) # TILEDB_GCS
     find_dependency(google_cloud_cpp_storage)

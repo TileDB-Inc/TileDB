@@ -68,6 +68,15 @@ struct StringMaker<std::optional<T>> {
     }
   }
 };
+
+template <>
+struct StringMaker<std::pair<std::string, size_t>> {
+  static std::string convert(const std::pair<std::string, size_t>& value) {
+    std::ostringstream oss;
+    oss << "(" << value.first << ", " << value.second << ")";
+    return oss.str();
+  }
+};
 }  // namespace Catch
 
 /*

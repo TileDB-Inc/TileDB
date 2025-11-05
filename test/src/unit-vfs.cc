@@ -33,6 +33,9 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#ifdef HAVE_S3
+#include "tiledb/sm/filesystem/s3.h"
+#endif
 #ifdef HAVE_AZURE
 #include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
@@ -199,10 +202,197 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
+TEST_CASE("VFS: copy_file", "[vfs][copy_file]") {
+  LocalFsTest src_fs({0}), dst_fs({0});
+  URI src_path = src_fs.temp_dir_.add_trailing_slash();
+  URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params();
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+
+  size_t test_str_size = 0;
+  SECTION("Filesize = 0 MB") {
+    test_str_size = 0;
+  }
+  SECTION("Filesize = 1 MB") {
+    test_str_size = 1048576;
+  }
+  SECTION("Filesize = 10 MB") {
+    test_str_size = 10 * 1048576;
+  }
+  SECTION("Filesize = 100 MB") {
+    test_str_size = 100 * 1048576;
+  }
+  SECTION("Filesize = 150 MB") {
+    test_str_size = 150 * 1048576;
+  }
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::string test_str;
+  test_str.reserve(test_str_size);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
+  for (size_t i = 0; i < test_str_size; ++i) {
+    test_str += test_chars[dist(gen)];
+  }
+  REQUIRE(test_str.size() == test_str_size);
+
+  // Create src_file and write data to it.
+  auto src_file = URI(src_path.to_string() + "src_file");
+  REQUIRE_NOTHROW(vfs.touch(src_file));
+  test_str_size = test_str.size();
+  REQUIRE_NOTHROW(vfs.write(src_file, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(src_file));
+
+  // copy_file src -> dst using chunked-buffer I/O.
+  // Note: it doesn't matter if the dst file exists; copy will create on write.
+  auto dst_file = URI(dst_path.to_string() + "dst_file");
+  REQUIRE_NOTHROW(vfs.chunked_buffer_io(src_file, dst_file));
+  CHECK(vfs.is_file(src_file));
+
+  // Validate the contents are the same.
+  if (test_str_size > 0) {
+    CHECK(vfs.is_file(dst_file));
+    std::string dst_file_str;
+    dst_file_str.resize(test_str_size);
+    require_tiledb_ok(vfs.read_exactly(
+        dst_file, 0, (char*)dst_file_str.data(), test_str_size));
+    CHECK(dst_file_str == test_str);
+  }
+
+  // Clean up.
+  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
+    REQUIRE(!vfs.is_bucket(src_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(src_path));
+    REQUIRE(!vfs.is_dir(src_path));
+  }
+  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
+    REQUIRE(!vfs.is_bucket(dst_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
+    REQUIRE(!vfs.is_dir(dst_path));
+  }
+}
+
+TEST_CASE("VFS: copy_dir", "[vfs][copy_dir]") {
+  LocalFsTest src_fs({});
+  S3Test dst_fs({});
+  if (!dst_fs.is_supported()) {
+    return;
+  }
+  URI src_path = src_fs.temp_dir_.add_trailing_slash();
+  URI dst_path = dst_fs.temp_dir_.add_trailing_slash();
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params();
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
+
+  /* Create the following file hierarchy:
+   *
+   * src_path/file1
+   * src_path/dir2/file2
+   * src_path/dir3/subdir/file3
+   */
+  auto file1 = URI(src_path.to_string() + "file1");
+  auto dir2 = URI(src_path.to_string() + "dir2/");
+  auto file2 = URI(dir2.to_string() + "file2");
+  auto dir3 = URI(src_path.to_string() + "dir3/");
+  auto subdir = URI(dir3.to_string() + "subdir/");
+  auto file3 = URI(subdir.to_string() + "file3");
+  REQUIRE_NOTHROW(vfs.touch(file1));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir2)));
+  REQUIRE_NOTHROW(vfs.touch(file2));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir3)));
+  REQUIRE_NOTHROW(vfs.create_dir(URI(dir3)));
+  REQUIRE_NOTHROW(vfs.touch(file3));
+
+  // Write some random test data to file1, file2, file3
+  size_t test_str_size = 10 * 1048576;  // 10 MB
+  std::string test_str;
+  test_str.reserve(test_str_size);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::uniform_int_distribution<size_t> dist(0, test_chars.size() - 1);
+  for (size_t i = 0; i < test_str_size; ++i) {
+    test_str += test_chars[dist(gen)];
+  }
+  REQUIRE(test_str.size() == test_str_size);
+  REQUIRE_NOTHROW(vfs.write(file1, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(file1));
+  std::shuffle(test_str.begin(), test_str.end(), gen);
+  REQUIRE_NOTHROW(vfs.write(file2, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(file2));
+  std::shuffle(test_str.begin(), test_str.end(), gen);
+  REQUIRE_NOTHROW(vfs.write(file3, test_str.data(), test_str_size));
+  require_tiledb_ok(vfs.close_file(file3));
+
+  // Copy the source directory to the destination.
+  REQUIRE_NOTHROW(vfs.copy_dir(src_path, dst_path));
+  CHECK(vfs.is_dir(src_path));
+  CHECK(vfs.is_dir(dst_path));
+  auto dst_file1 = URI(dst_path.to_string() + "file1");
+  auto dst_file2 = URI(dst_path.to_string() + "dir2/file2");
+  auto dst_file3 = URI(dst_path.to_string() + "dir3/subdir/file3");
+
+  // Validate the file contents are the same.
+  if (test_str_size > 0) {
+    std::string src_str;
+    src_str.reserve(test_str_size);
+    std::string dst_str;
+    dst_str.reserve(test_str_size);
+
+    CHECK(vfs.is_file(dst_file1));
+    require_tiledb_ok(
+        vfs.read_exactly(file1, 0, (char*)src_str.data(), test_str_size));
+    require_tiledb_ok(
+        vfs.read_exactly(dst_file1, 0, (char*)dst_str.data(), test_str_size));
+    CHECK(src_str == dst_str);
+
+    CHECK(vfs.is_file(dst_file2));
+    require_tiledb_ok(
+        vfs.read_exactly(file2, 0, (char*)src_str.data(), test_str_size));
+    require_tiledb_ok(
+        vfs.read_exactly(dst_file2, 0, (char*)dst_str.data(), test_str_size));
+    CHECK(src_str == dst_str);
+
+    CHECK(vfs.is_file(dst_file3));
+    require_tiledb_ok(
+        vfs.read_exactly(file3, 0, (char*)src_str.data(), test_str_size));
+    require_tiledb_ok(
+        vfs.read_exactly(dst_file3, 0, (char*)dst_str.data(), test_str_size));
+    CHECK(src_str == dst_str);
+  }
+
+  // Clean up.
+  if (src_path.is_gcs() || src_path.is_s3() || src_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(src_path));
+    REQUIRE(!vfs.is_bucket(src_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(src_path));
+    REQUIRE(!vfs.is_dir(src_path));
+  }
+  if (dst_path.is_gcs() || dst_path.is_s3() || dst_path.is_azure()) {
+    REQUIRE_NOTHROW(vfs.remove_bucket(dst_path));
+    REQUIRE(!vfs.is_bucket(dst_path));
+  } else {
+    REQUIRE_NOTHROW(vfs.remove_dir(dst_path));
+    REQUIRE(!vfs.is_dir(dst_path));
+  }
+}
+
 using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
-  TestType fs({0});
+  TestType fs({});
   if (!fs.is_supported()) {
     return;
   }
@@ -214,19 +404,6 @@ TEMPLATE_LIST_TEST_CASE(
       &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
   URI path = fs.temp_dir_.add_trailing_slash();
-
-  // Set up
-  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    if (vfs.is_bucket(path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(path));
-  } else {
-    if (vfs.is_dir(path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(path));
-  }
 
   /* Create the following file hierarchy:
    *
@@ -331,6 +508,7 @@ TEMPLATE_LIST_TEST_CASE(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
     CHECK(children[0].file_size() == s.size());
     CHECK(children[1].file_size() == 0);  // Directories don't get a size
+    paths.clear();
 
     // Move file
     auto file6 = URI(path.to_string() + "file6");
@@ -346,13 +524,11 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(vfs.is_dir(dir2));
     paths.clear();
 
-    // Remove files
+    // Remove files & directories
     REQUIRE_NOTHROW(vfs.remove_file(file4));
     CHECK(!vfs.is_file(file4));
     REQUIRE_NOTHROW(vfs.remove_file(file6));
     CHECK(!vfs.is_file(file6));
-
-    // Remove directories
     REQUIRE_NOTHROW(vfs.remove_dir(dir2));
     CHECK(!vfs.is_file(file1));
     CHECK(!vfs.is_file(file2));
@@ -368,6 +544,68 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE_NOTHROW(vfs.remove_dir(path));
     REQUIRE(!vfs.is_dir(path));
   }
+}
+
+TEST_CASE("VFS: Create directory", "[vfs][create-dir]") {
+  LocalFsTest fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
+  URI path = fs.temp_dir_.add_trailing_slash();
+
+  URI subdir = URI(path.to_string() + "subdir/");
+  URI subdir2 = URI(path.to_string() + "subdir/nested/nested2/");
+
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
+  REQUIRE(fs.vfs_.is_dir(subdir));
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir2));
+  REQUIRE(fs.vfs_.is_dir(subdir2));
+
+  // Try creating existing directory.
+  REQUIRE_NOTHROW(fs.vfs_.create_dir(subdir));
+}
+
+TEMPLATE_LIST_TEST_CASE("VFS: Copy directory", "[vfs][copy-dir]", AllBackends) {
+  TestType fs({0});
+  if (!fs.is_supported()) {
+    SKIP("unsupported backend");
+  }
+
+  URI path = fs.temp_dir_.add_trailing_slash();
+
+  URI subdir1 = URI(path.to_string() + "subdir1/");
+  URI file1 = URI(subdir1.to_string() + "file1");
+  URI file2 = URI(subdir1.to_string() + "file2");
+  URI subdir2 = URI(path.to_string() + "subdir2/");
+  URI file2_2 = URI(subdir2.to_string() + "file2");
+  URI file3 = URI(subdir2.to_string() + "file3");
+
+  auto write_all_text = [&](const URI& uri, const std::string& text) {
+    REQUIRE_NOTHROW(fs.vfs_.write(uri, text.data(), text.size()));
+    require_tiledb_ok(fs.vfs_.close_file(uri));
+  };
+
+  auto read_all_text = [&](const URI& uri) {
+    auto size = fs.vfs_.file_size(uri);
+    std::string ret(size, '\0');
+    REQUIRE_NOTHROW(fs.vfs_.read_exactly(uri, 0, ret.data(), size));
+    return ret;
+  };
+
+  REQUIRE_NOTHROW(write_all_text(file1, "file1"));
+  REQUIRE_NOTHROW(write_all_text(file2, "file2_1"));
+  REQUIRE_NOTHROW(write_all_text(file2_2, "file2_2"));
+  REQUIRE_NOTHROW(write_all_text(file3, "file3"));
+
+  // Copy two directories with a common file.
+  REQUIRE(fs.vfs_.ls_with_sizes(subdir2).size() == 2);
+  REQUIRE_NOTHROW(fs.vfs_.copy_dir(subdir1, subdir2));
+  REQUIRE(fs.vfs_.ls_with_sizes(subdir2).size() == 3);
+
+  REQUIRE(read_all_text(URI(subdir2.to_string() + "file1")) == "file1");
+  REQUIRE(read_all_text(file2_2) == "file2_1");
+  REQUIRE(read_all_text(file3) == "file3");
 }
 
 TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
@@ -415,21 +653,6 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
     CHECK_THROWS(vfs.file_size(non_existent));
   }
 
-  // Set up
-  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    if (vfs.is_bucket(path)) {
-      REQUIRE_NOTHROW(vfs.remove_bucket(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_bucket(path));
-  } else {
-    if (vfs.is_dir(path)) {
-      REQUIRE_NOTHROW(vfs.remove_dir(path));
-    }
-    REQUIRE_NOTHROW(vfs.create_dir(path));
-    // Bucket-specific operations are only valid for object store filesystems.
-    CHECK_THROWS(vfs.create_bucket(path));
-  }
-
   // Prepare buffers
   uint64_t buffer_size = multiplier * max_parallel_ops * chunk_size;
   auto write_buffer = new char[buffer_size];
@@ -466,7 +689,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  require_tiledb_ok(vfs.read(largefile, 0, read_buffer, 26));
+  require_tiledb_ok(vfs.read_exactly(largefile, 0, read_buffer, 26));
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -477,7 +700,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   CHECK(allok);
 
   // Read from a different offset
-  require_tiledb_ok(vfs.read(largefile, 11, read_buffer, 26));
+  require_tiledb_ok(vfs.read_exactly(largefile, 11, read_buffer, 26));
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
@@ -569,81 +792,107 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 }
 
 // Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
-// TODO: LocalFsTest currently fails. Fix and re-enable.
-using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
+using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest, GCSTest>;
 TEMPLATE_LIST_TEST_CASE(
-    "VFS: Test internal ls_filtered recursion argument",
-    "[vfs][ls_filtered][recursion]",
+    "VFS: ls_filtered recursion enabled",
+    "[vfs][ls_filtered][ls_filtered_v2][recursion]",
     TestBackends) {
   TestType fs({10, 50});
   if (!fs.is_supported()) {
     return;
   }
 
-  bool recursive = GENERATE(true, false);
-  DYNAMIC_SECTION(
-      fs.temp_dir_.backend_name()
-      << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
-    // If testing with recursion use the root directory, otherwise use a subdir.
-    auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
+  // If testing with recursion use the root directory, otherwise use a subdir.
+  DYNAMIC_SECTION(fs.temp_dir_.backend_name() << " ls_filtered") {
     auto ls_objects = fs.vfs_.ls_filtered(
-        path, VFSTestBase::accept_all_files, accept_all_dirs, recursive);
-
+        fs.temp_dir_, tiledb::sm::LsScanner::accept_all, true);
     auto expected = fs.expected_results();
-    if (!recursive) {
-      // If non-recursive, all objects in the first directory should be
-      // returned.
-      std::erase_if(expected, [](const auto& p) {
-        return p.first.find("subdir_1") == std::string::npos;
-      });
-    }
-
     CHECK(ls_objects.size() == expected.size());
-    CHECK(ls_objects == expected);
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
+  }
+  DYNAMIC_SECTION(fs.temp_dir_.backend_name() << " ls_filtered_v2") {
+    auto ls_objects = fs.vfs_.ls_filtered_v2(
+        fs.temp_dir_, tiledb::sm::LsScanner::accept_all_v2, true);
+    auto expected = fs.expected_results_v2();
+    CHECK(ls_objects.size() == expected.size());
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
   }
 }
 
-TEST_CASE(
-    "VFS: ls_recursive throws for unsupported backends",
-    "[vfs][ls_recursive]") {
-  // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
-  std::string prefix = GENERATE("s3://", "azure://", "gcs://");
-  VFSTest vfs_test({1}, prefix);
-  if (!vfs_test.is_supported()) {
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: ls_filtered non-recursive",
+    "[vfs][ls_filtered][ls_filtered_v2]",
+    TestBackends) {
+  TestType fs({10});
+  if (!fs.is_supported()) {
     return;
   }
-  std::string backend = vfs_test.temp_dir_.backend_name();
+  auto path = fs.temp_dir_.join_path("subdir_1");
+  auto subdir2 = path.join_path("subdir_2");
+  if (path.is_file() || path.is_memfs()) {
+    REQUIRE_NOTHROW(fs.vfs_.create_dir(path));
+  }
+  // The file in the nested directory should not be returned for any case.
+  auto test_file = subdir2.join_path("test_file_1");
+  REQUIRE_NOTHROW(fs.vfs_.touch(test_file));
+  SECTION("ls_filtered") {
+    auto expected = fs.expected_results();
+    std::erase_if(expected, [](const auto& p) {
+      return p.first.find("subdir_1/test_file") == std::string::npos;
+    });
+    expected.emplace_back(subdir2, 0);
+    auto ls_objects =
+        fs.vfs_.ls_filtered(path, tiledb::sm::LsScanner::accept_all, false);
+    CHECK(ls_objects.size() == expected.size());
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
+  }
 
-  DYNAMIC_SECTION(backend << " supported backend should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, VFSTestBase::accept_all_files));
+  SECTION("ls_filtered_v2") {
+    // The subdir2 directory should be returned for all backends.
+    auto ls_objects = fs.vfs_.ls_filtered_v2(
+        path, tiledb::sm::LsScanner::accept_all_v2, false);
+    auto expected = fs.expected_results_v2();
+    std::erase_if(
+        expected, [](const auto& p) { return p.first.ends_with("subdir_1"); });
+    expected.emplace_back(subdir2, 0);
+    CHECK(ls_objects.size() == expected.size());
+    CHECK_THAT(ls_objects, Catch::Matchers::UnorderedEquals(expected));
   }
 }
 
-TEST_CASE(
-    "VFS: Throwing FileFilter for ls_recursive",
-    "[vfs][ls_recursive][file-filter]") {
+TEST_CASE("VFS: Throwing filters for ls_recursive", "[vfs][ls_recursive]") {
   std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
   VFSTest vfs_test({0}, prefix);
   if (!vfs_test.is_supported()) {
     return;
   }
 
-  auto file_filter = [](const std::string_view&, uint64_t) -> bool {
-    throw std::logic_error("Throwing FileFilter");
+  auto filter = [](const std::string_view&, uint64_t) -> bool {
+    throw std::logic_error("Throwing filter");
   };
-  SECTION("Throwing FileFilter with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-        vfs_test.temp_dir_, file_filter, tiledb::sm::accept_all_dirs));
+  auto filter_v2 = [](const std::string_view&, uint64_t, bool) -> bool {
+    throw std::logic_error("Throwing filter v2");
+  };
+  SECTION("Throwing filter with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter));
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive_v2(vfs_test.temp_dir_, filter_v2));
   }
-  SECTION("Throwing FileFilter with N objects should throw") {
+
+  SECTION("Throwing filter with N objects should throw") {
     REQUIRE_NOTHROW(vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")));
     CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
         std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
-        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
+
+    CHECK_THROWS_AS(
+        vfs_test.vfs_.ls_recursive_v2(vfs_test.temp_dir_, filter_v2),
+        std::logic_error);
+    CHECK_THROWS_WITH(
+        vfs_test.vfs_.ls_recursive_v2(vfs_test.temp_dir_, filter_v2),
+        Catch::Matchers::ContainsSubstring("Throwing filter v2"));
   }
 }
 
@@ -710,6 +959,7 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
       config.set("vfs.azure.storage_account_name", "exampleaccount"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  require_tiledb_ok(config.set("vfs.azure.is_data_lake_endpoint", "false"));
   if (sas_token.empty()) {
     // If the SAS token is empty, the VFS will try to connect to Microsoft Entra
     // ID to obtain credentials, which can take a long time because of retries.

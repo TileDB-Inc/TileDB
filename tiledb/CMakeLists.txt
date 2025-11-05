@@ -236,7 +236,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/rectangle.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_math.cc
@@ -390,37 +389,12 @@ if (TILEDB_SERIALIZATION)
 
 endif()
 
-# 'External' source files included in the source tree.
-list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
-  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
-)
-list(APPEND TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
-)
-
-#
-# Delegate configuration and detection of platform-specific code generation to
-# the subdirectory. For why the separation isn't clean, see comments there.
-#
-add_subdirectory(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc
-  ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
-list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
-list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
-set_source_files_properties(
-  ${TileDB_blosc_SOURCES}
-  PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
-
 ############################################################
 # Build core objects as a reusable object library
 ############################################################
 
 add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
-    ${TILEDB_EXTERNALS_SOURCES}
 )
 
 # List of libraries to be linked to TILEDB_CORE_OBJECTS.
@@ -447,13 +421,10 @@ target_link_libraries(TILEDB_CORE_OBJECTS
 
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE configuration_definitions)
 
-add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
-
 target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
     "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api"
-    "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
 	# to pickup <build_dir>/tiledb for capnp gen'd files
     "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
@@ -501,9 +472,6 @@ add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 # object store definitions
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE configuration_definitions)
 
-# blosc link dependencies
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
-
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
   find_package(OpenSSL REQUIRED)
@@ -527,10 +495,12 @@ if (TILEDB_AZURE)
 
   find_package(azure-identity-cpp CONFIG REQUIRED)
   find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  find_package(azure-storage-files-datalake-cpp CONFIG REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
           INTERFACE
           Azure::azure-identity
           Azure::azure-storage-blobs
+          Azure::azure-storage-files-datalake
           )
 endif()
 
@@ -573,20 +543,22 @@ endif()
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
+find_package(Blosc2 CONFIG REQUIRED)
 find_package(BZip2 REQUIRED)
 find_package(LZ4 MODULE REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
-find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
+    Blosc2::blosc2
     BZip2::BZip2
     lz4::lz4
+    $<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
     spdlog::spdlog
     ZLIB::ZLIB
     zstd::libzstd
-    libmagic
 )
 
 if(TILEDB_WEBP)
@@ -754,7 +726,7 @@ target_link_libraries(tiledb
   PRIVATE
     # TODO: TILEDB_CORE_OBJECTS_ILIB should be removed and dependencies should be specified
     # without directly getting target_properties.
-    $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+    $<GENEX_EVAL:$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>>
     $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 
@@ -912,7 +884,6 @@ install(
 )
 
 if (WIN32 AND TILEDB_WEBP)
-  set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
   string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
 endif()
 

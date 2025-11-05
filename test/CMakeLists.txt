@@ -324,14 +324,24 @@ find_library(
         NAMES faketime
 )
 
-if (LIBFAKETIME)
+set(ASAN_ENABLED FALSE)
+
+if (TILEDB_SANITIZER STREQUAL "address"
+    OR CMAKE_CXX_FLAGS MATCHES "fsanitize=address"
+    OR CMAKE_C_FLAGS MATCHES "fsanitize=address")
+  set(ASAN_ENABLED TRUE)
+endif()
+
+if (LIBFAKETIME AND NOT ASAN_ENABLED)
     add_test(
             NAME "tiledb_timing_unit"
             COMMAND tiledb_unit --durations=yes [sub-millisecond]
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=path_list_append:${LIBFAKETIME}")
+    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=string_append: ${LIBFAKETIME}")
+elseif (LIBFAKETIME AND ASAN_ENABLED)
+    message(STATUS "Skipping timing tests due to ASAN/libfaketime incompatibility")
 endif()
 
 add_test(

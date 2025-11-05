@@ -69,7 +69,7 @@ class MemFSException : public StatusException {
  * @invariant The MemFilesystem is associated with a single VFS instance.
  * @invariant The MemFilesystem exists on a single, global Context.
  */
-class MemFilesystem : FilesystemBase {
+class MemFilesystem : public FilesystemBase {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -102,11 +102,19 @@ class MemFilesystem : FilesystemBase {
   /* ********************************* */
 
   /**
+   * Checks if this filesystem supports the given URI.
+   *
+   * @param uri The URI to check.
+   * @return `true` if `uri` is supported on this filesystem, `false` otherwise.
+   */
+  bool supports_uri(const URI& uri) const override;
+
+  /**
    * Creates a new directory.
    *
    * @param uri The URI of the directory to be created.
    */
-  void create_dir(const URI& uri) const;
+  void create_dir(const URI& uri) const override;
 
   /**
    * Returns the size of an existing file.
@@ -114,7 +122,7 @@ class MemFilesystem : FilesystemBase {
    * @param uri The URI of the file to retrieve the size of.
    * @return The size of the file.
    */
-  uint64_t file_size(const URI& uri) const;
+  uint64_t file_size(const URI& uri) const override;
 
   /**
    * Checks if a URI corresponds to an existing directory.
@@ -122,7 +130,7 @@ class MemFilesystem : FilesystemBase {
    * @param uri The URI to the directory to be checked
    * @return *True* if *uri* is an existing directory,  *False* otherwise
    */
-  bool is_dir(const URI& uri) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if a URI corresponds to an existing file.
@@ -130,7 +138,7 @@ class MemFilesystem : FilesystemBase {
    * @param uri The URI to the file to be checked
    * @return *True* if *uri* is an existing file, *false* otherwise
    */
-  bool is_file(const URI& uri) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    *
@@ -151,7 +159,7 @@ class MemFilesystem : FilesystemBase {
    * @return A list of directory_entry objects
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& path) const;
+      const URI& path) const override;
 
   /**
    * Move a given filesystem path.
@@ -167,7 +175,7 @@ class MemFilesystem : FilesystemBase {
    * @param old_uri The old uri.
    * @param new_uri The new uri.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) const;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Move a given directory.
@@ -175,23 +183,23 @@ class MemFilesystem : FilesystemBase {
    * @param old_uri The old uri.
    * @param new_uri The new uri.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) const;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
+
+  /** Whether or not to use the read-ahead cache. */
+  bool use_read_ahead_cache() const override {
+    return false;
+  }
 
   /**
-   * Reads data from a file into a buffer.
+   * Reads from a file.
    *
    * @param uri The URI of the file.
-   * @param offset The offset in the file from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param nbytes The number of bytes to be read from the file.
-   * @param use_read_ahead Whether to use a read-ahead cache. Unused internally.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
    */
-  void read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead) const;
+  uint64_t read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
 
   /**
    * Removes a given path and its contents.
@@ -206,21 +214,21 @@ class MemFilesystem : FilesystemBase {
    *
    * @param uri The URI of the directory to be deleted.
    */
-  void remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const override;
 
   /**
    * Removes a file.
    *
    * @param uri The URI of the file to be deleted.
    */
-  void remove_file(const URI& uri) const;
+  void remove_file(const URI& uri) const override;
 
   /**
    * Creates an empty file.
    *
    * @param uri The URI of the file to be created.
    */
-  void touch(const URI& path) const;
+  void touch(const URI& path) const override;
 
   /**
    * Writes the input buffer to a file.
@@ -237,27 +245,7 @@ class MemFilesystem : FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write);
-
-  /**
-   * Copies a directory.
-   *
-   * @param old_uri The old URI.
-   * @param new_uri The new URI.
-   */
-  void copy_dir(const URI&, const URI&) const {
-    // No-op for MemFS; stub function for other filesystems.
-  }
-
-  /**
-   * Copies a file.
-   *
-   * @param old_uri The old URI.
-   * @param new_uri The new URI.
-   */
-  void copy_file(const URI&, const URI&) const {
-    // No-op for MemFS; stub function for other filesystems.
-  }
+      bool remote_global_order_write) override;
 
   /**
    * Flushes an object store file.
@@ -267,7 +255,7 @@ class MemFilesystem : FilesystemBase {
    * @param uri The URI of the file.
    * @param finalize Unused flag. Reserved for finalizing S3 object upload only.
    */
-  void flush(const URI&, bool) {
+  void flush(const URI&, bool) override {
     // No-op for MemFS; stub function for local filesystems.
   }
 
@@ -278,7 +266,7 @@ class MemFilesystem : FilesystemBase {
    *
    * @param uri The URI of the file.
    */
-  void sync(const URI&) const {
+  void sync(const URI&) const override {
     // No-op for MemFS; stub function for local filesystems.
   }
 

@@ -205,19 +205,10 @@ std::vector<Status> ThreadPool::wait_all_status(
       // If the task is not completed, try again later
       pending_tasks.push(task_id);
 
-      // In the meantime, try to do something useful to make progress (and avoid
-      // deadlock)
-      if (auto val = task_queue_.try_pop()) {
-        (*(*val))();
-      } else {
-        // If nothing useful to do, yield so we don't burn cycles
-        // going through the task list over and over (thereby slowing down other
-        // threads).
-        std::this_thread::yield();
-
-        // (An alternative would be to wait some amount of time)
-        // task.wait_for(std::chrono::milliseconds(10));
-      }
+      // In the meantime, attempt to make progress, or yield.
+      yield();
+      // (An alternative would be to wait some amount of time)
+      // task.wait_for(std::chrono::milliseconds(10));
     }
   }
 
@@ -273,13 +264,8 @@ Status ThreadPool::wait(ThreadPoolTask& task) {
 
       return st;
     } else {
-      // In the meantime, try to do something useful to make progress (and avoid
-      // deadlock)
-      if (auto val = task_queue_.try_pop()) {
-        (*(*val))();
-      } else {
-        std::this_thread::yield();
-      }
+      // Attempt to make progress, or yield.
+      yield();
     }
   }
 }

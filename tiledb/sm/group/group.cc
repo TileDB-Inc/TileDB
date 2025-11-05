@@ -648,14 +648,6 @@ void Group::mark_member_for_addition(
     throw GroupException("Cannot add member; Group is not open");
   }
 
-  if (remote_ && relative) {
-    // Relative URIs are supported in the capnp serialization format, but the
-    // REST server has not yet implemented the logic.
-    throw GroupException(
-        "Cannot add member; Remote groups do not support members with relative "
-        "URIs");
-  }
-
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
@@ -834,7 +826,7 @@ void Group::load_metadata() {
 void Group::load_metadata_from_storage(
     const shared_ptr<GroupDirectory>& group_dir,
     const EncryptionKey& encryption_key) {
-  [[maybe_unused]] auto timer_se =
+  auto timer_se =
       resources_.stats().start_timer("group_load_metadata_from_storage");
 
   // Determine which group metadata to load
@@ -870,16 +862,14 @@ void Group::load_metadata_from_storage(
 }
 
 void Group::group_open_for_reads() {
-  [[maybe_unused]] auto timer_se =
-      resources_.stats().start_timer("group_open_for_reads");
+  auto timer_se = resources_.stats().start_timer("group_open_for_reads");
 
   // Load group data
   load_group_details();
 }
 
 void Group::load_group_details() {
-  [[maybe_unused]] auto timer_se =
-      resources_.stats().start_timer("load_group_details");
+  auto timer_se = resources_.stats().start_timer("load_group_details");
   const URI& latest_group_uri = group_directory()->latest_group_details_uri();
   if (latest_group_uri.is_invalid()) {
     return;
@@ -903,8 +893,7 @@ void Group::load_group_details() {
 }
 
 void Group::load_group_from_uri(const URI& uri) {
-  [[maybe_unused]] auto timer_se =
-      resources_.stats().start_timer("load_group_from_uri");
+  auto timer_se = resources_.stats().start_timer("load_group_from_uri");
 
   auto tile = GenericTileIO::load(
       resources_,
@@ -926,8 +915,7 @@ void Group::load_group_from_uri(const URI& uri) {
 }
 
 void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
-  [[maybe_unused]] auto timer_se =
-      resources_.stats().start_timer("load_group_from_all_uris");
+  auto timer_se = resources_.stats().start_timer("load_group_from_all_uris");
 
   std::vector<shared_ptr<Deserializer>> deserializers;
   for (auto& uri : uris) {
@@ -955,8 +943,7 @@ void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
 }
 
 void Group::group_open_for_writes() {
-  [[maybe_unused]] auto timer_se =
-      resources_.stats().start_timer("group_open_for_writes");
+  auto timer_se = resources_.stats().start_timer("group_open_for_writes");
 
   load_group_details();
 }

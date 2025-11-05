@@ -130,12 +130,12 @@ struct tiledb_vfs_handle_t
   }
 
   void copy_file(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
     vfs_.copy_file(old_uri, new_uri);
   }
 
   void copy_dir(
-      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) const {
+      const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
     vfs_.copy_dir(old_uri, new_uri);
   }
 
@@ -153,7 +153,23 @@ struct tiledb_vfs_handle_t
       tiledb_ls_callback_t cb,
       void* data) const {
     tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
-    vfs_.ls_recursive(parent, wrapper);
+    try {
+      vfs_.ls_recursive(parent, wrapper);
+    } catch (const tiledb::sm::LsStopTraversal&) {
+      // Ignore exception
+    }
+  }
+
+  void ls_recursive_v2(
+      const tiledb::sm::URI& parent,
+      tiledb_ls_callback_v2_t cb,
+      void* data) const {
+    tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
+    try {
+      vfs_.ls_recursive_v2(parent, wrapper);
+    } catch (const tiledb::sm::LsStopTraversal&) {
+      // Ignore exception
+    }
   }
 };
 

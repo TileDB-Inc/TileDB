@@ -37,6 +37,7 @@
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/identity.hpp>
 #include <azure/storage/blobs.hpp>
+#include <azure/storage/files/datalake.hpp>
 
 #include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
@@ -46,6 +47,7 @@
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/misc/tdb_math.h"
 
 static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
@@ -62,6 +64,122 @@ namespace {
  * https://learn.microsoft.com/en-us/azure/storage/blobs/scalability-targets
  */
 constexpr int max_committed_block_num = 50000;
+
+// Copied from
+// https://github.com/Azure/azure-sdk-for-cpp/blob/738d142dae94f908673547693f54ec1f644ace4c/sdk/storage/azure-storage-files-datalake/src/datalake_utilities.cpp#L12-L51
+const static std::string DfsEndPointIdentifier = ".dfs.";
+const static std::string BlobEndPointIdentifier = ".blob.";
+
+Azure::Core::Url GetDfsUrlFromUrl(const Azure::Core::Url& url) {
+  std::string host = url.GetHost();
+  auto pos = host.rfind(BlobEndPointIdentifier);
+  if (pos == std::string::npos) {
+    return url;
+  }
+  host.replace(pos, BlobEndPointIdentifier.size(), DfsEndPointIdentifier);
+  Azure::Core::Url result = url;
+  result.SetHost(host);
+  return result;
+}
+
+std::string GetDfsUrlFromUrl(const std::string& url) {
+  return GetDfsUrlFromUrl(Azure::Core::Url(url)).GetAbsoluteUrl();
+}
+
+/**
+ * Returns an empty tuple if the given parameter is an std::monostate, otherwise
+ * it wraps it in a one-element tuple.
+ */
+template <class T>
+auto unwrap_if_not_monostate(T&& x) {
+  if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
+    return std::make_tuple();
+  } else {
+    return std::forward_as_tuple<T>(x);
+  }
+}
+
+template <class Client>
+tdb_unique_ptr<Client> make_service_client(
+    const std::string& endpoint,
+    const tiledb::sm::Azure::ServiceCredentialType& creds,
+    auto&& options) {
+  return tdb_unique_ptr<Client>(std::visit(
+      [&](auto cred) {
+        return std::apply(
+            // tdb_new is a macro, so we have to wrap it in a lambda.
+            [](auto&&... args) {
+              return tdb_new(Client, std::forward<decltype(args)>(args)...);
+            },
+            // The client constructors are either of the form (endpoint,
+            // credential, options), or (endpoint, options) for anonymous
+            // authentication. Use tuple_cat in conjunction with
+            // unwrap_if_monostate, to pass credentials only if they exist.
+            std::tuple_cat(
+                std::make_tuple(endpoint),
+                unwrap_if_not_monostate(cred),
+                std::forward_as_tuple<decltype(options)>(options)));
+      },
+      creds));
+}
+
+tiledb::sm::Azure::ServiceCredentialType get_service_credential(
+    const tiledb::sm::AzureParameters& params,
+    const ::Azure::Core::Http::Policies::RetryOptions& retry_options,
+    const ::Azure::Core::Http::Policies::TransportOptions& transport_options) {
+  // We pass a shared key if it was specified.
+  if (!params.account_key_.empty()) {
+    // If we don't have an account name, warn and try other authentication
+    // methods.
+    if (params.account_name_.empty()) {
+      LOG_WARN(
+          "Azure storage account name must be set when specifying account key. "
+          "Account key will be ignored.");
+    } else {
+      return make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+          HERE(), params.account_name_, params.account_key_);
+    }
+  }
+
+  // Otherwise, if we did not specify an SAS token
+  // and we are connecting to an HTTPS endpoint,
+  // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
+  if (!params.has_sas_token_ && tiledb::sm::utils::parse::starts_with(
+                                    params.blob_endpoint_, "https://")) {
+    try {
+      ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
+      cred_options.Retry = retry_options;
+      cred_options.Transport = transport_options;
+      auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
+          HERE(),
+          std::vector<std::shared_ptr<
+              const ::Azure::Core::Credentials::TokenCredential>>{
+              make_shared<::Azure::Identity::EnvironmentCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::AzureCliCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::ManagedIdentityCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::WorkloadIdentityCredential>(
+                  HERE(), cred_options)});
+      // If a token is not available we wouldn't know it until we make a
+      // request and it would be too late. Try getting a token, and if it
+      // fails fall back to anonymous authentication.
+      ::Azure::Core::Credentials::TokenRequestContext tokenContext;
+
+      // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
+      tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
+      std::ignore = credential->GetToken(tokenContext, {});
+      return credential;
+    } catch (...) {
+      LOG_INFO(
+          "Failed to get Microsoft Entra ID token, falling back to anonymous "
+          "authentication");
+    }
+  }
+
+  return {};
+}
 }  // namespace
 
 namespace tiledb::sm {
@@ -101,6 +219,9 @@ AzureParameters::AzureParameters(const Config& config)
     , account_key_(get_config_with_env_fallback(
           config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
     , blob_endpoint_(get_blob_endpoint(config, account_name_))
+    , is_data_lake_endpoint_(tiledb::sm::utils::parse::convert_optional<bool>(
+          config.get<std::string>(
+              "vfs.azure.is_data_lake_endpoint", Config::must_find)))
     , ssl_cfg_(config)
     , has_sas_token_(
           !get_config_with_env_fallback(
@@ -165,8 +286,8 @@ std::string get_blob_endpoint(
 /*                 API               */
 /* ********************************* */
 
-const ::Azure::Storage::Blobs::BlobServiceClient&
-Azure::AzureClientSingleton::get(const AzureParameters& params) {
+void Azure::AzureClientSingleton::ensure_initialized(
+    const AzureParameters& params) {
   // Initialize logging from the Azure SDK.
   static std::once_flag azure_log_sentinel;
   std::call_once(azure_log_sentinel, []() {
@@ -192,7 +313,7 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
   if (client_) {
-    return *client_;
+    return;
   }
 
   ::Azure::Storage::Blobs::BlobClientOptions options;
@@ -201,76 +322,32 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   options.Retry.MaxRetryDelay = params.max_retry_delay_;
   options.Transport.Transport = create_transport(params.ssl_cfg_);
 
-  // Construct the Azure SDK blob service client.
-  // We pass a shared key if it was specified.
-  if (!params.account_key_.empty()) {
-    // If we don't have an account name, warn and try other authentication
-    // methods.
-    if (params.account_name_.empty()) {
-      LOG_WARN(
-          "Azure storage account name must be set when specifying account key. "
-          "Account key will be ignored.");
-    } else {
-      client_ =
-          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-              ::Azure::Storage::Blobs::BlobServiceClient,
-              params.blob_endpoint_,
-              make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                  HERE(), params.account_name_, params.account_key_),
-              options));
-      return *client_;
-    }
+  // Construct the Azure service credential.
+  auto credential =
+      get_service_credential(params, options.Retry, options.Transport);
+
+  client_ = make_service_client<BlobServiceClientType>(
+      params.blob_endpoint_, credential, options);
+
+  auto is_datalake = params.is_data_lake_endpoint_;
+
+  if (!is_datalake.has_value()) {
+    auto accountInfo = client_->GetAccountInfo();
+    is_datalake = accountInfo.Value.IsHierarchicalNamespaceEnabled;
   }
 
-  // Otherwise, if we did not specify an SAS token
-  // and we are connecting to an HTTPS endpoint,
-  // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
-  if (!params.has_sas_token_ &&
-      utils::parse::starts_with(params.blob_endpoint_, "https://")) {
-    try {
-      ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
-      cred_options.Retry = options.Retry;
-      cred_options.Transport = options.Transport;
-      auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
-          HERE(),
-          std::vector<
-              std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
-              make_shared<::Azure::Identity::EnvironmentCredential>(
-                  HERE(), cred_options),
-              make_shared<::Azure::Identity::AzureCliCredential>(
-                  HERE(), cred_options),
-              make_shared<::Azure::Identity::ManagedIdentityCredential>(
-                  HERE(), cred_options),
-              make_shared<::Azure::Identity::WorkloadIdentityCredential>(
-                  HERE(), cred_options)});
-      // If a token is not available we wouldn't know it until we make a
-      // request and it would be too late. Try getting a token, and if it
-      // fails fall back to anonymous authentication.
-      ::Azure::Core::Credentials::TokenRequestContext tokenContext;
+  if (is_datalake.value()) {
+    ::Azure::Storage::Files::DataLake::DataLakeClientOptions data_lake_options;
+    data_lake_options.Retry = options.Retry;
+    data_lake_options.Transport = options.Transport;
 
-      // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
-      tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
-      std::ignore = credential->GetToken(tokenContext, {});
-      client_ =
-          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-              ::Azure::Storage::Blobs::BlobServiceClient,
-              params.blob_endpoint_,
-              credential,
-              options));
-      return *client_;
-    } catch (...) {
-      LOG_INFO(
-          "Failed to get Microsoft Entra ID token, falling back to anonymous "
-          "authentication");
-    }
+    data_lake_client_ = make_service_client<DataLakeServiceClientType>(
+        GetDfsUrlFromUrl(params.blob_endpoint_), credential, data_lake_options);
   }
+}
 
-  client_ = tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-      ::Azure::Storage::Blobs::BlobServiceClient,
-      params.blob_endpoint_,
-      options));
-
-  return *client_;
+bool Azure::supports_uri(const URI& uri) const {
+  return uri.is_azure();
 }
 
 void Azure::create_bucket(const URI& uri) const {
@@ -452,9 +529,63 @@ bool Azure::is_bucket(const URI& uri) const {
   return true;
 }
 
+void Azure::create_dir(const URI& uri) const {
+  if (!uri.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
+  }
+  const auto& [_, data_lake_client] = clients();
+  if (!data_lake_client) {
+    // Directories exist only in Data Lake Storage.
+    return;
+  }
+
+  auto [container_name, blob_path] =
+      parse_azure_uri(uri.remove_trailing_slash());
+  try {
+    data_lake_client->GetFileSystemClient(container_name)
+        .GetDirectoryClient(blob_path)
+        .CreateIfNotExists();
+  } catch (const ::Azure::Storage::StorageException& e) {
+    throw AzureException(
+        "Create directory failed on: " + container_name + "; " + e.Message);
+  }
+}
+
 bool Azure::is_dir(const URI& uri) const {
-  std::vector<std::string> paths = ls(uri, "/", 1);
-  return (bool)paths.size();
+  auto [container_name, blob_path] = parse_azure_uri(uri);
+
+  auto& [_, data_lake_client] = clients();
+  // Ideally, we would minimize the differences in the semantics between Blob
+  // Storage and Data Lake Storage, and treat directories with no files
+  // underneath as non-existent, but we cannot efficiently do the same, since
+  // recursive listing also returns directories necessitating to list everything
+  // (not just get the first element) to make sure there are no files
+  // underneath.
+  // This also forces us to implement create_dir on Data Lake Storage for
+  // symmetry.
+  if (data_lake_client) {
+    try {
+      auto properties = data_lake_client->GetFileSystemClient(container_name)
+                            .GetDirectoryClient(blob_path)
+                            .GetProperties();
+      return properties.Value.IsDirectory;
+    } catch (const ::Azure::Storage::StorageException& e) {
+      if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
+        return false;
+      }
+      throw AzureException(
+          "Get directory properties failed on: " + blob_path + "; " +
+          e.Message);
+    }
+  }
+
+  std::optional<std::string> continuation_token;
+  if (!blob_path.ends_with('/')) {
+    blob_path.push_back('/');
+  }
+  auto paths =
+      list_blobs_impl(container_name, blob_path, false, 1, continuation_token);
+  return !paths.empty();
 }
 
 bool Azure::is_file(const URI& uri) const {
@@ -499,21 +630,21 @@ std::string Azure::remove_trailing_slash(const std::string& path) {
 }
 
 std::vector<std::string> Azure::ls(
-    const URI& uri, const std::string& delimiter, const int max_paths) const {
+    const URI& uri, const std::string& delimiter) const {
   std::vector<std::string> paths;
-  for (auto& fs : ls_with_sizes(uri, delimiter, max_paths)) {
+  for (auto& fs : ls_with_sizes(uri, delimiter)) {
     paths.emplace_back(fs.path().native());
   }
   return paths;
 }
 
 std::vector<directory_entry> Azure::ls_with_sizes(const URI& uri) const {
-  return ls_with_sizes(uri, "/", -1);
+  return ls_with_sizes(uri, "/");
 }
 
 std::vector<directory_entry> Azure::ls_with_sizes(
-    const URI& uri, const std::string& delimiter, int max_paths) const {
-  const auto& c = client();
+    const URI& uri, const std::string& delimiter) const {
+  const auto& [client, data_lake_client] = clients();
 
   const URI uri_dir = uri.add_trailing_slash();
 
@@ -522,45 +653,75 @@ std::vector<directory_entry> Azure::ls_with_sizes(
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri_dir);
-  auto container_client = c.GetBlobContainerClient(container_name);
-
   std::vector<directory_entry> entries;
-  ::Azure::Storage::Blobs::ListBlobsOptions options;
-  options.ContinuationToken = "";
-  options.PageSizeHint = max_paths > 0 ? max_paths : 5000;
-  options.Prefix = blob_path;
-  do {
-    ::Azure::Storage::Blobs::ListBlobsByHierarchyPagedResponse response;
-    try {
-      response = container_client.ListBlobsByHierarchy(delimiter, options);
-    } catch (const ::Azure::Storage::StorageException& e) {
-      throw AzureException(
-          "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message);
-    }
 
-    for (const auto& blob : response.Blobs) {
-      entries.emplace_back(
-          "azure://" + container_name + "/" +
-              remove_front_slash(remove_trailing_slash(blob.Name)),
-          blob.BlobSize,
-          false);
-    }
+  try {
+    if (data_lake_client) {
+      if (!delimiter.empty() && delimiter != "/") {
+        throw AzureException(
+            "Delimiter must be empty or '/' for storage accounts with "
+            "hierarchical namespace enabled.");
+      }
 
-    for (const auto& prefix : response.BlobPrefixes) {
-      entries.emplace_back(
-          "azure://" + container_name + "/" +
-              remove_front_slash(remove_trailing_slash(prefix)),
-          0,
-          true);
-    }
+      bool recursive = delimiter.empty();
+      auto response = data_lake_client->GetFileSystemClient(container_name)
+                          .GetDirectoryClient(blob_path)
+                          .ListPaths(recursive);
+      do {
+        for (const auto& entry : response.Paths) {
+          if (recursive && entry.IsDirectory) {
+            // Unlike the blob endpoint, the data lake endpoint returns
+            // directories even in recursive listing. Do not return them here,
+            // in order to match semantics.
+            continue;
+          }
 
-    options.ContinuationToken = response.NextPageToken;
-  } while (options.ContinuationToken.HasValue());
+          entries.emplace_back(
+              "azure://" + container_name + "/" +
+                  remove_front_slash(remove_trailing_slash(entry.Name)),
+              entry.FileSize,
+              entry.IsDirectory);
+        }
+
+        response.MoveToNextPage();
+      } while (response.HasPage());
+    } else {
+      ::Azure::Storage::Blobs::ListBlobsOptions options;
+      options.Prefix = blob_path;
+      auto response = client.GetBlobContainerClient(container_name)
+                          .ListBlobsByHierarchy(delimiter, options);
+      do {
+        for (const auto& blob : response.Blobs) {
+          entries.emplace_back(
+              "azure://" + container_name + "/" +
+                  remove_front_slash(remove_trailing_slash(blob.Name)),
+              blob.BlobSize,
+              false);
+        }
+
+        for (const auto& prefix : response.BlobPrefixes) {
+          entries.emplace_back(
+              "azure://" + container_name + "/" +
+                  remove_front_slash(remove_trailing_slash(prefix)),
+              0,
+              true);
+        }
+
+        response.MoveToNextPage();
+      } while (response.HasPage());
+    }
+  } catch (const ::Azure::Storage::StorageException& e) {
+    if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
+      return {};
+    }
+    throw AzureException(
+        "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message);
+  }
 
   return entries;
 }
 
-void Azure::copy_dir(const URI& old_uri, const URI& new_uri) const {
+void Azure::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto paths = ls(old_uri, "");
   for (auto& path : paths) {
     std::string filename = path.substr(old_uri.to_string().length());
@@ -568,7 +729,7 @@ void Azure::copy_dir(const URI& old_uri, const URI& new_uri) const {
   }
 }
 
-void Azure::copy_file(const URI& old_uri, const URI& new_uri) const {
+void Azure::copy_file(const URI& old_uri, const URI& new_uri) {
   auto& c = client();
   if (!old_uri.is_azure()) {
     throw AzureException("URI is not an Azure URI: " + old_uri.to_string());
@@ -595,6 +756,27 @@ void Azure::copy_file(const URI& old_uri, const URI& new_uri) const {
 }
 
 void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
+  auto [_, data_lake_client] = clients();
+
+  if (data_lake_client) {
+    auto [old_container_name, old_blob_path] =
+        parse_azure_uri(old_uri.remove_trailing_slash());
+    auto [new_container_name, new_blob_path] =
+        parse_azure_uri(new_uri.remove_trailing_slash());
+
+    ::Azure::Storage::Files::DataLake::RenameDirectoryOptions options;
+    options.DestinationFileSystem = std::move(new_container_name);
+    try {
+      data_lake_client->GetFileSystemClient(old_container_name)
+          .RenameDirectory(old_blob_path, new_blob_path, options);
+    } catch (const ::Azure::Storage::StorageException& e) {
+      throw AzureException(
+          "Move directory failed on: " + old_uri.to_string() + "; " +
+          e.Message);
+    }
+    return;
+  }
+
   std::vector<std::string> paths = ls(old_uri, "");
   for (const auto& path : paths) {
     const std::string suffix = path.substr(old_uri.to_string().size());
@@ -604,7 +786,25 @@ void Azure::move_dir(const URI& old_uri, const URI& new_uri) const {
 }
 
 void Azure::move_file(const URI& old_uri, const URI& new_uri) const {
-  copy_file(old_uri, new_uri);
+  auto [_, data_lake_client] = clients();
+
+  if (data_lake_client) {
+    auto [old_container_name, old_blob_path] = parse_azure_uri(old_uri);
+    auto [new_container_name, new_blob_path] = parse_azure_uri(new_uri);
+
+    ::Azure::Storage::Files::DataLake::RenameFileOptions options;
+    options.DestinationFileSystem = std::move(new_container_name);
+    try {
+      data_lake_client->GetFileSystemClient(old_container_name)
+          .RenameFile(old_blob_path, new_blob_path, options);
+    } catch (const ::Azure::Storage::StorageException& e) {
+      throw AzureException(
+          "Move file failed on: " + old_uri.to_string() + "; " + e.Message);
+    }
+    return;
+  }
+
+  const_cast<tiledb::sm::Azure*>(this)->copy_file(old_uri, new_uri);
   remove_file(old_uri);
 }
 
@@ -626,13 +826,8 @@ uint64_t Azure::file_size(const URI& uri) const {
   }
 }
 
-Status Azure::read_impl(
-    const URI& uri,
-    const off_t offset,
-    void* const buffer,
-    const uint64_t length,
-    const uint64_t read_ahead_length,
-    uint64_t* const length_returned) const {
+uint64_t Azure::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   const auto& c = client();
 
   if (!uri.is_azure()) {
@@ -640,11 +835,10 @@ Status Azure::read_impl(
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  size_t total_length = length + read_ahead_length;
 
   ::Azure::Storage::Blobs::DownloadBlobOptions options;
   options.Range = ::Azure::Core::Http::HttpRange();
-  options.Range.Value().Length = static_cast<int64_t>(total_length);
+  options.Range.Value().Length = static_cast<int64_t>(nbytes);
   options.Range.Value().Offset = static_cast<int64_t>(offset);
 
   ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
@@ -658,14 +852,7 @@ Status Azure::read_impl(
         "Read blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
-  *length_returned = result.BodyStream->ReadToCount(
-      static_cast<uint8_t*>(buffer), total_length);
-
-  if (*length_returned < length) {
-    throw AzureException("Read operation read unexpected number of bytes.");
-  }
-
-  return Status::Ok();
+  return result.BodyStream->ReadToCount(static_cast<uint8_t*>(buffer), nbytes);
 }
 
 void Azure::remove_bucket(const URI& uri) const {
@@ -710,9 +897,48 @@ void Azure::remove_file(const URI& uri) const {
 }
 
 void Azure::remove_dir(const URI& uri) const {
-  std::vector<std::string> paths = ls(uri, "");
+  auto [_, data_lake_client] = clients();
+
+  if (data_lake_client) {
+    auto [container_name, blob_path] =
+        parse_azure_uri(uri.remove_trailing_slash());
+    // We cannot empty the whole container with a single call.
+    if (!blob_path.empty()) {
+      bool deleted;
+      std::string error_message = "";
+      try {
+        deleted = data_lake_client->GetFileSystemClient(container_name)
+                      .GetDirectoryClient(blob_path)
+                      .DeleteRecursive()
+                      .Value.Deleted;
+      } catch (const ::Azure::Storage::StorageException& e) {
+        deleted = false;
+        error_message = "; " + e.Message;
+      }
+
+      if (!deleted) {
+        throw AzureException(
+            "Remove directory failed on: " + uri.to_string() + error_message);
+      }
+      return;
+    }
+  }
+
+  // If we have a datalake client (at which point we want to empty the
+  // container), we should make a non-recursive listing, and then delete the
+  // top-level files and directories.
+  // If we don't have a datalake client, just list and remove all blobs.
+  std::vector<directory_entry> paths =
+      ls_with_sizes(uri, data_lake_client ? "/" : "");
   throw_if_not_ok(parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
-    remove_file(URI(paths[i]));
+    if (paths[i].is_directory()) {
+      // This is a recursive call, but we won't be reaching this again; we will
+      // get directories only with the data lake client, and blob path will not
+      // be empty, so we will hit the path above.
+      remove_dir(URI(paths[i].path().native()));
+    } else {
+      remove_file(URI(paths[i].path().native()));
+    }
     return Status::Ok();
   }));
 }
@@ -943,36 +1169,42 @@ LsObjects Azure::list_blobs_impl(
     bool recursive,
     int max_keys,
     optional<std::string>& continuation_token) const {
+  LsObjects result;
+  auto& [client, data_lake_client] = clients();
   try {
-    ::Azure::Storage::Blobs::ListBlobsOptions options{
-        .Prefix = blob_path,
-        .ContinuationToken = to_azure_nullable(continuation_token),
-        .PageSizeHint = max_keys};
-    auto container_client = client().GetBlobContainerClient(container_name);
-    auto to_directory_entry =
-        [&container_name](const ::Azure::Storage::Blobs::Models::BlobItem& item)
-        -> LsObjects::value_type {
-      return {
-          "azure://" + container_name + "/" +
-              remove_front_slash(remove_trailing_slash(item.Name)),
-          item.BlobSize >= 0 ? static_cast<uint64_t>(item.BlobSize) : 0};
-    };
-
-    LsObjects result;
-    if (recursive) {
-      auto response = container_client.ListBlobs(options);
-
+    if (data_lake_client) {
+      auto dir_client = data_lake_client->GetFileSystemClient(container_name)
+                            .GetDirectoryClient(blob_path);
+      ::Azure::Storage::Files::DataLake::ListPathsOptions options;
+      options.ContinuationToken = to_azure_nullable(continuation_token);
+      options.PageSizeHint = max_keys;
+      auto response = dir_client.ListPaths(recursive, options);
       continuation_token = from_azure_nullable(response.NextPageToken);
 
-      result.reserve(response.Blobs.size());
-      std::transform(
-          response.Blobs.begin(),
-          response.Blobs.end(),
-          std::back_inserter(result),
-          to_directory_entry);
+      result.reserve(response.Paths.size());
+      for (auto& path : response.Paths) {
+        // Unlike the blob endpoint, the data lake endpoint returns
+        // directories even in recursive listing. Do not return them here,
+        // in order to match semantics.
+        // We could in the future rely on this and avoid the manual common
+        // prefix calculation, but LsObjects does not currently support marking
+        // whether an item is a directory or not.
+        if (recursive && path.IsDirectory) {
+          continue;
+        }
+        result.emplace_back(
+            "azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(path.Name)),
+            path.FileSize >= 0 ? static_cast<uint64_t>(path.FileSize) : 0);
+      }
     } else {
-      auto response = container_client.ListBlobsByHierarchy("/", options);
-
+      auto response =
+          client.GetBlobContainerClient(container_name)
+              .ListBlobsByHierarchy(
+                  recursive ? "" : "/",
+                  {.Prefix = blob_path,
+                   .ContinuationToken = to_azure_nullable(continuation_token),
+                   .PageSizeHint = max_keys});
       continuation_token = from_azure_nullable(response.NextPageToken);
 
       result.reserve(response.Blobs.size() + response.BlobPrefixes.size());
@@ -980,7 +1212,14 @@ LsObjects Azure::list_blobs_impl(
           response.Blobs.begin(),
           response.Blobs.end(),
           std::back_inserter(result),
-          to_directory_entry);
+          [&container_name](
+              const ::Azure::Storage::Blobs::Models::BlobItem& item)
+              -> LsObjects::value_type {
+            return {
+                "azure://" + container_name + "/" +
+                    remove_front_slash(remove_trailing_slash(item.Name)),
+                item.BlobSize >= 0 ? static_cast<uint64_t>(item.BlobSize) : 0};
+          });
       std::transform(
           response.BlobPrefixes.begin(),
           response.BlobPrefixes.end(),
@@ -1081,6 +1320,130 @@ std::string Azure::BlockListUploadState::next_block_id() {
   block_ids_.emplace_back(b64_block_id_str);
 
   return b64_block_id_str;
+}
+
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    ResultFilter&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+AzureScanner::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    ResultFilterV2&& result_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner(prefix, std::move(result_filter), recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  std::tie(container_name_, blob_path_) =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  fetch_results();
+  next(begin_);
+}
+
+void AzureScanner::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto& object = *ptr;
+
+    // Store each unique prefix while scanning objects.
+    // TODO: is_recursive_&& for here and S3Scanner
+    if (result_filter_v2_ && result_type_ == OBJECT) {
+      // The object key contains the azure:// prefix and the bucket name.
+      // Non-recursive request to Azure returns prefixes with a trailing slash.
+      auto prefix = Azure::remove_trailing_slash(object.first);
+
+      // Drop last part of the path until we reach the end, or hit a duplicate.
+      for (auto pos = prefix.rfind('/'); pos != std::string::npos;
+           pos = prefix.rfind('/')) {
+        prefix = prefix.substr(0, pos);
+        // Do not accept the prefix we are scanning.
+        if (prefix == prefix_.to_string() ||
+            collected_prefixes_.contains(prefix)) {
+          break;
+        } else if (result_filter_v2_(prefix, 0, true)) {
+          collected_prefixes_.emplace(prefix, 0);
+        }
+      }
+    }
+
+    // For recursive, prefixes have already been filtered by the predicate.
+    // Non-recursive request with a delimiter set will return prefixes as object
+    // with a trailing slash, those prefixes will be filtered here.
+    bool is_prefix = object.first.ends_with("/");
+    auto uri = Azure::remove_trailing_slash(object.first);
+    if (result_filter_ && result_filter_(uri, object.second)) {
+      return;
+    } else if (
+        result_filter_v2_ &&
+        (result_type_ == PREFIX ||
+         result_filter_v2_(uri, object.second, is_prefix))) {
+      return;
+    } else {
+      // Object was rejected by the FilterPredicate, do not include it in
+      // results.
+      advance(ptr);
+    }
+  }
+}
+
+AzureScanner::Iterator::pointer& AzureScanner::build_prefix_vector() {
+  result_type_ = PREFIX;
+  common_prefixes_.resize(collected_prefixes_.size());
+  for (auto& object : common_prefixes_) {
+    auto next = collected_prefixes_.begin();
+    object.first = collected_prefixes_.extract(next).value();
+    object.second = 0;
+  }
+  end_ = common_prefixes_.end();
+  return begin_ = common_prefixes_.begin();
+}
+
+AzureScanner::Iterator::pointer AzureScanner::fetch_results() {
+  if (result_filter_v2_ && !more_to_fetch() && !collected_prefixes_.empty()) {
+    return build_prefix_vector();
+  } else if (!more_to_fetch()) {
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+  result_type_ = OBJECT;
+
+  blobs_ = client_.list_blobs_impl(
+      container_name_,
+      blob_path_,
+      this->is_recursive_,
+      max_keys_,
+      continuation_token_);
+  has_fetched_ = true;
+  // Update pointers to the newly fetched results.
+  begin_ = blobs_.begin();
+  end_ = blobs_.end();
+
+  return begin_;
 }
 
 }  // namespace tiledb::sm

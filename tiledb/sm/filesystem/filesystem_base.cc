@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,35 @@ namespace tiledb::sm {
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+LsObjects FilesystemBase::ls_filtered(const URI&, ResultFilter, bool) const {
+  throw UnsupportedOperation("ls_filtered");
+}
+
+LsObjects FilesystemBase::ls_filtered_v2(
+    const URI&, ResultFilterV2, bool) const {
+  throw UnsupportedOperation("ls_filtered");
+}
+
+void FilesystemBase::move_file(const URI&, const URI&) const {
+  throw UnsupportedOperation("move_file");
+}
+
+void FilesystemBase::move_dir(const URI&, const URI&) const {
+  throw UnsupportedOperation("move_dir");
+}
+
+void FilesystemBase::copy_file(const URI&, const URI&) {
+  throw UnsupportedOperation("copy_file");
+}
+
+void FilesystemBase::copy_dir(const URI&, const URI&) {
+  throw UnsupportedOperation("copy_dir");
+}
+
+bool FilesystemBase::use_read_ahead_cache() const {
+  return true;
+}
 
 void FilesystemBase::sync(const URI&) const {
   throw UnsupportedOperation("sync");
