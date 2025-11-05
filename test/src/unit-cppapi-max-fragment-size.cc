@@ -809,7 +809,7 @@ instance_dense_global_order(
  */
 TEST_CASE("C++ API: Max fragment size dense array", "[cppapi][max-frag-size]") {
   VFSTestSetup vfs;
-  Context ctx;
+  Context ctx(vfs.ctx());
 
   const std::string array_name =
       vfs.array_uri("max_fragment_size_dense_global_order");
@@ -1283,7 +1283,7 @@ TEST_CASE(
   using Dom64 = Dim64::domain_type;
 
   VFSTestSetup vfs;
-  Context ctx;
+  Context ctx(vfs.ctx());
 
   const std::string array_name =
       vfs.array_uri("max_fragment_size_dense_global_order_rapidcheck_1d");
@@ -1314,7 +1314,7 @@ TEST_CASE(
   using Dom64 = Dim64::domain_type;
 
   VFSTestSetup vfs;
-  Context ctx;
+  Context ctx(vfs.ctx());
 
   const std::string array_name =
       vfs.array_uri("max_fragment_size_dense_global_order_rapidcheck_2d");
@@ -1387,7 +1387,7 @@ TEST_CASE(
   using Dom64 = Dim64::domain_type;
 
   VFSTestSetup vfs;
-  Context ctx;
+  Context ctx(vfs.ctx());
 
   const std::string array_name =
       vfs.array_uri("max_fragment_size_dense_global_order_rapidcheck_3d");
@@ -1419,7 +1419,7 @@ TEST_CASE(
     "C++ API: Max fragment size dense array var size tiles",
     "[cppapi][max-frag-size]") {
   VFSTestSetup vfs;
-  Context ctx;
+  Context ctx(vfs.ctx());
   const std::string array_name =
       vfs.array_uri("max_fragment_size_dense_global_order_var");
 
@@ -1651,7 +1651,7 @@ TEST_CASE(
   const std::string array_name =
       vfs.array_uri("max_fragment_size_dense_global_order_rest_support");
 
-  Context ctx;
+  Context ctx(vfs.ctx());
 
   using Dim = templates::Dimension<sm::Datatype::UINT64>;
   using Dom = Dim::domain_type;
