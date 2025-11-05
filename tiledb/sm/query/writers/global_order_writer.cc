@@ -753,6 +753,16 @@ Status GlobalOrderWriter::finalize_global_write_state() {
       // tile runs over... in this case we need to do the rectangle thing all
       // over again so as to avoid writing a fragment which exceeds the max
       // fragment size.
+      //
+      // HOWEVER, this state might not be reachable, because dense global
+      // order writes must be fully tile-aligned, which means that the
+      // "last tile" which we would flush here should have zero cells.
+      // Note that the subarray is a rectangle, so
+      // `identify_fragment_tile_boundaries` should always indicate that all of
+      // the tiles can be written.
+      //
+      // As such we are not going to expend more effort on this unless
+      // we see evidence of it.
     }
   } else {
     iassert(global_write_state_->last_tiles_.begin()->second.size() <= 1);
