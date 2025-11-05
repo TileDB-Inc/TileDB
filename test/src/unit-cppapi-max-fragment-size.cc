@@ -1444,6 +1444,11 @@ TEST_CASE(
     const Dom64 subrow(0, 2 * d1_extent - 1);
     const Dom64 subcol = col.domain;
 
+    auto make_subcol = [&](uint64_t start_tile, uint64_t end_tile) -> Dom64 {
+      const uint64_t tile_span = d2_extent * d1_extent / 8;
+      return Dom64(tile_span * start_tile, tile_span * end_tile - 1);
+    };
+
     const Dom64 subrow_0(0, d1_extent - 1);
     const Dom64 subrow_1(d1_extent, 2 * d1_extent - 1);
 
@@ -1493,23 +1498,11 @@ TEST_CASE(
 
           std::vector<std::vector<Dom64>> expect;
           if (approx_tiles_per_fragment == 4) {
-            expect.push_back(
-                {subrow_0, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
-            expect.push_back(
-                {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 8,
-                     d2_extent * d1_extent * 3 / 4 - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 4,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_0, make_subcol(0, 4)});
+            expect.push_back({subrow_0, make_subcol(4, 8)});
+            expect.push_back({subrow_1, make_subcol(0, 3)});
+            expect.push_back({subrow_1, make_subcol(3, 6)});
+            expect.push_back({subrow_1, make_subcol(6, 8)});
           } else {
             expect.push_back({subrow_0, subcol});
             expect.push_back({subrow_1, subcol});
@@ -1540,38 +1533,15 @@ TEST_CASE(
 
           std::vector<std::vector<Dom64>> expect;
           if (approx_tiles_per_fragment == 4) {
-            expect.push_back(
-                {subrow_0, Dom64(0, (d2_extent * d1_extent * 1 / 4) - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(
-                     d2_extent * d1_extent * 1 / 4,
-                     (d2_extent * d1_extent * 3 / 4) - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 4,
-                     d2_extent * d1_extent - 1)});
-            expect.push_back(
-                {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 8,
-                     d2_extent * d1_extent * 3 / 4 - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 4,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_0, make_subcol(0, 2)});
+            expect.push_back({subrow_0, make_subcol(2, 6)});
+            expect.push_back({subrow_0, make_subcol(6, 8)});
+            expect.push_back({subrow_1, make_subcol(0, 3)});
+            expect.push_back({subrow_1, make_subcol(3, 6)});
+            expect.push_back({subrow_1, make_subcol(6, 8)});
           } else {
-            expect.push_back(
-                {subrow_0, Dom64(0, d2_extent * d1_extent * 7 / 8 - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(
-                     d2_extent * d1_extent * 7 / 8,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_0, make_subcol(0, 7)});
+            expect.push_back({subrow_0, make_subcol(7, 8)});
             expect.push_back({subrow_1, subcol});
           }
           CHECK(expect == actual);
@@ -1601,38 +1571,15 @@ TEST_CASE(
 
           std::vector<std::vector<Dom64>> expect;
           if (approx_tiles_per_fragment == 4) {
-            expect.push_back(
-                {subrow_0, Dom64(0, (d2_extent * d1_extent / 4) - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(
-                     d2_extent * d1_extent * 1 / 4,
-                     (d2_extent * d1_extent * 3 / 4) - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 4,
-                     (d2_extent * d1_extent) - 1)});
-            expect.push_back(
-                {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 8,
-                     d2_extent * d1_extent * 3 / 4 - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 4,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_0, make_subcol(0, 2)});
+            expect.push_back({subrow_0, make_subcol(2, 6)});
+            expect.push_back({subrow_0, make_subcol(6, 8)});
+            expect.push_back({subrow_1, make_subcol(0, 3)});
+            expect.push_back({subrow_1, make_subcol(3, 6)});
+            expect.push_back({subrow_1, make_subcol(6, 8)});
           } else {
-            expect.push_back(
-                {subrow_0, Dom64(0, d2_extent * d1_extent * 7 / 8 - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(
-                     d2_extent * d1_extent * 7 / 8,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_0, make_subcol(0, 7)});
+            expect.push_back({subrow_0, make_subcol(7, 8)});
             expect.push_back({subrow_1, subcol});
           }
           CHECK(expect == actual);
@@ -1662,37 +1609,16 @@ TEST_CASE(
 
           std::vector<std::vector<Dom64>> expect;
           if (approx_tiles_per_fragment == 4) {
-            expect.push_back(
-                {subrow_0, Dom64(0, (d2_extent * d1_extent / 2) - 1)});
-            expect.push_back(
-                {subrow_0,
-                 Dom64(d2_extent * d1_extent / 2, d2_extent * d1_extent - 1)});
-            expect.push_back(
-                {subrow_1, Dom64(0, (d2_extent * d1_extent * 3 / 8) - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 8,
-                     (d2_extent * d1_extent * 3 / 4) - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 3 / 4,
-                     d2_extent * d1_extent * 7 / 8 - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 7 / 8,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_0, make_subcol(0, 4)});
+            expect.push_back({subrow_0, make_subcol(4, 8)});
+            expect.push_back({subrow_1, make_subcol(0, 3)});
+            expect.push_back({subrow_1, make_subcol(3, 6)});
+            expect.push_back({subrow_1, make_subcol(6, 7)});
+            expect.push_back({subrow_1, make_subcol(7, 8)});
           } else {
             expect.push_back({subrow_0, subcol});
-            expect.push_back(
-                {subrow_1, Dom64(0, d2_extent * d1_extent * 7 / 8 - 1)});
-            expect.push_back(
-                {subrow_1,
-                 Dom64(
-                     d2_extent * d1_extent * 7 / 8,
-                     d2_extent * d1_extent - 1)});
+            expect.push_back({subrow_1, make_subcol(0, 7)});
+            expect.push_back({subrow_1, make_subcol(7, 8)});
           }
           CHECK(expect == actual);
         }
