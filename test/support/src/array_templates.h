@@ -42,6 +42,7 @@
 #include "tiledb/type/range/range.h"
 
 #include <test/support/assert_helpers.h>
+#include <test/support/src/array_schema_templates.h>
 #include <test/support/src/error_helpers.h>
 #include <test/support/src/helpers.h>
 #include <test/support/stdx/fold.h>
@@ -58,9 +59,6 @@ class Dimension;
 }
 
 namespace tiledb::test::templates {
-
-using StringDimensionCoordType = std::vector<char>;
-using StringDimensionCoordView = std::span<const char>;
 
 /**
  * Adapts a `std::tuple` whose fields are all `GlobalCellCmp`
@@ -114,6 +112,27 @@ struct global_cell_cmp_std_tuple {
 };
 
 /**
+ * Adapts a span of coordinates for comparison using `GlobalCellCmp`.
+ */
+template <typename Coord>
+struct global_cell_cmp_span {
+  global_cell_cmp_span(std::span<const Coord> values)
+      : values_(values) {
+  }
+
+  tiledb::common::UntypedDatumView dimension_datum(
+      const tiledb::sm::Dimension&, unsigned dim_idx) const {
+    return UntypedDatumView(&values_[dim_idx], sizeof(Coord));
+  }
+
+  const void* coord(unsigned dim) const {
+    return &values_[dim];
+  }
+
+  std::span<const Coord> values_;
+};
+
+/**
  * Forward declaration of query_buffers
  * which will be specialized.
  *
@@ -122,26 +141,6 @@ struct global_cell_cmp_std_tuple {
  */
 template <typename T>
 struct query_buffers {};
-
-/**
- * Constrains types which can be used as the physical type of a dimension.
- */
-template <typename D>
-concept DimensionType =
-    std::is_same_v<D, StringDimensionCoordType> or requires(const D& coord) {
-      typename std::is_signed<D>;
-      { coord < coord } -> std::same_as<bool>;
-      { D(int64_t(coord)) } -> std::same_as<D>;
-    };
-
-/**
- * Constrains types which can be used as the physical type of an attribute.
- *
- * Right now this doesn't constrain anything, it is just a marker for
- * readability, and someday we might want it do require something.
- */
-template <typename T>
-concept AttributeType = requires(T) { typename query_buffers<T>::cell_type; };
 
 /**
  * Constrains types which can be used as columnar data fragment input.
@@ -165,139 +164,7 @@ concept FragmentType = requires(const T& fragment) {
 };
 
 /**
- * A generic, statically-typed range which is inclusive on both ends.
- */
-template <DimensionType D>
-struct Domain {
-  D lower_bound;
-  D upper_bound;
-
-  Domain() {
-  }
-
-  Domain(D d1, D d2)
-      : lower_bound(std::min(d1, d2))
-      , upper_bound(std::max(d1, d2)) {
-  }
-
-  uint64_t num_cells() const {
-    // FIXME: this is incorrect for 64-bit domains which need to check overflow
-    if (std::is_signed<D>::value) {
-      return static_cast<int64_t>(upper_bound) -
-             static_cast<int64_t>(lower_bound) + 1;
-    } else {
-      return static_cast<uint64_t>(upper_bound) -
-             static_cast<uint64_t>(lower_bound) + 1;
-    }
-  }
-
-  bool contains(D point) const {
-    return lower_bound <= point && point <= upper_bound;
-  }
-
-  bool intersects(const Domain<D>& other) const {
-    return (other.lower_bound <= lower_bound &&
-            lower_bound <= other.upper_bound) ||
-           (other.lower_bound <= upper_bound &&
-            upper_bound <= other.upper_bound) ||
-           (lower_bound <= other.lower_bound &&
-            other.lower_bound <= upper_bound) ||
-           (lower_bound <= other.upper_bound &&
-            other.upper_bound <= upper_bound);
-  }
-
-  tiledb::type::Range range() const {
-    return tiledb::type::Range(lower_bound, upper_bound);
-  }
-};
-
-/**
- * A description of a dimension as it pertains to its datatype.
- */
-template <tiledb::sm::Datatype DATATYPE>
-struct Dimension {
-  using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
-
-  Dimension() = default;
-  Dimension(Domain<value_type> domain, value_type extent)
-      : domain(domain)
-      , extent(extent) {
-  }
-
-  Domain<value_type> domain;
-  value_type extent;
-};
-
-template <>
-struct Dimension<tiledb::sm::Datatype::STRING_ASCII> {
-  using value_type = StringDimensionCoordType;
-
-  Dimension() {
-  }
-
-  Dimension(const Domain<value_type>& domain)
-      : domain(domain) {
-  }
-
-  std::optional<Domain<value_type>> domain;
-};
-
-template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
-struct static_attribute {};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, 1, false> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = 1;
-  static constexpr bool nullable = false;
-
-  using value_type =
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
-  using cell_type = value_type;
-};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, 1, true> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = 1;
-  static constexpr bool nullable = true;
-
-  using value_type = std::optional<
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type>;
-  using cell_type = value_type;
-};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, tiledb::sm::cell_val_num_var, false> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = tiledb::sm::cell_val_num_var;
-  static constexpr bool nullable = false;
-
-  using value_type =
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
-  using cell_type = std::vector<value_type>;
-};
-
-template <Datatype DATATYPE>
-struct static_attribute<DATATYPE, tiledb::sm::cell_val_num_var, true> {
-  static constexpr Datatype datatype = DATATYPE;
-  static constexpr uint32_t cell_val_num = tiledb::sm::cell_val_num_var;
-  static constexpr bool nullable = true;
-
-  using value_type =
-      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
-  using cell_type = std::optional<std::vector<value_type>>;
-};
-
-template <typename static_attribute>
-constexpr std::tuple<Datatype, uint32_t, bool> attribute_properties() {
-  return {
-      static_attribute::datatype,
-      static_attribute::cell_val_num,
-      static_attribute::nullable};
-}
-
-/**
+2D)
  * Schema of named fields for simple evaluation of a query condition
  */
 template <FragmentType Fragment>
@@ -413,7 +280,7 @@ struct QueryConditionEvalSchema {
    */
   bool test(
       const Fragment& fragment,
-      int record,
+      uint64_t record,
       const tiledb::sm::ASTNode& condition) const {
     using DimensionTuple = stdx::decay_tuple<decltype(fragment.dimensions())>;
     using AttributeTuple = stdx::decay_tuple<decltype(fragment.attributes())>;
@@ -526,8 +393,13 @@ struct query_buffers<T> {
     return *this;
   }
 
+  query_field_size_type make_field_size(
+      uint64_t offset, uint64_t cell_limit) const {
+    return sizeof(T) * std::min<uint64_t>(cell_limit, values_.size() - offset);
+  }
+
   query_field_size_type make_field_size(uint64_t cell_limit) const {
-    return sizeof(T) * std::min<uint64_t>(cell_limit, values_.size());
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -559,11 +431,12 @@ struct query_buffers<T> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     cursor += field_sizes;
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     resize(cursor / sizeof(T));
   }
 
@@ -573,6 +446,12 @@ struct query_buffers<T> {
   template <typename... Args>
   void insert(Args... args) {
     values_.insert(std::forward<Args>(args)...);
+  }
+
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    return self_type(std::vector<value_type>(
+        values_.begin() + cell_start,
+        values_.begin() + cell_start + num_cells));
   }
 
   auto begin() {
@@ -759,18 +638,33 @@ struct query_buffers<std::optional<T>> {
         validity_.end(), from.validity_.begin(), from.validity_.end());
   }
 
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    self_type ret;
+    ret.values_ = std::vector<value_type>(
+        values_.begin() + cell_start, values_.begin() + num_cells);
+    ret.validity_ = std::vector<uint8_t>(
+        validity_.begin() + cell_start, validity_.begin() + num_cells);
+    return ret;
+  }
+
   self_type& operator=(const self_type& other) {
     values_ = other.values_;
     validity_ = other.validity_;
     return *this;
   }
 
-  query_field_size_type make_field_size(uint64_t cell_limit) const {
+  query_field_size_type make_field_size(
+      uint64_t offset, uint64_t cell_limit) const {
     const uint64_t values_size =
-        sizeof(T) * std::min<uint64_t>(cell_limit, values_.size());
+        sizeof(T) * std::min<uint64_t>(cell_limit, values_.size() - offset);
     const uint64_t validity_size =
-        sizeof(uint8_t) * std::min<uint64_t>(cell_limit, validity_.size());
+        sizeof(uint8_t) *
+        std::min<uint64_t>(cell_limit, validity_.size() - offset);
     return std::make_pair(values_size, validity_size);
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -814,12 +708,13 @@ struct query_buffers<std::optional<T>> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     std::get<0>(cursor) += std::get<0>(field_sizes);
     std::get<1>(cursor) += std::get<1>(field_sizes);
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     resize(std::get<0>(cursor) / sizeof(T));
   }
 };
@@ -912,17 +807,59 @@ struct query_buffers<std::vector<T>> {
     values_.insert(values_.end(), from.values_.begin(), from.values_.end());
   }
 
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    std::vector<uint64_t> slice_offsets(
+        offsets_.begin() + cell_start,
+        offsets_.begin() + cell_start + num_cells);
+    std::vector<T> slice_values;
+    for (uint64_t o = cell_start; o < cell_start + num_cells; o++) {
+      const uint64_t end =
+          (o + 1 == offsets_.size() ? values_.size() : offsets_[o + 1]);
+      slice_values.insert(
+          slice_values.end(),
+          values_.begin() + offsets_[o],
+          values_.begin() + end);
+    }
+
+    const uint64_t offset_adjustment = slice_offsets[0];
+    for (uint64_t& offset : slice_offsets) {
+      offset -= offset_adjustment;
+    }
+
+    self_type ret;
+    ret.offsets_ = slice_offsets;
+    ret.values_ = slice_values;
+    return ret;
+  }
+
   self_type& operator=(const self_type& other) {
     offsets_ = other.offsets_;
     values_ = other.values_;
     return *this;
   }
 
-  query_field_size_type make_field_size(uint64_t cell_limit) const {
-    const uint64_t values_size = sizeof(T) * values_.size();
+  query_field_size_type make_field_size(
+      uint64_t cell_offset, uint64_t cell_limit) const {
+    const uint64_t num_cells =
+        std::min<uint64_t>(cell_limit, offsets_.size() - cell_offset);
+
     const uint64_t offsets_size =
-        sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
+        sizeof(uint64_t) *
+        std::min<uint64_t>(num_cells, offsets_.size() - cell_offset);
+
+    uint64_t values_size;
+    if (cell_offset + num_cells + 1 < offsets_.size()) {
+      values_size = sizeof(T) *
+                    (offsets_[cell_offset + num_cells] - offsets_[cell_offset]);
+    } else {
+      values_size = sizeof(T) * (values_.size() - offsets_[cell_offset]);
+    }
+
     return std::make_pair(values_size, offsets_size);
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -974,12 +911,13 @@ struct query_buffers<std::vector<T>> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     std::get<0>(cursor) += std::get<0>(field_sizes);
     std::get<1>(cursor) += std::get<1>(field_sizes);
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     values_.resize(std::get<0>(cursor) / sizeof(T));
     offsets_.resize(std::get<1>(cursor) / sizeof(uint64_t));
   }
@@ -1086,13 +1024,24 @@ struct query_buffers<std::optional<std::vector<T>>> {
     return *this;
   }
 
-  query_field_size_type make_field_size(uint64_t cell_limit) const {
-    const uint64_t values_size = sizeof(T) * values_.size();
+  query_field_size_type make_field_size(
+      uint64_t cell_offset, uint64_t cell_limit) const {
     const uint64_t offsets_size =
-        sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
+        sizeof(uint64_t) *
+        std::min<uint64_t>(cell_limit, offsets_.size() - cell_offset);
     const uint64_t validity_size =
-        sizeof(uint8_t) * std::min<uint64_t>(cell_limit, validity_.size());
+        sizeof(uint8_t) *
+        std::min<uint64_t>(cell_limit, validity_.size() - cell_offset);
+
+    // NB: unlike the above this can just be the whole buffer
+    // since offsets is what determines the values
+    const uint64_t values_size = sizeof(T) * values_.size();
+
     return std::make_tuple(values_size, offsets_size, validity_size);
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return make_field_size(0, cell_limit);
   }
 
   int32_t attach_to_query(
@@ -1157,13 +1106,14 @@ struct query_buffers<std::optional<std::vector<T>>> {
   }
 
   void accumulate_cursor(
-      query_field_size_type& cursor, const query_field_size_type& field_sizes) {
+      query_field_size_type& cursor,
+      const query_field_size_type& field_sizes) const {
     std::get<0>(cursor) += std::get<0>(field_sizes);
     std::get<1>(cursor) += std::get<1>(field_sizes);
     std::get<2>(cursor) += std::get<2>(field_sizes);
   }
 
-  void finish_multipart_read(const query_field_size_type& cursor) {
+  void resize_to_cursor(const query_field_size_type& cursor) {
     values_.resize(std::get<0>(cursor) / sizeof(T));
     offsets_.resize(std::get<1>(cursor) / sizeof(uint64_t));
     validity_.resize(std::get<2>(cursor) / sizeof(uint8_t));
@@ -1291,6 +1241,30 @@ struct Fragment {
         },
         std::tuple_cat(dimensions(), attributes()));
   }
+
+  /**
+   * @return a new fragment containing the cells in the range `[cell_start,
+   * cell_start + num_cells)`
+   */
+  self_type slice(uint64_t cell_start, uint64_t num_cells) const {
+    const auto dims = std::apply(
+        [&]<typename... Ts>(Ts&... dst) {
+          return std::make_tuple(dst.slice(cell_start, num_cells)...);
+        },
+        dimensions());
+    const auto atts = std::apply(
+        [&]<typename... Ts>(Ts&... dst) {
+          return std::make_tuple(dst.slice(cell_start, num_cells)...);
+        },
+        attributes());
+
+    return self_type{.dims_ = dims, .atts_ = atts};
+  }
+
+  bool operator==(const self_type& other) const {
+    return dimensions() == other.dimensions() &&
+           attributes() == other.attributes();
+  }
 };
 
 /**
@@ -1371,7 +1345,7 @@ struct query_applicator {
    * @return a tuple containing the size of each input field
    */
   static auto make_field_sizes(
-      const std::tuple<std::decay_t<Ts>&...> fields,
+      const std::tuple<const std::decay_t<Ts>&...> fields,
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
     auto make_field_size = [&]<typename T>(const query_buffers<T>& field) {
@@ -1395,6 +1369,27 @@ struct query_applicator {
   }
 
   /**
+   * @return a tuple containing the size of each input field to write for a
+   * range of input cells [cell_offset, cell_offset + cell_limit]
+   */
+  static auto write_make_field_sizes(
+      const std::tuple<const std::decay_t<Ts>&...> fields,
+      uint64_t cell_offset,
+      uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+    auto write_make_field_size = [&]<typename T>(
+                                     const query_buffers<T>& field) {
+      const auto field_size = field.make_field_size(cell_offset, cell_limit);
+      return field_size;
+    };
+
+    return std::apply(
+        [&](const auto&... field) {
+          return std::make_tuple(write_make_field_size(field)...);
+        },
+        fields);
+  }
+
+  /**
    * Sets buffers on `query` for the variadic `fields` and `fields_sizes`
    */
   static void set(
@@ -1410,7 +1405,11 @@ struct query_applicator {
                                const auto& field_cursor) {
       const auto rc =
           field.attach_to_query(ctx, query, field_size, name, field_cursor);
-      ASSERTER(std::optional<std::string>() == error_if_any(ctx, rc));
+
+      // some versions of gcc have a false positive here for
+      // -Wmaybe-uninitialized, so do this instead of comparing against
+      // `std::optional<std::string>`
+      ASSERTER("" == error_if_any(ctx, rc).value_or(""));
     };
 
     unsigned d = 0;
@@ -1474,9 +1473,10 @@ namespace query {
  */
 template <typename Asserter, FragmentType F>
 auto make_field_sizes(
-    F& fragment, uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
-  typename F::DimensionBuffersRef dims = fragment.dimensions();
-  typename F::AttributeBuffersRef atts = fragment.attributes();
+    const F& fragment,
+    uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  typename F::DimensionBuffersConstRef dims = fragment.dimensions();
+  typename F::AttributeBuffersConstRef atts = fragment.attributes();
   return [cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
     return query_applicator<Asserter, Ts...>::make_field_sizes(
         fields, cell_limit);
@@ -1486,7 +1486,20 @@ auto make_field_sizes(
 template <FragmentType F>
 using fragment_field_sizes_t =
     decltype(make_field_sizes<AsserterRuntimeException, F>(
-        std::declval<F&>(), std::declval<uint64_t>()));
+        std::declval<const F&>(), std::declval<uint64_t>()));
+
+template <typename Asserter, FragmentType F>
+fragment_field_sizes_t<F> write_make_field_sizes(
+    const F& fragment,
+    uint64_t cell_offset,
+    uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  typename F::DimensionBuffersConstRef dims = fragment.dimensions();
+  typename F::AttributeBuffersConstRef atts = fragment.attributes();
+  return [cell_offset, cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
+    return query_applicator<Asserter, std::remove_cvref_t<Ts>...>::
+        write_make_field_sizes(fields, cell_offset, cell_limit);
+  }(std::tuple_cat(dims, atts));
+}
 
 /**
  * Apply field cursor and sizes to each field of `fragment`.
@@ -1511,6 +1524,46 @@ void apply_cursor(
             cursor);
       },
       std::tuple_cat(dims, atts));
+}
+
+/**
+ * Advances field cursors `cursor` over `fragment` by the amount of data from
+ * `field_sizes`
+ */
+template <FragmentType F>
+void accumulate_cursor(
+    const F& fragment,
+    fragment_field_sizes_t<F>& cursor,
+    const fragment_field_sizes_t<F>& field_sizes) {
+  std::apply(
+      [&](auto&... field) {
+        std::apply(
+            [&](auto&... field_cursor) {
+              std::apply(
+                  [&](const auto&... field_size) {
+                    (field.accumulate_cursor(field_cursor, field_size), ...);
+                  },
+                  field_sizes);
+            },
+            cursor);
+      },
+      std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+}
+
+/**
+ * Resizes the fields of `fragment` to the sizes given by `cursor`.
+ */
+template <FragmentType F>
+void resize(F& fragment, const fragment_field_sizes_t<F>& cursor) {
+  std::apply(
+      [cursor](auto&... field) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              (field.resize_to_cursor(field_cursor), ...);
+            },
+            cursor);
+      },
+      std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
 /**
@@ -1572,7 +1625,7 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
 }
 
 /**
- * Writes a fragment to an array.
+ * Writes a fragment to a sparse array.
  */
 template <typename Asserter, FragmentType Fragment>
 void write_fragment(
@@ -1607,9 +1660,104 @@ void write_fragment(
   ASSERTER(num_cells == expect_num_cells);
 }
 
+/**
+ * Writes a fragment to a dense array.
+ */
+template <typename Asserter, FragmentType Fragment, DimensionType Coord>
+void write_fragment(
+    const Fragment& fragment,
+    Array& forwrite,
+    const sm::NDRange& subarray,
+    tiledb_layout_t layout = TILEDB_ROW_MAJOR) {
+  Query query(forwrite.context(), forwrite, TILEDB_WRITE);
+  query.set_layout(layout);
+
+  std::vector<Coord> coords;
+  for (const auto& dim : subarray) {
+    coords.push_back(dim.start_as<Coord>());
+    coords.push_back(dim.end_as<Coord>());
+  }
+
+  Subarray sub(query.ctx(), forwrite);
+  sub.set_subarray(coords);
+  query.set_subarray(sub);
+
+  auto field_sizes =
+      make_field_sizes<Asserter, Fragment>(const_cast<Fragment&>(fragment));
+  templates::query::set_fields<Asserter, Fragment>(
+      query.ctx().ptr().get(),
+      query.ptr().get(),
+      field_sizes,
+      const_cast<Fragment&>(fragment),
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); });
+
+  const auto status = query.submit();
+  ASSERTER(status == Query::Status::COMPLETE);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query.finalize();
+  }
+
+  // check that sizes match what we expect
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t num_cells =
+      templates::query::num_cells<Asserter>(fragment, field_sizes);
+
+  ASSERTER(num_cells == expect_num_cells);
+}
+
 }  // namespace query
 
 namespace ddl {
+
+template <typename T>
+struct cell_type_traits;
+
+template <>
+struct cell_type_traits<char> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::CHAR;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <>
+struct cell_type_traits<int> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::INT32;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <>
+struct cell_type_traits<uint64_t> {
+  static constexpr sm::Datatype physical_type = sm::Datatype::UINT64;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool is_nullable = false;
+};
+
+template <typename T>
+struct cell_type_traits<std::vector<T>> {
+  static constexpr sm::Datatype physical_type =
+      cell_type_traits<T>::physical_type;
+  static constexpr uint32_t cell_val_num = std::numeric_limits<uint32_t>::max();
+  static constexpr bool is_nullable = false;
+};
+
+template <FragmentType F>
+std::vector<std::tuple<Datatype, uint32_t, bool>> physical_type_attributes() {
+  std::vector<std::tuple<Datatype, uint32_t, bool>> ret;
+  auto attr = [&]<typename T>(const T&) {
+    ret.push_back(std::make_tuple(
+        cell_type_traits<std::decay_t<T>>::physical_type,
+        cell_type_traits<std::decay_t<T>>::cell_val_num,
+        cell_type_traits<std::decay_t<T>>::is_nullable));
+  };
+  std::apply(
+      [&](const auto&... value) { (attr(value), ...); },
+      typename F::AttributeTuple());
+
+  return ret;
+}
 
 /**
  * Creates an array with a schema whose dimensions and attributes

@@ -128,5 +128,20 @@ void WriterTileTuple::set_metadata(
   }
 }
 
+std::optional<uint64_t> WriterTileTuple::filtered_size() const {
+  uint64_t tile_size = 0;
+  if (var_size()) {
+    tile_size += offset_tile().filtered_buffer().size();
+    tile_size += var_tile().filtered_buffer().size();
+  } else {
+    tile_size += fixed_tile().filtered_buffer().size();
+  }
+
+  if (nullable()) {
+    tile_size += validity_tile().filtered_buffer().size();
+  }
+  return tile_size;
+}
+
 }  // namespace sm
 }  // namespace tiledb

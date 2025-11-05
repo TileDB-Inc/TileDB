@@ -1,5 +1,5 @@
 /**
- * @file test/support/rapidcheck/show.cc
+ * @file test/support/rapidcheck/show/query_ast.cc
  *
  * @section LICENSE
  *
@@ -34,7 +34,9 @@
 
 #include <test/support/rapidcheck/array_templates.h>
 #include <test/support/rapidcheck/show.h>
+#include <test/support/stdx/traits.h>
 
+#include "test/support/src/array_templates.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 

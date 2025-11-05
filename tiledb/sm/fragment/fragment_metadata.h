@@ -256,6 +256,9 @@ class FragmentMetadata {
   /** Retrieves the fragment size. */
   uint64_t fragment_size() const;
 
+  /** @return the size of the metadata file */
+  uint64_t fragment_meta_size() const;
+
   /**
    * Returns true if the corresponding fragment is dense, and false if it
    * is sparse.
@@ -355,6 +358,12 @@ class FragmentMetadata {
    * Initializes the fragment's internal domain and non-empty domain members
    */
   void init_domain(const NDRange& non_empty_domain);
+
+  /**
+   * Updates the fragment's internal domain and non-empty domain members.
+   * Validity of the argument is not checked so use with caution.
+   */
+  void set_domain(const NDRange& non_empty_domain);
 
   /**
    * Loads the basic metadata from storage or `f_buff` for later
@@ -921,7 +930,7 @@ class FragmentMetadata {
   uint64_t sparse_tile_num_;
 
   /** The size of the fragment metadata file. */
-  uint64_t meta_file_size_;
+  mutable uint64_t meta_file_size_;
 
   /** Local mutex for thread-safety. */
   std::mutex mtx_;
