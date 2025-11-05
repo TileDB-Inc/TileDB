@@ -215,6 +215,7 @@ TEST_CASE("C API: tiledb_vfs_create_dir argument validation", "[capi][vfs]") {
   SECTION("success") {
     auto rc{tiledb_vfs_create_dir(x.ctx, x.vfs, TEST_URI)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
+    tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI);
   }
   SECTION("null context") {
     auto rc{tiledb_vfs_create_dir(nullptr, x.vfs, TEST_URI)};
@@ -233,6 +234,8 @@ TEST_CASE("C API: tiledb_vfs_create_dir argument validation", "[capi][vfs]") {
 TEST_CASE("C API: tiledb_vfs_is_dir argument validation", "[capi][vfs]") {
   ordinary_vfs x;
   int32_t is_dir;
+  auto rc{tiledb_vfs_create_dir(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_is_dir(x.ctx, x.vfs, TEST_URI, &is_dir)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -260,6 +263,7 @@ TEST_CASE("C API: tiledb_vfs_is_dir argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_is_dir(x.ctx, x.vfs, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_ls argument validation", "[capi][vfs]") {
@@ -285,6 +289,8 @@ TEST_CASE("C API: tiledb_vfs_ls argument validation", "[capi][vfs]") {
 TEST_CASE("C API: tiledb_vfs_dir_size argument validation", "[capi][vfs]") {
   ordinary_vfs x;
   uint64_t size;
+  auto rc{tiledb_vfs_create_dir(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_dir_size(x.ctx, x.vfs, TEST_URI, &size)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -306,12 +312,18 @@ TEST_CASE("C API: tiledb_vfs_dir_size argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_dir_size(x.ctx, x.vfs, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_move_dir argument validation", "[capi][vfs]") {
   ordinary_vfs x;
+  auto rc{tiledb_vfs_create_dir(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_move_dir(x.ctx, x.vfs, TEST_URI, "new_dir")};
+    CHECK(tiledb_status(rc) == TILEDB_OK);
+    // Move dir back to original location
+    rc = tiledb_vfs_move_dir(x.ctx, x.vfs, "new_dir", TEST_URI);
     CHECK(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -330,15 +342,13 @@ TEST_CASE("C API: tiledb_vfs_move_dir argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_move_dir(x.ctx, nullptr, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("success") {
-    // Move dir back to original location
-    auto rc{tiledb_vfs_move_dir(x.ctx, x.vfs, "new_dir", TEST_URI)};
-    CHECK(tiledb_status(rc) == TILEDB_OK);
-  }
+  tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_copy_dir argument validation", "[capi][vfs]") {
   ordinary_vfs x;
+  auto rc{tiledb_vfs_create_dir(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_copy_dir(x.ctx, x.vfs, TEST_URI, "new_dir")};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -359,11 +369,14 @@ TEST_CASE("C API: tiledb_vfs_copy_dir argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_copy_dir(x.ctx, nullptr, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI);
   tiledb_vfs_remove_dir(x.ctx, x.vfs, "new_dir");
 }
 
 TEST_CASE("C API: tiledb_vfs_remove_dir argument validation", "[capi][vfs]") {
   ordinary_vfs x;
+  auto rc{tiledb_vfs_create_dir(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -380,6 +393,7 @@ TEST_CASE("C API: tiledb_vfs_remove_dir argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_remove_dir(x.ctx, x.vfs, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_dir(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_touch argument validation", "[capi][vfs]") {
@@ -387,6 +401,7 @@ TEST_CASE("C API: tiledb_vfs_touch argument validation", "[capi][vfs]") {
   SECTION("success") {
     auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
+    tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
   }
   SECTION("null context") {
     auto rc{tiledb_vfs_touch(nullptr, x.vfs, TEST_URI)};
@@ -405,6 +420,8 @@ TEST_CASE("C API: tiledb_vfs_touch argument validation", "[capi][vfs]") {
 TEST_CASE("C API: tiledb_vfs_is_file argument validation", "[capi][vfs]") {
   ordinary_vfs x;
   int32_t is_file;
+  auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_is_file(x.ctx, x.vfs, TEST_URI, &is_file)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -432,11 +449,14 @@ TEST_CASE("C API: tiledb_vfs_is_file argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_is_file(x.ctx, x.vfs, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_file_size argument validation", "[capi][vfs]") {
   ordinary_vfs x;
   uint64_t size;
+  auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_file_size(x.ctx, x.vfs, TEST_URI, &size)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -458,10 +478,13 @@ TEST_CASE("C API: tiledb_vfs_file_size argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_file_size(x.ctx, x.vfs, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_move_file argument validation", "[capi][vfs]") {
   ordinary_vfs x;
+  auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_move_file(x.ctx, x.vfs, TEST_URI, "new_uri")};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -487,10 +510,13 @@ TEST_CASE("C API: tiledb_vfs_move_file argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_move_file(x.ctx, x.vfs, "new_uri", TEST_URI)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
   }
+  tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_copy_file argument validation", "[capi][vfs]") {
   ordinary_vfs x;
+  auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_copy_file(x.ctx, x.vfs, TEST_URI, "new_uri")};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -511,11 +537,14 @@ TEST_CASE("C API: tiledb_vfs_copy_file argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_copy_file(x.ctx, nullptr, TEST_URI, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
   tiledb_vfs_remove_file(x.ctx, x.vfs, "new_uri");
 }
 
 TEST_CASE("C API: tiledb_vfs_remove_file argument validation", "[capi][vfs]") {
   ordinary_vfs x;
+  auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -532,11 +561,14 @@ TEST_CASE("C API: tiledb_vfs_remove_file argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_remove_file(x.ctx, x.vfs, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_open argument validation", "[capi][vfs]") {
   ordinary_vfs x;
   tiledb_vfs_fh_handle_t* vfs_fh;
+  auto rc{tiledb_vfs_touch(x.ctx, x.vfs, TEST_URI)};
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     auto rc{tiledb_vfs_open(x.ctx, x.vfs, TEST_URI, TILEDB_VFS_WRITE, &vfs_fh)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
@@ -566,6 +598,7 @@ TEST_CASE("C API: tiledb_vfs_open argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_open(x.ctx, x.vfs, TEST_URI, TILEDB_VFS_WRITE, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
+  tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
 }
 
 TEST_CASE("C API: tiledb_vfs_write argument validation", "[capi][vfs]") {
