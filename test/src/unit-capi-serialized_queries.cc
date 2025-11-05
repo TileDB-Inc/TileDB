@@ -116,11 +116,9 @@ struct SerializationFx {
     REQUIRE(loop_num->second > 0);
   }
 
-  static void check_subarray_stats(int dim0_expected, int dim1_expected) {
-    Stats::enable();
-    std::string stats;
-    Stats::dump(&stats);
-    // Note: if these checks fail, use Stats::dump(stdout) to validate counters
+  static void check_subarray_stats(
+      Context& ctx, int dim0_expected, int dim1_expected) {
+    std::string stats = ctx.stats();
     CHECK(
         stats.find(
             "\"Context.subSubarray.add_range_dim_0\": " +
@@ -129,7 +127,6 @@ struct SerializationFx {
         stats.find(
             "\"Context.subSubarray.add_range_dim_1\": " +
             std::to_string(dim1_expected)) != std::string::npos);
-    Stats::disable();
   }
 
   static void check_delete_stats(const Query& query) {
@@ -735,7 +732,7 @@ TEST_CASE_METHOD(
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
   if (!vfs_test_setup_.is_rest()) {
-    check_subarray_stats(1, 1);
+    check_subarray_stats(ctx, 1, 1);
   }
 
   SECTION("- Read all") {

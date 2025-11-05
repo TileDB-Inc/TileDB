@@ -319,6 +319,7 @@ class Array {
     return std::string(uri);
   }
 
+  /** Get the Context for the array. */
   const Context& context() const {
     return ctx_.get();
   }

@@ -172,7 +172,7 @@ Status array_to_capnp(
 
   if (array->use_refactored_query_submit()) {
     // Serialize array directory (load if not loaded already)
-    const auto array_directory = array->load_array_directory();
+    auto& array_directory = array->load_array_directory();
     auto array_directory_builder = array_builder->initArrayDirectory();
     array_directory_to_capnp(array_directory, &array_directory_builder);
 

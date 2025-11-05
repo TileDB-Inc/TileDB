@@ -430,6 +430,7 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
       } catch (...) {
         // Enqueue caught-exceptions to be handled by the writer.
         buffer_queue.push(std::current_exception());
+        reading = false;
       }
       buffer_count++;
 
@@ -463,6 +464,8 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
     }
   }
 
+  throw_if_not_ok(read_task.wait());
+
   dest_fs.flush(dest);
 }
 
@@ -481,10 +484,29 @@ void VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   auto& old_fs = get_fs(old_uri);
   auto& new_fs = get_fs(new_uri);
+  auto& src_parent_path = old_uri.to_string();
+  auto& dst_parent_path = new_uri.to_string();
+
   if (&old_fs == &new_fs) {
     old_fs.copy_dir(old_uri, new_uri);
   } else {
-    throw UnsupportedOperation("copy_dir");
+    // Recursively list and copy all source files
+    ResultFilterV2 result_filter =
+        [](const std::string_view&, uint64_t, bool is_dir) {
+          if (is_dir) {
+            return false;  // filter out directories.
+          }
+          return true;
+        };
+    auto paths = old_fs.ls_filtered_v2(old_uri, result_filter, true);
+
+    for (auto& path : paths) {
+      auto old_path = URI(path.first);
+      auto new_path =
+          URI(dst_parent_path + path.first.substr(src_parent_path.size()));
+      // Copy files across filesystems.
+      copy_file(old_path, new_path);
+    }
   }
 }
 

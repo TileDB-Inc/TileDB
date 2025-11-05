@@ -1422,9 +1422,9 @@ void CSparseGlobalOrderFx::instance_fragment_skew(
 
   // atts are whatever, used just for query condition and correctness check
   auto& f0atts = std::get<0>(fragment0.atts_);
-  f0atts.resize(fragment0.num_cells());
+  f0atts.resize(fragment0.dimension().num_cells());
   std::iota(f0atts.begin(), f0atts.end(), 0);
-  for (uint64_t i = 0; i < fragment0.num_cells(); i++) {
+  for (uint64_t i = 0; i < fragment0.dimension().num_cells(); i++) {
     if ((i * i) % 7 == 0) {
       std::get<1>(fragment0.atts_).push_back(std::nullopt);
     } else {
@@ -3330,7 +3330,7 @@ void CSparseGlobalOrderFx::instance_repeatable_read_submillisecond(
 
     CApiArray array(context(), raw_array, TILEDB_WRITE);
     for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, i++) {
-      write_fragment<Asserter, decltype(instance.fragments[i])>(
+      write_fragment<Asserter, FxRun2D::FragmentType>(
           instance.fragments[i], &array);
     }
   }
@@ -3461,13 +3461,13 @@ DeleteArrayGuard CSparseGlobalOrderFx::run_create(Instance& instance) {
 
   // the tile extent is 2
   // create_default_array_1d<Asserter>(instance.array);
-  create_array<Asserter, decltype(instance)>(instance);
+  create_array<Asserter, Instance>(instance);
 
   DeleteArrayGuard arrayguard(context(), array_name_.c_str());
 
   // write all fragments
   for (auto& fragment : instance.fragments) {
-    write_fragment<Asserter, decltype(fragment)>(fragment);
+    write_fragment<Asserter, typename Instance::FragmentType>(fragment);
   }
 
   return arrayguard;
@@ -3477,7 +3477,7 @@ template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
-  std::decay_t<decltype(instance.fragments[0])> expect;
+  std::decay_t<typename Instance::FragmentType> expect;
 
   // for de-duplicating, track the fragment that each coordinate came from
   // we will use this to select the coordinate from the most recent fragment
@@ -3706,19 +3706,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       ASSERTER(num_cells == num_cells_bound);
     }
 
-    std::apply(
-        [&](auto&... field) {
-          std::apply(
-              [&](const auto&... field_cursor) {
-                std::apply(
-                    [&](const auto&... field_size) {
-                      (field.apply_cursor(field_cursor, field_size), ...);
-                    },
-                    field_sizes);
-              },
-              outcursor);
-        },
-        std::tuple_cat(outdims, outatts));
+    templates::query::apply_cursor(out, outcursor, field_sizes);
 
     const uint64_t cursor_cells =
         templates::query::num_cells<Asserter>(out, outcursor);
