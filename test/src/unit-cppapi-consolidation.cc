@@ -735,9 +735,6 @@ instance_dense_consolidation(
     sm::GlobalCellCmp globalcmp(
         forread.ptr()->array()->array_schema_latest().domain());
 
-    const auto hyperrow_sizes = compute_hyperrow_sizes<Coord>(
-        tile_order, tile_extents, non_empty_domain);
-
     auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
       const auto sa = templates::global_cell_cmp_span<Coord>(coords[ia]);
       const auto sb = templates::global_cell_cmp_span<Coord>(coords[ib]);

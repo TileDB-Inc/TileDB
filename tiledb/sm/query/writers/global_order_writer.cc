@@ -770,14 +770,15 @@ Status GlobalOrderWriter::finalize_global_write_state() {
 
   // Handle last tile
   Status st = global_write_handle_last_tile();
+  auto meta = global_write_state_->frag_meta_;
+
   if (!st.ok()) {
-    if (global_write_state_->frag_meta_) {
-      throw_if_not_ok(close_files(global_write_state_->frag_meta_));
+    if (meta) {
+      throw_if_not_ok(close_files(meta));
     }
     return st;
   }
 
-  auto meta = global_write_state_->frag_meta_;
   if (!meta) {
     return Status::Ok();
   }

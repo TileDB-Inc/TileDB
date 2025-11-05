@@ -873,10 +873,6 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
         iassert(tile_null_counts.size() == dense_tile_num);
       }
     }
-
-    // what about min, max, sum?
-    // requires iteration in stride with schema fields to get cell size
-    // probably a good idea, ask about it in code review
   }
 
   auto timer_se = resources_->stats().start_timer("write_store_frag_meta");
