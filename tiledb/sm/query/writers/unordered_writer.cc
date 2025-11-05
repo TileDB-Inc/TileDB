@@ -699,7 +699,7 @@ Status UnorderedWriter::unordered_write() {
   }
 
   // Compute tile metadata.
-  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tile_num, tiles));
+  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tiles));
 
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));

@@ -3598,19 +3598,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     ASSERTER(cursor_cells + num_cells <= expect.size());
 
     // accumulate
-    std::apply(
-        [&](auto&... field) {
-          std::apply(
-              [&](auto&... field_cursor) {
-                std::apply(
-                    [&](const auto&... field_size) {
-                      (field.accumulate_cursor(field_cursor, field_size), ...);
-                    },
-                    field_sizes);
-              },
-              outcursor);
-        },
-        std::tuple_cat(outdims, outatts));
+    templates::query::accumulate_cursor(out, outcursor, field_sizes);
 
     if (status == TILEDB_COMPLETED) {
       break;
@@ -3620,15 +3608,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   // Clean up.
   tiledb_query_free(&query);
 
-  std::apply(
-      [outcursor](auto&... outfield) {
-        std::apply(
-            [&](const auto&... field_cursor) {
-              (outfield.finish_multipart_read(field_cursor), ...);
-            },
-            outcursor);
-      },
-      std::tuple_cat(outdims, outatts));
+  templates::query::resize(out, outcursor);
 
   ASSERTER(expect.dimensions() == outdims);
 
