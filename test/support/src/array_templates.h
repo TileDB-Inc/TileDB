@@ -1373,7 +1373,6 @@ struct query_applicator {
       const std::tuple<const std::decay_t<Ts>&...> fields,
       uint64_t cell_offset,
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
-    std::optional<uint64_t> num_cells;
     auto write_make_field_size = [&]<typename T>(
                                      const query_buffers<T>& field) {
       const auto field_size = field.make_field_size(cell_offset, cell_limit);
