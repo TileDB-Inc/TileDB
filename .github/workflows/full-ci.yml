@@ -133,6 +133,10 @@ jobs:
   ci_docker:
     uses: ./.github/workflows/build-dockerfile.yml
 
+  ci_rest:
+    uses: ./.github/workflows/ci-rest.yml
+    secrets: inherit
+
   # dummy job for branch protection check
   full_ci_passed:
     needs: [
