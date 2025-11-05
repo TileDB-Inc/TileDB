@@ -1402,7 +1402,11 @@ struct query_applicator {
                                const auto& field_cursor) {
       const auto rc =
           field.attach_to_query(ctx, query, field_size, name, field_cursor);
-      ASSERTER(std::optional<std::string>() == error_if_any(ctx, rc));
+
+      // some versions of gcc have a false positive here for
+      // -Wmaybe-uninitialized, so do this instead of comparing against
+      // `std::optional<std::string>`
+      ASSERTER("" == error_if_any(ctx, rc).value_or(""));
     };
 
     unsigned d = 0;
