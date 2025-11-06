@@ -270,7 +270,7 @@ Status DenseReader::dense_read() {
     }
   } else {
     for (uint32_t d = 0; d < dim_num; d++) {
-      auto& ranges = subarray.ranges_for_dim(d);
+      auto ranges = subarray.ranges_for_dim(d);
 
       // Compute the 1D offset for every range in this dimension.
       range_info[d].cell_offsets_.reserve(ranges.size());

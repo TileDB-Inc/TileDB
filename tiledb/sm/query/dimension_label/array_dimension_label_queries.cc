@@ -245,7 +245,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
           QueryType::READ);
 
       // Get subarray ranges.
-      auto& label_ranges = subarray.ranges_for_label(label_name);
+      auto label_ranges = subarray.ranges_for_label(label_name);
 
       // Create the range query.
       range_queries_.emplace_back(tdb_new(

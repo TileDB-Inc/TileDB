@@ -106,16 +106,16 @@ class DimensionDispatchTyped : public Dimension::DimensionDispatch {
     return Dimension::overlap_ratio<T>(r1, r2);
   }
   void relevant_ranges(
-      const NDRange& ranges,
+      NDRangeView ranges,
       const Range& mbr,
       tdb::pmr::vector<uint64_t>& relevant_ranges) const override {
     static_assert(tiledb::type::TileDBFundamental<T>);
     return Dimension::relevant_ranges<T>(ranges, mbr, relevant_ranges);
   }
   std::vector<bool> covered_vec(
-      const NDRange& ranges,
+      NDRangeView ranges,
       const Range& mbr,
-      const tdb::pmr::vector<uint64_t>& relevant_ranges) const override {
+      std::span<const uint64_t> relevant_ranges) const override {
     static_assert(tiledb::type::TileDBFundamental<T>);
     return Dimension::covered_vec<T>(ranges, mbr, relevant_ranges);
   }
@@ -760,7 +760,7 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 }
 
 void Dimension::relevant_ranges(
-    const NDRange& ranges,
+    NDRangeView ranges,
     const Range& mbr,
     tdb::pmr::vector<uint64_t>& relevant_ranges) const {
   return dispatch_->relevant_ranges(ranges, mbr, relevant_ranges);
@@ -768,7 +768,7 @@ void Dimension::relevant_ranges(
 
 template <>
 void Dimension::relevant_ranges<char>(
-    const NDRange& ranges,
+    NDRangeView ranges,
     const Range& mbr,
     tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto& mbr_start = mbr.start_str();
@@ -817,7 +817,7 @@ void Dimension::relevant_ranges<char>(
 
 template <class T>
 void Dimension::relevant_ranges(
-    const NDRange& ranges,
+    NDRangeView ranges,
     const Range& mbr,
     tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto mbr_data = (const T*)mbr.start_fixed();
@@ -861,17 +861,17 @@ void Dimension::relevant_ranges(
 }
 
 std::vector<bool> Dimension::covered_vec(
-    const NDRange& ranges,
+    NDRangeView ranges,
     const Range& mbr,
-    const tdb::pmr::vector<uint64_t>& relevant_ranges) const {
+    std::span<const uint64_t> relevant_ranges) const {
   return dispatch_->covered_vec(ranges, mbr, relevant_ranges);
 }
 
 template <>
 std::vector<bool> Dimension::covered_vec<char>(
-    const NDRange& ranges,
+    NDRangeView ranges,
     const Range& mbr,
-    const tdb::pmr::vector<uint64_t>& relevant_ranges) {
+    std::span<const uint64_t> relevant_ranges) {
   const auto& range_start = mbr.start_str();
   const auto& range_end = mbr.end_str();
 
@@ -889,9 +889,9 @@ std::vector<bool> Dimension::covered_vec<char>(
 
 template <class T>
 std::vector<bool> Dimension::covered_vec(
-    const NDRange& ranges,
+    NDRangeView ranges,
     const Range& mbr,
-    const tdb::pmr::vector<uint64_t>& relevant_ranges) {
+    std::span<const uint64_t> relevant_ranges) {
   auto d1 = (const T*)mbr.start_fixed();
 
   std::vector<bool> covered(relevant_ranges.size());

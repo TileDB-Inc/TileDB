@@ -601,8 +601,8 @@ class ResultTile {
   static void compute_results_count_sparse(
       const ResultTile* result_tile,
       unsigned dim_idx,
-      const NDRange& ranges,
-      const tdb::pmr::vector<uint64_t>& range_indexes,
+      NDRangeView ranges,
+      std::span<const uint64_t> range_indexes,
       tdb::pmr::vector<BitmapType>& result_count,
       const Layout& cell_order,
       const uint64_t min_cell,
@@ -645,8 +645,8 @@ class ResultTile {
   static void compute_results_count_sparse_string(
       const ResultTile* result_tile,
       unsigned dim_idx,
-      const NDRange& ranges,
-      const tdb::pmr::vector<uint64_t>& range_indexes,
+      NDRangeView ranges,
+      std::span<const uint64_t> range_indexes,
       tdb::pmr::vector<BitmapType>& result_count,
       const Layout& cell_order,
       const uint64_t min_cell,
@@ -698,8 +698,8 @@ class ResultTile {
   template <class BitmapType>
   Status compute_results_count_sparse(
       unsigned dim_idx,
-      const NDRange& ranges,
-      const tdb::pmr::vector<uint64_t>& range_indexes,
+      NDRangeView ranges,
+      std::span<const uint64_t> range_indexes,
       tdb::pmr::vector<BitmapType>& result_count,
       const Layout& cell_order,
       const uint64_t min_cell,
@@ -786,8 +786,8 @@ class ResultTile {
   std::vector<std::function<void(
       const ResultTile*,
       unsigned,
-      const NDRange&,
-      const tdb::pmr::vector<uint64_t>&,
+      NDRangeView,
+      std::span<const uint64_t>,
       tdb::pmr::vector<uint64_t>&,
       const Layout&,
       const uint64_t,
@@ -801,8 +801,8 @@ class ResultTile {
   std::vector<std::function<void(
       const ResultTile*,
       unsigned,
-      const NDRange&,
-      const tdb::pmr::vector<uint64_t>&,
+      NDRangeView,
+      std::span<const uint64_t>,
       tdb::pmr::vector<uint8_t>&,
       const Layout&,
       const uint64_t,

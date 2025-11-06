@@ -603,7 +603,7 @@ void Subarray::add_range_var_by_name(
   add_range_var(dim_idx, start, start_size, end, end_size);
 }
 
-const std::vector<Range>& Subarray::get_attribute_ranges(
+std::span<const Range> Subarray::get_attribute_ranges(
     const std::string& attr_name) const {
   const auto& ranges = attr_range_subset_.at(attr_name);
   return ranges;
@@ -1389,7 +1389,7 @@ NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
 }
 
 void Subarray::set_attribute_ranges(
-    const std::string& attr_name, const std::vector<Range>& ranges) {
+    const std::string& attr_name, std::span<const Range> ranges) {
   if (!array_->array_schema_latest().is_attr(attr_name)) {
     throw SubarrayException(
         "[set_attribute_ranges] No attribute named " + attr_name + "'.");
@@ -1400,10 +1400,10 @@ void Subarray::set_attribute_ranges(
         "[set_attribute_ranges] Ranges are already set for attribute '" +
         attr_name + "'.");
   }
-  attr_range_subset_[attr_name] = ranges;
+  attr_range_subset_[attr_name].assign(ranges.begin(), ranges.end());
 }
 
-const std::vector<Range>& Subarray::ranges_for_label(
+std::span<const Range> Subarray::ranges_for_label(
     const std::string& label_name) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label(label_name)
@@ -1418,7 +1418,7 @@ const std::vector<Range>& Subarray::ranges_for_label(
 }
 
 void Subarray::set_ranges_for_dim(
-    uint32_t dim_idx, const std::vector<Range>& ranges) {
+    uint32_t dim_idx, std::span<const Range> ranges) {
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
   range_subset_[dim_idx] =
       RangeSetAndSuperset(dim->type(), dim->domain(), false, coalesce_ranges_);
@@ -1434,7 +1434,7 @@ void Subarray::set_ranges_for_dim(
 void Subarray::set_label_ranges_for_dim(
     const uint32_t dim_idx,
     const std::string& name,
-    const std::vector<Range>& ranges) {
+    std::span<const Range> ranges) {
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
   label_range_subset_[dim_idx] =
       LabelRangeSubset(name, dim->type(), coalesce_ranges_);

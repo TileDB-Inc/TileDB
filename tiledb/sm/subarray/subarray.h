@@ -371,7 +371,7 @@ class Subarray {
         std::vector<Range> ranges,
         bool coalesce_ranges = true);
 
-    inline const std::vector<Range>& get_ranges() const {
+    inline std::span<const Range> get_ranges() const {
       return ranges_.ranges();
     }
 
@@ -662,7 +662,7 @@ class Subarray {
    *
    * @param attr_name Name of the attribute to get ragnes for.
    */
-  const std::vector<Range>& get_attribute_ranges(
+  std::span<const Range> get_attribute_ranges(
       const std::string& attr_name) const;
 
   /**
@@ -1156,7 +1156,7 @@ class Subarray {
    * Returns the `Range` vector for the given dimension index.
    * @note Intended for serialization only
    */
-  inline const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const {
+  inline std::span<const Range> ranges_for_dim(uint32_t dim_idx) const {
     return range_subset_[dim_idx].ranges();
   }
 
@@ -1173,7 +1173,7 @@ class Subarray {
    * @param ranges Ranges to add.
    */
   void set_attribute_ranges(
-      const std::string& attr_name, const std::vector<Range>& ranges);
+      const std::string& attr_name, std::span<const Range> ranges);
 
   /**
    * Returns the `Range` vector for the given dimension label.
@@ -1181,8 +1181,7 @@ class Subarray {
    * @param label_name Name of the label to return ranges for.
    * @returns Vector of ranges on the requested dimension label.
    */
-  const std::vector<Range>& ranges_for_label(
-      const std::string& label_name) const;
+  std::span<const Range> ranges_for_label(const std::string& label_name) const;
 
   /**
    * Directly sets the `Range` vector for the given dimension index, making
@@ -1193,7 +1192,7 @@ class Subarray {
    *
    * @note Intended for serialization only
    */
-  void set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
+  void set_ranges_for_dim(uint32_t dim_idx, std::span<const Range> ranges);
 
   /**
    * Directly sets the dimension label ranges for the given dimension index,
@@ -1208,7 +1207,7 @@ class Subarray {
   void set_label_ranges_for_dim(
       const uint32_t dim_idx,
       const std::string& name,
-      const std::vector<Range>& ranges);
+      std::span<const Range> ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into

@@ -921,8 +921,8 @@ template <class BitmapType>
 void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
-    const NDRange& ranges,
-    const tdb::pmr::vector<uint64_t>& range_indexes,
+    NDRangeView ranges,
+    std::span<const uint64_t> range_indexes,
     tdb::pmr::vector<BitmapType>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
@@ -1097,8 +1097,8 @@ template <class BitmapType, class T>
 void ResultTile::compute_results_count_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
-    const NDRange& ranges,
-    const tdb::pmr::vector<uint64_t>& range_indexes,
+    NDRangeView ranges,
+    std::span<const uint64_t> range_indexes,
     tdb::pmr::vector<BitmapType>& result_count,
     const Layout&,
     const uint64_t min_cell,
@@ -1217,8 +1217,8 @@ Status ResultTile::compute_results_sparse(
 template <>
 Status ResultTile::compute_results_count_sparse<uint8_t>(
     unsigned dim_idx,
-    const NDRange& ranges,
-    const tdb::pmr::vector<uint64_t>& range_indexes,
+    NDRangeView ranges,
+    std::span<const uint64_t> range_indexes,
     tdb::pmr::vector<uint8_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
@@ -1239,8 +1239,8 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
 template <>
 Status ResultTile::compute_results_count_sparse<uint64_t>(
     unsigned dim_idx,
-    const NDRange& ranges,
-    const tdb::pmr::vector<uint64_t>& range_indexes,
+    NDRangeView ranges,
+    std::span<const uint64_t> range_indexes,
     tdb::pmr::vector<uint64_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,

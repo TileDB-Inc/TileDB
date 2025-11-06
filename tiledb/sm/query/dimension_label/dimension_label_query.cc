@@ -117,7 +117,7 @@ DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
     shared_ptr<Array> dim_label,
     const DimensionLabel& dim_label_ref,
-    const std::vector<Range>& label_ranges)
+    std::span<const Range> label_ranges)
     : Query(
           resources,
           CancellationSource(storage_manager),

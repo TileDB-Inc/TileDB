@@ -139,7 +139,7 @@ struct tiledb_subarray_handle_t
     return subarray_->coalesce_ranges();
   }
 
-  const std::vector<Range>& get_attribute_ranges(
+  std::span<const Range> get_attribute_ranges(
       const std::string& attr_name) const {
     return subarray_->get_attribute_ranges(attr_name);
   }
@@ -237,12 +237,12 @@ struct tiledb_subarray_handle_t
     return subarray_->has_label_ranges(dim_index);
   }
 
-  const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const {
+  std::span<const Range> ranges_for_dim(uint32_t dim_idx) const {
     return subarray_->ranges_for_dim(dim_idx);
   }
 
   void set_attribute_ranges(
-      const std::string& attr_name, const std::vector<Range>& ranges) {
+      const std::string& attr_name, std::span<const Range> ranges) {
     subarray_->set_attribute_ranges(attr_name, ranges);
   }
 

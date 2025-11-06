@@ -535,7 +535,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
           if (subarray_.is_default(dim_idx))
             continue;
 
-          auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
+          auto ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
 
           // Compute the list of range index to process.
           tdb::pmr::vector<uint64_t> relevant_ranges(

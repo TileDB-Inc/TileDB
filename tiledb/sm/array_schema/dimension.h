@@ -579,29 +579,29 @@ class Dimension {
 
   /** Compute relevant ranges for a set of ranges. */
   void relevant_ranges(
-      const NDRange& ranges,
+      NDRangeView ranges,
       const Range& mbr,
       tdb::pmr::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute relevant ranges for a set of ranges. */
   template <class T>
   static void relevant_ranges(
-      const NDRange& ranges,
+      NDRangeView ranges,
       const Range& mbr,
       tdb::pmr::vector<uint64_t>& relevant_ranges);
 
   /** Compute covered on a set of relevant ranges. */
   std::vector<bool> covered_vec(
-      const NDRange& ranges,
+      NDRangeView ranges,
       const Range& mbr,
-      const tdb::pmr::vector<uint64_t>& relevant_ranges) const;
+      std::span<const uint64_t> relevant_ranges) const;
 
   /** Compute covered on a set of relevant ranges. */
   template <class T>
   static std::vector<bool> covered_vec(
-      const NDRange& ranges,
+      NDRangeView ranges,
       const Range& mbr,
-      const tdb::pmr::vector<uint64_t>& relevant_ranges);
+      std::span<const uint64_t> relevant_ranges);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
@@ -768,13 +768,13 @@ class Dimension {
     virtual bool overlap(const Range& r1, const Range& r2) const = 0;
     virtual double overlap_ratio(const Range& r1, const Range& r2) const = 0;
     virtual void relevant_ranges(
-        const NDRange& ranges,
+        NDRangeView ranges,
         const Range& mbr,
         tdb::pmr::vector<uint64_t>& relevant_ranges) const = 0;
     virtual std::vector<bool> covered_vec(
-        const NDRange& ranges,
+        NDRangeView ranges,
         const Range& mbr,
-        const tdb::pmr::vector<uint64_t>& relevant_ranges) const = 0;
+        std::span<const uint64_t> relevant_ranges) const = 0;
     virtual void split_range(
         const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const = 0;
     virtual void splitting_value(

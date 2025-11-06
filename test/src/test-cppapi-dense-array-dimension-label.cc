@@ -590,7 +590,18 @@ TEST_CASE(
   CHECK(query.ptr()->query_->subarray()->range_num() == 0);
   query.submit();
   CHECK(query.ptr()->query_->subarray()->range_num() == 1);
-  CHECK(
-      query.ptr()->query_->subarray()->ranges_for_dim(0) ==
-      expected_subarray.ptr()->ranges_for_dim(0));
+
+  // Check the ranges
+  // NB: `std::span` does not have `operator==` so this looks weird
+  NDRangeView actual_ranges_for_dim_view =
+      query.ptr()->query_->subarray()->ranges_for_dim(0);
+  const NDRange actual_ranges_for_dim(
+      actual_ranges_for_dim_view.begin(), actual_ranges_for_dim_view.end());
+
+  NDRangeView expect_ranges_for_dim_view =
+      expected_subarray.ptr()->ranges_for_dim(0);
+  const NDRange expect_ranges_for_dim(
+      expect_ranges_for_dim_view.begin(), expect_ranges_for_dim_view.end());
+
+  CHECK(actual_ranges_for_dim == expect_ranges_for_dim);
 }

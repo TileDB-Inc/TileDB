@@ -72,14 +72,16 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     bool increasing_labels)
     : ReaderBase(
           stats, logger->clone("OrderedDimLabelReader", ++logger_id_), params)
-    , ranges_(
-          subarray_.get_attribute_ranges(array_schema_.attributes()[0]->name()))
     , label_name_(array_schema_.attributes()[0]->name())
     , label_type_(array_schema_.attributes()[0]->type())
     , label_var_size_(array_schema_.attributes()[0]->var_size())
     , increasing_labels_(increasing_labels)
     , index_dim_(array_schema_.domain().dimension_ptr(0))
     , result_tiles_(fragment_metadata_.size()) {
+  const auto ranges =
+      subarray_.get_attribute_ranges(array_schema_.attributes()[0]->name());
+  ranges_.assign(ranges.begin(), ranges.end());
+
   // Sanity checks.
   if (!params.default_channel_aggregates().empty()) {
     throw OrderedDimLabelReaderException(

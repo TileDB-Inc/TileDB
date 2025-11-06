@@ -112,7 +112,7 @@ class DimensionLabelQuery : public Query {
       StorageManager* storage_manager,
       shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,
-      const std::vector<Range>& label_ranges);
+      std::span<const Range> label_ranges);
 
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
