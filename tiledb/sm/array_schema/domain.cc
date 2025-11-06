@@ -105,7 +105,7 @@ Domain::Domain(
   }
 
   // Compute number of cells per tile
-  compute_cell_num_per_tile();
+  update_cell_num_per_tile();
 
   // Compute number of cells per tile
   set_tile_cell_order_cmp_funcs();
@@ -134,7 +134,7 @@ void Domain::add_dimension(shared_ptr<Dimension> dim) {
   ++dim_num_;
 
   // Compute number of cells per tile
-  compute_cell_num_per_tile();
+  update_cell_num_per_tile();
 }
 
 bool Domain::all_dims_fixed() const {
@@ -187,7 +187,7 @@ bool Domain::all_dims_same_type() const {
 }
 
 uint64_t Domain::cell_num_per_tile() const {
-  return cell_num_per_tile_;
+  return cell_num_per_tile_.value_or(0);
 }
 
 template <>
@@ -723,38 +723,30 @@ int Domain::tile_order_cmp(
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-void Domain::compute_cell_num_per_tile() {
+std::optional<uint64_t> Domain::compute_cell_num_per_tile() const {
   // Applicable to dimensions that have the same type
   if (!all_dims_same_type())
-    return;
+    return std::nullopt;
 
   // Invoke the proper templated function
   auto type{dimension_ptrs_[0]->type()};
   switch (type) {
     case Datatype::INT32:
-      compute_cell_num_per_tile<int>();
-      break;
+      return compute_cell_num_per_tile<int>();
     case Datatype::INT64:
-      compute_cell_num_per_tile<int64_t>();
-      break;
+      return compute_cell_num_per_tile<int64_t>();
     case Datatype::INT8:
-      compute_cell_num_per_tile<int8_t>();
-      break;
+      return compute_cell_num_per_tile<int8_t>();
     case Datatype::UINT8:
-      compute_cell_num_per_tile<uint8_t>();
-      break;
+      return compute_cell_num_per_tile<uint8_t>();
     case Datatype::INT16:
-      compute_cell_num_per_tile<int16_t>();
-      break;
+      return compute_cell_num_per_tile<int16_t>();
     case Datatype::UINT16:
-      compute_cell_num_per_tile<uint16_t>();
-      break;
+      return compute_cell_num_per_tile<uint16_t>();
     case Datatype::UINT32:
-      compute_cell_num_per_tile<uint32_t>();
-      break;
+      return compute_cell_num_per_tile<uint32_t>();
     case Datatype::UINT64:
-      compute_cell_num_per_tile<uint64_t>();
-      break;
+      return compute_cell_num_per_tile<uint64_t>();
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -777,29 +769,33 @@ void Domain::compute_cell_num_per_tile() {
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      compute_cell_num_per_tile<int64_t>();
-      break;
+      return compute_cell_num_per_tile<int64_t>();
     default:
-      return;
+      return std::nullopt;
   }
 }
 
 template <class T>
-void Domain::compute_cell_num_per_tile() {
+std::optional<uint64_t> Domain::compute_cell_num_per_tile() const {
   // Applicable only to integer domains
   if (!std::is_integral<T>::value)
-    return;
+    return std::nullopt;
 
   // Applicable only to non-NULL space tiles
   if (null_tile_extents())
-    return;
+    return std::nullopt;
 
-  cell_num_per_tile_ = 1;
+  uint64_t cell_num_per_tile = 1;
   for (unsigned d = 0; d < dim_num_; ++d) {
     auto tile_extent = *(const T*)this->tile_extent(d).data();
-    cell_num_per_tile_ =
-        Dimension::tile_extent_mult<T>(cell_num_per_tile_, tile_extent);
+    cell_num_per_tile =
+        Dimension::tile_extent_mult<T>(cell_num_per_tile, tile_extent);
   }
+  return cell_num_per_tile;
+}
+
+void Domain::update_cell_num_per_tile() {
+  cell_num_per_tile_ = compute_cell_num_per_tile();
 }
 
 void Domain::set_tile_cell_order_cmp_funcs() {
