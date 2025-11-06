@@ -1,8 +1,12 @@
 # TileDB v2.29.2 Release Notes
 
-* (backport) bugfix: Fix dense fragment domains during global order write with maximum fragment size [#5676](https://github.com/TileDB-Inc/TileDB/pull/5676)
+
+## Defects removed
+* Fix dense fragment domains during global order write with maximum fragment size [#5676](https://github.com/TileDB-Inc/TileDB/pull/5676)
+
 
 # TileDB v2.29.1 Release Notes
+
 
 ## New features
 * Add support for Azure Data Lake Storage. [#5652](https://github.com/TileDB-Inc/TileDB/pull/5652)
