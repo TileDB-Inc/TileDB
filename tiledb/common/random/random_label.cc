@@ -37,9 +37,7 @@ namespace tiledb::common {
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
-RandomLabelGenerator::RandomLabelGenerator()
-    : prev_time_(tiledb::sm::utils::time::timestamp_now_ms()) {
-}
+RandomLabelGenerator::RandomLabelGenerator() = default;
 
 /* ********************************* */
 /*                API                */
@@ -53,9 +51,9 @@ RandomLabelWithTimestamp RandomLabelGenerator::generate(uint64_t timestamp) {
   PRNG& prng = PRNG::get();
   std::lock_guard<std::mutex> lock(mtx_);
 
-  // If no label has been generated this millisecond, generate a new one.
-  if (timestamp != prev_time_) {
-    prev_time_ = timestamp;
+  // Initialize counter on first use, then always increment to ensure
+  // monotonicity
+  if (counter_ == 0) {
     counter_ = static_cast<uint32_t>(prng());
     // Clear the top bit of the counter such that a full 2 billion values
     // could be generated within a single millisecond.

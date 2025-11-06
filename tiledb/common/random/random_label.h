@@ -115,9 +115,6 @@ class RandomLabelGenerator {
   /** Mutex which protects against simultaneous random label generation. */
   std::mutex mtx_;
 
-  /** The time (in milliseconds) of the last label creation. */
-  uint64_t prev_time_;
-
   /** The submillsecond counter portion of the random label. */
   uint32_t counter_;
 };
