@@ -66,23 +66,21 @@ TEST_CASE("RandomLabelGenerator: validation", "[RandomLabelGenerator]") {
   REQUIRE(label1.random_label_.size() == 32);
   REQUIRE(label1.random_label_ != label0.random_label_);
 
-  // Check that prefixes aren't off by one to show that the prefix was
-  // regenerated after the time change.
+  // Check that labels are monotonically increasing
   auto prefix0 = prefix_as_uint32(label0.random_label_);
   auto prefix1 = prefix_as_uint32(label1.random_label_);
-  REQUIRE(std::max(prefix0, prefix1) - std::min(prefix0, prefix1) > 1);
+  REQUIRE(prefix1 == prefix0 + 1);
 
-  // Check that the label prefix is random by going backwards in time and
-  // generating another label at time 0.
+  // Check that going backwards in time still gives monotonic labels
   auto label0_2 = x.generate_at(0);
   REQUIRE(label0_2.timestamp_ == 0);
   REQUIRE(label0_2.random_label_.size() == 32);
   REQUIRE(label0_2.random_label_ != label1.random_label_);
   REQUIRE(label0_2.random_label_ != label0.random_label_);
 
-  // Validate that label0_2 had a different prefix generated.
+  // Validate that label0_2 continues the monotonic sequence
   auto prefix0_2 = prefix_as_uint32(label0_2.random_label_);
-  REQUIRE(std::max(prefix0_2, prefix0) - std::min(prefix0_2, prefix0) > 1);
+  REQUIRE(prefix0_2 == prefix1 + 1);
 }
 
 TEST_CASE(
