@@ -216,13 +216,13 @@ void LoadedFragmentMetadata::resize_offsets(uint64_t size) {
   resize_tile_offsets_vectors(size);
   resize_tile_var_offsets_vectors(size);
   resize_tile_var_sizes_vectors(size);
-  tile_validity_offsets().resize(size);
-  tile_min_buffer().resize(size);
-  tile_min_var_buffer().resize(size);
-  tile_max_buffer().resize(size);
-  tile_max_var_buffer().resize(size);
-  tile_sums().resize(size);
-  tile_null_counts().resize(size);
+  tile_validity_offsets_.resize(size);
+  tile_min_buffer_.resize(size);
+  tile_min_var_buffer_.resize(size);
+  tile_max_buffer_.resize(size);
+  tile_max_var_buffer_.resize(size);
+  tile_sums_.resize(size);
+  tile_null_counts_.resize(size);
   fragment_mins_.resize(size);
   fragment_maxs_.resize(size);
   fragment_sums_.resize(size);
@@ -493,7 +493,7 @@ const void* LoadedFragmentMetadata::get_tile_sum(
 
 void LoadedFragmentMetadata::resize_tile_validity_offsets_vectors(
     uint64_t size) {
-  tile_validity_offsets().resize(size);
+  tile_validity_offsets_.resize(size);
 }
 
 uint64_t LoadedFragmentMetadata::file_validity_offset(

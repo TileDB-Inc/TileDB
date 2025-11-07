@@ -54,12 +54,23 @@ template <typename T, typename Alloc = std::allocator<T>>
 using vector_2ndim =
     tiledb::common::vector_sso<T, 2 * SSO_NUM_DIMENSIONS, Alloc>;
 
+static constexpr uint64_t SSO_NUM_ATTRIBUTES = 8;
+
+static constexpr uint64_t SSO_NUM_FIELDS =
+    SSO_NUM_DIMENSIONS + SSO_NUM_ATTRIBUTES;
+
+template <typename T, typename Alloc = std::allocator<T>>
+using vector_nfields = tiledb::common::vector_sso<T, SSO_NUM_DIMENSIONS, Alloc>;
+
 namespace pmr {
 
 template <typename T>
 using vector_ndim = vector_ndim<T, common::pmr::polymorphic_allocator<T>>;
 
-}
+template <typename T>
+using vector_nfields = vector_nfields<T, common::pmr::polymorphic_allocator<T>>;
+
+}  // namespace pmr
 
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
 using NDRange = vector_ndim<Range>;
