@@ -34,6 +34,7 @@
 #define TILEDB_TYPES_H
 
 #include <vector>
+#include "tiledb/common/vector_sso.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::type;
@@ -44,8 +45,14 @@ namespace tiledb::sm {
 /*          TYPE DEFINITIONS         */
 /* ********************************* */
 
+static constexpr uint64_t SSO_NUM_DIMENSIONS = 8;
+
+template <typename T, typename Alloc = std::allocator<T>>
+using vector_ndim = tiledb::common::vector_sso<T, SSO_NUM_DIMENSIONS, Alloc>;
+
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
-using NDRange = std::vector<Range>;
+using NDRange = vector_ndim<Range>;
+
 using NDRangeView = std::span<const Range>;
 
 /** An untyped value, barely more than raw storage. This class is only

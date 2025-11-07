@@ -225,7 +225,7 @@ struct FxRun1D {
     if (subarray[0].upper_bound < mbr[0].end_as<CoordType>()) {
       // in this case, the bitmap will filter out the other coords in the
       // tile and it will be discarded
-      return std::vector<type::Range>{subarray[0].range()};
+      return {subarray[0].range()};
     } else {
       return mbr;
     }

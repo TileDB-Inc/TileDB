@@ -45,3 +45,6 @@ commence(unit_test memory_tracker)
     this_target_object_libraries(baseline)
 conclude(unit_test)
 
+commence(unit_test vector_sso)
+    this_target_sources(main.cc unit_vector_sso.cc)
+conclude(unit_test)
