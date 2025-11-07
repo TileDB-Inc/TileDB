@@ -160,7 +160,7 @@ void ReadCellSlabIter<T>::compute_cell_offsets_row() {
 template <class T>
 void ReadCellSlabIter<T>::compute_cell_slab_start(
     const T* cell_slab_coords,
-    const std::vector<T>& tile_start_coords,
+    std::span<const T> tile_start_coords,
     uint64_t* start) {
   auto dim_num = domain_->dim_num();
 

@@ -83,7 +83,7 @@ class TileDomain {
       unsigned id,
       const NDRange& domain,
       const NDRange& domain_slice,
-      const std::vector<ByteVecValue>& tile_extents,
+      std::span<const ByteVecValue> tile_extents,
       Layout layout)
       : id_(id)
       , dim_num_((unsigned)domain.size())
@@ -135,8 +135,8 @@ class TileDomain {
    * Returns the global coordinates of the first cell in the tile
    * with the input coordinates.
    */
-  std::vector<T> start_coords(const T* tile_coords) const {
-    std::vector<T> ret;
+  vector_ndim<T> start_coords(const T* tile_coords) const {
+    vector_ndim<T> ret;
     ret.resize(dim_num_);
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim_dom = (const T*)domain_[d].data();
@@ -166,8 +166,8 @@ class TileDomain {
    * Returns the global subarray corresponding to the tile with
    * the input coordinates.
    */
-  std::vector<T> tile_subarray(const T* tile_coords) const {
-    std::vector<T> ret;
+  vector_2ndim<T> tile_subarray(const T* tile_coords) const {
+    vector_2ndim<T> ret;
     ret.resize(2 * dim_num_);
 
     for (unsigned d = 0; d < dim_num_; ++d) {
@@ -188,8 +188,8 @@ class TileDomain {
    *
    * If there is no overlap, then the returned vector is empty.
    */
-  std::vector<T> tile_overlap(const T* tile_coords) const {
-    std::vector<T> ret;
+  vector_2ndim<T> tile_overlap(const T* tile_coords) const {
+    vector_2ndim<T> ret;
 
     // Return empty if the tile is not in the tile domain
     if (!in_tile_domain(tile_coords))
@@ -254,7 +254,7 @@ class TileDomain {
   }
 
   /** Returns the tile domain. */
-  const std::vector<T>& tile_domain() const {
+  std::span<const T> tile_domain() const {
     return tile_domain_;
   }
 
@@ -284,19 +284,19 @@ class TileDomain {
   NDRange domain_slice_;
 
   /** The tile extents. */
-  std::vector<ByteVecValue> tile_extents_;
+  vector_ndim<ByteVecValue> tile_extents_;
 
   /** The layout used to compute 1D-mapped tile positions. */
   Layout layout_ = Layout::GLOBAL_ORDER;
 
   /** The tile domain. */
-  std::vector<T> tile_domain_;
+  vector_2ndim<T> tile_domain_;
 
   /**
    * Auxiliary offsets for efficiently computing 1D-mapped tile
    * positions from tile coordinates.
    */
-  std::vector<T> tile_offsets_;
+  vector_ndim<T> tile_offsets_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -309,7 +309,7 @@ class TileDomain {
   void compute_tile_domain(
       const NDRange& domain,
       const NDRange& domain_slice,
-      const std::vector<ByteVecValue>& tile_extents) {
+      std::span<const ByteVecValue> tile_extents) {
     tile_domain_.resize(2 * dim_num_);
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto ds = (const T*)domain_slice[d].data();

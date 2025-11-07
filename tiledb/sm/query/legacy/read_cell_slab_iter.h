@@ -214,7 +214,7 @@ class ReadCellSlabIter {
    */
   void compute_cell_slab_start(
       const T* cell_slab_coords,
-      const std::vector<T>& tile_start_coords,
+      std::span<const T> tile_start_coords,
       uint64_t* start);
 
   /**

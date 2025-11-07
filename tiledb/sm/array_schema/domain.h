@@ -87,7 +87,7 @@ class Domain {
   /** Constructor.*/
   Domain(
       Layout cell_order,
-      const std::vector<shared_ptr<Dimension>> dimensions,
+      std::span<shared_ptr<Dimension>> dimensions,
       Layout tile_order,
       shared_ptr<MemoryTracker> memory_tracker);
 
@@ -428,7 +428,7 @@ class Domain {
   const ByteVecValue& tile_extent(unsigned i) const;
 
   /** Returns the tile extents. */
-  std::vector<ByteVecValue> tile_extents() const;
+  vector_ndim<ByteVecValue> tile_extents() const;
 
   /**
    * Returns the number of tiles intersecting the input ND range.
@@ -510,7 +510,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  tdb::pmr::vector<shared_ptr<Dimension>> dimensions_;
+  pmr::vector_ndim<shared_ptr<Dimension>> dimensions_;
 
   /**
    * Non-allocating mirror of the dimensions vector.
@@ -522,7 +522,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  tdb::pmr::vector<const Dimension*> dimension_ptrs_;
+  pmr::vector_ndim<const Dimension*> dimension_ptrs_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
@@ -538,7 +538,7 @@ class Domain {
    * - buff: The buffer that stores all coorinates;
    * - a, b: The positions of the two coordinates in the buffer to compare.
    */
-  tdb::pmr::vector<int (*)(
+  pmr::vector_ndim<int (*)(
       const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b)>
       cell_order_cmp_func_;
 
@@ -548,7 +548,7 @@ class Domain {
    *
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  tdb::pmr::vector<int (*)(const void* coord_a, const void* coord_b)>
+  pmr::vector_ndim<int (*)(const void* coord_a, const void* coord_b)>
       cell_order_cmp_func_2_;
 
   /**
@@ -558,7 +558,7 @@ class Domain {
    * - dim: The dimension to compare on.
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  tdb::pmr::vector<int (*)(
+  pmr::vector_ndim<int (*)(
       const Dimension* dim, const void* coord_a, const void* coord_b)>
       tile_order_cmp_func_;
 

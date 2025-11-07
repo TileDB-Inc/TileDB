@@ -364,7 +364,7 @@ void WebpFilter::serialize_impl(Serializer& serializer) const {
 }
 
 template <typename T>
-void WebpFilter::set_extents(const std::vector<ByteVecValue>& extents) {
+void WebpFilter::set_extents(std::span<const ByteVecValue> extents) {
   std::pair<T, T> values = {
       extents[0].rvalue_as<T>(), extents[1].rvalue_as<T>()};
   uint8_t pixel_depth = format_ < WebpInputFormat::WEBP_RGBA ? 3 : 4;
@@ -383,21 +383,21 @@ void WebpFilter::set_extents(const std::vector<ByteVecValue>& extents) {
 }
 
 template void WebpFilter::set_extents<uint8_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<uint16_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<uint32_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<uint64_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<int8_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<int16_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<int32_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 template void WebpFilter::set_extents<int64_t>(
-    const std::vector<ByteVecValue>& extents);
+    std::span<const ByteVecValue> extents);
 
 }  // namespace tiledb::sm
 

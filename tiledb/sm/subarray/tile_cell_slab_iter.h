@@ -74,8 +74,8 @@ class TileCellSlabIter {
       const uint64_t num_range_threads,
       const Subarray& root_subarray,
       const DenseTileSubarray<T>& subarray,
-      const std::vector<T>& tile_extents,
-      const std::vector<T>& start_coords,
+      std::span<const T> tile_extents,
+      std::span<const T> start_coords,
       const std::vector<RangeInfo<T>>& range_info,
       const Layout cell_order);
 
@@ -198,7 +198,7 @@ class TileCellSlabIter {
   std::vector<uint64_t> mult_extents_;
 
   /** start coordinates of the tile. */
-  const std::vector<T>& start_coords_;
+  std::span<const T> start_coords_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

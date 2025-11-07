@@ -76,7 +76,7 @@ Domain::Domain(shared_ptr<MemoryTracker> memory_tracker)
 
 Domain::Domain(
     Layout cell_order,
-    const std::vector<shared_ptr<Dimension>> dimensions,
+    std::span<shared_ptr<Dimension>> dimensions,
     Layout tile_order,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
@@ -332,7 +332,7 @@ shared_ptr<Domain> Domain::deserialize(
     type = static_cast<Datatype>(type_c);
   }
 
-  std::vector<shared_ptr<Dimension>> dimensions;
+  vector_ndim<shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
     auto dim{Dimension::deserialize(
@@ -560,8 +560,8 @@ const ByteVecValue& Domain::tile_extent(unsigned i) const {
   return dimension_ptrs_[i]->tile_extent();
 }
 
-std::vector<ByteVecValue> Domain::tile_extents() const {
-  std::vector<ByteVecValue> ret(dim_num_);
+vector_ndim<ByteVecValue> Domain::tile_extents() const {
+  vector_ndim<ByteVecValue> ret(dim_num_);
   for (unsigned d = 0; d < dim_num_; ++d) {
     ret[d] = tile_extent(d);
   }
@@ -953,7 +953,7 @@ void Domain::get_next_tile_coords_row(
 template <class T>
 uint64_t Domain::get_tile_pos_col(const T* domain, const T* tile_coords) const {
   // Calculate tile offsets
-  std::vector<uint64_t> tile_offsets;
+  vector_ndim<uint64_t> tile_offsets;
   tile_offsets.reserve(dim_num_);
   tile_offsets.push_back(1);
   for (unsigned d = 1; d < dim_num_; ++d) {
@@ -976,7 +976,7 @@ uint64_t Domain::get_tile_pos_col(const T* domain, const T* tile_coords) const {
 template <class T>
 uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
   // Calculate tile offsets
-  std::vector<uint64_t> tile_offsets;
+  vector_ndim<uint64_t> tile_offsets;
   tile_offsets.reserve(dim_num_);
   tile_offsets.push_back(1);
   if (dim_num_ > 1) {

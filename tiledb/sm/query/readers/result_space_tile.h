@@ -117,13 +117,13 @@ class ResultSpaceTile {
   }
 
   /** Returns the start coordinates. */
-  const std::vector<T>& start_coords() const {
+  std::span<const T> start_coords() const {
     return start_coords_;
   }
 
   /** Sets the start coordinates. */
-  void set_start_coords(const std::vector<T>& start_coords) {
-    start_coords_ = start_coords;
+  void set_start_coords(std::span<const T> start_coords) {
+    start_coords_.assign(start_coords.begin(), start_coords.end());
   }
 
   /** Appends a fragment domain. */

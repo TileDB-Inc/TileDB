@@ -285,27 +285,27 @@ TEST_CASE_METHOD(
 
   // Initialize result_space_tiles
   ResultSpaceTile<int32_t> rst_1_0(tiledb::test::get_test_memory_tracker());
-  rst_1_0.set_start_coords({3, 1});
+  rst_1_0.set_start_coords(std::initializer_list{3, 1});
   rst_1_0.append_frag_domain(2, ds2);
   rst_1_0.append_frag_domain(1, ds1);
   rst_1_0.set_result_tile(1, 0, *fragments[0]);
   rst_1_0.set_result_tile(2, 0, *fragments[1]);
   ResultSpaceTile<int32_t> rst_1_2(tiledb::test::get_test_memory_tracker());
-  rst_1_2.set_start_coords({3, 11});
+  rst_1_2.set_start_coords(std::initializer_list{3, 11});
   rst_1_2.append_frag_domain(1, ds1);
   rst_1_2.set_result_tile(1, 2, *fragments[0]);
   ResultSpaceTile<int32_t> rst_2_0(tiledb::test::get_test_memory_tracker());
-  rst_2_0.set_start_coords({5, 1});
+  rst_2_0.set_start_coords(std::initializer_list{5, 1});
   rst_2_0.append_frag_domain(3, ds3);
   rst_2_0.set_result_tile(3, 0, *fragments[2]);
   ResultSpaceTile<int32_t> rst_2_2(tiledb::test::get_test_memory_tracker());
-  rst_2_2.set_start_coords({5, 11});
+  rst_2_2.set_start_coords(std::initializer_list{5, 11});
   ResultSpaceTile<int32_t> rst_3_0(tiledb::test::get_test_memory_tracker());
-  rst_3_0.set_start_coords({7, 1});
+  rst_3_0.set_start_coords(std::initializer_list{7, 1});
   rst_3_0.append_frag_domain(3, ds3);
   rst_3_0.set_result_tile(3, 2, *fragments[2]);
   ResultSpaceTile<int32_t> rst_3_2(tiledb::test::get_test_memory_tracker());
-  rst_3_2.set_start_coords({7, 11});
+  rst_3_2.set_start_coords(std::initializer_list{7, 11});
 
   // Check correctness
   CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[0][0])) == rst_1_0);

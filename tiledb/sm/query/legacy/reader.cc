@@ -150,15 +150,12 @@ void Reader::compute_result_space_tiles(
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
     shared_ptr<MemoryTracker> memory_tracker) {
   auto fragment_num = (unsigned)frag_tile_domains.size();
-  auto dim_num = array_tile_domain.dim_num();
-  std::vector<T> start_coords;
   const T* coords;
-  start_coords.resize(dim_num);
 
   // For all tile coordinates
   for (const auto& tc : tile_coords) {
     coords = (T*)(&(tc[0]));
-    start_coords = array_tile_domain.start_coords(coords);
+    std::span<const T> start_coords = array_tile_domain.start_coords(coords);
 
     // Create result space tile and insert into the map
     auto r =
