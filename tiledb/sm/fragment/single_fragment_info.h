@@ -120,7 +120,7 @@ class SingleFragmentInfo {
 
   /** Dumps the single fragment info in ASCII format in the selected output. */
   void dump_single_fragment_info(
-      std::ostream& os, const std::vector<Datatype>& dim_types) const {
+      std::ostream& os, std::span<const Datatype> dim_types) const {
     os << "  > URI: " << uri_.c_str() << "\n";
     os << "  > Schema name: " << array_schema_name_ << "\n";
     os << "  > Type: " << (sparse_ ? "sparse" : "dense") << "\n";
@@ -190,8 +190,7 @@ class SingleFragmentInfo {
   }
 
   /** Returns the non-empty domain in string format. */
-  std::string non_empty_domain_str(
-      const std::vector<Datatype>& dim_types) const {
+  std::string non_empty_domain_str(std::span<const Datatype> dim_types) const {
     std::stringstream ss;
     for (uint32_t d = 0; d < (uint32_t)dim_types.size(); ++d) {
       ss << type::range_str(non_empty_domain_[d], dim_types[d]);

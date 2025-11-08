@@ -495,8 +495,8 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   return last_tile_cell_num();
 }
 
-std::vector<Datatype> FragmentMetadata::dim_types() const {
-  std::vector<Datatype> ret;
+vector_ndim<Datatype> FragmentMetadata::dim_types() const {
+  vector_ndim<Datatype> ret;
   for (uint32_t d = 0; d < array_schema_->dim_num(); d++) {
     ret.emplace_back(array_schema_->dimension_ptr(d)->type());
   }

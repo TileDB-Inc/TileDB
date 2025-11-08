@@ -133,14 +133,14 @@ class FragmentMetadata {
    */
   struct GenericTileOffsets {
     uint64_t rtree_ = 0;
-    std::vector<uint64_t> tile_offsets_;
-    std::vector<uint64_t> tile_var_offsets_;
-    std::vector<uint64_t> tile_var_sizes_;
-    std::vector<uint64_t> tile_validity_offsets_;
-    std::vector<uint64_t> tile_min_offsets_;
-    std::vector<uint64_t> tile_max_offsets_;
-    std::vector<uint64_t> tile_sum_offsets_;
-    std::vector<uint64_t> tile_null_count_offsets_;
+    vector_nfields<uint64_t> tile_offsets_;
+    vector_nfields<uint64_t> tile_var_offsets_;
+    vector_nfields<uint64_t> tile_var_sizes_;
+    vector_nfields<uint64_t> tile_validity_offsets_;
+    vector_nfields<uint64_t> tile_min_offsets_;
+    vector_nfields<uint64_t> tile_max_offsets_;
+    vector_nfields<uint64_t> tile_sum_offsets_;
+    vector_nfields<uint64_t> tile_null_count_offsets_;
     uint64_t fragment_min_max_sum_null_count_offset_;
     uint64_t processed_conditions_offsets_;
   };
@@ -167,7 +167,7 @@ class FragmentMetadata {
    * Returns the dimensions types from the array schema asssociated
    * with this fragment metadata.
    */
-  std::vector<Datatype> dim_types() const;
+  vector_ndim<Datatype> dim_types() const;
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -299,17 +299,17 @@ class FragmentMetadata {
   }
 
   /** Returns the sizes of each attribute file. */
-  inline const std::vector<uint64_t>& file_sizes() const {
+  inline std::span<const uint64_t> file_sizes() const {
     return file_sizes_;
   }
 
   /** Returns the sizes of each variable attribute file. */
-  inline const std::vector<uint64_t>& file_var_sizes() const {
+  inline std::span<const uint64_t> file_var_sizes() const {
     return file_var_sizes_;
   }
 
   /** Returns the sizes of each validity attribute file. */
-  inline const std::vector<uint64_t>& file_validity_sizes() const {
+  inline std::span<const uint64_t> file_validity_sizes() const {
     return file_validity_sizes_;
   }
 
@@ -754,17 +754,17 @@ class FragmentMetadata {
   const shared_ptr<const ArraySchema>& array_schema() const;
 
   /** File sizes accessor */
-  std::vector<uint64_t>& file_sizes() {
+  std::span<uint64_t> file_sizes() {
     return file_sizes_;
   }
 
   /** File var sizes accessor */
-  std::vector<uint64_t>& file_var_sizes() {
+  std::span<uint64_t> file_var_sizes() {
     return file_var_sizes_;
   }
 
   /** File validity sizes accessor */
-  std::vector<uint64_t>& file_validity_sizes() {
+  std::span<uint64_t> file_validity_sizes() {
     return file_validity_sizes_;
   }
 
@@ -874,13 +874,13 @@ class FragmentMetadata {
   NDRange domain_;
 
   /** Stores the size of each attribute file. */
-  std::vector<uint64_t> file_sizes_;
+  vector_nfields<uint64_t> file_sizes_;
 
   /** Stores the size of each variable attribute file. */
-  std::vector<uint64_t> file_var_sizes_;
+  vector_nfields<uint64_t> file_var_sizes_;
 
   /** Stores the size of each validity attribute file. */
-  std::vector<uint64_t> file_validity_sizes_;
+  vector_nfields<uint64_t> file_validity_sizes_;
 
   /** Size of the fragment metadata footer. */
   uint64_t footer_size_;
