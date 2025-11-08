@@ -249,9 +249,9 @@ class TestArraySchema {
    * as the `Domain` constructor requires.
    */
   template <class... Args>
-  static std::vector<shared_ptr<Dimension>> make_dimension_vector(
+  static vector_ndim<shared_ptr<Dimension>> make_dimension_vector(
       std::initializer_list<TestDimension> dimensions) {
-    std::vector<shared_ptr<Dimension>> v{};
+    vector_ndim<shared_ptr<Dimension>> v{};
     std::transform(
         dimensions.begin(),
         dimensions.end(),
@@ -268,12 +268,9 @@ class TestArraySchema {
       Layout cell_order,
       Layout tile_order,
       shared_ptr<MemoryTracker> memory_tracker) {
+    auto dims = make_dimension_vector(dimensions);
     return make_shared<Domain>(
-        HERE(),
-        cell_order,
-        make_dimension_vector(dimensions),
-        tile_order,
-        memory_tracker);
+        HERE(), cell_order, dims, tile_order, memory_tracker);
   }
 
   /**
