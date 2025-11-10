@@ -45,12 +45,16 @@ AssertFailure::AssertFailure(const std::string& what)
   throw AssertFailure(file, line, expr);
 }
 
-static std::mutex passertFailureCallbackMutex;
-static std::list<std::function<void()>> passertFailureCallbacks;
+static constinit std::mutex passertFailureCallbackMutex;
+
+std::list<std::function<void()>>& passertFailureCallbacks() {
+  static std::list<std::function<void()>> value;
+  return value;
+}
 
 void passert_failure_run_callbacks(void) {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-  for (auto& callback : passertFailureCallbacks) {
+  for (auto& callback : passertFailureCallbacks()) {
     callback();
   }
 }
@@ -75,15 +79,15 @@ PAssertFailureCallbackRegistration::PAssertFailureCallbackRegistration(
     std::function<void()>&& callback) {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
 
-  passertFailureCallbacks.push_front(
+  passertFailureCallbacks().push_front(
       std::forward<std::function<void()>>(callback));
 
-  callback_node_ = passertFailureCallbacks.begin();
+  callback_node_ = passertFailureCallbacks().begin();
 }
 
 PAssertFailureCallbackRegistration::~PAssertFailureCallbackRegistration() {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-  passertFailureCallbacks.erase(callback_node_);
+  passertFailureCallbacks().erase(callback_node_);
 }
 
 #endif
