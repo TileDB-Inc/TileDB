@@ -452,6 +452,22 @@ class vector_sso {
     return data() + size();
   }
 
+  std::reverse_iterator<iterator> rbegin() {
+    return std::reverse_iterator<iterator>{end()};
+  }
+
+  std::reverse_iterator<iterator> rend() {
+    return std::reverse_iterator<iterator>{begin()};
+  }
+
+  std::reverse_iterator<const_iterator> rbegin() const {
+    return std::reverse_iterator<const_iterator>{end()};
+  }
+
+  std::reverse_iterator<const_iterator> rend() const {
+    return std::reverse_iterator<const_iterator>{begin()};
+  }
+
   /*
   bool operator==(const self_type& other) const {
     return std::equal(begin(), end(), other.begin(), other.end());

@@ -732,3 +732,20 @@ TEST_CASE("vector_sso shrink_to_fit") {
 
   REQUIRE(mem.outstanding() == 0);
 }
+
+TEST_CASE("vector_sso reverse iteration") {
+  vector_sso<uint64_t, SSO_LENGTH> elts;
+
+  const uint64_t num_elements = GENERATE(0, 1, SSO_LENGTH, SSO_LENGTH * 2);
+  for (uint64_t i = 0; i < num_elements; i++) {
+    elts.push_back(i);
+  }
+
+  std::vector<uint64_t> expect;
+  for (uint64_t i = num_elements; i > 0; i--) {
+    expect.push_back(i - 1);
+  }
+
+  std::vector<uint64_t> rev(elts.rbegin(), elts.rend());
+  CHECK(rev == expect);
+}
