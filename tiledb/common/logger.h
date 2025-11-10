@@ -40,6 +40,7 @@
 #include <atomic>
 #include <sstream>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
@@ -398,6 +399,11 @@ class Logger {
    */
   void set_format(Logger::Format fmt);
 
+  /**
+   * Flush the log to output.
+   */
+  void flush() const;
+
   /* ********************************* */
   /*          PUBLIC ATTRIBUTES        */
   /* ********************************* */
@@ -435,6 +441,15 @@ class Logger {
   /** A boolean flag that tells us whether the logger is the statically declared
    * global_logger */
   bool root_ = false;
+
+  /**
+   * Callback to flush this logger prior to aborting the process
+   * in the event of a `passert` failure.
+   *
+   * This is only invoked if the build configuration `TILEDB_ASSERTIONS=ON` is
+   * used
+   */
+  PAssertFailureCallbackRegistration passert_callback_flush_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
