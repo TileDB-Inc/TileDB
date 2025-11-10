@@ -36,8 +36,16 @@
 
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <list>
+
+#ifdef TILEDB_ASSERTIONS
+static constexpr bool builtWithAssertions = true;
+#else
+static constexpr bool builtWithAssertions = false;
+#endif
 
 #ifdef _WIN32
 std::vector<int> assert_exit_codes{3};
@@ -50,24 +58,56 @@ std::vector<int> assert_exit_codes{
 #endif
 
 TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
-  int retval = system(TILEDB_PATH_TO_TRY_ASSERT);
+  char command[2048];
+  std::optional<std::filesystem::path> try_assert_logfile;
+  if (builtWithAssertions) {
+    try_assert_logfile =
+        std::filesystem::temp_directory_path() / "try_assert.log";
+    sprintf(
+        command,
+        "%s %s",
+        TILEDB_PATH_TO_TRY_ASSERT,
+        try_assert_logfile.value().c_str());
+  } else {
+    sprintf(command, "%s", TILEDB_PATH_TO_TRY_ASSERT);
+  }
+
+  const int retval = system(command);
 
   // in case value is one not currently accepted, report what was returned.
   std::cout << "retval is " << retval << " (0x" << std::hex << retval
             << ") from " << TILEDB_PATH_TO_TRY_ASSERT << std::endl;
 
-#ifdef TILEDB_ASSERTIONS
-  REQUIRE(
-      std::find(assert_exit_codes.begin(), assert_exit_codes.end(), retval) !=
-      assert_exit_codes.end());
-#else
-  (void)assert_exit_codes;
-  REQUIRE(retval == 0);
-#endif
+  if (builtWithAssertions) {
+    REQUIRE(
+        std::find(assert_exit_codes.begin(), assert_exit_codes.end(), retval) !=
+        assert_exit_codes.end());
+
+    // the log should have flushed due to passert callback
+    std::vector<std::string> logcontents;
+    {
+      std::ifstream logstream(try_assert_logfile.value());
+      REQUIRE(logstream.is_open());
+
+      std::string logline;
+      while (std::getline(logstream, logline)) {
+        logcontents.push_back(logline);
+      }
+    }
+    std::filesystem::remove(try_assert_logfile.value());
+
+    REQUIRE(logcontents.size() == 1);
+    if (!logcontents.empty()) {
+      REQUIRE(logcontents[0].find("begin passert(false)") != std::string::npos);
+    }
+  } else {
+    (void)assert_exit_codes;
+    REQUIRE(retval == 0);
+  }
 }
 
 TEST_CASE("CI: Test libc assertions configuration", "[ci][assertions]") {
-  int retval = system(TILEDB_PATH_TO_TRY_LIBC_ASSERT);
+  const int retval = system(TILEDB_PATH_TO_TRY_LIBC_ASSERT);
 
   // report return value
   std::cout << "retval is " << retval << " (0x" << std::hex << retval

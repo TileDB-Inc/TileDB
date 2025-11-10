@@ -23,7 +23,7 @@ add_executable(
   try_assert.cc
 )
 
-target_link_libraries(try_assert PUBLIC assert)
+target_link_libraries(try_assert PUBLIC assert baseline)
 
 target_include_directories(try_assert
   PRIVATE
