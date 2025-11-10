@@ -492,7 +492,7 @@ void generic_tile_offsets_to_capnp(
 void fragment_meta_sizes_offsets_to_capnp(
     const FragmentMetadata& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
-  auto& tile_offsets = frag_meta.loaded_metadata()->tile_offsets();
+  auto tile_offsets = frag_meta.loaded_metadata()->tile_offsets();
   if (!tile_offsets.empty()) {
     auto builder = frag_meta_builder->initTileOffsets(tile_offsets.size());
     for (uint64_t i = 0; i < tile_offsets.size(); ++i) {
@@ -502,7 +502,7 @@ void fragment_meta_sizes_offsets_to_capnp(
       }
     }
   }
-  auto& tile_var_offsets = frag_meta.loaded_metadata()->tile_var_offsets();
+  auto tile_var_offsets = frag_meta.loaded_metadata()->tile_var_offsets();
   if (!tile_var_offsets.empty()) {
     auto builder =
         frag_meta_builder->initTileVarOffsets(tile_var_offsets.size());
@@ -513,7 +513,7 @@ void fragment_meta_sizes_offsets_to_capnp(
       }
     }
   }
-  auto& tile_var_sizes = frag_meta.loaded_metadata()->tile_var_sizes();
+  auto tile_var_sizes = frag_meta.loaded_metadata()->tile_var_sizes();
   if (!tile_var_sizes.empty()) {
     auto builder = frag_meta_builder->initTileVarSizes(tile_var_sizes.size());
     for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {
@@ -523,7 +523,7 @@ void fragment_meta_sizes_offsets_to_capnp(
       }
     }
   }
-  auto& tile_validity_offsets =
+  auto tile_validity_offsets =
       frag_meta.loaded_metadata()->tile_validity_offsets();
   if (!tile_validity_offsets.empty()) {
     auto builder = frag_meta_builder->initTileValidityOffsets(
@@ -550,21 +550,21 @@ Status fragment_metadata_to_capnp(
   frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
   frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
 
-  auto& file_sizes = frag_meta.file_sizes();
+  auto file_sizes = frag_meta.file_sizes();
   if (!file_sizes.empty()) {
     auto builder = frag_meta_builder->initFileSizes(file_sizes.size());
     for (uint64_t i = 0; i < file_sizes.size(); ++i) {
       builder.set(i, file_sizes[i]);
     }
   }
-  auto& file_var_sizes = frag_meta.file_var_sizes();
+  auto file_var_sizes = frag_meta.file_var_sizes();
   if (!file_var_sizes.empty()) {
     auto builder = frag_meta_builder->initFileVarSizes(file_var_sizes.size());
     for (uint64_t i = 0; i < file_var_sizes.size(); ++i) {
       builder.set(i, file_var_sizes[i]);
     }
   }
-  auto& file_validity_sizes = frag_meta.file_validity_sizes();
+  auto file_validity_sizes = frag_meta.file_validity_sizes();
   if (!file_validity_sizes.empty()) {
     auto builder =
         frag_meta_builder->initFileValiditySizes(file_validity_sizes.size());
@@ -573,7 +573,7 @@ Status fragment_metadata_to_capnp(
     }
   }
 
-  auto& tile_min_buffer = frag_meta.loaded_metadata()->tile_min_buffer();
+  auto tile_min_buffer = frag_meta.loaded_metadata()->tile_min_buffer();
   if (!tile_min_buffer.empty()) {
     auto builder = frag_meta_builder->initTileMinBuffer(tile_min_buffer.size());
     for (uint64_t i = 0; i < tile_min_buffer.size(); ++i) {
@@ -583,8 +583,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_min_var_buffer =
-      frag_meta.loaded_metadata()->tile_min_var_buffer();
+  auto tile_min_var_buffer = frag_meta.loaded_metadata()->tile_min_var_buffer();
   if (!tile_min_var_buffer.empty()) {
     auto builder =
         frag_meta_builder->initTileMinVarBuffer(tile_min_var_buffer.size());
@@ -595,7 +594,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_max_buffer = frag_meta.loaded_metadata()->tile_max_buffer();
+  auto tile_max_buffer = frag_meta.loaded_metadata()->tile_max_buffer();
   if (!tile_max_buffer.empty()) {
     auto builder = frag_meta_builder->initTileMaxBuffer(tile_max_buffer.size());
     for (uint64_t i = 0; i < tile_max_buffer.size(); ++i) {
@@ -605,8 +604,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_max_var_buffer =
-      frag_meta.loaded_metadata()->tile_max_var_buffer();
+  auto tile_max_var_buffer = frag_meta.loaded_metadata()->tile_max_var_buffer();
   if (!tile_max_var_buffer.empty()) {
     auto builder =
         frag_meta_builder->initTileMaxVarBuffer(tile_max_var_buffer.size());
@@ -617,7 +615,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_sums = frag_meta.loaded_metadata()->tile_sums();
+  auto tile_sums = frag_meta.loaded_metadata()->tile_sums();
   if (!tile_sums.empty()) {
     auto builder = frag_meta_builder->initTileSums(tile_sums.size());
     for (uint64_t i = 0; i < tile_sums.size(); ++i) {
@@ -627,7 +625,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_null_counts = frag_meta.loaded_metadata()->tile_null_counts();
+  auto tile_null_counts = frag_meta.loaded_metadata()->tile_null_counts();
   if (!tile_null_counts.empty()) {
     auto builder =
         frag_meta_builder->initTileNullCounts(tile_null_counts.size());
@@ -638,7 +636,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_mins = frag_meta.loaded_metadata()->fragment_mins();
+  auto fragment_mins = frag_meta.loaded_metadata()->fragment_mins();
   if (!fragment_mins.empty()) {
     auto builder = frag_meta_builder->initFragmentMins(fragment_mins.size());
     for (uint64_t i = 0; i < fragment_mins.size(); ++i) {
@@ -648,7 +646,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_maxs = frag_meta.loaded_metadata()->fragment_maxs();
+  auto fragment_maxs = frag_meta.loaded_metadata()->fragment_maxs();
   if (!fragment_maxs.empty()) {
     auto builder = frag_meta_builder->initFragmentMaxs(fragment_maxs.size());
     for (uint64_t i = 0; i < fragment_maxs.size(); ++i) {
@@ -658,14 +656,14 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_sums = frag_meta.loaded_metadata()->fragment_sums();
+  auto fragment_sums = frag_meta.loaded_metadata()->fragment_sums();
   if (!fragment_sums.empty()) {
     auto builder = frag_meta_builder->initFragmentSums(fragment_sums.size());
     for (uint64_t i = 0; i < fragment_sums.size(); ++i) {
       builder.set(i, fragment_sums[i]);
     }
   }
-  auto& fragment_null_counts =
+  auto fragment_null_counts =
       frag_meta.loaded_metadata()->fragment_null_counts();
   if (!fragment_null_counts.empty()) {
     auto builder =

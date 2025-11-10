@@ -106,7 +106,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_offsets accessor */
-  std::span<tdb::pmr::vector<uint64_t>> tile_offsets() {
+  pmr::vector_nfields<tdb::pmr::vector<uint64_t>>& tile_offsets() {
     return tile_offsets_;
   }
 
@@ -116,7 +116,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_var_offsets accessor */
-  std::span<tdb::pmr::vector<uint64_t>> tile_var_offsets() {
+  pmr::vector_nfields<tdb::pmr::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
   }
 
@@ -131,7 +131,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_var_sizes  accessor */
-  std::span<tdb::pmr::vector<uint64_t>> tile_var_sizes() {
+  pmr::vector_nfields<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
     return tile_var_sizes_;
   }
 
@@ -142,7 +142,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_validity_offsets accessor */
-  std::span<tdb::pmr::vector<uint64_t>> tile_validity_offsets() {
+  pmr::vector_nfields<tdb::pmr::vector<uint64_t>>& tile_validity_offsets() {
     return tile_validity_offsets_;
   }
 
@@ -181,7 +181,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_min_var_buffer accessor */
-  std::span<tdb::pmr::vector<char>> tile_min_var_buffer() {
+  pmr::vector_nfields<tdb::pmr::vector<char>>& tile_min_var_buffer() {
     return tile_min_var_buffer_;
   }
 
@@ -415,7 +415,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_null_counts accessor */
-  std::span<tdb::pmr::vector<uint64_t>> tile_null_counts() {
+  pmr::vector_nfields<tdb::pmr::vector<uint64_t>>& tile_null_counts() {
     return tile_null_counts_;
   }
 
@@ -425,7 +425,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_sums accessor */
-  std::span<tdb::pmr::vector<uint8_t>> tile_sums() {
+  pmr::vector_nfields<tdb::pmr::vector<uint8_t>>& tile_sums() {
     return tile_sums_;
   }
 
@@ -435,7 +435,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_max_buffer accessor */
-  std::span<tdb::pmr::vector<uint8_t>> tile_max_buffer() {
+  pmr::vector_nfields<tdb::pmr::vector<uint8_t>>& tile_max_buffer() {
     return tile_max_buffer_;
   }
 
@@ -445,7 +445,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_max_var_buffer accessor */
-  std::span<tdb::pmr::vector<char>> tile_max_var_buffer() {
+  pmr::vector_nfields<tdb::pmr::vector<char>>& tile_max_var_buffer() {
     return tile_max_var_buffer_;
   }
 
@@ -561,7 +561,7 @@ class LoadedFragmentMetadata {
   }
 
   /** tile_min_buffer accessor */
-  std::span<tdb::pmr::vector<uint8_t>> tile_min_buffer() {
+  pmr::vector_nfields<tdb::pmr::vector<uint8_t>>& tile_min_buffer() {
     return tile_min_buffer_;
   }
 

@@ -138,7 +138,7 @@ StatsData stats_from_capnp(const capnp::Stats::Reader& stats_reader) {
 }
 
 void range_buffers_to_capnp(
-    const std::vector<Range>& ranges,
+    std::span<const Range> ranges,
     capnp::SubarrayRanges::Builder& range_builder) {
   auto range_sizes = range_builder.initBufferSizes(ranges.size());
   auto range_start_sizes = range_builder.initBufferStartSizes(ranges.size());
@@ -278,7 +278,7 @@ Status subarray_from_capnp(
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
       Range range(data_ptr.begin(), data.size());
-      subarray->set_ranges_for_dim(i, {range});
+      subarray->set_ranges_for_dim(i, std::initializer_list<Range>{range});
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
   }

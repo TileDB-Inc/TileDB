@@ -75,7 +75,8 @@ void ndrectangle_to_capnp(
 
       // This function takes a list of ranges per dimension, a NDRectangle has
       // only one range per dimension
-      range_buffers_to_capnp({ranges[i]}, range_builder);
+      range_buffers_to_capnp(
+          std::initializer_list<Range>{ranges[i]}, range_builder);
     }
     return;
   }

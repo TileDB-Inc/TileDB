@@ -289,7 +289,7 @@ Status query_from_capnp(
  * @param range_builder capnp builder
  */
 void range_buffers_to_capnp(
-    const std::vector<Range>& ranges,
+    std::span<const Range> ranges,
     capnp::SubarrayRanges::Builder& range_builder);
 
 /**

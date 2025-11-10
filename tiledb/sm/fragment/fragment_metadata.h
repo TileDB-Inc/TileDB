@@ -754,17 +754,17 @@ class FragmentMetadata {
   const shared_ptr<const ArraySchema>& array_schema() const;
 
   /** File sizes accessor */
-  std::span<uint64_t> file_sizes() {
+  vector_nfields<uint64_t>& file_sizes() {
     return file_sizes_;
   }
 
   /** File var sizes accessor */
-  std::span<uint64_t> file_var_sizes() {
+  vector_nfields<uint64_t>& file_var_sizes() {
     return file_var_sizes_;
   }
 
   /** File validity sizes accessor */
-  std::span<uint64_t> file_validity_sizes() {
+  vector_nfields<uint64_t>& file_validity_sizes() {
     return file_validity_sizes_;
   }
 
