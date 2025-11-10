@@ -333,9 +333,8 @@ class vector_sso {
 
   void clear() {
     // destruct elements in reverse order
-    T* elts = data();
-    for (uint64_t i = size_; i > 0; --i) {
-      elts[i - 1].~T();
+    for (auto it = rbegin(); it != rend(); ++it) {
+      it->~T();
     }
 
     // then free storage if needed
