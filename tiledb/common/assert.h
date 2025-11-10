@@ -90,6 +90,10 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <list>
+#include <optional>
+
+#include "tiledb/common/macros.h"
 
 #define __SOURCE__ (&__FILE__[__SOURCE_DIR_PATH_SIZE__])
 
@@ -170,6 +174,12 @@ template <typename... Args>
 }
 
 /**
+ * Runs registered callbacks prior to aborting the process in the event of a
+ * `passert` failure. See `PAssertFailureCallbackRegistration`.
+ */
+void passert_failure_run_callbacks(void);
+
+/**
  * Aborts the process upon `passert` failure.
  */
 [[noreturn]] void passert_failure_abort(void);
@@ -217,15 +227,26 @@ template <typename... Args>
  * Registers a callback to run upon `passert` failure.
  * This can be used to print any diagnostic info prior to aborting the process.
  */
-struct PAssertFailureCallbackRegistration {
 #ifdef TILEDB_ASSERTIONS
+
+struct PAssertFailureCallbackRegistration {
   PAssertFailureCallbackRegistration(std::function<void()>&& callback);
   ~PAssertFailureCallbackRegistration();
+  DISABLE_COPY_AND_COPY_ASSIGN(PAssertFailureCallbackRegistration);
+
+ private:
+  std::list<std::function<void()>>::const_iterator callback_node_;
+};
+
 #else
+
+struct PAssertFailureCallbackRegistration {
   PAssertFailureCallbackRegistration(std::function<void()>&&) {
   }
-#endif
+  DISABLE_COPY_AND_COPY_ASSIGN(PAssertFailureCallbackRegistration);
 };
+
+#endif
 
 }  // namespace tiledb::common
 

@@ -41,6 +41,8 @@
 #include <iostream>
 #include <list>
 
+#include "tiledb/common/assert.h"
+
 #ifdef TILEDB_ASSERTIONS
 static constexpr bool builtWithAssertions = true;
 #else

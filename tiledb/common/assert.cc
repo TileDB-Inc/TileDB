@@ -46,16 +46,17 @@ AssertFailure::AssertFailure(const std::string& what)
 }
 
 static std::mutex passertFailureCallbackMutex;
-static std::vector<std::function<void()>> passertFailureCallbacks;
+static std::list<std::function<void()>> passertFailureCallbacks;
+
+void passert_failure_run_callbacks(void) {
+  std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
+  for (auto& callback : passertFailureCallbacks) {
+    callback();
+  }
+}
 
 [[noreturn]] void passert_failure_abort(void) {
-  {
-    for (auto& callback : passertFailureCallbacks) {
-      std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-      callback();
-    }
-  }
-
+  passert_failure_run_callbacks();
   std::abort();
 }
 
@@ -73,13 +74,16 @@ static std::vector<std::function<void()>> passertFailureCallbacks;
 PAssertFailureCallbackRegistration::PAssertFailureCallbackRegistration(
     std::function<void()>&& callback) {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-  passertFailureCallbacks.push_back(
+
+  passertFailureCallbacks.push_front(
       std::forward<std::function<void()>>(callback));
+
+  callback_node_ = passertFailureCallbacks.begin();
 }
 
 PAssertFailureCallbackRegistration::~PAssertFailureCallbackRegistration() {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-  passertFailureCallbacks.pop_back();
+  passertFailureCallbacks.erase(callback_node_);
 }
 
 #endif
