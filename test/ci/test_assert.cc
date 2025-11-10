@@ -144,3 +144,50 @@ TEST_CASE("CI: Test libc assertions configuration", "[ci][assertions]") {
     REQUIRE(retval == 0);
   }
 }
+
+TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
+  int x = 0;
+  int y = 100;
+  int z = 10000;
+  std::vector<int> order_;
+
+  using R = tiledb::common::PAssertFailureCallbackRegistration;
+
+  std::unique_ptr<R> inc_x(new R([&]() { order_.push_back(x++); }));
+  std::unique_ptr<R> inc_y(new R([&]() { order_.push_back(y++); }));
+  std::unique_ptr<R> inc_z(new R([&]() { order_.push_back(z++); }));
+
+  REQUIRE(order_.empty());
+
+  tiledb::common::passert_failure_run_callbacks();
+  CHECK(order_ == std::vector<int>{10000, 100, 0});
+  order_.clear();
+
+  tiledb::common::passert_failure_run_callbacks();
+  CHECK(order_ == std::vector<int>{10001, 101, 1});
+  order_.clear();
+
+  SECTION("Remove x") {
+    inc_x.reset();
+
+    tiledb::common::passert_failure_run_callbacks();
+    CHECK(order_ == std::vector<int>{10002, 102});
+    order_.clear();
+  }
+
+  SECTION("Remove y") {
+    inc_y.reset();
+
+    tiledb::common::passert_failure_run_callbacks();
+    CHECK(order_ == std::vector<int>{10002, 2});
+    order_.clear();
+  }
+
+  SECTION("Remove z") {
+    inc_z.reset();
+
+    tiledb::common::passert_failure_run_callbacks();
+    CHECK(order_ == std::vector<int>{102, 2});
+    order_.clear();
+  }
+}
