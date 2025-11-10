@@ -749,3 +749,81 @@ TEST_CASE("vector_sso reverse iteration") {
   std::vector<uint64_t> rev(elts.rbegin(), elts.rend());
   CHECK(rev == expect);
 }
+
+TEST_CASE("vector_sso swap") {
+  logging_memory_resource mem;
+  SECTION("uint64_t") {
+    my_vector_sso<uint64_t, SSO_LENGTH> lhs(
+        std::pmr::polymorphic_allocator<uint64_t>{&mem});
+    my_vector_sso<uint64_t, SSO_LENGTH> rhs(
+        std::pmr::polymorphic_allocator<uint64_t>{&mem});
+
+    std::vector<uint64_t> ltemplate;
+    std::vector<uint64_t> rtemplate;
+
+    SECTION("LHS.size() <= N") {
+      for (uint64_t i = 0; i < SSO_LENGTH; i++) {
+        ltemplate.push_back(i);
+      }
+
+      SECTION("RHS.size() <= N") {
+        for (uint64_t i = 0; i < SSO_LENGTH; i++) {
+          rtemplate.push_back((i + 1) * (i + 1));
+        }
+      }
+
+      SECTION("RHS.size() > N") {
+        for (uint64_t i = 0; i < SSO_LENGTH * 2; i++) {
+          rtemplate.push_back((i + 1) * (i + 1));
+        }
+      }
+    }
+
+    SECTION("LHS.size() > N") {
+      for (uint64_t i = 0; i < SSO_LENGTH * 2; i++) {
+        ltemplate.push_back(i);
+      }
+
+      SECTION("RHS.size() <= N") {
+        for (uint64_t i = 0; i < SSO_LENGTH; i++) {
+          rtemplate.push_back((i + 1) * (i + 1));
+        }
+      }
+
+      SECTION("RHS.size() > N") {
+        for (uint64_t i = 0; i < SSO_LENGTH * 2; i++) {
+          rtemplate.push_back((i + 1) * (i + 1));
+        }
+      }
+    }
+
+    lhs.assign(ltemplate.begin(), ltemplate.end());
+    rhs.assign(rtemplate.begin(), rtemplate.end());
+    REQUIRE(lhs == ltemplate);
+    REQUIRE(rhs == rtemplate);
+
+    if (ltemplate.size() <= SSO_LENGTH) {
+      REQUIRE(lhs.is_inline());
+    }
+    if (rtemplate.size() <= SSO_LENGTH) {
+      REQUIRE(rhs.is_inline());
+    }
+
+    std::swap(lhs, rhs);
+
+    CHECK(lhs == rtemplate);
+    CHECK(rhs == ltemplate);
+    if (ltemplate.size() <= SSO_LENGTH) {
+      CHECK(rhs.is_inline());
+    }
+    if (rtemplate.size() <= SSO_LENGTH) {
+      CHECK(lhs.is_inline());
+    }
+  }
+
+  SECTION("std::shared_ptr") {
+    using E = std::shared_ptr<uint64_t>;
+    static_assert(!std::is_trivially_copyable_v<E>);
+    static_assert(std::is_move_constructible_v<E>);
+  }
+}

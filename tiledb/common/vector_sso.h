@@ -70,9 +70,7 @@ class vector_sso {
     uint64_t capacity_hint_;
   };
   union {
-    struct {
-      T* buf_;
-    };
+    T* buf_;
     std::array<uint8_t, N * sizeof(T)> sso_;
   };
 
@@ -221,6 +219,14 @@ class vector_sso {
     } else {
       return capacity_ * 2;
     }
+  }
+
+  /**
+   * @return true if the internal buffer is used for elements, false if they are
+   * on the heap
+   */
+  bool is_inline() const {
+    return size() <= N;
   }
 
   /**
@@ -399,6 +405,47 @@ class vector_sso {
     }
   }
 
+  /**
+   * Exchanges the contents and capacity of the container with those of `rhs`.
+   *
+   * If both `this` and `rhs` have size greater than `N`, then this avoids
+   * moving or copying elements of both containers. Otherwise elements must
+   * be moved or copied into the inline buffer of either side.
+   */
+  void swap(self_type& rhs) {
+    auto& lhs = *this;
+    if (lhs.size() <= N && rhs.size() <= N) {
+      std::swap(lhs.capacity_hint_, rhs.capacity_hint_);
+      std::swap(lhs.sso_, rhs.sso_);
+    } else if (lhs.size() <= N) {
+      T* rbuf = rhs.buf_;
+      move_all(
+          reinterpret_cast<T*>(rhs.sso_.data()),
+          reinterpret_cast<T*>(lhs.sso_.data()),
+          lhs.size());
+      if (lhs.alloc_ == rhs.alloc_) {
+        lhs.buf_ = rbuf;
+      } else {
+        // TODO: we'll do it if we need it
+        throw std::logic_error(
+            "vector_sso::swap: not implemented with un-equal allocators");
+      }
+    } else if (rhs.size() <= N) {
+      rhs.swap(*this);
+      return;
+    } else {
+      if (lhs.alloc_ == rhs.alloc_) {
+        std::swap(lhs.capacity_, rhs.capacity_);
+        std::swap(lhs.buf_, rhs.buf_);
+      } else {
+        // TODO: we'll do it if we need it
+        throw std::logic_error(
+            "vector_sso::swap: not implemented with un-equal allocators");
+      }
+    }
+    std::swap(lhs.size_, rhs.size_);
+  }
+
   self_type& operator=(const self_type& copyfrom) {
     alloc_ = copyfrom.alloc_;
     assign(copyfrom.begin(), copyfrom.end());
@@ -524,5 +571,16 @@ bool operator==(
 */
 
 }  // namespace tiledb::common
+
+namespace std {
+
+template <class T, uint64_t N, class Alloc>
+void swap(
+    tiledb::common::vector_sso<T, N, Alloc>& lhs,
+    tiledb::common::vector_sso<T, N, Alloc>& rhs) {
+  lhs.swap(rhs);
+}
+
+}  // namespace std
 
 #endif  // TILEDB_COMMON_STDX_VECTOR_SSO_H
