@@ -15,11 +15,11 @@
 int main(int argc, char** argv) {
   std::optional<tiledb::common::Logger> log;
   if (argc > 1) {
-    const auto path = std::filesystem::path(std::string(argv[0]));
-    const std::string log_name = path.filename();
+    const auto logname =
+        std::filesystem::path(std::string(argv[0])).filename().string();
     const auto logfile = std::filesystem::path(std::string(argv[1]));
 
-    auto spdlogger = spdlog::basic_logger_mt(log_name, logfile);
+    auto spdlogger = spdlog::basic_logger_mt(logname, logfile.string());
     log.emplace(spdlogger);
   }
 
