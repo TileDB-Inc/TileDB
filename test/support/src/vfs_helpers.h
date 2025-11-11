@@ -949,6 +949,17 @@ class DenyWriteAccess {
   }
 
  private:
+  /**
+   * Helper class that skips the test when constructed, if DenyWriteAccess is
+   * not supported.
+   */
+  class SkipOnUnsupported {
+   public:
+    SkipOnUnsupported();
+  };
+
+  const SkipOnUnsupported skip_on_unsupported_;
+
   /** The path. */
   const std::string path_;
 
