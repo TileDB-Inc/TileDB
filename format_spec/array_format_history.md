@@ -8,7 +8,7 @@ title: Array format version history
 
 Introduced in TileDB 2.30
 
-* The _Tile global order min/max_ fields were added to [tile metadata](./fragment.md#tile-mins-maxes). These fields contain the minimum and maximum global order coordinate for each tile in the fragment. This metadata can be used to optimize query execution.
+* Fragment metadata footers can contain [data directories](./fragment.md#data-directory).
 
 ## Version 22
 
