@@ -69,7 +69,7 @@ TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
         command,
         "%s %s",
         TILEDB_PATH_TO_TRY_ASSERT,
-        try_assert_logfile.value().c_str());
+        try_assert_logfile.value().string().c_str());
   } else {
     sprintf(command, "%s", TILEDB_PATH_TO_TRY_ASSERT);
   }
