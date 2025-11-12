@@ -614,6 +614,8 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
 }
 
 std::vector<NDRange> WriterBase::compute_mbrs(
+    uint64_t start_tile_idx,
+    uint64_t end_tile_idx,
     const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
     const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
@@ -628,16 +630,13 @@ std::vector<NDRange> WriterBase::compute_mbrs(
     return std::vector<NDRange>();
   }
 
-  // Compute number of tiles. Assumes all attributes and
-  // and dimensions have the same number of tiles
-  auto tile_num = tiles.begin()->second.size();
   auto dim_num = array_schema_.dim_num();
 
   // Compute MBRs
-  std::vector<NDRange> mbrs(tile_num);
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, tile_num, [&](uint64_t i) {
-        mbrs[i].resize(dim_num);
+  std::vector<NDRange> mbrs(end_tile_idx - start_tile_idx);
+  auto status = parallel_for(
+      &resources_.compute_tp(), start_tile_idx, end_tile_idx, [&](uint64_t i) {
+        mbrs[i - start_tile_idx].resize(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};
@@ -689,12 +688,13 @@ void WriterBase::set_coords_metadata(
 }
 
 Status WriterBase::compute_tiles_metadata(
-    uint64_t tile_num,
+    uint64_t start_tile_idx,
+    uint64_t end_tile_idx,
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
   auto* compute_tp = &resources_.compute_tp();
 
   // Parallelize over attributes?
-  if (tiles.size() > tile_num) {
+  if (tiles.size() > (end_tile_idx - start_tile_idx)) {
     auto st = parallel_for(compute_tp, 0, tiles.size(), [&](uint64_t i) {
       auto tiles_it = tiles.begin();
       std::advance(tiles_it, i);
@@ -724,14 +724,15 @@ Status WriterBase::compute_tiles_metadata(
       const auto var_size = array_schema_.var_size(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
-      auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
-        TileMetadataGenerator md_generator(
-            type, is_dim, var_size, cell_size, cell_val_num);
-        md_generator.process_full_tile(attr_tiles[t]);
-        md_generator.set_tile_metadata(attr_tiles[t]);
+      auto st = parallel_for(
+          compute_tp, start_tile_idx, end_tile_idx, [&](uint64_t t) {
+            TileMetadataGenerator md_generator(
+                type, is_dim, var_size, cell_size, cell_val_num);
+            md_generator.process_full_tile(attr_tiles[t]);
+            md_generator.set_tile_metadata(attr_tiles[t]);
 
-        return Status::Ok();
-      });
+            return Status::Ok();
+          });
       RETURN_NOT_OK(st);
     }
   }
@@ -757,7 +758,9 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, shared_ptr<FragmentMetadata>& frag_meta) {
+    bool dense,
+    shared_ptr<FragmentMetadata>& frag_meta,
+    const NDRange* domain) {
   // Get write version, timestamp array was opened,  and a reference to the
   // array directory.
   auto write_version = array_->array_schema_latest().write_version();
@@ -787,18 +790,21 @@ Status WriterBase::create_fragment(
       has_timestamps,
       has_delete_metadata);
 
-  frag_meta->init(subarray_.ndrange(0));
+  frag_meta->init(domain ? *domain : subarray_.ndrange(0));
   return Status::Ok();
 }
 
 Status WriterBase::filter_tiles(
+    uint64_t start_tile_idx,
+    uint64_t end_tile_idx,
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
   auto status =
       parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
-        throw_if_not_ok(filter_tiles(tiles_it->first, &tiles_it->second));
+        throw_if_not_ok(filter_tiles(
+            start_tile_idx, end_tile_idx, tiles_it->first, &tiles_it->second));
         throw_if_cancelled();
         return Status::Ok();
       });
@@ -808,7 +814,10 @@ Status WriterBase::filter_tiles(
 }
 
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileTupleVector* tiles) {
+    uint64_t start_tile_idx,
+    uint64_t end_tile_idx,
+    const std::string& name,
+    WriterTileTupleVector* tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -818,7 +827,8 @@ Status WriterBase::filter_tiles(
   // Process all tiles, minus offsets, they get processed separately.
   std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
   args.reserve(tile_num * (1 + nullable));
-  for (auto& tile : *tiles) {
+  for (uint64_t t = start_tile_idx; t < end_tile_idx; t++) {
+    auto& tile = (*tiles)[t];
     if (var_size) {
       args.emplace_back(&tile.var_tile(), &tile.offset_tile(), false, false);
     } else {
@@ -1185,17 +1195,3 @@ bool WriterBase::remote_query() const {
 }
 
 }  // namespace tiledb::sm
-
-template <>
-IndexedList<tiledb::sm::WriterTileTuple>::IndexedList(
-    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
-    : memory_tracker_(memory_tracker)
-    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
-}
-
-template <>
-IndexedList<tiledb::common::IndexedList<tiledb::sm::WriterTileTuple>>::
-    IndexedList(shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
-    : memory_tracker_(memory_tracker)
-    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
-}

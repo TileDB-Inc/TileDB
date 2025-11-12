@@ -120,15 +120,16 @@ static F make_cells_generic(
     std::vector<uint64_t> d1,
     std::vector<uint64_t> d2,
     std::vector<CellType>... atts) {
-  return F{
-      .d1_ = templates::query_buffers<uint64_t>(d1),
-      .d2_ = templates::query_buffers<uint64_t>(d2),
-      .atts_ = std::apply(
-          []<typename... T>(std::vector<T>... att) {
-            return std::make_tuple<templates::query_buffers<T>...>(
-                templates::query_buffers<T>(att)...);
-          },
-          std::make_tuple(atts...))};
+  F value;
+  value.d1() = templates::query_buffers<uint64_t>(d1);
+  value.d2() = templates::query_buffers<uint64_t>(d2);
+  value.atts_ = std::apply(
+      []<typename... T>(std::vector<T>... att) {
+        return std::make_tuple<templates::query_buffers<T>...>(
+            templates::query_buffers<T>(att)...);
+      },
+      std::make_tuple(atts...));
+  return value;
 }
 
 static Cells make_cells(
@@ -296,12 +297,13 @@ void QueryAddPredicateFx::write_array_dense(const std::string& path) {
   s.add_range<uint64_t>(1, 1, 4);
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(s);
 
-  using DenseFragment = templates::Fragment<
+  using DenseFragment = templates::DenseFragment<
       std::optional<int32_t>,
       std::vector<char>,
       std::optional<int32_t>>;
 
-  DenseFragment cells = {.atts_ = INPUT.atts_};
+  DenseFragment cells;
+  cells.atts_ = INPUT.atts_;
 
   auto field_sizes = templates::query::make_field_sizes<Asserter>(cells);
   templates::query::set_fields<Asserter, DenseFragment>(
@@ -356,7 +358,7 @@ F QueryAddPredicateFx::query_array(
   const auto st = query.submit();
   REQUIRE(st == Query::Status::COMPLETE);
 
-  templates::query::resize_fields<Asserter>(out, field_sizes);
+  templates::query::resize(out, field_sizes);
 
   return out;
 }

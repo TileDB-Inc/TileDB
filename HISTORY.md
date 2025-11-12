@@ -1,3 +1,10 @@
+# TileDB v2.29.2 Release Notes
+
+
+## Defects removed
+* Fix dense fragment domains during global order write with maximum fragment size [#5676](https://github.com/TileDB-Inc/TileDB/pull/5676)
+
+
 # TileDB v2.29.1 Release Notes
 
 

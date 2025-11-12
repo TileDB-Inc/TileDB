@@ -152,8 +152,8 @@ tiledb::sm::Azure::ServiceCredentialType get_service_credential(
       cred_options.Transport = transport_options;
       auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
           HERE(),
-          std::vector<
-              std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
+          std::vector<std::shared_ptr<
+              const ::Azure::Core::Credentials::TokenCredential>>{
               make_shared<::Azure::Identity::EnvironmentCredential>(
                   HERE(), cred_options),
               make_shared<::Azure::Identity::AzureCliCredential>(

@@ -171,6 +171,34 @@ class Query {
       : Query(ctx, array, array.query_type()) {
   }
 
+  /**
+   * Creates a TileDB query object.
+   *
+   * The context and query type (read or write) are inferred from the array
+   * object, which was opened with a specific query type.
+   *
+   * The storage manager also acquires a **shared lock** on the array. This
+   * means multiple read and write queries to the same array can be made
+   * concurrently (in TileDB, only consolidation requires an exclusive lock for
+   * a short period of time).
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the array for writing
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_WRITE);
+   * Query query(array);
+   * // Equivalent to:
+   * // Query query(ctx, array, TILEDB_WRITE);
+   * @endcode
+   *
+   * @param array Open Array object
+   */
+  Query(const Array& array)
+      : Query(array.context(), array) {
+  }
+
   Query(const Query&) = default;
   Query(Query&&) = default;
   Query& operator=(const Query&) = default;
