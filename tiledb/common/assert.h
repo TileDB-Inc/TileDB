@@ -91,7 +91,7 @@
 #include <functional>
 #include <iostream>
 #include <list>
-#include <optional>
+#include <memory>
 
 #include "tiledb/common/macros.h"
 
@@ -174,6 +174,12 @@ template <typename... Args>
 }
 
 /**
+ * Structure holding the process-level state required to run `passert`
+ * failure callbacks.
+ */
+struct PAssertFailureCallbackProcessState;
+
+/**
  * Runs registered callbacks prior to aborting the process in the event of a
  * `passert` failure. See `PAssertFailureCallbackRegistration`.
  */
@@ -235,6 +241,13 @@ struct PAssertFailureCallbackRegistration {
   DISABLE_COPY_AND_COPY_ASSIGN(PAssertFailureCallbackRegistration);
 
  private:
+  /**
+   * Lazy initialization of global process state.
+   * This avoids the "static initialization order fiasco".
+   */
+  std::shared_ptr<PAssertFailureCallbackProcessState> process_state_;
+
+  /** Reference to the registered callback for deregistering */
   std::list<std::function<void()>>::const_iterator callback_node_;
 };
 
