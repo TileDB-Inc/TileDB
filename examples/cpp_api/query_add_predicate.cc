@@ -295,34 +295,40 @@ int main() {
 
   // EXAMPLES FROM query_condition_sparse.cc EXAMPLE
 
-  // Printing the entire array.
-  std::cout << "WHERE TRUE" << std::endl;
+  // Execute a read query with no predicate which prints the entire array.
+  std::cout << "NO PREDICATE" << std::endl;
   read_array_with_predicates(ctx, {});
   std::cout << std::endl;
 
-  // Execute a read query with query condition `a = null`.
+  // Execute a read query with predicate `TRUE`, which filters no cells and
+  // prints the whole array
+  std::cout << "WHERE TRUE" << std::endl;
+  read_array_with_predicates(ctx, {"TRUE"});
+  std::cout << std::endl;
+
+  // Execute a read query with predicate `a = null`.
   std::cout << "WHERE a IS NULL" << std::endl;
   read_array_with_predicates(ctx, {"a IS NULL"});
   std::cout << std::endl;
 
-  // Execute a read query with query condition `b < "eve"`.
+  // Execute a read query with predicate `b < "eve"`.
   std::cout << "WHERE b < 'eve'" << std::endl;
   read_array_with_predicates(ctx, {"b < 'eve'"});
   std::cout << std::endl;
 
-  // Execute a read query with query condition `c >= 1`.
+  // Execute a read query with predicate `c >= 1`.
   std::cout << "WHERE c >= 1" << std::endl;
   read_array_with_predicates(ctx, {"c >= 1"});
   std::cout << std::endl;
 
-  // Execute a read query with query condition `3.0f <= d AND d <= 4.0f`.
+  // Execute a read query with predicate `3.0f <= d AND d <= 4.0f`.
   std::cout << "WHERE d BETWEEN 3.0 AND 4.0" << std::endl;
   QueryCondition qc3(ctx);
   read_array_with_predicates(ctx, {"d BETWEEN 3.0 AND 4.0"});
   std::cout << std::endl;
 
-  // Execute a read query with query condition `3.0f <= d AND d <= 4.0f AND a !=
-  // null AND b < \"eve\"`.
+  // Execute a read query with predicate `3.0f <= d AND d <= 4.0f AND a != null
+  // AND b < \"eve\"`.
   std::cout << "WHERE d BETWEEN 3.0 AND 4.0 AND a IS NOT NULL AND b < 'eve'"
             << std::endl;
   read_array_with_predicates(

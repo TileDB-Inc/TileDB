@@ -441,33 +441,39 @@ int main() {
 
   // EXAMPLES FROM query_condition_sparse.c EXAMPLE
 
-  // Printing the entire array.
-  printf("WHERE TRUE\n");
+  // Execute a read query with no predicate which prints the entire array.
+  printf("NO PREDICATE\n");
   RETURN_IF_NOT_OK(read_array_with_predicates(ctx, 0));
   printf("\n");
 
-  // Execute a read query with query condition `a = null`.
+  // Execute a read query with predicate `TRUE`, which filters no cells and
+  // prints the whole array
+  printf("WHERE TRUE\n");
+  RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "TRUE"));
+  printf("\n");
+
+  // Execute a read query with predicate `a = null`.
   printf("WHERE a IS NULL\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "a IS NULL"));
   printf("\n");
 
-  // Execute a read query with query condition `b < "eve"`.
+  // Execute a read query with predicate `b < "eve"`.
   printf("WHERE b < 'eve'\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "b < 'eve'"));
   printf("\n");
 
-  // Execute a read query with query condition `c >= 1`.
+  // Execute a read query with predicate `c >= 1`.
   printf("WHERE c >= 1\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "c >= 1"));
   printf("\n");
 
-  // Execute a read query with query condition `3.0f <= d AND d <= 4.0f`.
+  // Execute a read query with predicate `3.0f <= d AND d <= 4.0f`.
   printf("WHERE d BETWEEN 3.0 AND 4.0\n");
   RETURN_IF_NOT_OK(read_array_with_predicate(ctx, "d BETWEEN 3.0 AND 4.0"));
   printf("\n");
 
-  // Execute a read query with query condition `3.0f <= d AND d <= 4.0f AND a !=
-  // null AND b < \"eve\"`.
+  // Execute a read query with predicate `3.0f <= d AND d <= 4.0f AND a != null
+  // AND b < \"eve\"`.
   printf("WHERE (d BETWEEN 3.0 AND 4.0) AND a IS NOT NULL AND b < 'eve'\n");
   RETURN_IF_NOT_OK(read_array_with_predicates(
       ctx, 3, "d BETWEEN 3.0 AND 4.0", "a IS NOT NULL", "b < 'eve'"));
