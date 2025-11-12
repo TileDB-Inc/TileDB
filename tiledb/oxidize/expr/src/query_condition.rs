@@ -210,7 +210,7 @@ fn leaf_ast_to_binary_expr(
         Ok(Expr::BinaryExpr(BinaryExpr {
             left: Box::new(column),
             op: operator,
-            right: Box::new(Expr::Literal(right)),
+            right: Box::new(Expr::Literal(right, None)),
         }))
     }
 
@@ -245,7 +245,7 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
         let in_list = match field.cell_val_num() {
             CellValNum::Single => scalars
                 .map(ScalarValue::from)
-                .map(Expr::Literal)
+                .map(|s| Expr::Literal(s, None))
                 .collect::<Vec<_>>(),
             CellValNum::Fixed(nz) => {
                 let fixed_size = nz.get() as usize;
@@ -284,8 +284,7 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
                             None,
                         ))
                     })
-                    .map(ScalarValue::FixedSizeList)
-                    .map(Expr::Literal)
+                    .map(|s| Expr::Literal(ScalarValue::FixedSizeList(s), None))
                     .collect::<Vec<_>>()
             }
             CellValNum::Var => {
@@ -322,8 +321,7 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
                             None,
                         ))
                     })
-                    .map(ScalarValue::LargeList)
-                    .map(Expr::Literal)
+                    .map(|s| Expr::Literal(ScalarValue::LargeList(s), None))
                     .collect::<Vec<_>>()
             }
         };
@@ -356,8 +354,7 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
                 let elts = ast.get_data().as_slice()[w[0] as usize..w[1] as usize].to_vec();
                 String::from_utf8(elts).map_err(UserError::ExpectedUtf8)
             })
-            .map_ok(|s| ScalarValue::LargeUtf8(Some(s)))
-            .map_ok(Expr::Literal)
+            .map_ok(|s| Expr::Literal(ScalarValue::LargeUtf8(Some(s)), None))
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Expr::InList(InList {
@@ -395,16 +392,18 @@ fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Er
                 // which we must replicate here
                 Ok(Expr::IsNotNull(Box::new(column)))
             } else {
-                Ok(Expr::Literal(ScalarValue::Boolean(Some(true))))
+                Ok(Expr::Literal(ScalarValue::Boolean(Some(true)), None))
             }
         }
-        QueryConditionOp::ALWAYS_FALSE => Ok(Expr::Literal(ScalarValue::Boolean(Some(false)))),
+        QueryConditionOp::ALWAYS_FALSE => {
+            Ok(Expr::Literal(ScalarValue::Boolean(Some(false)), None))
+        }
         QueryConditionOp::LT
         | QueryConditionOp::LE
         | QueryConditionOp::GT
         | QueryConditionOp::GE => {
             // TODO: are these invalid?
-            Ok(Expr::Literal(ScalarValue::Boolean(Some(false))))
+            Ok(Expr::Literal(ScalarValue::Boolean(Some(false)), None))
         }
         invalid => Err(InternalError::InvalidOp(invalid.repr.into()).into()),
     }
@@ -532,10 +531,12 @@ fn to_datafusion_impl(
                     // which we must replicate here
                     Ok(Expr::IsNotNull(Box::new(column)))
                 } else {
-                    Ok(Expr::Literal(ScalarValue::Boolean(Some(true))))
+                    Ok(Expr::Literal(ScalarValue::Boolean(Some(true)), None))
                 }
             }
-            QueryConditionOp::ALWAYS_FALSE => Ok(Expr::Literal(ScalarValue::Boolean(Some(false)))),
+            QueryConditionOp::ALWAYS_FALSE => {
+                Ok(Expr::Literal(ScalarValue::Boolean(Some(false)), None))
+            }
             invalid => Err(InternalError::InvalidOp(invalid.repr.into()).into()),
         }
     }

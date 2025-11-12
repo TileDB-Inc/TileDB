@@ -427,13 +427,12 @@ TEST_CASE_METHOD(
     }
 
     SECTION("Syntax error") {
-      // FIXME: this smells like a bug in datafusion.
-      // If you dbg! the returned expr it prints `Expr::Column(Column { name:
-      // "row" })`
+      const std::string expect =
+          "Parse error: SQL error: ParserError(\"Expected: end of expression, "
+          "found: col at Line: 1, Column: 5\")";
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(ctx_, query, {"row col"}),
-          Catch::Matchers::ContainsSubstring(
-              "Error: Expression does not return a boolean value"));
+          Catch::Matchers::ContainsSubstring(expect));
     }
 
     SECTION("Non-expression") {
@@ -467,9 +466,9 @@ TEST_CASE_METHOD(
       const std::string dferror =
           "Error adding predicate: Type coercion error: Internal error: Expect "
           "TypeSignatureClass::Native(LogicalType(Native(String), String)) but "
-          "received NativeType::UInt64, DataType: UInt64.\nThis was likely "
-          "caused by a bug in DataFusion's code and we would welcome that you "
-          "file an bug report in our issue tracker";
+          "received NativeType::UInt64, DataType: UInt64.\nThis issue was "
+          "likely caused by a bug in DataFusion's code. Please help us to "
+          "resolve this by filing a bug report in our issue tracker:";
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(
               ctx_, query, {"starts_with(row, '1')"}),

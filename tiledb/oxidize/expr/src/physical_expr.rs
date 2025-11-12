@@ -94,7 +94,7 @@ impl PhysicalExprOutput {
             ),
             ColumnarValue::Array(a) => {
                 ColumnarValue::Array(compute::kernels::cast::cast(a, &arrow_type).map_err(|e| {
-                    PhysicalExprOutputError::Cast(DataFusionError::ArrowError(e, None))
+                    PhysicalExprOutputError::Cast(DataFusionError::ArrowError(Box::new(e), None))
                 })?)
             }
         };
