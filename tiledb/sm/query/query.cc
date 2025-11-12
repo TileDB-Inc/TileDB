@@ -1563,7 +1563,7 @@ Status Query::add_predicate([[maybe_unused]] const char* predicate) {
     }
     if (expr->has_aggregate_functions()) {
       return Status_QueryError(
-          "Aggregate functions in predicate is not supported");
+          "Aggregate functions in predicates are not supported");
     }
     predicates_.push_back(std::move(expr));
   } catch (const rust::Error& e) {

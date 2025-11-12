@@ -480,7 +480,7 @@ TEST_CASE_METHOD(
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(ctx_, query, {"sum(row) >= 10"}),
           Catch::Matchers::ContainsSubstring(
-              "Aggregate functions in predicate is not supported"));
+              "Aggregate functions in predicates are not supported"));
     }
   }
 }
