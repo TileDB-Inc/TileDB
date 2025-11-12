@@ -443,11 +443,16 @@ class Logger {
   bool root_ = false;
 
   /**
-   * Callback to flush this logger prior to aborting the process
+   * Callback registration to flush this logger prior to aborting the process
    * in the event of a `passert` failure.
    *
-   * This is only invoked if the build configuration `TILEDB_ASSERTIONS=ON` is
-   * used
+   * If the build configuration `TILEDB_ASSERTIONS=ON` is used,
+   * then construction of this field registers a callback which
+   * calls `Logger::flush` if a `passert` fails. That callback
+   * is deregistered when this field is destructed.
+   *
+   * If the build configuration `TILEDB_ASSERTIONS=OFF` is used then this field
+   * does nothing.
    */
   PAssertFailureCallbackRegistration passert_callback_flush_;
 
