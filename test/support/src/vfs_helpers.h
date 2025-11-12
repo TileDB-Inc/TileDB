@@ -958,6 +958,10 @@ class DenyWriteAccess {
     SkipOnUnsupported();
   };
 
+  /**
+   * Dummy object to have its constructor called, before anything else when
+   * constructing DenyWriteAccess.
+   */
   const SkipOnUnsupported skip_on_unsupported_;
 
   /** The path. */
