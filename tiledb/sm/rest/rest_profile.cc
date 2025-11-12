@@ -196,29 +196,29 @@ void RestProfile::save_to_file(const bool overwrite) {
   // If the file already exists, load it into a json object.
   json data;
   if (std::filesystem::exists(filepath_)) {
-    // Read the file into the json object.
-    data = read_file(filepath_);
-
-    // If the file is outdated, throw an error. This behavior will evolve.
-    if (data["version"] < version_) {
-      throw RestProfileException(
-          "The version of your local profile.json file is out of date.");
+    try {
+      data = read_file(filepath_);
+    } catch (const std::exception&) {
+      data = json::object();
     }
 
-    // Check that this profile hasn't already been saved.
-    if (data.contains(name_)) {
-      if (overwrite) {
-        // If a profile of the given name exists, remove it.
-        auto it = data.find(name_);
-        if (it != data.end()) {
-          data.erase(it);
-        }
-      } else {
-        // If the user doesn't want to overwrite, throw an error.
+    if (data.empty()) {
+      data["version"] = version_;
+    } else {
+      if (data["version"] < version_) {
+        throw RestProfileException(
+            "The version of your local profile.json file is out of date.");
+      }
+
+      if (data.contains(name_) && !overwrite) {
         throw RestProfileException(
             "Failed to save '" + name_ +
             "'; This profile has already been saved "
             "and must be explicitly removed in order to be replaced.");
+      }
+
+      if (overwrite) {
+        data.erase(name_);
       }
     }
   } else {
