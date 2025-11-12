@@ -7537,10 +7537,6 @@ TEST_CASE_METHOD(
   if (!vfs_test_setup_.is_local()) {
     return;
   }
-  char* manylinux_var = getenv("TILEDB_MANYLINUX");
-  if (manylinux_var && strlen(manylinux_var) > 0) {
-    return;
-  }
 
   bool dense_test = true;
   std::string array_uri;
@@ -7639,10 +7635,6 @@ TEST_CASE_METHOD(
     return;
   }
   if (!vfs_test_setup_.is_local()) {
-    return;
-  }
-  char* manylinux_var = getenv("TILEDB_MANYLINUX");
-  if (manylinux_var && strlen(manylinux_var) > 0) {
     return;
   }
 
