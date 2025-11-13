@@ -10,11 +10,10 @@ use arrow::array::{
     PrimitiveArray,
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
-use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
+use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field, Schema as ArrowSchema};
 use arrow::record_batch::{RecordBatch, RecordBatchOptions};
 use tiledb_cxx_interface::sm::query::readers::{ResultTile, TileTuple};
 
-use super::*;
 use crate::offsets::Error as OffsetsError;
 
 /// An error creating a [RecordBatch] to represent a [ResultTile].
@@ -45,11 +44,6 @@ pub enum FieldError {
     EnumerationNotSupported,
 }
 
-/// Wraps a [RecordBatch] for passing across the FFI boundary.
-pub struct ArrowRecordBatch {
-    pub arrow: RecordBatch,
-}
-
 /// Returns a [RecordBatch] which contains the same contents as a [ResultTile].
 ///
 /// # Safety
@@ -60,11 +54,10 @@ pub struct ArrowRecordBatch {
 /// long as the returned [RecordBatch] is not used after the [ResultTile]
 /// is destructed.
 pub unsafe fn to_record_batch(
-    schema: &ArrowArraySchema,
+    schema: &Arc<ArrowSchema>,
     tile: &ResultTile,
-) -> Result<Box<ArrowRecordBatch>, Error> {
+) -> Result<RecordBatch, Error> {
     let columns = schema
-        .schema
         .fields()
         .iter()
         .map(|f| {
@@ -91,13 +84,12 @@ pub unsafe fn to_record_batch(
         .collect::<Result<Vec<Arc<dyn ArrowArray>>, _>>()?;
 
     // SAFETY: should be clear from iteration
-    assert_eq!(schema.schema.fields().len(), columns.len());
+    assert_eq!(schema.fields().len(), columns.len());
 
     // SAFETY: `tile_to_arrow_array` must do this, major internal error if not
     // which is not recoverable
     assert!(
         schema
-            .schema
             .fields()
             .iter()
             .zip(columns.iter())
@@ -111,24 +103,24 @@ pub unsafe fn to_record_batch(
     assert!(
         columns.iter().all(|c| c.len() as u64 == tile.cell_num()),
         "Columns do not all have same number of cells: {:?} {:?}",
-        schema.schema.fields(),
+        schema.fields(),
         columns.iter().map(|c| c.len()).collect::<Vec<_>>()
     );
 
     // SAFETY: the four asserts above rule out each of the possible error conditions
     let arrow = if columns.is_empty() {
         RecordBatch::try_new_with_options(
-            Arc::clone(&schema.schema),
+            Arc::clone(&schema),
             columns,
             &RecordBatchOptions::new().with_row_count(Some(tile.cell_num() as usize)),
         )
     } else {
-        RecordBatch::try_new(Arc::clone(&schema.schema), columns)
+        RecordBatch::try_new(Arc::clone(&schema), columns)
     };
 
     let arrow = arrow.expect("Logic error: preconditions for constructing RecordBatch not met");
 
-    Ok(Box::new(ArrowRecordBatch { arrow }))
+    Ok(arrow)
 }
 
 /// Returns an [ArrowArray] which contains the same contents as the provided

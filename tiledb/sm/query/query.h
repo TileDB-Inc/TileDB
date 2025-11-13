@@ -1045,18 +1045,8 @@ class Query {
   /** Stores information about the written fragments. */
   std::vector<WrittenFragmentInfo> written_fragment_info_;
 
-  /** The query condition. */
-  std::optional<QueryCondition> condition_;
-
-#ifdef HAVE_RUST
-  /** Datafusion context for parsing and evaluating predicates */
-  std::optional<rust::Box<tiledb::oxidize::datafusion::session::Session>>
-      session_;
-
-  /** Predicates */
-  std::vector<rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>>
-      predicates_;
-#endif
+  /** Query predicates. */
+  QueryPredicates predicates_;
 
   /** The update values. */
   std::vector<UpdateValue> update_values_;

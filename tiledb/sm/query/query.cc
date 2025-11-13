@@ -60,9 +60,7 @@
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 #ifdef HAVE_RUST
-#include "tiledb/oxidize/arrow.h"
-#include "tiledb/oxidize/expr.h"
-#include "tiledb/oxidize/session.h"
+#include "tiledb/oxidize/query_predicates.h"
 #endif
 
 #include <cassert>
@@ -694,7 +692,7 @@ void Query::init() {
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
-      if (condition_.has_value()) {
+      if (predicates_.condition_.has_value()) {
         throw QueryException(
             "Cannot init query; Using query conditions and dimension labels "
             "together is not supported.");
@@ -730,31 +728,6 @@ void Query::init() {
           buffers_,
           fragment_name_));
     }
-
-#ifdef HAVE_RUST
-    if (!predicates_.empty()) {
-      try {
-        // treat existing query condition (if any) as datafusion
-        if (condition_.has_value()) {
-          predicates_.push_back(condition_->as_datafusion(
-              array_schema(),
-              tiledb::oxidize::arrow::schema::WhichSchema::View));
-          condition_.reset();
-        }
-
-        // join them together
-        rust::Slice<const rust::Box<
-            tiledb::oxidize::datafusion::logical_expr::LogicalExpr>>
-            preds(predicates_.data(), predicates_.size());
-        auto conjunction =
-            tiledb::oxidize::datafusion::logical_expr::make_conjunction(preds);
-        condition_.emplace(array_schema(), std::move(conjunction));
-      } catch (const rust::Error& e) {
-        throw QueryException(
-            "Error initializing predicates: " + std::string(e.what()));
-      }
-    }
-#endif
 
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
@@ -793,7 +766,7 @@ const std::optional<QueryCondition>& Query::condition() const {
         "queries");
   }
 
-  return condition_;
+  return predicates_.condition_;
 }
 
 const std::vector<UpdateValue>& Query::update_values() const {
@@ -847,8 +820,8 @@ Status Query::process() {
     }
   }
 
-  if (condition_.has_value()) {
-    auto& names = condition_->enumeration_field_names();
+  if (predicates_.condition_.has_value()) {
+    auto& names = predicates_.condition_->enumeration_field_names();
     std::unordered_set<std::string> deduped_enmr_names;
     for (auto name : names) {
       auto attr = array_schema_->attribute(name);
@@ -872,30 +845,7 @@ Status Query::process() {
           return Status::Ok();
         }));
 
-    condition_->rewrite_for_schema(array_schema());
-
-    // experimental feature - maybe evaluate using datafusion
-    const std::string evaluator_param_name = "sm.query.condition_evaluator";
-    const auto evaluator = config_.get<std::string>(evaluator_param_name);
-    if (evaluator == "datafusion") {
-#ifdef HAVE_RUST
-      auto timer_se =
-          stats_->start_timer("query_condition_rewrite_to_datafusion");
-      condition_->rewrite_to_datafusion(
-          array_schema(), tiledb::oxidize::arrow::schema::WhichSchema::Storage);
-#else
-      std::stringstream ss;
-      ss << "Invalid value for parameter '" << evaluator_param_name
-         << "': 'datafusion' requires build configuration '-DTILEDB_RUST=ON'";
-      throw QueryException(ss.str());
-#endif
-    } else if (evaluator.has_value() && evaluator != "ast") {
-      std::stringstream ss;
-      ss << "Invalid value for parameter '" << evaluator_param_name
-         << "': found '" << evaluator.value()
-         << "', expected 'datafusion' or 'ast'";
-      throw QueryException(ss.str());
-    }
+    predicates_.condition_->rewrite_for_schema(array_schema());
   }
 
   if (type_ == QueryType::READ) {
@@ -1522,7 +1472,7 @@ Status Query::set_condition(const QueryCondition& condition) {
     throw std::invalid_argument("Query conditions must not be empty");
   }
 
-  condition_ = condition;
+  predicates_.condition_ = condition;
 
   return Status::Ok();
 }
@@ -1539,43 +1489,27 @@ Status Query::add_predicate([[maybe_unused]] const char* predicate) {
         "initialized query is not supported.");
   }
 
-#ifdef HAVE_RUST
-  try {
-    if (!session_.has_value()) {
-      session_.emplace(tiledb::oxidize::datafusion::session::new_session());
-    }
-
-    auto box_extern_expr = (*session_)->parse_expr(predicate, array_schema());
-    auto extern_expr = box_extern_expr.into_raw();
-
-    // NB: Rust cxx does not have a way to have crate A construct and return
-    // an opaque Rust type which is defined in crate B. So above we create an
-    // "ExternLogicalExpr" whose representation is exactly that of
-    // LogicalExpr, and we can transmute the raw pointer after un-boxing it.
-    // This is all quite unsafe but that's life at the FFI boundary. For now,
-    // hopefully.
-    using LogicalExpr = tiledb::oxidize::datafusion::logical_expr::LogicalExpr;
-    auto expr = rust::Box<LogicalExpr>::from_raw(
-        reinterpret_cast<LogicalExpr*>(extern_expr));
-
-    if (!expr->is_predicate(array_schema())) {
-      return Status_QueryError("Expression does not return a boolean value");
-    }
-    if (expr->has_aggregate_functions()) {
+#ifndef HAVE_RUST
+  return Status_QueryError(
+      "Cannot add query predicate: feature requires build "
+      "configuration '-DTILEDB_RUST=ON'");
+#else
+  if (!predicates_.datafusion_.has_value()) {
+    try {
+      predicates_.datafusion_.emplace(
+          tiledb::oxidize::new_query_predicates(array_schema()));
+    } catch (const rust::Error& e) {
       return Status_QueryError(
-          "Aggregate functions in predicates are not supported");
+          "Cannot add predicate: Schema error: " + std::string(e.what()));
     }
-    predicates_.push_back(std::move(expr));
+  }
+  try {
+    predicates_.datafusion_.value()->add_predicate(predicate);
   } catch (const rust::Error& e) {
     return Status_QueryError(
         "Error adding predicate: " + std::string(e.what()));
   }
-
   return Status::Ok();
-#else
-  return Status_QueryError(
-      "Cannot add query predicate: feature requires build "
-      "configuration '-DTILEDB_RUST=ON'");
 #endif
 }
 
@@ -1913,7 +1847,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       aggregate_buffers_,
       subarray_,
       layout,
-      condition_,
+      predicates_,
       default_channel_aggregates_,
       skip_checks_serialization);
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {

@@ -42,20 +42,14 @@
 #include "tiledb/sm/query/ast/query_ast.h"
 
 #ifdef HAVE_RUST
+#include "tiledb/oxidize/arrow.h"
 #include "tiledb/oxidize/rust.h"
 #endif
 
 using namespace tiledb::common;
 
-namespace tiledb::oxidize::arrow::schema {
-struct ArrowArraySchema;
-enum class WhichSchema : uint8_t;
-}  // namespace tiledb::oxidize::arrow::schema
-namespace tiledb::oxidize::datafusion::logical_expr {
-struct LogicalExpr;
-}
-namespace tiledb::oxidize::datafusion::physical_expr {
-struct PhysicalExpr;
+namespace tiledb::oxidize {
+struct QueryPredicates;
 }
 
 namespace tiledb {
@@ -154,13 +148,6 @@ class QueryCondition {
       const std::string& condition_marker,
       tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
-#ifdef HAVE_RUST
-  /** Constructor from a datafusion expression tree */
-  QueryCondition(
-      const ArraySchema& array_schema,
-      rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr);
-#endif
-
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
 
@@ -207,34 +194,6 @@ class QueryCondition {
    * loaded.
    */
   void rewrite_for_schema(const ArraySchema& array_schema);
-
-#ifdef HAVE_RUST
-  /**
-   * If desired and possible, rewrite the query condition to use Datafusion to
-   * evaluate.
-   *
-   * This is principally used for testing, but may also be called from
-   * production if a query has both a query condition and a datafusion predicate
-   * added.
-   *
-   * @param array_schema
-   * @param which The manner of interpreting the array_schema into Arrow
-   *
-   * @return true if a rewrite occurred, false otherwise
-   */
-  bool rewrite_to_datafusion(
-      const ArraySchema& array_schema,
-      tiledb::oxidize::arrow::schema::WhichSchema which);
-
-  /**
-   * @return an equivalent representation of this condition's expression tree as
-   * a Datafusion logical expression
-   */
-  rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
-  as_datafusion(
-      const ArraySchema& array_schema,
-      tiledb::oxidize::arrow::schema::WhichSchema which);
-#endif
 
   /**
    * Verifies that the current state contains supported comparison
@@ -425,36 +384,6 @@ class QueryCondition {
 
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
-
-#ifdef HAVE_RUST
-  /** Datafusion expression evaluation */
-  struct Datafusion {
-    using BoxSchema =
-        ::rust::Box<tiledb::oxidize::arrow::schema::ArrowArraySchema>;
-    using BoxExpr =
-        ::rust::Box<tiledb::oxidize::datafusion::physical_expr::PhysicalExpr>;
-    BoxSchema schema_;
-    BoxExpr expr_;
-
-    Datafusion(BoxSchema&& schema, BoxExpr&& expr)
-        : schema_(std::move(schema))
-        , expr_(std::move(expr)) {
-    }
-
-    Datafusion(
-        const ArraySchema& array_schema,
-        tiledb::oxidize::arrow::schema::WhichSchema which,
-        rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&&
-            expr);
-
-    template <typename BitmapType>
-    void apply(
-        const QueryCondition::Params& params,
-        const ResultTile& result_tile,
-        std::span<BitmapType> result_bitmap) const;
-  };
-  std::optional<Datafusion> datafusion_;
-#endif
 
   /** Caches all field names in the value nodes of the AST.  */
   mutable std::unordered_set<std::string> field_names_;
@@ -779,6 +708,25 @@ class QueryCondition {
       const ResultTile& result_tile,
       CombinationOp combination_op,
       std::span<BitmapType> result_bitmap) const;
+};
+
+/**
+ *
+ */
+struct QueryPredicates {
+  std::optional<QueryCondition> condition_;
+
+#ifdef HAVE_RUST
+  /**
+   * Query predicates.
+   *
+   * History lesson:
+   * QueryCondition was added first and provides a C API to construct expression
+   * trees. QueryPredicates was added later and uses DataFusion to parse text
+   * predicates and provide much broader evaluation capabilities.
+   */
+  std::optional<rust::Box<tiledb::oxidize::QueryPredicates>> datafusion_;
+#endif
 };
 
 }  // namespace sm

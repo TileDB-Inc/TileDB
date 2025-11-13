@@ -2923,7 +2923,7 @@ version = "0.1.0"
 dependencies = [
  "tiledb-arrow",
  "tiledb-expr",
- "tiledb-session",
+ "tiledb-query-predicates",
 ]
 
 [[package]]
@@ -2946,17 +2946,8 @@ dependencies = [
 name = "tiledb-expr"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "arrow",
- "cxx",
- "cxx-build",
  "datafusion",
- "itertools",
- "num-traits",
- "thiserror 2.0.17",
  "tiledb-arrow",
- "tiledb-cxx-interface",
- "tiledb-datatype",
 ]
 
 [[package]]
@@ -2991,10 +2982,11 @@ version = "0.1.0"
 source = "git+https://github.com/TileDB-Inc/tiledb-rs.git?branch=main#1dafdf310ed2e8f4e314a40dff9f3ff46a22c64d"
 
 [[package]]
-name = "tiledb-session"
+name = "tiledb-query-predicates"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arrow",
  "cxx",
  "cxx-build",
  "datafusion",

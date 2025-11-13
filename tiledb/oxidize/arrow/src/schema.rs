@@ -64,39 +64,6 @@ pub struct ArrowArraySchema {
     pub enumerations: Arc<Enumerations>,
 }
 
-pub mod cxx {
-    use super::*;
-
-    pub fn to_arrow(
-        array_schema: &ArraySchema,
-        which: WhichSchema,
-    ) -> Result<Box<ArrowArraySchema>, Error> {
-        let (schema, enumerations) = super::project_arrow(array_schema, which, |_: &Field| true)?;
-        Ok(Box::new(ArrowArraySchema {
-            schema: Arc::new(schema),
-            enumerations: Arc::new(enumerations),
-        }))
-    }
-
-    /// Returns a [Schema] which represents the physical field types of
-    /// the fields from `array_schema` which are contained in `select`.
-    // NB: we use `Vec` for facilitating the FFI boundary
-    #[allow(clippy::ptr_arg)]
-    pub fn project_arrow(
-        array_schema: &ArraySchema,
-        which: WhichSchema,
-        select: &Vec<String>,
-    ) -> Result<Box<ArrowArraySchema>, Error> {
-        let (schema, enumerations) = super::project_arrow(array_schema, which, |field: &Field| {
-            select.iter().any(|s| s.as_str() == field.name_cxx())
-        })?;
-        Ok(Box::new(ArrowArraySchema {
-            schema: Arc::new(schema),
-            enumerations: Arc::new(enumerations),
-        }))
-    }
-}
-
 pub fn to_arrow(
     array_schema: &ArraySchema,
     which: WhichSchema,

@@ -1,11 +1,12 @@
 [package]
-name = "tiledb-session"
+name = "tiledb-query-predicates"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
+arrow = { workspace = true }
 cxx = { workspace = true }
 datafusion = { workspace = true }
 itertools = { workspace = true }

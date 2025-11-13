@@ -5,16 +5,5 @@ rust-version = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
-arrow = { workspace = true }
-cxx = { workspace = true }
 datafusion = { workspace = true }
-itertools = { workspace = true }
-num-traits = { workspace = true }
-thiserror = { workspace = true }
 tiledb-arrow = { workspace = true }
-tiledb-cxx-interface = { workspace = true }
-tiledb-datatype = { workspace = true }
-
-[build-dependencies]
-cxx-build = { workspace = true }

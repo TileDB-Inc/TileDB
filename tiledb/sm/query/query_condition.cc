@@ -42,8 +42,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 
 #ifdef HAVE_RUST
-#include "tiledb/oxidize/arrow.h"
-#include "tiledb/oxidize/expr.h"
+#include "tiledb/oxidize/query_predicates.h"
 #endif
 
 #include <algorithm>
@@ -104,22 +103,6 @@ QueryCondition::QueryCondition(
     , condition_index_(condition_index)
     , tree_(std::move(tree)) {
 }
-
-#ifdef HAVE_RUST
-QueryCondition::QueryCondition(
-    const ArraySchema& array_schema,
-    rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr) {
-  const auto columns = expr->columns();
-  for (const auto& c : columns) {
-    field_names_.insert(std::string(c.data(), c.size()));
-  }
-
-  datafusion_.emplace(
-      array_schema,
-      tiledb::oxidize::arrow::schema::WhichSchema::View,
-      std::move(expr));
-}
-#endif
 
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : condition_marker_(rhs.condition_marker_)
@@ -183,6 +166,7 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
   tree_->rewrite_for_schema(array_schema);
 }
 
+/*
 #ifdef HAVE_RUST
 rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
 QueryCondition::as_datafusion(
@@ -208,6 +192,7 @@ bool QueryCondition::rewrite_to_datafusion(
   return false;
 }
 #endif
+*/
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   if (!tree_) {
@@ -1335,14 +1320,6 @@ Status QueryCondition::apply(
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
-#ifdef HAVE_RUST
-  if (!tree_ && datafusion_.has_value()) {
-    throw QueryConditionException(
-        "This query does not support predicates added with "
-        "tiledb_query_add_predicate");
-  }
-#endif
-
   if (!tree_) {
     return Status::Ok();
   }
@@ -2171,13 +2148,6 @@ Status QueryCondition::apply_dense(
     return Status_QueryConditionError("The result buffer is null.");
   }
 
-#ifdef HAVE_RUST
-  if (tree_ == nullptr && datafusion_.has_value()) {
-    return Status_QueryConditionError(
-        "tiledb_query_add_predicate is not supported for dense array queries");
-  }
-#endif
-
   span<uint8_t> result_span(result_buffer + start, length);
   apply_tree_dense(
       tree_,
@@ -2952,26 +2922,8 @@ Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
     const ResultTile& result_tile,
     std::span<BitmapType> result_bitmap) {
-#ifdef HAVE_RUST
-  if (datafusion_.has_value()) {
-    try {
-      datafusion_.value().apply(params, result_tile, result_bitmap);
-    } catch (const ::rust::Error& e) {
-      throw QueryConditionException(
-          "Error evaluating expression: " + std::string(e.what()));
-    }
-  } else {
-    apply_tree_sparse<BitmapType>(
-        tree_,
-        params,
-        result_tile,
-        std::multiplies<BitmapType>(),
-        result_bitmap);
-  }
-#else
   apply_tree_sparse<BitmapType>(
       tree_, params, result_tile, std::multiplies<BitmapType>(), result_bitmap);
-#endif
 
   return Status::Ok();
 }
@@ -2991,74 +2943,6 @@ const std::string& QueryCondition::condition_marker() const {
 uint64_t QueryCondition::condition_index() const {
   return condition_index_;
 }
-
-#ifdef HAVE_RUST
-QueryCondition::Datafusion::Datafusion(
-    const ArraySchema& array_schema,
-    tiledb::oxidize::arrow::schema::WhichSchema which,
-    rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>&& expr)
-    : schema_(tiledb::oxidize::arrow::schema::project(
-          array_schema, which, expr->columns()))
-    , expr_(tiledb::oxidize::datafusion::physical_expr::create(
-          *schema_, std::move(expr))) {
-}
-
-template <typename BitmapType>
-void QueryCondition::Datafusion::apply(
-    const QueryCondition::Params&,
-    const ResultTile& result_tile,
-    std::span<BitmapType> result_bitmap) const {
-  const auto arrow =
-      tiledb::oxidize::arrow::record_batch::create(*schema_, result_tile);
-  const auto predicate_eval = expr_->evaluate(*arrow);
-  static_assert(
-      std::is_same_v<BitmapType, uint8_t> ||
-      std::is_same_v<BitmapType, uint64_t>);
-  if constexpr (std::is_same_v<BitmapType, uint8_t>) {
-    const auto predicate_out_u8 = predicate_eval->cast_to(Datatype::UINT8);
-    const auto bitmap = predicate_out_u8->values_u8();
-    if (predicate_out_u8->is_scalar() && bitmap.empty()) {
-      // all NULLs
-      for (auto& result : result_bitmap) {
-        result = 0;
-      }
-    } else if (predicate_out_u8->is_scalar()) {
-      // all the same value
-      for (auto& result : result_bitmap) {
-        result = result * bitmap[0];
-      }
-    } else if (bitmap.size() == result_bitmap.size()) {
-      for (uint64_t i = 0; i < bitmap.size(); i++) {
-        result_bitmap[i] *= bitmap[i];
-      }
-    } else {
-      throw QueryConditionException(
-          "Expression evaluation bitmap has unexpected size");
-    }
-  } else {
-    const auto predicate_out_u64 = predicate_eval->cast_to(Datatype::UINT64);
-    const auto bitmap = predicate_out_u64->values_u64();
-    if (predicate_out_u64->is_scalar() && bitmap.empty()) {
-      // all NULLs
-      for (auto& result : result_bitmap) {
-        result = 0;
-      }
-    } else if (predicate_out_u64->is_scalar()) {
-      // all the same value
-      for (auto& result : result_bitmap) {
-        result = result * bitmap[0];
-      }
-    } else if (bitmap.size() == result_bitmap.size()) {
-      for (uint64_t i = 0; i < result_bitmap.size(); i++) {
-        result_bitmap[i] *= bitmap[i];
-      }
-    } else {
-      throw QueryConditionException(
-          "Expression evaluation bitmap has unexpected size");
-    }
-  }
-}
-#endif
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(

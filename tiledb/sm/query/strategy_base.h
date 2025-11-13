@@ -37,6 +37,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
@@ -50,7 +51,6 @@ class LocalQueryStateMachine;
 class MemoryTracker;
 class Subarray;
 class QueryBuffer;
-class QueryCondition;
 
 using DefaultChannelAggregates =
     std::unordered_map<std::string, shared_ptr<IAggregator>>;
@@ -78,7 +78,7 @@ class StrategyParams {
       std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
-      std::optional<QueryCondition>& condition,
+      QueryPredicates& predicates,
       DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization)
       : resources_(resources)
@@ -93,7 +93,7 @@ class StrategyParams {
       , aggregate_buffers_(aggregate_buffers)
       , subarray_(subarray)
       , layout_(layout)
-      , condition_(condition)
+      , predicates_(predicates)
       , default_channel_aggregates_(default_channel_aggregates)
       , skip_checks_serialization_(skip_checks_serialization) {
   }
@@ -163,7 +163,7 @@ class StrategyParams {
 
   /** Return the condition. */
   inline std::optional<QueryCondition>& condition() {
-    return condition_;
+    return predicates_.condition_;
   }
 
   /** Return the default channel aggregates. */
@@ -220,8 +220,8 @@ class StrategyParams {
   /** Layout of the cells in the result of the subarray. */
   Layout layout_;
 
-  /** Query condition. */
-  std::optional<QueryCondition>& condition_;
+  /** Query predicates. */
+  QueryPredicates& predicates_;
 
   /** Default channel aggregates. */
   DefaultChannelAggregates& default_channel_aggregates_;

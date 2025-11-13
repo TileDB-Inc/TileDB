@@ -24,22 +24,6 @@ pub enum Error {
 /// It is not safe to use the value returned from this function after
 /// the [Enumeration] is destructed. The caller must take care to abide this
 /// requirement. Otherwise this function is safe to use.
-pub unsafe fn array_from_enumeration_ffi(
-    enumeration: &Enumeration,
-) -> Result<Box<super::ArrowArray>, Error> {
-    let a = unsafe { array_from_enumeration(enumeration) }?;
-    Ok(Box::new(super::ArrowArray(a)))
-}
-
-/// Returns an [ArrowArray] whose elements are the variants of an [Enumeration].
-///
-/// # Safety
-///
-/// When possible this function avoids copying data. This means that the
-/// returned [ArrowArray] may reference data which lives inside the [Enumeration].
-/// It is not safe to use the value returned from this function after
-/// the [Enumeration] is destructed. The caller must take care to abide this
-/// requirement. Otherwise this function is safe to use.
 pub unsafe fn array_from_enumeration(
     enumeration: &Enumeration,
 ) -> Result<Arc<dyn ArrowArray + 'static>, Error> {

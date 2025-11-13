@@ -23,13 +23,6 @@ cxxbridge(
 
 cxxbridge(
   NAME
-    expr
-  SOURCES
-    lib.rs
-)
-
-cxxbridge(
-  NAME
     cxx-interface
   SOURCES
     array_schema.cc
@@ -45,7 +38,7 @@ cxxbridge(
 
 cxxbridge(
   NAME
-    session
+    query-predicates
   SOURCES
     lib.rs
 )
@@ -68,8 +61,7 @@ oxidize(
   EXPORT
     arrow
     cxx-interface
-    expr
-    session
+    query-predicates
 )
 
 oxidize(
@@ -87,7 +79,6 @@ oxidize(
   EXPORT
     arrow
     cxx-interface
-    expr
     test-support-cxx-interface
 )
 
