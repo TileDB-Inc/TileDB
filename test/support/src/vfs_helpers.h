@@ -856,7 +856,7 @@ struct VFSTestSetup {
     return fs_vec[0]->is_rest();
   }
 
-  bool is_legacy_rest();
+  bool is_legacy_rest() const;
 
   bool is_local() const {
     return fs_vec[0]->is_local();
@@ -919,7 +919,11 @@ struct VFSTestSetup {
    * @return The backend storage location for the created array / group.
    */
   std::string get_rest_array_uri(const std::string& creation_uri) const {
-    if (!sm::URI(creation_uri).is_tiledb()) {
+    if (is_legacy_rest() || !sm::URI(creation_uri).is_tiledb()) {
+      const std::string prefix = "tiledb://unit/";
+      if (creation_uri.starts_with(prefix)) {
+        return creation_uri.substr(prefix.length());
+      }
       return creation_uri;
     }
     std::vector<sm::URI> uris;

@@ -105,11 +105,11 @@ struct ArrayFx {
   ~ArrayFx();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
-  std::string get_array_path(URI creation_uri);
-  std::string create_sparse_vector(const std::string& path);
-  std::string create_sparse_array(const std::string& path);
-  std::string create_dense_vector(const std::string& path);
-  std::string create_dense_array(const std::string& path);
+  std::string get_array_path(const std::string& creation_uri) const;
+  void create_sparse_vector(const std::string& path);
+  void create_sparse_array(const std::string& path);
+  void create_dense_vector(const std::string& path);
+  void create_dense_array(const std::string& path);
   void write_fragment(tiledb_array_t* array, uint64_t timestamp);
   static int get_fragment_timestamps(const char* path, void* data);
 };
@@ -168,16 +168,21 @@ int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   return 1;
 }
 
-std::string ArrayFx::get_array_path(URI creation_uri) {
-  if (!creation_uri.is_tiledb()) {
-    return creation_uri.to_string();
+std::string ArrayFx::get_array_path(const std::string& creation_uri) const {
+  if ((ctx_->has_rest_client() && ctx_->rest_client().rest_legacy()) ||
+      !URI(creation_uri).is_tiledb()) {
+    const std::string prefix = "tiledb://unit/";
+    if (creation_uri.starts_with(prefix)) {
+      return creation_uri.substr(prefix.length());
+    }
+    return creation_uri;
   }
   std::vector<URI> uris;
   REQUIRE(vfs_->ls(URI(default_bucket_), &uris).ok());
   return uris.back().to_string();
 }
 
-std::string ArrayFx::create_sparse_vector(const std::string& path) {
+void ArrayFx::create_sparse_vector(const std::string& path) {
   int rc;
   int64_t dim_domain[] = {-1, 2};
   int64_t tile_extent = 2;
@@ -221,11 +226,9 @@ std::string ArrayFx::create_sparse_vector(const std::string& path) {
   tiledb_dimension_free(&dim);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-
-  return get_array_path(URI(path));
 }
 
-std::string ArrayFx::create_sparse_array(const std::string& path) {
+void ArrayFx::create_sparse_array(const std::string& path) {
   int rc;
   int64_t dim_domain[] = {1, 10, 1, 10};
   int64_t tile_extent = 2;
@@ -276,11 +279,9 @@ std::string ArrayFx::create_sparse_array(const std::string& path) {
   tiledb_dimension_free(&dim_2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-
-  return get_array_path(URI(path));
 }
 
-std::string ArrayFx::create_dense_vector(const std::string& path) {
+void ArrayFx::create_dense_vector(const std::string& path) {
   int rc;
   int64_t dim_domain[] = {1, 10};
   int64_t tile_extent = 2;
@@ -343,11 +344,9 @@ std::string ArrayFx::create_dense_vector(const std::string& path) {
   tiledb_dimension_free(&dim);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-
-  return get_array_path(URI(path));
 }
 
-std::string ArrayFx::create_dense_array(const std::string& path) {
+void ArrayFx::create_dense_array(const std::string& path) {
   int rc;
   int64_t dim_domain[] = {1, 10, 1, 10};
   int64_t tile_extent = 2;
@@ -398,8 +397,6 @@ std::string ArrayFx::create_dense_array(const std::string& path) {
   tiledb_dimension_free(&dim_2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-
-  return get_array_path(URI(path));
 }
 
 void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
@@ -933,7 +930,8 @@ TEST_CASE_METHOD(
 
   create_temp_dir(temp_dir);
 
-  array_path = create_dense_vector(array_name);
+  create_dense_vector(array_name);
+  array_path = get_array_path(array_path);
 
   // ---- FIRST WRITE ----
   // Prepare cell buffers
@@ -1966,7 +1964,8 @@ TEST_CASE_METHOD(
 
   create_temp_dir(temp_dir);
 
-  array_path = create_dense_vector(array_name);
+  create_dense_vector(array_name);
+  array_path = get_array_path(array_path);
 
   // Conditionally consolidate
   // Note: there's no need to vacuum; delete_array will delete all fragments
