@@ -72,6 +72,13 @@ class FragmentMetadataStatusException : public StatusException {
   }
 };
 
+/**
+ * Contains identifiers for fragment metadata footer data directories.
+ */
+enum class DataDirectoryIdentifier : uint64_t {
+  tile_global_order_offsets = 0,
+};
+
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
  public:
@@ -947,6 +954,9 @@ class FragmentMetadata {
   /** The format version of this metadata. */
   uint32_t version_;
 
+  /** Whether this metadata contains tile global order bounds. */
+  bool has_tile_global_order_bounds_ = false;
+
   /** The timestamp range of the fragment. */
   std::pair<uint64_t, uint64_t> timestamp_range_;
 
@@ -1053,15 +1063,19 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 16 to 22.
+   * versions 16 or higher.
    */
-  void load_generic_tile_offsets_v16_v22(Deserializer& deserializer);
+  void load_generic_tile_offsets_v16_or_higher(Deserializer& deserializer);
 
   /**
-   * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 23 or higher.
+   * Loads the footer's data directories.
    */
-  void load_generic_tile_offsets_v23_or_higher(Deserializer& deserializer);
+  void load_data_directories(Deserializer& deserializer);
+
+  /**
+   * Loads the offsets for the tile global order bounds.
+   */
+  void load_tile_global_order_offsets(Deserializer& deserializer);
 
   /**
    * Loads the array schema name.
@@ -1208,6 +1222,9 @@ class FragmentMetadata {
 
   /** Writes the generic tile offsets to the buffer. */
   void write_generic_tile_offsets(Serializer& serializer) const;
+
+  /** Writes the footer's data directories to the buffer. */
+  void write_data_directories(Serializer& serializer) const;
 
   /** Writes the array schema name. */
   void write_array_schema_name(Serializer& serializer) const;
