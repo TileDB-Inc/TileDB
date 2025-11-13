@@ -1069,7 +1069,7 @@ Status WriterBase::write_tiles(
         }
       }
 
-      if (array_schema_.is_dim(attr)) {
+      if (!array_schema_.dense() && array_schema_.is_dim(attr)) {
         if (array_schema_.var_size(attr)) {
           frag_meta->convert_tile_global_order_bounds_sizes_to_offsets(attr);
         }
@@ -1155,7 +1155,7 @@ Status WriterBase::write_tiles(
         frag_meta->set_tile_min(name, tile_id, tile.min());
         frag_meta->set_tile_max(name, tile_id, tile.max());
       }
-      if (array_schema_.is_dim(name)) {
+      if (!array_schema_.dense() && array_schema_.is_dim(name)) {
         frag_meta->set_tile_global_order_bounds_fixed(name, tile_id, tile);
       }
 

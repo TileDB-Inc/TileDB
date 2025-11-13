@@ -115,8 +115,7 @@ void OndemandFragmentMetadata::load_fragment_min_max_sum_null_count(
 
 void OndemandFragmentMetadata::load_fragment_tile_global_order_bounds(
     const EncryptionKey& encryption_key) {
-  if (parent_fragment_.version_ <
-      constants::fragment_metadata_global_order_bounds_version) {
+  if (!parent_fragment_.has_tile_global_order_bounds_) {
     return;
   }
 
@@ -623,8 +622,7 @@ void OndemandFragmentMetadata::load_tile_max_values(
 
 void OndemandFragmentMetadata::load_tile_global_order_min_values(
     const EncryptionKey& encryption_key, unsigned dimension) {
-  if (parent_fragment_.version_ <
-      constants::fragment_metadata_global_order_bounds_version) {
+  if (!parent_fragment_.has_tile_global_order_bounds_) {
     return;
   }
 
@@ -648,8 +646,7 @@ void OndemandFragmentMetadata::load_tile_global_order_min_values(
 
 void OndemandFragmentMetadata::load_tile_global_order_max_values(
     const EncryptionKey& encryption_key, unsigned dimension) {
-  if (parent_fragment_.version_ <
-      constants::fragment_metadata_global_order_bounds_version) {
+  if (!parent_fragment_.has_tile_global_order_bounds_) {
     return;
   }
 

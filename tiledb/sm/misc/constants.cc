@@ -722,9 +722,9 @@ const format_version_t current_domain_version = 0;
 /** The NDRectangle current domain */
 const std::string current_domain_ndrectangle_str = "NDRECTANGLE";
 
-/** The lowest version where fragment metadata contains per-tile global order
- * bounds */
-const format_version_t fragment_metadata_global_order_bounds_version = 23;
+/** The lowest version where fragment metadata footer contains extensible data
+ * directories. */
+const format_version_t fragment_metadata_data_directory_version = 23;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
