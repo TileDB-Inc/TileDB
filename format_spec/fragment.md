@@ -284,8 +284,6 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile null counts offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension N |
 | Fragment min max sum null count offset | `uint64_t` | The offset to the generic tile storing the fragment min max sum null count data. |
 | Processed conditions offset | `uint64_t` | _New in version 16_ The offset to the generic tile storing the processed conditions. |
-| Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
-| Array schema name | `uint8_t[]` | The array schema name. |
 | Number of data directories | `uint32_t` | _New in version 23_ Number of data directories. |
 | Data directory 1 | [Data Directory](#data-directory) | _New in version 23_ Data directory 1. |
 | … | … | … |
