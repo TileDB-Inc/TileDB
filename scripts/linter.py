@@ -17,6 +17,8 @@ ignored_dirs = frozenset(["api/c_api", "sm/c_api", "sm/cpp_api", "oxidize/target
 heap_memory_ignored_files = frozenset(
     [
         "allocate_unique.h",
+        'assert.cc',
+        'assert.h',
         "dynamic_memory.h",
         "unit_dynamic_memory.cc",
         "heap_profiler.h",

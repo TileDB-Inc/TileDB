@@ -45,17 +45,45 @@ AssertFailure::AssertFailure(const std::string& what)
   throw AssertFailure(file, line, expr);
 }
 
-static std::mutex passertFailureCallbackMutex;
-static std::vector<std::function<void()>> passertFailureCallbacks;
+struct PAssertFailureCallbackProcessState {
+  using self_type = PAssertFailureCallbackProcessState;
 
-[[noreturn]] void passert_failure_abort(void) {
-  {
-    for (auto& callback : passertFailureCallbacks) {
-      std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-      callback();
+  static std::shared_ptr<self_type> get() {
+    static std::shared_ptr<self_type> singleton;
+    if (singleton == nullptr) {
+      singleton.reset(new self_type());
     }
+    return singleton;
   }
 
+  std::mutex mutex_;
+  std::list<std::function<void()>> callbacks_;
+
+ private:
+  PAssertFailureCallbackProcessState() {
+  }
+};
+
+void passert_failure_run_callbacks(void) {
+  auto state = PAssertFailureCallbackProcessState::get();
+  if (!state) {
+    // NB: we expect this to be unreachable.
+    // `!state` should only happen if the singleton has been
+    // destructed, which should only occur when the shared library
+    // is unloaded or when the process exits. In either case we
+    // should not see a `passert` failure at that point - or there
+    // are worse problems.
+    return;
+  }
+
+  std::unique_lock<std::mutex> lk(state->mutex_);
+  for (auto& callback : state->callbacks_) {
+    callback();
+  }
+}
+
+[[noreturn]] void passert_failure_abort(void) {
+  passert_failure_run_callbacks();
   std::abort();
 }
 
@@ -71,15 +99,19 @@ static std::vector<std::function<void()>> passertFailureCallbacks;
 #ifdef TILEDB_ASSERTIONS
 
 PAssertFailureCallbackRegistration::PAssertFailureCallbackRegistration(
-    std::function<void()>&& callback) {
-  std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-  passertFailureCallbacks.push_back(
+    std::function<void()>&& callback)
+    : process_state_(PAssertFailureCallbackProcessState::get()) {
+  std::unique_lock<std::mutex> lk(process_state_->mutex_);
+
+  process_state_->callbacks_.push_front(
       std::forward<std::function<void()>>(callback));
+
+  callback_node_ = process_state_->callbacks_.begin();
 }
 
 PAssertFailureCallbackRegistration::~PAssertFailureCallbackRegistration() {
-  std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
-  passertFailureCallbacks.pop_back();
+  std::unique_lock<std::mutex> lk(process_state_->mutex_);
+  process_state_->callbacks_.erase(callback_node_);
 }
 
 #endif

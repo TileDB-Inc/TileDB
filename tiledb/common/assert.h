@@ -90,6 +90,10 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <list>
+#include <memory>
+
+#include "tiledb/common/macros.h"
 
 #define __SOURCE__ (&__FILE__[__SOURCE_DIR_PATH_SIZE__])
 
@@ -170,6 +174,18 @@ template <typename... Args>
 }
 
 /**
+ * Structure holding the process-level state required to run `passert`
+ * failure callbacks.
+ */
+struct PAssertFailureCallbackProcessState;
+
+/**
+ * Runs registered callbacks prior to aborting the process in the event of a
+ * `passert` failure. See `PAssertFailureCallbackRegistration`.
+ */
+void passert_failure_run_callbacks(void);
+
+/**
  * Aborts the process upon `passert` failure.
  */
 [[noreturn]] void passert_failure_abort(void);
@@ -217,15 +233,33 @@ template <typename... Args>
  * Registers a callback to run upon `passert` failure.
  * This can be used to print any diagnostic info prior to aborting the process.
  */
-struct PAssertFailureCallbackRegistration {
 #ifdef TILEDB_ASSERTIONS
+
+struct PAssertFailureCallbackRegistration {
   PAssertFailureCallbackRegistration(std::function<void()>&& callback);
   ~PAssertFailureCallbackRegistration();
+  DISABLE_COPY_AND_COPY_ASSIGN(PAssertFailureCallbackRegistration);
+
+ private:
+  /**
+   * Lazy initialization of global process state.
+   * This avoids the "static initialization order fiasco".
+   */
+  std::shared_ptr<PAssertFailureCallbackProcessState> process_state_;
+
+  /** Reference to the registered callback for deregistering */
+  std::list<std::function<void()>>::const_iterator callback_node_;
+};
+
 #else
+
+struct PAssertFailureCallbackRegistration {
   PAssertFailureCallbackRegistration(std::function<void()>&&) {
   }
-#endif
+  DISABLE_COPY_AND_COPY_ASSIGN(PAssertFailureCallbackRegistration);
 };
+
+#endif
 
 }  // namespace tiledb::common
 
