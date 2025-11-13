@@ -197,9 +197,15 @@ void RestProfile::save_to_file(const bool overwrite) {
   json data;
   if (std::filesystem::exists(filepath_)) {
     try {
-      data = read_file(filepath_);
-    } catch (const std::exception&) {
-      data = json::object();
+      // If the file is empty, treat it as a new json object.
+      if (std::filesystem::file_size(filepath_) == 0) {
+        data = json::object();
+      } else {
+        data = read_file(filepath_);
+      }
+    } catch (const std::filesystem::filesystem_error& e) {
+      throw RestProfileException(
+          "Failed to access profile file: " + std::string(e.what()));
     }
 
     if (data.empty()) {
