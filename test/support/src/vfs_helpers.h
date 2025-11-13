@@ -36,6 +36,7 @@
 #include <test/support/tdb_catch_prng.h>
 #include <filesystem>
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 
@@ -903,6 +904,42 @@ struct VFSTestSetup {
 
   Context ctx() {
     return Context(ctx_c, false);
+  }
+
+  /**
+   * TileDB-Server does not support custom storage locations for array or group
+   * creation, default storage configuration should be used instead. Default
+   * storage in TileDB-Server will generate a group or array UUID to use as the
+   * prefix for create the asset within the default bucket.
+   *
+   * This helper fetches the backend location REST generated for the new asset
+   * during creation.
+   *
+   * @param creation_uri The URI passed to array / group create request.
+   * @return The backend storage location for the created array / group.
+   */
+  std::string get_rest_array_uri(const std::string& creation_uri) const {
+    if (!sm::URI(creation_uri).is_tiledb()) {
+      return creation_uri;
+    }
+    std::vector<sm::URI> uris;
+    REQUIRE(vfs_c->ls(sm::URI(default_storage()), &uris).ok());
+    return uris.back().to_string();
+  }
+
+  std::string fragment_dir(const std::string& uri) const {
+    sm::URI backend_uri(get_rest_array_uri(uri));
+    return backend_uri.join_path("__fragments").to_string();
+  }
+
+  std::string fragment_metadata_dir(const std::string& uri) const {
+    sm::URI backend_uri(get_rest_array_uri(uri));
+    return backend_uri.join_path("__fragment_meta").to_string();
+  }
+
+  std::string commits_dir(const std::string& uri) const {
+    sm::URI backend_uri(get_rest_array_uri(uri));
+    return backend_uri.join_path("__commits").to_string();
   }
 
   ~VFSTestSetup() {
