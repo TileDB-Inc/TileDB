@@ -837,7 +837,7 @@ struct VFSTestSetup {
     tiledb_vfs_is_bucket(ctx_c, vfs_c, default_storage().c_str(), &is_bucket);
     if (!is_bucket) {
       tiledb_vfs_create_bucket(ctx_c, vfs_c, default_storage().c_str());
-    } else {
+    } else if (remove_tmpdir) {
       tiledb_vfs_empty_bucket(ctx_c, vfs_c, default_storage().c_str());
     }
   };
