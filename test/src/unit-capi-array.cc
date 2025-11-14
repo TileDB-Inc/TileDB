@@ -86,6 +86,9 @@ struct ArrayFx {
   // The memory tracker
   shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
 
+  // TODO: Update ArrayFx to use VFSTestSetup.
+  VFSTestSetup vfs_test_setup_;
+
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -97,15 +100,11 @@ struct ArrayFx {
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
   const char* encryption_key_ = nullptr;
 
-  // TODO: Update ArrayFx to use VFSTestSetup.
-  const char* default_bucket_ = "s3://default-bucket";
-
   // Functions
   ArrayFx();
   ~ArrayFx();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
-  std::string get_array_path(const std::string& creation_uri) const;
   void create_sparse_vector(const std::string& path);
   void create_sparse_array(const std::string& path);
   void create_dense_vector(const std::string& path);
@@ -128,17 +127,6 @@ ArrayFx::ArrayFx()
 }
 
 ArrayFx::~ArrayFx() {
-  if (fs_vec_[0]->is_rest()) {
-    int32_t is_empty = 0;
-    REQUIRE(
-        tiledb_vfs_is_empty_bucket(ctx_, vfs_, default_bucket_, &is_empty) ==
-        TILEDB_OK);
-    if (!is_empty) {
-      REQUIRE(
-          tiledb_vfs_empty_bucket(ctx_, vfs_, default_bucket_) == TILEDB_OK);
-    }
-  }
-
   // Close vfs test
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
@@ -166,20 +154,6 @@ int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   }
 
   return 1;
-}
-
-std::string ArrayFx::get_array_path(const std::string& creation_uri) const {
-  if ((fs_vec_[0]->is_rest() && ctx_->rest_client().rest_legacy()) ||
-      !URI(creation_uri).is_tiledb()) {
-    const std::string prefix = "tiledb://unit/";
-    if (creation_uri.starts_with(prefix)) {
-      return creation_uri.substr(prefix.length());
-    }
-    return creation_uri;
-  }
-  std::vector<URI> uris;
-  REQUIRE(vfs_->ls(URI(default_bucket_), &uris).ok());
-  return uris.back().to_string();
 }
 
 void ArrayFx::create_sparse_vector(const std::string& path) {
@@ -931,7 +905,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
-  array_path = get_array_path(array_name);
+  array_path = vfs_test_setup_.get_backend_uri(array_name);
 
   // ---- FIRST WRITE ----
   // Prepare cell buffers
@@ -1965,7 +1939,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
-  array_path = get_array_path(array_name);
+  array_path = vfs_test_setup_.get_backend_uri(array_name);
 
   // Conditionally consolidate
   // Note: there's no need to vacuum; delete_array will delete all fragments

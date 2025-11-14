@@ -918,7 +918,7 @@ struct VFSTestSetup {
    * @param creation_uri The URI passed to array / group create request.
    * @return The backend storage location for the created array / group.
    */
-  std::string get_rest_array_uri(const std::string& creation_uri) const {
+  std::string get_backend_uri(const std::string& creation_uri) const {
     if (is_legacy_rest() || !sm::URI(creation_uri).is_tiledb()) {
       const std::string prefix = "tiledb://unit/";
       if (creation_uri.starts_with(prefix)) {
@@ -932,19 +932,19 @@ struct VFSTestSetup {
   }
 
   std::string fragment_dir(const std::string& uri) const {
-    sm::URI backend_uri(get_rest_array_uri(uri));
+    sm::URI backend_uri(get_backend_uri(uri));
     return backend_uri.join_path(sm::constants::array_fragments_dir_name)
         .to_string();
   }
 
   std::string fragment_metadata_dir(const std::string& uri) const {
-    sm::URI backend_uri(get_rest_array_uri(uri));
+    sm::URI backend_uri(get_backend_uri(uri));
     return backend_uri.join_path(sm::constants::array_fragment_meta_dir_name)
         .to_string();
   }
 
   std::string commits_dir(const std::string& uri) const {
-    sm::URI backend_uri(get_rest_array_uri(uri));
+    sm::URI backend_uri(get_backend_uri(uri));
     return backend_uri.join_path(sm::constants::array_commits_dir_name)
         .to_string();
   }
