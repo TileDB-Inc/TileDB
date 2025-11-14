@@ -105,8 +105,7 @@ struct ArrayFx {
   ~ArrayFx();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
-  std::string get_array_path(
-      const std::string& creation_uri, bool legacy_rest) const;
+  std::string get_array_path(const std::string& creation_uri) const;
   void create_sparse_vector(const std::string& path);
   void create_sparse_array(const std::string& path);
   void create_dense_vector(const std::string& path);
@@ -169,9 +168,9 @@ int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   return 1;
 }
 
-std::string ArrayFx::get_array_path(
-    const std::string& creation_uri, bool legacy_rest) const {
-  if (legacy_rest || !URI(creation_uri).is_tiledb()) {
+std::string ArrayFx::get_array_path(const std::string& creation_uri) const {
+  if ((fs_vec_[0]->is_rest() && ctx_->rest_client().rest_legacy()) ||
+      !URI(creation_uri).is_tiledb()) {
     const std::string prefix = "tiledb://unit/";
     if (creation_uri.starts_with(prefix)) {
       return creation_uri.substr(prefix.length());
@@ -932,8 +931,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
-  array_path = get_array_path(
-      array_name, fs_vec_[0]->is_rest() && ctx_->rest_client().rest_legacy());
+  array_path = get_array_path(array_name);
 
   // ---- FIRST WRITE ----
   // Prepare cell buffers
@@ -1967,8 +1965,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
-  array_path = get_array_path(
-      array_name, fs_vec_[0]->is_rest() && ctx_->rest_client().rest_legacy());
+  array_path = get_array_path(array_name);
 
   // Conditionally consolidate
   // Note: there's no need to vacuum; delete_array will delete all fragments
