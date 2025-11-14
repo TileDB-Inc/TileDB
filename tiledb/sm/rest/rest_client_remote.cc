@@ -335,7 +335,10 @@ void RestClientRemote::post_array_create_to_rest(
   URI::RESTURIComponents rest_uri;
   throw_if_not_ok(uri.get_rest_components(rest_legacy(), &rest_uri));
   serialization::array_create_serialize(
-      array_schema, serialization_type_, buff, {rest_uri.asset_storage});
+      array_schema,
+      serialization_type_,
+      buff,
+      {rest_legacy() ? rest_uri.asset_storage : ""});
 
   const auto creation_access_credentials_name{
       config_->get<std::string>("rest.creation_access_credentials_name")};
