@@ -160,12 +160,28 @@ void Posix::touch(const URI& uri) const {
 
   throw_if_not_ok(ensure_directory(filename));
 
-  int fd =
-      ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
-  if (fd == -1 || ::close(fd) != 0) {
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT, file_permissions_);
+  if (fd == -1) {
+    auto err = errno;
+    ::close(fd);
     throw IOError(
         std::string("Failed to create file '") + filename + "'; " +
-        strerror(errno));
+        strerror(err));
+  }
+
+  if (::fsync(fd) != 0) {
+    auto err = errno;
+    ::close(fd);
+    throw IOError(
+        std::string("Failed to sync file '") + filename + "'; " +
+        strerror(err));
+  }
+
+  if (::close(fd) != 0) {
+    auto err = errno;
+    throw IOError(
+        std::string("Failed to close file '") + filename + "'; " +
+        strerror(err));
   }
 }
 
