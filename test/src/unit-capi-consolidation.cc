@@ -5057,7 +5057,7 @@ TEST_CASE_METHOD(
   rc = tiledb_vfs_ls(
       ctx_,
       vfs_,
-      vfs_test_setup_.fragment_dir(dense_array_uri_).c_str(),
+      vfs_test_setup_.fragment_dir(dense_vector_uri_).c_str(),
       &get_dir_num,
       &data);
   CHECK(rc == TILEDB_OK);

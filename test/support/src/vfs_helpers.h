@@ -933,17 +933,20 @@ struct VFSTestSetup {
 
   std::string fragment_dir(const std::string& uri) const {
     sm::URI backend_uri(get_rest_array_uri(uri));
-    return backend_uri.join_path("__fragments").to_string();
+    return backend_uri.join_path(sm::constants::array_fragments_dir_name)
+        .to_string();
   }
 
   std::string fragment_metadata_dir(const std::string& uri) const {
     sm::URI backend_uri(get_rest_array_uri(uri));
-    return backend_uri.join_path("__fragment_meta").to_string();
+    return backend_uri.join_path(sm::constants::array_fragment_meta_dir_name)
+        .to_string();
   }
 
   std::string commits_dir(const std::string& uri) const {
     sm::URI backend_uri(get_rest_array_uri(uri));
-    return backend_uri.join_path("__commits").to_string();
+    return backend_uri.join_path(sm::constants::array_commits_dir_name)
+        .to_string();
   }
 
   ~VFSTestSetup() {
