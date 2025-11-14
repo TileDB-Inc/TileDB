@@ -2944,6 +2944,28 @@ uint64_t QueryCondition::condition_index() const {
   return condition_index_;
 }
 
+std::unordered_set<std::string> QueryPredicates::field_names() const {
+#ifndef HAVE_RUST
+  if (condition_.has_value()) {
+    return condition_.value().field_names();
+  } else {
+    return {};
+  }
+#else
+  std::unordered_set<std::string> ret;
+  if (condition_.has_value()) {
+    ret = condition_.value().field_names();
+  }
+  if (datafusion_.has_value()) {
+    const auto dffields = datafusion_.value()->field_names();
+    for (const auto& rstring : dffields) {
+      ret.insert(std::string(rstring.begin(), rstring.end()));
+    }
+  }
+  return ret;
+#endif
+}
+
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
     const QueryCondition::Params&, const ResultTile&, std::span<uint8_t>);

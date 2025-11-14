@@ -76,7 +76,7 @@ ReaderBase::ReaderBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : StrategyBase(stats, logger, params)
     , memory_tracker_(params.query_memory_tracker())
-    , condition_(params.condition())
+    , predicates_(params.predicates())
     , user_requested_timestamps_(false)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)

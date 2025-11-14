@@ -42,7 +42,6 @@
 #include "tiledb/sm/query/ast/query_ast.h"
 
 #ifdef HAVE_RUST
-#include "tiledb/oxidize/arrow.h"
 #include "tiledb/oxidize/rust.h"
 #endif
 
@@ -727,6 +726,22 @@ struct QueryPredicates {
    */
   std::optional<rust::Box<tiledb::oxidize::QueryPredicates>> datafusion_;
 #endif
+
+  /**
+   * @return true if there are any predicates to apply
+   */
+  bool has_predicates() const {
+#ifndef HAVE_RUST
+    return condition_.has_value();
+#else
+    return condition_.has_value() || datafusion_.has_value();
+#endif
+  }
+
+  /**
+   * @return a set of all unique field names used in the predicates
+   */
+  std::unordered_set<std::string> field_names() const;
 };
 
 }  // namespace sm

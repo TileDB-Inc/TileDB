@@ -16,9 +16,12 @@ mod ffi {
         #[cxx_name = "new_query_predicates"]
         fn new_query_predicates_ffi(schema: &ArraySchema) -> Result<Box<QueryPredicates>>;
 
+        fn field_names(&self) -> Vec<String>;
+
         fn add_predicate(&mut self, expr: &str) -> Result<()>;
 
-        fn evaluate_into_bitmap(&self, tile: &ResultTile, bitmap: &mut [u8]) -> Result<()>;
+        fn evaluate_into_bitmap_u8(&self, tile: &ResultTile, bitmap: &mut [u8]) -> Result<()>;
+        fn evaluate_into_bitmap_u64(&self, tile: &ResultTile, bitmap: &mut [u64]) -> Result<()>;
     }
 }
 
@@ -30,8 +33,10 @@ use datafusion::common::{DFSchema, ScalarValue};
 use datafusion::execution::context::ExecutionProps;
 use datafusion::execution::context::SessionContext;
 use datafusion::execution::session_state::SessionStateBuilder;
-use datafusion::logical_expr::ExprSchemable;
+use datafusion::logical_expr::{Expr, ExprSchemable};
 use datafusion::physical_plan::{ColumnarValue, PhysicalExpr};
+use itertools::Itertools;
+use num_traits::Zero;
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
 use tiledb_cxx_interface::sm::query::readers::ResultTile;
 
@@ -59,7 +64,7 @@ pub enum AddPredicateError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum EvaluatePredicateError {
-    #[error("Result tile error: {0}")]
+    #[error("Data error: {0}")]
     ResultTile(#[from] tiledb_arrow::record_batch::Error),
     #[error("Evaluation error: {0}")]
     Evaluate(#[source] datafusion::common::DataFusionError),
@@ -68,6 +73,7 @@ pub enum EvaluatePredicateError {
 pub struct QueryPredicates {
     dfsession: SessionContext,
     dfschema: DFSchema,
+    logical_exprs: Vec<Expr>,
     predicate: Option<Arc<dyn PhysicalExpr>>,
 }
 
@@ -86,8 +92,18 @@ impl QueryPredicates {
                 SessionStateBuilder::new_with_default_features().build(),
             ),
             dfschema,
+            logical_exprs: vec![],
             predicate: None,
         })
+    }
+
+    /// Returns a list of all of the field names used in all of the predicates
+    pub fn field_names(&self) -> Vec<String> {
+        self.logical_exprs
+            .iter()
+            .flat_map(tiledb_expr::logical_expr::columns)
+            .unique()
+            .collect()
     }
 
     pub fn add_predicate(&mut self, expr: &str) -> Result<(), AddPredicateError> {
@@ -120,6 +136,7 @@ impl QueryPredicates {
         )
         .map_err(AddPredicateError::Compile)?;
 
+        self.logical_exprs.push(logical_expr);
         self.predicate = Some(datafusion::physical_expr::conjunction(
             self.predicate
                 .take()
@@ -143,11 +160,14 @@ impl QueryPredicates {
         }
     }
 
-    fn evaluate_into_bitmap(
+    fn evaluate_into_bitmap<T>(
         &self,
         tile: &ResultTile,
-        bitmap: &mut [u8],
-    ) -> Result<(), EvaluatePredicateError> {
+        bitmap: &mut [T],
+    ) -> Result<(), EvaluatePredicateError>
+    where
+        T: Copy + Zero,
+    {
         // TODO: consider not evaluating on cells where the bitmap is already set
 
         let result = self.evaluate(tile)?;
@@ -159,12 +179,12 @@ impl QueryPredicates {
                 }
                 ScalarValue::Boolean(Some(false)) => {
                     // no cells pass predicates, clear bitmap
-                    bitmap.fill(0);
+                    bitmap.fill(T::zero());
                     Ok(())
                 }
                 ScalarValue::Boolean(None) => {
                     // no cells pass predicates, clear bitmap
-                    bitmap.fill(0);
+                    bitmap.fill(T::zero());
                     Ok(())
                 }
                 _ => {
@@ -177,7 +197,7 @@ impl QueryPredicates {
                     let bools = arrow::array::as_boolean_array(&a);
                     for (i, b) in bools.iter().enumerate() {
                         if !matches!(b, Some(true)) {
-                            bitmap[i] = 0;
+                            bitmap[i] = T::zero();
                         }
                     }
                     Ok(())
@@ -187,6 +207,22 @@ impl QueryPredicates {
                 }
             }
         }
+    }
+
+    fn evaluate_into_bitmap_u8(
+        &self,
+        tile: &ResultTile,
+        bitmap: &mut [u8],
+    ) -> Result<(), EvaluatePredicateError> {
+        self.evaluate_into_bitmap::<u8>(tile, bitmap)
+    }
+
+    fn evaluate_into_bitmap_u64(
+        &self,
+        tile: &ResultTile,
+        bitmap: &mut [u64],
+    ) -> Result<(), EvaluatePredicateError> {
+        self.evaluate_into_bitmap::<u64>(tile, bitmap)
     }
 }
 

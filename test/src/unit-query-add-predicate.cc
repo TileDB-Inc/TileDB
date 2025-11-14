@@ -226,11 +226,9 @@ const Cells expect_a_is_null_and_v_starts_with_t = make_cells(
 
 auto matchEnumerationNotSupported(std::string enumeration_name = "e") {
   return Catch::Matchers::ContainsSubstring(
-      "QueryCondition: Error evaluating expression: Cannot process field "
-      "'" +
+      "Error evaluating expression: Data error: Cannot process field '" +
       enumeration_name +
-      "': Attributes with enumerations are not supported in text "
-      "predicates");
+      "': Attributes with enumerations are not supported in text predicates");
 }
 
 void QueryAddPredicateFx::create_array(
@@ -448,7 +446,7 @@ TEST_CASE_METHOD(
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(ctx_, query, {"row"}),
           Catch::Matchers::ContainsSubstring(
-              "Expression does not return a boolean value"));
+              "Expression is not a predicate: found return type UInt64"));
     }
 
     SECTION("Schema error") {
@@ -479,7 +477,8 @@ TEST_CASE_METHOD(
       REQUIRE_THROWS_WITH(
           QueryExperimental::add_predicate(ctx_, query, {"sum(row) >= 10"}),
           Catch::Matchers::ContainsSubstring(
-              "Aggregate functions in predicates are not supported"));
+              "Expression contains aggregate functions which are not supported "
+              "in predicates"));
     }
   }
 }
@@ -563,8 +562,7 @@ TEST_CASE_METHOD(
   write_array(array_name);
 
   const auto match = Catch::Matchers::ContainsSubstring(
-      "This query does not support predicates added with "
-      "tiledb_query_add_predicate");
+      "tiledb_query_add_predicate is not supported for this query");
 
   SECTION("Row major") {
     REQUIRE_THROWS_WITH(
@@ -836,10 +834,7 @@ TEST_CASE_METHOD(
     // enumeration not supported yet
     REQUIRE_THROWS_WITH(
         query_array(array_name, query_order, {"e < 'california'"}),
-        Catch::Matchers::ContainsSubstring(
-            "QueryCondition: Error evaluating expression: Cannot process field "
-            "'e': Attributes with enumerations are not supported in text "
-            "predicates"));
+        matchEnumerationNotSupported());
   }
 }
 

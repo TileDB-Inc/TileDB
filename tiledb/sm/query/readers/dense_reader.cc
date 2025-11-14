@@ -152,9 +152,15 @@ Status DenseReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  if (condition_.has_value()) {
-    RETURN_NOT_OK(condition_->check(array_schema_));
+  if (predicates_.condition_.has_value()) {
+    RETURN_NOT_OK(predicates_.condition_->check(array_schema_));
   }
+#ifdef HAVE_RUST
+  if (predicates_.datafusion_.has_value()) {
+    throw DenseReaderException(
+        "tiledb_query_add_predicate is not supported for dense array queries");
+  }
+#endif
 
   get_dim_attr_stats();
 
@@ -308,8 +314,8 @@ Status DenseReader::dense_read() {
   }
 
   // Compute attribute names to load and copy.
-  if (condition_.has_value()) {
-    qc_loaded_attr_names_set_ = condition_->field_names();
+  if (predicates_.has_predicates()) {
+    qc_loaded_attr_names_set_ = predicates_.field_names();
   }
   qc_loaded_attr_names_.clear();
   qc_loaded_attr_names_.reserve(qc_loaded_attr_names_set_.size());
@@ -352,7 +358,7 @@ Status DenseReader::dense_read() {
   uint64_t subarray_start_cell = 0;
   uint64_t subarray_end_cell = 0;
   std::vector<uint8_t> qc_result(
-      !condition_.has_value() ? 0 : subarray.cell_num(), 1);
+      !predicates_.has_predicates() ? 0 : subarray.cell_num(), 1);
 
   // Keep track of the current var buffer sizes.
   std::map<std::string, uint64_t> var_buffer_sizes;
@@ -629,7 +635,7 @@ void DenseReader::init_read_state() {
   qc_coords_mode_ =
       config_.get<bool>("sm.query.dense.qc_coords_mode", Config::must_find);
 
-  if (qc_coords_mode_ && !condition_.has_value()) {
+  if (qc_coords_mode_ && !predicates_.condition_.has_value()) {
     throw DenseReaderException(
         "sm.query.dense.qc_coords_mode requires a query condition");
   }
@@ -1035,7 +1041,7 @@ Status DenseReader::apply_query_condition(
   auto timer_se = stats_->start_timer("apply_query_condition");
   auto& result_space_tiles = iteration_tile_data->result_space_tiles();
 
-  if (condition_.has_value()) {
+  if (predicates_.has_predicates()) {
     // Compute the result of the query condition.
     std::vector<std::string> qc_names;
     qc_names.reserve(condition_names.size());
@@ -1147,7 +1153,7 @@ Status DenseReader::apply_query_condition(
                       *(fragment_metadata_[frag_domains[i].fid()]
                             ->array_schema()
                             .get()));
-                  throw_if_not_ok(condition_->apply_dense(
+                  throw_if_not_ok(predicates_.condition_->apply_dense(
                       params,
                       result_space_tile.result_tile(frag_domains[i].fid()),
                       start,
@@ -1723,7 +1729,8 @@ Status DenseReader::copy_fixed_tiles(
     }
 
     // Apply query condition results to this slab.
-    if (condition_.has_value() && result_space_tile.qc_filtered_results()) {
+    if (predicates_.has_predicates() &&
+        result_space_tile.qc_filtered_results()) {
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {
           memcpy(
@@ -1901,7 +1908,8 @@ Status DenseReader::copy_offset_tiles(
       }
     }
 
-    if (condition_.has_value() && result_space_tile.qc_filtered_results()) {
+    if (predicates_.has_predicates() &&
+        result_space_tile.qc_filtered_results()) {
       // Apply query condition results to this slab.
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {
@@ -2076,7 +2084,7 @@ Status DenseReader::aggregate_tiles(
     }
 
     std::vector<uint8_t> aggregate_bitmap(iter.cell_slab_length(), 1);
-    if (condition_.has_value()) {
+    if (predicates_.has_predicates()) {
       memcpy(
           aggregate_bitmap.data(),
           qc_result.data() + cell_offset,

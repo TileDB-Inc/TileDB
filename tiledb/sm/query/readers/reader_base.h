@@ -245,8 +245,8 @@ class ReaderBase : public StrategyBase {
   /** The query's memory tracker. */
   shared_ptr<MemoryTracker> memory_tracker_;
 
-  /** The query condition. */
-  std::optional<QueryCondition>& condition_;
+  /** User predicates */
+  QueryPredicates& predicates_;
 
   /**
    * The delete and update conditions.

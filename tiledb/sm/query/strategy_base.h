@@ -166,6 +166,10 @@ class StrategyParams {
     return predicates_.condition_;
   }
 
+  inline QueryPredicates& predicates() {
+    return predicates_;
+  }
+
   /** Return the default channel aggregates. */
   inline DefaultChannelAggregates& default_channel_aggregates() {
     return default_channel_aggregates_;
