@@ -612,9 +612,6 @@ void S3::touch(const URI& uri) const {
         std::string("Cannot touch object '") + uri.c_str() +
         outcome_error_message(put_object_outcome));
   }
-
-  throw_if_not_ok(wait_for_object_to_propagate(
-      put_object_request.GetBucket(), put_object_request.GetKey()));
 }
 
 void S3::write(
@@ -699,9 +696,6 @@ void S3::remove_file(const URI& uri) const {
         std::string("Failed to delete S3 object '") + uri.c_str() +
         outcome_error_message(delete_object_outcome));
   }
-
-  throw_if_not_ok(wait_for_object_to_be_deleted(
-      delete_object_request.GetBucket(), delete_object_request.GetKey()));
 }
 
 std::vector<directory_entry> S3::ls_with_sizes(const URI& parent) const {
@@ -832,8 +826,6 @@ void S3::flush(const URI& uri, bool finalize) {
     // It is safe to unlock the state here
     state_lck.unlock();
 
-    throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
-
     throw_if_not_ok(finish_flush_object(std::move(outcome), uri, buff, false));
   } else {
     Aws::S3::Model::AbortMultipartUploadRequest abort_request =
@@ -917,8 +909,6 @@ void S3::finalize_and_flush_object(const URI& uri) {
           std::string("Failed to flush S3 object ") + uri.c_str() +
           outcome_error_message(outcome)};
     }
-
-    throw_if_not_ok(wait_for_object_to_propagate(state.bucket, state.key));
   } else {
     Aws::S3::Model::AbortMultipartUploadRequest abort_request =
         make_multipart_abort_request(state);
@@ -1567,9 +1557,6 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) const {
         new_uri.c_str() + outcome_error_message(copy_object_outcome)));
   }
 
-  throw_if_not_ok(wait_for_object_to_propagate(
-      copy_object_request.GetBucket(), copy_object_request.GetKey()));
-
   return Status::Ok();
 }
 
@@ -1658,48 +1645,6 @@ Status S3::initiate_multipart_request(
       std::map<int, Aws::S3::Model::CompletedPart>());
 
   return Status::Ok();
-}
-
-Status S3::wait_for_object_to_propagate(
-    const Aws::String& bucket_name, const Aws::String& object_key) const {
-  throw_if_not_ok(init_client());
-
-  unsigned attempts_cnt = 0;
-  while (attempts_cnt++ < constants::s3_max_attempts) {
-    bool exists;
-    RETURN_NOT_OK(is_object(bucket_name, object_key, &exists));
-    if (exists) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_S3Error(
-      "Failed waiting for object " +
-      std::string(object_key.c_str(), object_key.size()) + " to be created."));
-}
-
-Status S3::wait_for_object_to_be_deleted(
-    const Aws::String& bucket_name, const Aws::String& object_key) const {
-  throw_if_not_ok(init_client());
-
-  unsigned attempts_cnt = 0;
-  while (attempts_cnt++ < constants::s3_max_attempts) {
-    bool exists;
-    RETURN_NOT_OK(is_object(bucket_name, object_key, &exists));
-    if (!exists) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_S3Error(
-      "Failed waiting for object " +
-      std::string(object_key.c_str(), object_key.size()) + " to be deleted."));
 }
 
 Status S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
@@ -1821,9 +1766,6 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
         std::string("Cannot write object '") + uri.c_str() +
         outcome_error_message(put_object_outcome));
   }
-
-  throw_if_not_ok(wait_for_object_to_propagate(
-      put_object_request.GetBucket(), put_object_request.GetKey()));
 }
 
 Status S3::write_multipart(

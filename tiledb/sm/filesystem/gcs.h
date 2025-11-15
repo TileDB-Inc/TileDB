@@ -652,28 +652,6 @@ class GCS : public FilesystemBase {
   Status copy_object(const URI& old_uri, const URI& new_uri) const;
 
   /**
-   * Waits for a object with `bucket_name` and `object_path`
-   * to exist on GCS.
-   *
-   * @param bucket_name The object's bucket name.
-   * @param object_path The object's path
-   * @return Status
-   */
-  Status wait_for_object_to_propagate(
-      const std::string& bucket_name, const std::string& object_path) const;
-
-  /**
-   * Waits for a object with `bucket_name` and `object_path`
-   * to not exist on GCS.
-   *
-   * @param bucket_name The object's bucket name.
-   * @param object_path The object's path
-   * @return Status
-   */
-  Status wait_for_object_to_be_deleted(
-      const std::string& bucket_name, const std::string& object_path) const;
-
-  /**
    * Waits for a bucket with `bucket_name`
    * to exist on GCS.
    *
