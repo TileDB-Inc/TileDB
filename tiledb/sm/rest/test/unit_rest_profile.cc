@@ -230,3 +230,44 @@ TEST_CASE_METHOD(
   p2_check.load_from_file();
   CHECK(*p2_check.get_param("rest.token") == "token2");
 }
+
+TEST_CASE_METHOD(
+    RestProfileFx, "REST Profile: Empty file", "[rest_profile][empty_file]") {
+  SECTION("Save to empty file succeeds") {
+    // Create an empty profiles.json file.
+    {
+      std::ofstream file(filepath_);
+      file.close();
+    }
+    CHECK(std::filesystem::exists(filepath_));
+
+    // Create a profile and save it to the empty file.
+    RestProfile p(create_profile("test_profile"));
+    p.set_param("rest.token", "test_token");
+    p.set_param("rest.server_address", "https://test.server");
+
+    // This should succeed and treat the empty file as a new file.
+    REQUIRE_NOTHROW(p.save_to_file());
+
+    // Verify we can load the profile back.
+    RestProfile loaded(create_profile("test_profile"));
+    REQUIRE_NOTHROW(loaded.load_from_file());
+    CHECK(*loaded.get_param("rest.token") == "test_token");
+    CHECK(*loaded.get_param("rest.server_address") == "https://test.server");
+  }
+
+  SECTION("Load from empty file fails") {
+    // Create an empty profiles.json file.
+    {
+      std::ofstream file(filepath_);
+      file.close();
+    }
+    CHECK(std::filesystem::exists(filepath_));
+
+    // Try to load from an empty file - should fail with parsing error.
+    RestProfile p(create_profile("test_profile"));
+    REQUIRE_THROWS_WITH(
+        p.load_from_file(),
+        Catch::Matchers::ContainsSubstring("Error parsing file"));
+  }
+}
