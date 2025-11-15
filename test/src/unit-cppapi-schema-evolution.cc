@@ -1101,28 +1101,27 @@ void test_schema_evolution_drop_fixed_add_var(
   }
   query_w.submit_and_finalize();
   array_w.close();
-  uint64_t fragment_write_ts = tiledb_timestamp_now_ms() + 1;
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  uint64_t initial_ts = tiledb_timestamp_now_ms();
 
   // Evolve schema to drop attribute "a"
   ArraySchemaEvolution schema_evolution = ArraySchemaEvolution(ctx);
-  uint64_t now = tiledb_timestamp_now_ms() + 1;
+  uint64_t now = initial_ts + 1;
   schema_evolution.set_timestamp_range(std::make_pair(now, now));
   schema_evolution.drop_attribute("a");
   schema_evolution.array_evolve(array_uri);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Evolve schema to add back attribute "a" as a string
   auto a_new = Attribute::create<std::string>(ctx, "a");
-  now = tiledb_timestamp_now_ms() + 1;
+  now = initial_ts + 2;
   schema_evolution.set_timestamp_range(std::make_pair(now, now));
   schema_evolution.add_attribute(a_new);
   schema_evolution.array_evolve(array_uri);
 
-  // Read the array
+  // Read the array with evolved schema
   std::string buffer;
   std::vector<uint64_t> offsets(10);
-  Array array_r(ctx, array_uri, TILEDB_READ);
+  TemporalPolicy temporal_latest(TimeTravel, initial_ts + 2);
+  Array array_r(ctx, array_uri, TILEDB_READ, temporal_latest);
   Subarray subarray_r(ctx, array_r);
   subarray_r.add_range(0, 1, 10);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1142,15 +1141,16 @@ void test_schema_evolution_drop_fixed_add_var(
 
   // Read the original array
   std::vector<int> a_data(10);
-  array_r.open(TILEDB_READ, fragment_write_ts);
-  Subarray subarray_r2(ctx, array_r);
+  TemporalPolicy temporal_initial(TimeTravel, initial_ts);
+  Array array_r2(ctx, array_uri, TILEDB_READ, temporal_initial);
+  Subarray subarray_r2(ctx, array_r2);
   subarray_r2.add_range(0, 1, 10);
-  Query query_r2(ctx, array_r, TILEDB_READ);
+  Query query_r2(ctx, array_r2, TILEDB_READ);
   query_r2.set_layout(layout)
       .set_subarray(subarray_r2)
       .set_data_buffer("a", a_data);
   query_r2.submit();
-  array_r.close();
+  array_r2.close();
   auto result_num = (int)query_r2.result_buffer_elements()["a"].second;
   CHECK(result_num == 10);
   a_data.resize(result_num);
