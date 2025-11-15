@@ -40,4 +40,6 @@
     TILEDB_FILESYSTEM_ENUM(GCS) = 3,
     /** In-memory filesystem */
     TILEDB_FILESYSTEM_ENUM(MEMFS) = 4,
+    /** TileDB filesystem */
+    TILEDB_FILESYSTEM_ENUM(TILEDBFS) = 5,
 #endif

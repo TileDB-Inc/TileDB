@@ -118,6 +118,12 @@ typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
 
+/** Checks whether the given VFS is enabled by tiledb_unit's command line. */
+bool is_g_vfs_enabled(const std::string& vfs);
+
+// Command line arguments.
+int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs);
+
 /**
  * Throws if the return code is not OK.
  * For use in test setup for object allocation.
