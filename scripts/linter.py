@@ -143,6 +143,12 @@ class HeapMemoryLinter(RegexLinter):
         path_components = file_name.split(os.sep)
         if 'test' in path_components or 'test-support' in path_components:
             return False
+
+        # the Rust/C++ inter-op using Rust's `cxx` crate can only pass values from
+        # C++ to Rust using std::unique_ptr
+        if 'oxidize' in path_components:
+            return False
+
         return path_components[-1] not in heap_memory_ignored_files
 
 

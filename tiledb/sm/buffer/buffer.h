@@ -93,6 +93,12 @@ class BufferBase {
     return static_cast<T*>(data_);
   }
 
+  /** Returns the buffer data as bytes (this declaration is seemingly redundant
+   * but helps with Rust FFI declarations) */
+  const uint8_t* bytes() const {
+    return data_as<uint8_t>();
+  }
+
   /**
    * Reads from the local data into the input buffer.
    *
