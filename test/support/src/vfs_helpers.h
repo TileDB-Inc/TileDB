@@ -950,6 +950,8 @@ class VFSTestBase {
    * @param prefix The URI prefix to use for the test directory.
    * @param vfs_backend The value of the "--vfs" command-line option that
    * enables this backend.
+   * @param skip_test_config Whether to skip calling create_test_config
+   * to configure the VFS.
    */
   VFSTestBase(
       const std::vector<size_t>& test_tree,
