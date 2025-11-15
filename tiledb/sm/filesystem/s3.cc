@@ -1939,6 +1939,7 @@ Status S3::get_make_upload_part_req(
 
   const auto& upload_part_outcome = ctx.upload_part_outcome;
   bool success = upload_part_outcome.IsSuccess();
+  bool induced_failure = false;
 
   static const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
   if (unit_test_cfg.s3_fail_every_nth_upload_request.is_set() &&
@@ -1946,6 +1947,7 @@ Status S3::get_make_upload_part_req(
               unit_test_cfg.s3_fail_every_nth_upload_request.get() ==
           0) {
     success = false;
+    induced_failure = true;
   }
 
   if (!success) {
@@ -1956,7 +1958,9 @@ Status S3::get_make_upload_part_req(
     if (ctx.upload_part_num > max_multipart_part_num) {
       msg +=
           " This error might be resolved by increasing the value of the "
-          "'vfs.s3.multipart_part_size' config option";
+          "'vfs.s3.multipart_part_size' config option.";
+    } else if (induced_failure) {
+      msg += " Failure induced by unit test configuration.";
     }
     Status st = Status_S3Error(msg);
     // Lock multipart state

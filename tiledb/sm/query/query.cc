@@ -83,6 +83,13 @@ static uint64_t get_effective_memory_budget(
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+Query::CoordsInfo::CoordsInfo()
+    : has_coords_(false)
+    , coords_buffer_(nullptr)
+    , coords_buffer_size_(nullptr)
+    , coords_num_(0) {
+}
+
 Query::Query(
     ContextResources& resources,
     CancellationSource cancellation_source,
@@ -125,7 +132,6 @@ Query::Query(
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
-    , fragment_size_(std::numeric_limits<uint64_t>::max())
     , memory_budget_(memory_budget)
     , query_remote_buffer_storage_(std::nullopt)
     , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
@@ -140,11 +146,6 @@ Query::Query(
   subarray_ = Subarray(array_, layout_, stats_, logger_);
 
   fragment_metadata_ = array->fragment_metadata();
-
-  coords_info_.coords_buffer_ = nullptr;
-  coords_info_.coords_buffer_size_ = nullptr;
-  coords_info_.coords_num_ = 0;
-  coords_info_.has_coords_ = false;
 
   callback_ = nullptr;
   callback_data_ = nullptr;
@@ -1636,10 +1637,19 @@ Status Query::submit() {
   }
 
   // Make sure fragment size is only set for global order.
-  if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
-      (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
-    throw QueryException(
-        "[submit] Fragment size is only supported for global order writes.");
+  if (fragment_size_.has_value()) {
+    if (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE) {
+      throw QueryException(
+          "[submit] Fragment size is only supported for global order writes.");
+    } else if (array_schema_->dense() && array_->is_remote()) {
+      // For dense arrays, `max_fragment_size_` requires buffering of a trail of
+      // filtered tiles which may not fit in a target fragment. This trail of
+      // tiles is not serializable. As such `max_fragment_size` cannot be used
+      // with remote dense array writes.
+      throw QueryException(
+          "[submit] Fragment size is not supported for remote global order "
+          "writes to dense arrays.");
+    }
   }
 
   // Check attribute/dimensions buffers completeness before query submits

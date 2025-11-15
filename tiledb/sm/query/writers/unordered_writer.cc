@@ -376,7 +376,8 @@ Status UnorderedWriter::prepare_tiles(
       tiles->emplace(
           std::piecewise_construct,
           std::forward_as_tuple(name),
-          std::forward_as_tuple(query_memory_tracker_));
+          std::forward_as_tuple(query_memory_tracker_->get_resource(
+              MemoryType::WRITER_TILE_DATA)));
     }
   }
 
@@ -698,7 +699,7 @@ Status UnorderedWriter::unordered_write() {
   }
 
   // Compute tile metadata.
-  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tile_num, tiles));
+  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tiles));
 
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));

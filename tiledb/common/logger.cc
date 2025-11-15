@@ -73,7 +73,8 @@ Logger::Logger(
     const Logger::Format format,
     const bool root)
     : name_(name)
-    , root_(root) {
+    , root_(root)
+    , passert_callback_flush_([this]() { flush(); }) {
   logger_ = spdlog::get(name_);
   if (logger_ == nullptr) {
 #ifdef _WIN32
@@ -92,7 +93,8 @@ Logger::Logger(
   set_format(format);
 }
 
-Logger::Logger(shared_ptr<spdlog::logger> logger) {
+Logger::Logger(shared_ptr<spdlog::logger> logger)
+    : passert_callback_flush_([this]() { flush(); }) {
   logger_ = std::move(logger);
 }
 
@@ -310,6 +312,12 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
                              fmt::format("{}] [{}: {}", name_, tag, id);
   }
   return tags;
+}
+
+void Logger::flush() const {
+  if (logger_) {
+    logger_->flush();
+  }
 }
 
 /* ********************************* */

@@ -49,6 +49,10 @@
 #include "tiledb/sm/filesystem/s3.h"
 #endif
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include "tiledb/sm/rest/rest_client.h"
 
 namespace tiledb::test {
@@ -387,6 +391,16 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
   require_tiledb_ok(tiledb_array_create_serialization_wrapper(
       ctx, array_uri, array_schema, serialize));
   return array_uri;
+}
+
+DenyWriteAccess::SkipOnUnsupported::SkipOnUnsupported() {
+#ifdef _WIN32
+  SKIP("DenyWriteAccess is not supported on Windows");
+#else
+  if (geteuid() == 0) {
+    SKIP("DenyWriteAccess is not supported when running as root");
+  }
+#endif
 }
 
 VFSTestBase::VFSTestBase(

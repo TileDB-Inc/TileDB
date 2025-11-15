@@ -477,6 +477,7 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
       } catch (...) {
         // Enqueue caught-exceptions to be handled by the writer.
         buffer_queue.push(std::current_exception());
+        reading = false;
       }
       buffer_count++;
 
@@ -509,6 +510,8 @@ void VFS::chunked_buffer_io(const URI& src, const URI& dest) {
       throw;
     }
   }
+
+  throw_if_not_ok(read_task.wait());
 
   dest_fs.flush(dest);
 }

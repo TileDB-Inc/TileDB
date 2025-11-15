@@ -77,6 +77,8 @@ The bitshuffle filter produces output data in the format:
 | … | … | … |
 | Part N | `uint8_t[]` | Bitshuffled data part N |
 
+Parts larger than 8192 bytes are shuffled in chunks of 8192 bytes.
+
 ### Bit Width Reduction Filter
 
 The bit width reduction filter does not filter input metadata. It produces output metadata in the format:

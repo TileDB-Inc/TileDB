@@ -77,7 +77,6 @@ env:
   CMAKE_GENERATOR: ${{ inputs.cmake_generator }}
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
   TILEDB_CI_OS: ${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'Linux' || 'macOS' }}
-  TILEDB_MANYLINUX: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
@@ -143,7 +142,7 @@ jobs:
         if: inputs.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core perl-IPC-Cmd curl zip unzip tar
+          dnf install -y redhat-lsb-core perl-IPC-Cmd perl-Time-Piece curl zip unzip tar
 
       # This must happen after checkout, because checkout would remove the directory.
       - name: Install Ninja
