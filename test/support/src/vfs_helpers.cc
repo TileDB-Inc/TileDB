@@ -169,6 +169,10 @@ Status SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  if (rest_) {
+    // REST CI gets configured by environment variables.
+    return Status::Ok();
+  }
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
