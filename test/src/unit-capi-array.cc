@@ -39,6 +39,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -84,6 +85,9 @@ using namespace tiledb::sm;
 struct ArrayFx {
   // The memory tracker
   shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
+
+  // TODO: Update ArrayFx to use VFSTestSetup.
+  VFSTestSetup vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -901,6 +905,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
+  array_path = vfs_test_setup_.get_backend_uri(array_name);
 
   // ---- FIRST WRITE ----
   // Prepare cell buffers
@@ -1934,6 +1939,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
+  array_path = vfs_test_setup_.get_backend_uri(array_name);
 
   // Conditionally consolidate
   // Note: there's no need to vacuum; delete_array will delete all fragments

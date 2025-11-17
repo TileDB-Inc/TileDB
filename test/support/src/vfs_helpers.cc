@@ -556,7 +556,7 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
   std::sort(expected_results_.begin(), expected_results_.end());
 }
 
-bool VFSTestSetup::is_legacy_rest() {
+bool VFSTestSetup::is_legacy_rest() const {
   return is_rest() && ctx_c->rest_client().rest_legacy();
 }
 
