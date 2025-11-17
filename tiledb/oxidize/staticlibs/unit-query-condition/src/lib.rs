@@ -1,5 +1,6 @@
 pub use tiledb_arrow;
 pub use tiledb_expr;
+pub use tiledb_query_predicates;
 
 #[cxx::bridge]
 mod ffi {
@@ -12,6 +13,15 @@ mod ffi {
         type ArraySchema = tiledb_cxx_interface::sm::array_schema::ArraySchema;
         type ASTNode = tiledb_cxx_interface::sm::query::ast::ASTNode;
         type ResultTile = tiledb_cxx_interface::sm::query::readers::ResultTile;
+    }
+
+    #[namespace = "tiledb::test::query_condition_datafusion"]
+    extern "Rust" {
+        fn evaluate_as_datafusion(
+            array_schema: &ArraySchema,
+            query_condition: &ASTNode,
+            tile: &ResultTile,
+        ) -> Result<Vec<u8>>;
     }
 
     #[namespace = "tiledb::test::query_condition_datafusion"]
@@ -48,12 +58,38 @@ use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField, Schema as
 use arrow::record_batch::RecordBatch;
 use proptest::prelude::*;
 use proptest::test_runner::{TestCaseError, TestRunner};
+use tiledb_arrow::schema::WhichSchema;
 use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
+use tiledb_cxx_interface::sm::array_schema::ArraySchema;
+use tiledb_cxx_interface::sm::query::ast::ASTNode;
+use tiledb_cxx_interface::sm::query::readers::ResultTile;
 use tiledb_pod::array::schema::SchemaData;
 use tiledb_pod::array::schema::strategy::Requirements as SchemaRequirements;
 use tiledb_test_cells::strategy::{CellsParameters, CellsStrategySchema, SchemaWithDomain};
 use tiledb_test_cells::{Cells, FieldData};
+
+fn evaluate_as_datafusion(
+    array_schema: &ArraySchema,
+    query_condition: &ASTNode,
+    tile: &ResultTile,
+) -> anyhow::Result<Vec<u8>> {
+    let logical_expr = tiledb_test_query_condition::logical_expr::to_datafusion(
+        array_schema,
+        WhichSchema::Storage,
+        query_condition,
+    )?;
+
+    let mut qbuilder = tiledb_query_predicates::Builder::new(array_schema, WhichSchema::Storage)?;
+    qbuilder.add_predicate(logical_expr)?;
+
+    let qeval = qbuilder.compile()?;
+
+    let mut bitmap = vec![1u8; tile.cell_num() as usize];
+    qeval.evaluate_into_bitmap::<u8>(tile, &mut bitmap)?;
+
+    Ok(bitmap)
+}
 
 fn instance_query_condition_datafusion(
     schema: &SchemaData,

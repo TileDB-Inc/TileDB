@@ -7,6 +7,12 @@ version = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 cxx = { workspace = true }
+datafusion = { workspace = true }
+itertools = { workspace = true }
+num-traits = { workspace = true }
+thiserror = { workspace = true }
+tiledb-arrow = { workspace = true }
 tiledb-common = { workspace = true }
 tiledb-cxx-interface = { workspace = true }
+tiledb-datatype = { workspace = true }
 tiledb-test-support-cxx-interface = { workspace = true }

@@ -908,6 +908,15 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Test combinations of query conditions and predicates.
+ *
+ * While predicates are the more user-friendly option, query conditions are
+ * still around for historical reasons, and may also be more performant.
+ * Whatever the case, we don't explicity disable combining these features,
+ * and so we should observe here that they mix well and the cells which come out
+ * of a query using both is the logical AND of both types of predicates.
+ */
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate with query condition",
@@ -968,11 +977,9 @@ TEST_CASE_METHOD(
     const auto predresult = query_array(array_name, query_order, {"a IS NULL"});
     CHECK(predresult == expect_a_is_null);
 
-    // NB: since we re-write the query condition into datafusion
-    // it also will not support this
-    REQUIRE_THROWS_WITH(
-        query_array(array_name, query_order, {"a IS NULL"}, kwargs),
-        matchEnumerationNotSupported());
+    const auto andresult =
+        query_array(array_name, query_order, {"a IS NULL"}, kwargs);
+    CHECK(andresult == expect_a_and_e_are_null);
   }
 
   SECTION("Enumeration in predicate") {

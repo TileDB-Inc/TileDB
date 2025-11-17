@@ -4,8 +4,8 @@
 //! This enables property-based testing against arbitrary query conditions
 //! using the strategies we have already written in `tiledb_common`.
 
-mod datafusion;
 mod enums;
+pub mod logical_expr;
 
 use tiledb_common::query::condition::*;
 use tiledb_cxx_interface::sm::query::ast::ASTNode;

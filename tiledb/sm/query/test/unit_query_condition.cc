@@ -5188,33 +5188,22 @@ std::vector<uint8_t> instance(
     const tiledb::sm::ASTNode& ast) {
   using Asserter = tiledb::test::AsserterRapidcheck;
 
-  // set up traditional TileDB evaluation
+  // evaluate using traditional TileDB evaluation
   QueryCondition qc_ast(ast.clone());
   qc_ast.rewrite_for_schema(array_schema);
-
-  // set up datafusion evaluation
-  QueryCondition qc_datafusion(ast.clone());
-  qc_datafusion.rewrite_for_schema(array_schema);
-  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(
-      array_schema, tiledb::oxidize::arrow::schema::WhichSchema::Storage);
-  ASSERTER(datafusion_ok);
-
-  // prepare to evaluate
   QueryCondition::Params params(
       tiledb::test::get_test_memory_tracker(), array_schema);
 
   std::vector<uint8_t> bitmap_ast(tile.cell_num(), 1);
-  std::vector<uint8_t> bitmap_datafusion(tile.cell_num(), 1);
-
-  // evaluate traditional ast
   const auto status_ast =
       qc_ast.apply_sparse<uint8_t>(params, tile, bitmap_ast);
   ASSERTER(status_ast.ok());
 
-  // evaluate datafusion
-  const auto status_datafusion =
-      qc_datafusion.apply_sparse<uint8_t>(params, tile, bitmap_datafusion);
-  ASSERTER(status_datafusion.ok());
+  // evaluate using datafusion
+  const auto rs_bitmap_datafusion =
+      evaluate_as_datafusion(array_schema, *qc_ast.ast().get(), tile);
+  std::vector<uint8_t> bitmap_datafusion(
+      rs_bitmap_datafusion.begin(), rs_bitmap_datafusion.end());
 
   // compare
   ASSERTER(bitmap_ast == bitmap_datafusion);

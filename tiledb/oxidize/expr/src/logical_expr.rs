@@ -5,11 +5,8 @@ use datafusion::common::tree_node::{TreeNode, TreeNodeRecursion, TreeNodeVisitor
 use datafusion::logical_expr::Expr;
 
 /// Returns a list of the names of the columns used in this expression.
-pub fn columns(expr: &Expr) -> Vec<String> {
-    expr.column_refs()
-        .into_iter()
-        .map(|c| c.name.clone())
-        .collect()
+pub fn columns(expr: &Expr) -> impl Iterator<Item = &str> {
+    expr.column_refs().into_iter().map(|c| c.name.as_ref())
 }
 
 /// Returns true if `expr` contains aggregate functions and false otherwise.

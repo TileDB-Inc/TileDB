@@ -22,9 +22,7 @@ use tiledb_cxx_interface::sm::misc::ByteVecValue;
 use tiledb_cxx_interface::sm::query::ast::ASTNode;
 use tiledb_datatype::apply_physical_type;
 
-use crate::logical_expr::LogicalExpr;
-
-/// An error constructing a [LogicalExpr] for a query condition.
+/// An error constructing an [Expr] for a query condition.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Query condition expression internal error: {0}")]
@@ -417,7 +415,7 @@ fn combination_ast_to_binary_expr(
 ) -> Result<Expr, Error> {
     let mut level = query_condition
         .children()
-        .map(|ast| to_datafusion_impl(schema, which, ast))
+        .map(|ast| to_datafusion(schema, which, ast))
         .collect::<Result<Vec<_>, _>>()?;
 
     while level.len() != 1 {
@@ -447,7 +445,7 @@ fn combination_ast_to_binary_expr(
     Ok(level.into_iter().next().unwrap())
 }
 
-fn to_datafusion_impl(
+pub fn to_datafusion(
     schema: &ArraySchema,
     which: WhichSchema,
     query_condition: &ASTNode,
@@ -465,7 +463,7 @@ fn to_datafusion_impl(
                 if children.len() != 1 {
                     return Err(InternalError::NotTree(children.len()).into());
                 }
-                let negate_arg = to_datafusion_impl(schema, which, children[0])?;
+                let negate_arg = to_datafusion(schema, which, children[0])?;
                 Ok(!negate_arg)
             }
             invalid => Err(InternalError::InvalidCombinationOp(invalid.repr.into()).into()),
@@ -540,18 +538,4 @@ fn to_datafusion_impl(
             invalid => Err(InternalError::InvalidOp(invalid.repr.into()).into()),
         }
     }
-}
-
-/// Returns a [LogicalExpr] which represents the same expression
-/// as the requested query condition.
-pub fn to_datafusion(
-    schema: &ArraySchema,
-    which: &WhichSchema,
-    query_condition: &ASTNode,
-) -> Result<Box<LogicalExpr>, Error> {
-    Ok(Box::new(LogicalExpr(to_datafusion_impl(
-        schema,
-        *which,
-        query_condition,
-    )?)))
 }

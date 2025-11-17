@@ -79,6 +79,7 @@ oxidize(
   EXPORT
     arrow
     cxx-interface
+    query-predicates
     test-support-cxx-interface
 )
 

@@ -729,6 +729,12 @@ void Query::init() {
           fragment_name_));
     }
 
+#ifdef HAVE_RUST
+    if (predicates_.datafusion_.has_value()) {
+      predicates_.datafusion_.value()->compile();
+    }
+#endif
+
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
     if (!only_dim_label_query() && !subarray_.has_label_ranges()) {

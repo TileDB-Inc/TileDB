@@ -3029,8 +3029,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cxx",
+ "datafusion",
+ "itertools",
+ "num-traits",
+ "thiserror 2.0.17",
+ "tiledb-arrow",
  "tiledb-common",
  "tiledb-cxx-interface",
+ "tiledb-datatype",
  "tiledb-test-support-cxx-interface",
 ]
 
@@ -3078,6 +3084,7 @@ dependencies = [
  "tiledb-cxx-interface",
  "tiledb-expr",
  "tiledb-pod",
+ "tiledb-query-predicates",
  "tiledb-test-array-schema",
  "tiledb-test-ffi",
  "tiledb-test-query-condition",

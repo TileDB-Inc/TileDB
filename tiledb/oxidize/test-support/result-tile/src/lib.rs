@@ -9,13 +9,38 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use arrow::array::{Array as ArrowArray, GenericListArray, PrimitiveArray};
+use arrow::array::{Array as ArrowArray, GenericListArray, NativeAdapter, PrimitiveArray};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use arrow::record_batch::RecordBatch;
 use tiledb_cxx_interface::sm::array_schema::{ArraySchema, CellValNum};
 use tiledb_cxx_interface::sm::query::readers::ResultTile;
 use tiledb_test_cells::{Cells, FieldData, typed_field_data_go};
+
+/// Associates a native type with an `ArrowDataType` value which has the
+/// same corresponding native type
+pub trait TypeTraits {
+    type ArrowPrimitiveType;
+}
+
+macro_rules! type_traits {
+    ($ty:ty, $primitive_type:ident) => {
+        impl TypeTraits for $ty {
+            type ArrowPrimitiveType = arrow::datatypes::$primitive_type;
+        }
+    };
+}
+
+type_traits!(i8, Int8Type);
+type_traits!(i16, Int16Type);
+type_traits!(i32, Int32Type);
+type_traits!(i64, Int64Type);
+type_traits!(u8, UInt8Type);
+type_traits!(u16, UInt16Type);
+type_traits!(u32, UInt32Type);
+type_traits!(u64, UInt64Type);
+type_traits!(f32, Float32Type);
+type_traits!(f64, Float64Type);
 
 /// Packages a `ResultTile` with the buffers which contain the tile data.
 pub struct PackagedResultTile {
@@ -214,14 +239,21 @@ fn cells_to_record_batch(cells: &Cells) -> RecordBatch {
 fn field_data_to_array(field: &FieldData) -> Arc<dyn ArrowArray> {
     typed_field_data_go!(
         field,
-        _DT,
+        DT,
         cells,
-        Arc::new(cells.iter().copied().collect::<PrimitiveArray<_>>()) as Arc<dyn ArrowArray>,
+        Arc::new(
+            cells
+                .iter()
+                .copied()
+                .map(NativeAdapter::<<DT as TypeTraits>::ArrowPrimitiveType>::from)
+                .collect::<PrimitiveArray<_>>()
+        ) as Arc<dyn ArrowArray>,
         {
             let values = cells
                 .iter()
                 .flatten()
                 .copied()
+                .map(NativeAdapter::<<DT as TypeTraits>::ArrowPrimitiveType>::from)
                 .collect::<PrimitiveArray<_>>();
             let offsets = OffsetBuffer::<i64>::from_lengths(cells.iter().map(|s| s.len()));
             let cells = GenericListArray::new(

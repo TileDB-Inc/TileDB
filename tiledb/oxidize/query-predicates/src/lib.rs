@@ -16,9 +16,12 @@ mod ffi {
         #[cxx_name = "new_query_predicates"]
         fn new_query_predicates_ffi(schema: &ArraySchema) -> Result<Box<QueryPredicates>>;
 
-        fn field_names(&self) -> Vec<String>;
+        fn compile(&mut self) -> Result<()>;
 
-        fn add_predicate(&mut self, expr: &str) -> Result<()>;
+        unsafe fn field_names<'a>(&'a self) -> Vec<&'a str>;
+
+        #[cxx_name = "add_predicate"]
+        fn add_text_predicate(&mut self, expr: &str) -> Result<()>;
 
         fn evaluate_into_bitmap_u8(&self, tile: &ResultTile, bitmap: &mut [u8]) -> Result<()>;
         fn evaluate_into_bitmap_u64(&self, tile: &ResultTile, bitmap: &mut [u64]) -> Result<()>;
@@ -27,7 +30,7 @@ mod ffi {
 
 use std::sync::Arc;
 
-use arrow::datatypes::DataType;
+use arrow::datatypes::{DataType, Schema as ArrowSchema};
 use datafusion::common::tree_node::TreeNode;
 use datafusion::common::{DFSchema, ScalarValue};
 use datafusion::execution::context::ExecutionProps;
@@ -37,6 +40,7 @@ use datafusion::logical_expr::{Expr, ExprSchemable};
 use datafusion::physical_plan::{ColumnarValue, PhysicalExpr};
 use itertools::Itertools;
 use num_traits::Zero;
+use tiledb_arrow::schema::WhichSchema;
 use tiledb_cxx_interface::sm::array_schema::ArraySchema;
 use tiledb_cxx_interface::sm::query::readers::ResultTile;
 
@@ -58,8 +62,12 @@ pub enum AddPredicateError {
     TypeCoercion(#[source] datafusion::common::DataFusionError),
     #[error("Output type error: {0}")]
     OutputType(#[source] datafusion::common::DataFusionError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum CompileError {
     #[error("Expression compile error: {0}")]
-    Compile(#[source] datafusion::common::DataFusionError),
+    PhysicalExpr(#[source] datafusion::common::DataFusionError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -70,35 +78,112 @@ pub enum EvaluatePredicateError {
     Evaluate(#[source] datafusion::common::DataFusionError),
 }
 
-pub struct QueryPredicates {
-    dfsession: SessionContext,
-    dfschema: DFSchema,
-    logical_exprs: Vec<Expr>,
-    predicate: Option<Arc<dyn PhysicalExpr>>,
+/// Holds state to parse, analyze and evaluate predicates of a TileDB query.
+pub enum QueryPredicates {
+    Build(Builder),
+    Evaluate(Evaluator),
 }
 
 impl QueryPredicates {
     pub fn new(schema: &ArraySchema) -> Result<Self, tiledb_arrow::schema::Error> {
-        let (arrow_schema, _) =
-            tiledb_arrow::schema::to_arrow(schema, tiledb_arrow::schema::WhichSchema::View)?;
+        Ok(Self::Build(Builder::new(schema, WhichSchema::View)?))
+    }
+
+    pub fn add_text_predicate(&mut self, expr: &str) -> Result<(), AddPredicateError> {
+        match self {
+            Self::Build(builder) => builder.add_text_predicate(expr),
+            Self::Evaluate(_) => todo!(),
+        }
+    }
+
+    pub fn compile(&mut self) -> Result<(), CompileError> {
+        match self {
+            Self::Build(builder) => {
+                *self = Self::Evaluate(builder.compile()?);
+                Ok(())
+            }
+            Self::Evaluate(_) => todo!(),
+        }
+    }
+
+    pub fn field_names(&self) -> Vec<&str> {
+        match self {
+            Self::Build(builder) => builder.field_names(),
+            Self::Evaluate(evaluator) => evaluator.field_names(),
+        }
+    }
+
+    pub fn evaluate(&self, tile: &ResultTile) -> Result<ColumnarValue, EvaluatePredicateError> {
+        match self {
+            Self::Build(_) => todo!(),
+            Self::Evaluate(evaluator) => evaluator.evaluate(tile),
+        }
+    }
+
+    pub fn evaluate_into_bitmap<T>(
+        &self,
+        tile: &ResultTile,
+        bitmap: &mut [T],
+    ) -> Result<(), EvaluatePredicateError>
+    where
+        T: Copy + Zero,
+    {
+        match self {
+            Self::Build(_) => todo!(),
+            Self::Evaluate(evaluator) => evaluator.evaluate_into_bitmap(tile, bitmap),
+        }
+    }
+
+    fn evaluate_into_bitmap_u8(
+        &self,
+        tile: &ResultTile,
+        bitmap: &mut [u8],
+    ) -> Result<(), EvaluatePredicateError> {
+        self.evaluate_into_bitmap::<u8>(tile, bitmap)
+    }
+
+    fn evaluate_into_bitmap_u64(
+        &self,
+        tile: &ResultTile,
+        bitmap: &mut [u64],
+    ) -> Result<(), EvaluatePredicateError> {
+        self.evaluate_into_bitmap::<u64>(tile, bitmap)
+    }
+}
+
+/// Structure which accumulates predicates.
+pub struct Builder {
+    /// DataFusion evaluation context.
+    dfsession: SessionContext,
+    /// Array schema mapped onto DataFusion data types.
+    dfschema: DFSchema,
+    /// Logical syntax tree representations of the predicates.
+    logical_exprs: Vec<Expr>,
+}
+
+impl Builder {
+    pub fn new(
+        schema: &ArraySchema,
+        which: WhichSchema,
+    ) -> Result<Self, tiledb_arrow::schema::Error> {
+        let (arrow_schema, _) = tiledb_arrow::schema::to_arrow(schema, which)?;
         let dfschema = {
             // SAFETY: this only errors if the names are not unique,
             // which they will be because `ArraySchema` requires it
             DFSchema::try_from(arrow_schema).unwrap()
         };
 
-        Ok(QueryPredicates {
+        Ok(Builder {
             dfsession: SessionContext::from(
                 SessionStateBuilder::new_with_default_features().build(),
             ),
             dfschema,
             logical_exprs: vec![],
-            predicate: None,
         })
     }
 
-    /// Returns a list of all of the field names used in all of the predicates
-    pub fn field_names(&self) -> Vec<String> {
+    /// Returns a list of all of the field names used in all of the predicates.
+    pub fn field_names(&self) -> Vec<&str> {
         self.logical_exprs
             .iter()
             .flat_map(tiledb_expr::logical_expr::columns)
@@ -106,7 +191,7 @@ impl QueryPredicates {
             .collect()
     }
 
-    pub fn add_predicate(&mut self, expr: &str) -> Result<(), AddPredicateError> {
+    pub fn add_text_predicate(&mut self, expr: &str) -> Result<(), AddPredicateError> {
         let parsed_expr = self
             .dfsession
             .parse_sql_expr(expr, &self.dfschema)
@@ -121,6 +206,10 @@ impl QueryPredicates {
             .map(|t| t.data)
             .map_err(AddPredicateError::TypeCoercion)?;
 
+        self.add_predicate(logical_expr)
+    }
+
+    pub fn add_predicate(&mut self, logical_expr: Expr) -> Result<(), AddPredicateError> {
         let output_type = logical_expr
             .get_type(&self.dfschema)
             .map_err(AddPredicateError::OutputType)?;
@@ -129,21 +218,65 @@ impl QueryPredicates {
         } else if tiledb_expr::logical_expr::has_aggregate_functions(&logical_expr) {
             return Err(AddPredicateError::ContainsAggregateFunctions);
         }
-        let physical_expr = datafusion::physical_expr::create_physical_expr(
-            &logical_expr,
-            &self.dfschema,
-            &ExecutionProps::new(),
-        )
-        .map_err(AddPredicateError::Compile)?;
-
         self.logical_exprs.push(logical_expr);
-        self.predicate = Some(datafusion::physical_expr::conjunction(
-            self.predicate
-                .take()
-                .into_iter()
-                .chain(std::iter::once(physical_expr)),
-        ));
+
         Ok(())
+    }
+
+    pub fn compile(&self) -> Result<Evaluator, CompileError> {
+        let evaluation_schema = {
+            let projection_fields = self
+                .field_names()
+                .iter()
+                .map(|fname| self.dfschema.as_arrow().field_with_name(fname))
+                .process_results(|fs| fs.cloned().collect::<Vec<_>>());
+
+            let projection_fields = {
+                // SAFETY: all field names have already been validated as part of the schema
+                projection_fields.unwrap()
+            };
+
+            // SAFETY: this only errors if the names are not unique,
+            // which they will be because `self.field_names()` produces unique field names
+            DFSchema::try_from(ArrowSchema::new(projection_fields)).unwrap()
+        };
+        let predicate = {
+            let execution_props = ExecutionProps::new();
+            self.logical_exprs
+                .iter()
+                .map(|e| {
+                    datafusion::physical_expr::create_physical_expr(
+                        e,
+                        &evaluation_schema,
+                        &execution_props,
+                    )
+                    .map_err(CompileError::PhysicalExpr)
+                })
+                .process_results(|es| datafusion::physical_expr::conjunction(es))?
+        };
+        Ok(Evaluator {
+            dfschema: evaluation_schema,
+            predicate,
+        })
+    }
+}
+
+pub struct Evaluator {
+    /// Array schema mapped onto DataFusion data types; this is a projection of the full schema
+    /// consisting only of the fields which are used to evaluate `self.predicate`.
+    dfschema: DFSchema,
+    /// Expression evaluator which evaluates all predicates as a conjunction.
+    predicate: Arc<dyn PhysicalExpr>,
+}
+
+impl Evaluator {
+    /// Returns a list of all of the field names used in all of the predicates.
+    pub fn field_names(&self) -> Vec<&str> {
+        self.dfschema
+            .fields()
+            .iter()
+            .map(|f| f.name().as_ref())
+            .collect::<Vec<_>>()
     }
 
     pub fn evaluate(&self, tile: &ResultTile) -> Result<ColumnarValue, EvaluatePredicateError> {
@@ -153,14 +286,12 @@ impl QueryPredicates {
             // The RecordBatch only lives in this stack frame, so we will follow this contract.
             tiledb_arrow::record_batch::to_record_batch(self.dfschema.inner(), tile)?
         };
-        if let Some(p) = self.predicate.as_ref() {
-            Ok(p.evaluate(&rb).map_err(EvaluatePredicateError::Evaluate)?)
-        } else {
-            Ok(ColumnarValue::Scalar(ScalarValue::Boolean(Some(true))))
-        }
+        self.predicate
+            .evaluate(&rb)
+            .map_err(EvaluatePredicateError::Evaluate)
     }
 
-    fn evaluate_into_bitmap<T>(
+    pub fn evaluate_into_bitmap<T>(
         &self,
         tile: &ResultTile,
         bitmap: &mut [T],
@@ -207,22 +338,6 @@ impl QueryPredicates {
                 }
             }
         }
-    }
-
-    fn evaluate_into_bitmap_u8(
-        &self,
-        tile: &ResultTile,
-        bitmap: &mut [u8],
-    ) -> Result<(), EvaluatePredicateError> {
-        self.evaluate_into_bitmap::<u8>(tile, bitmap)
-    }
-
-    fn evaluate_into_bitmap_u64(
-        &self,
-        tile: &ResultTile,
-        bitmap: &mut [u64],
-    ) -> Result<(), EvaluatePredicateError> {
-        self.evaluate_into_bitmap::<u64>(tile, bitmap)
     }
 }
 
