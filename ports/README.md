@@ -32,4 +32,5 @@ For ease of review when patching existing ports, you are recommended to make one
 
 | Port          | Reason                                                                   |
 |---------------|--------------------------------------------------------------------------|
+| `blosc2`      | Patching to fix removing find modules (vcpkg PR 48229)                   |
 | `libfaketime` | Port does not yet exist upstream                                         |

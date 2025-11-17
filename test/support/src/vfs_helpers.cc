@@ -49,6 +49,10 @@
 #include "tiledb/sm/filesystem/s3.h"
 #endif
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include "tiledb/sm/rest/rest_client.h"
 
 namespace tiledb::test {
@@ -169,6 +173,10 @@ Status SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  if (rest_) {
+    // REST CI gets configured by environment variables.
+    return Status::Ok();
+  }
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -422,6 +430,16 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
   return array_uri;
 }
 
+DenyWriteAccess::SkipOnUnsupported::SkipOnUnsupported() {
+#ifdef _WIN32
+  SKIP("DenyWriteAccess is not supported on Windows");
+#else
+  if (geteuid() == 0) {
+    SKIP("DenyWriteAccess is not supported when running as root");
+  }
+#endif
+}
+
 VFSTestBase::VFSTestBase(
     const std::vector<size_t>& test_tree, const std::string& prefix)
     : test_tree_(test_tree)
@@ -556,7 +574,7 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
   std::sort(expected_results_.begin(), expected_results_.end());
 }
 
-bool VFSTestSetup::is_legacy_rest() {
+bool VFSTestSetup::is_legacy_rest() const {
   return is_rest() && ctx_c->rest_client().rest_legacy();
 }
 
