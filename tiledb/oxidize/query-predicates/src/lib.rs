@@ -52,6 +52,8 @@ pub enum ParseExprError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AddPredicateError {
+    #[error("Query is in progress")]
+    InvalidState,
     #[error("Parse error: {0}")]
     Parse(#[source] datafusion::common::DataFusionError),
     #[error("Expression is not a predicate: found return type {0}")]
@@ -66,12 +68,16 @@ pub enum AddPredicateError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CompileError {
+    #[error("Query is in progress")]
+    InvalidState,
     #[error("Expression compile error: {0}")]
     PhysicalExpr(#[source] datafusion::common::DataFusionError),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum EvaluatePredicateError {
+    #[error("Query has not been started")]
+    InvalidState,
     #[error("Data error: {0}")]
     ResultTile(#[from] tiledb_arrow::record_batch::Error),
     #[error("Evaluation error: {0}")]
@@ -80,7 +86,9 @@ pub enum EvaluatePredicateError {
 
 /// Holds state to parse, analyze and evaluate predicates of a TileDB query.
 pub enum QueryPredicates {
+    /// Predicates are being added to the query.
     Build(Builder),
+    /// The query is being evaluated.
     Evaluate(Evaluator),
 }
 
@@ -89,23 +97,29 @@ impl QueryPredicates {
         Ok(Self::Build(Builder::new(schema, WhichSchema::View)?))
     }
 
+    /// Parses a text predicate into a logical expression and adds it to the list of predicates to
+    /// evaluate.
+    ///
+    /// This is only valid from the `Build` state.
     pub fn add_text_predicate(&mut self, expr: &str) -> Result<(), AddPredicateError> {
         match self {
             Self::Build(builder) => builder.add_text_predicate(expr),
-            Self::Evaluate(_) => todo!(),
+            Self::Evaluate(_) => Err(AddPredicateError::InvalidState),
         }
     }
 
+    /// Transitions state from `Build` to `Evaluate`.
     pub fn compile(&mut self) -> Result<(), CompileError> {
         match self {
             Self::Build(builder) => {
                 *self = Self::Evaluate(builder.compile()?);
                 Ok(())
             }
-            Self::Evaluate(_) => todo!(),
+            Self::Evaluate(_) => Err(CompileError::InvalidState),
         }
     }
 
+    /// Returns a list of unique field names which are used in the predicates.
     pub fn field_names(&self) -> Vec<&str> {
         match self {
             Self::Build(builder) => builder.field_names(),
@@ -115,7 +129,7 @@ impl QueryPredicates {
 
     pub fn evaluate(&self, tile: &ResultTile) -> Result<ColumnarValue, EvaluatePredicateError> {
         match self {
-            Self::Build(_) => todo!(),
+            Self::Build(_) => Err(EvaluatePredicateError::InvalidState),
             Self::Evaluate(evaluator) => evaluator.evaluate(tile),
         }
     }
@@ -129,7 +143,7 @@ impl QueryPredicates {
         T: Copy + Zero,
     {
         match self {
-            Self::Build(_) => todo!(),
+            Self::Build(_) => Err(EvaluatePredicateError::InvalidState),
             Self::Evaluate(evaluator) => evaluator.evaluate_into_bitmap(tile, bitmap),
         }
     }
@@ -191,6 +205,8 @@ impl Builder {
             .collect()
     }
 
+    /// Parses a predicate into a logical expression and adds it to the list of predicates to
+    /// evaluate.
     pub fn add_text_predicate(&mut self, expr: &str) -> Result<(), AddPredicateError> {
         let parsed_expr = self
             .dfsession
@@ -209,11 +225,13 @@ impl Builder {
         self.add_predicate(logical_expr)
     }
 
+    /// Adds a predicate to the list of predicates to evaluate.
     pub fn add_predicate(&mut self, logical_expr: Expr) -> Result<(), AddPredicateError> {
         let output_type = logical_expr
             .get_type(&self.dfschema)
             .map_err(AddPredicateError::OutputType)?;
-        if output_type != DataType::Boolean {
+        if output_type != DataType::Boolean && output_type != DataType::Null {
+            // NB: see non-pub DataFusion API `Filter::is_allowed_filter_type`
             return Err(AddPredicateError::NotAPredicate(output_type));
         } else if tiledb_expr::logical_expr::has_aggregate_functions(&logical_expr) {
             return Err(AddPredicateError::ContainsAggregateFunctions);
@@ -223,6 +241,7 @@ impl Builder {
         Ok(())
     }
 
+    /// Returns an `Evaluator` which can evaluate the conjunction of all of the predicates.
     pub fn compile(&self) -> Result<Evaluator, CompileError> {
         let evaluation_schema = {
             let projection_fields = self
@@ -264,6 +283,9 @@ impl Builder {
 pub struct Evaluator {
     /// Array schema mapped onto DataFusion data types; this is a projection of the full schema
     /// consisting only of the fields which are used to evaluate `self.predicate`.
+    /// The tiles corresponding to fields in this schema will be converted to [RecordBatch]
+    /// columns, so to avoid extra conversions (which may allocate memory) we do not
+    /// want to keep all of the fields here.
     dfschema: DFSchema,
     /// Expression evaluator which evaluates all predicates as a conjunction.
     predicate: Arc<dyn PhysicalExpr>,
@@ -299,7 +321,9 @@ impl Evaluator {
     where
         T: Copy + Zero,
     {
-        // TODO: consider not evaluating on cells where the bitmap is already set
+        // TODO: consider not evaluating on cells where the bitmap is already set.
+        // This might happen if there is a historical query condition or if there
+        // is timestamp duplication.
 
         let result = self.evaluate(tile)?;
         match result {
@@ -313,13 +337,13 @@ impl Evaluator {
                     bitmap.fill(T::zero());
                     Ok(())
                 }
-                ScalarValue::Boolean(None) => {
+                ScalarValue::Null | ScalarValue::Boolean(None) => {
                     // no cells pass predicates, clear bitmap
                     bitmap.fill(T::zero());
                     Ok(())
                 }
                 _ => {
-                    // should not be reachable due to return type check
+                    // should not be reachable due to return type check in `Builder::add_predicate`
                     unreachable!()
                 }
             },
@@ -332,8 +356,12 @@ impl Evaluator {
                         }
                     }
                     Ok(())
+                } else if *a.data_type() == DataType::Null {
+                    // no cells pass predicates, clear bitmap
+                    bitmap.fill(T::zero());
+                    Ok(())
                 } else {
-                    // should not be reachable due to return type check
+                    // should not be reachable due to return type check in `Builder::add_predicate`
                     unreachable!()
                 }
             }

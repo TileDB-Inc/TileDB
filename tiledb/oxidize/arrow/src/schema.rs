@@ -159,7 +159,8 @@ pub fn field_arrow_datatype(
                 ));
             }
 
-            // NB: This branch is reached from `session::parse_expr` which requires
+            // NB: This branch is reached from
+            // `tiledb_query_predicates::Builder::add_predicate` which requires
             // a schema in order to parse the text into logical expression.
             // However, we may not have the enumeration loaded, and without
             // loading it we don't know the type (since the type is co-located

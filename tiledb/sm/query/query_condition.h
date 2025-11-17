@@ -710,7 +710,7 @@ class QueryCondition {
 };
 
 /**
- *
+ * Bundles the different kinds of predicates which can be attached to a query.
  */
 struct QueryPredicates {
   std::optional<QueryCondition> condition_;

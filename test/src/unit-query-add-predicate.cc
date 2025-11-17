@@ -214,6 +214,13 @@ const Cells expect_e_is_null = make_cells(
     {"four", "seven", "ten", "thirteen", "sixteen"},
     {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt});
 
+const Cells expect_a_is_null_and_row_gt_col = make_cells(
+    {2, 4},
+    {1, 1},
+    {std::nullopt, std::nullopt},
+    {"five", "thirteen"},
+    {7, std::nullopt});
+
 const Cells expect_a_is_null_and_v_starts_with_t = make_cells(
     {1, 1, 4},
     {2, 3, 1},
@@ -593,6 +600,14 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Tests applying datafusion predicates to sparse global order reader.
+ *
+ * NB: `WHERE TRUE` and `WHERE FALSE` and `WHERE NULL` may look silly
+ * but they exercise the `ColumnarValue::Scalar` branches of evaluation
+ * which become increasingly important once constant folding is
+ * introduced.
+ */
 TEST_CASE_METHOD(
     QueryAddPredicateFx,
     "Query add predicate sparse global order",
@@ -612,6 +627,16 @@ TEST_CASE_METHOD(
   SECTION("WHERE TRUE") {
     const auto result = query_array(array_name, query_order, {"TRUE"});
     CHECK(result == INPUT);
+  }
+
+  SECTION("WHERE FALSE") {
+    const auto result = query_array(array_name, query_order, {"FALSE"});
+    CHECK(result == Cells());
+  }
+
+  SECTION("WHERE NULL") {
+    const auto result = query_array(array_name, query_order, {"NULL"});
+    CHECK(result == Cells());
   }
 
   SECTION("WHERE a IS NOT NULL") {
@@ -673,16 +698,33 @@ TEST_CASE_METHOD(
   }
 
   SECTION("WHERE a IS NULL AND row > col") {
-    const Cells expect = make_cells(
-        {2, 4},
-        {1, 1},
-        {std::nullopt, std::nullopt},
-        {"five", "thirteen"},
-        {7, std::nullopt});
-
     const auto result =
         query_array(array_name, query_order, {"a IS NULL", "row > col"});
-    CHECK(result == expect);
+    CHECK(result == expect_a_is_null_and_row_gt_col);
+  }
+
+  SECTION("WHERE a IS NULL AND TRUE AND row > col") {
+    const auto result = query_array(
+        array_name, query_order, {"a IS NULL", "TRUE", "row > col"});
+    CHECK(result == expect_a_is_null_and_row_gt_col);
+  }
+
+  SECTION("WHERE a IS NULL AND row > col AND TRUE") {
+    const auto result = query_array(
+        array_name, query_order, {"a IS NULL", "row > col", "TRUE"});
+    CHECK(result == expect_a_is_null_and_row_gt_col);
+  }
+
+  SECTION("WHERE a IS NULL AND FALSE AND row > col") {
+    const auto result = query_array(
+        array_name, query_order, {"a IS NULL", "FALSE", "row > col"});
+    CHECK(result == Cells());
+  }
+
+  SECTION("WHERE a IS NULL AND NULL AND row > col") {
+    const auto result = query_array(
+        array_name, query_order, {"a IS NULL", "FALSE", "row > col"});
+    CHECK(result == Cells());
   }
 
   SECTION("WHERE coalesce(a, row) > col") {

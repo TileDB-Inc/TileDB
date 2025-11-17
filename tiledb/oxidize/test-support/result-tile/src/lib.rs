@@ -26,6 +26,9 @@ pub trait TypeTraits {
 macro_rules! type_traits {
     ($ty:ty, $primitive_type:ident) => {
         impl TypeTraits for $ty {
+            /// Associated `arrow` data type for constructing a `PrimitiveArray`.
+            // NB: we don't really care about logical type here, if we did we will need a different
+            // solution.
             type ArrowPrimitiveType = arrow::datatypes::$primitive_type;
         }
     };

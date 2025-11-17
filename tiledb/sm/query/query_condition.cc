@@ -166,34 +166,6 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
   tree_->rewrite_for_schema(array_schema);
 }
 
-/*
-#ifdef HAVE_RUST
-rust::Box<tiledb::oxidize::datafusion::logical_expr::LogicalExpr>
-QueryCondition::as_datafusion(
-    const ArraySchema& array_schema,
-    tiledb::oxidize::arrow::schema::WhichSchema which) {
-  return tiledb::oxidize::datafusion::logical_expr::create(
-      array_schema, which, *tree_.get());
-}
-
-bool QueryCondition::rewrite_to_datafusion(
-    const ArraySchema& array_schema,
-    tiledb::oxidize::arrow::schema::WhichSchema which) {
-  if (!datafusion_.has_value()) {
-    try {
-      datafusion_.emplace(
-          array_schema, which, as_datafusion(array_schema, which));
-    } catch (const ::rust::Error& e) {
-      throw QueryConditionException(
-          "Error compiling expression: " + std::string(e.what()));
-    }
-    return true;
-  }
-  return false;
-}
-#endif
-*/
-
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   if (!tree_) {
     return Status::Ok();
