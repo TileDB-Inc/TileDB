@@ -110,12 +110,12 @@ pub unsafe fn to_record_batch(
     // SAFETY: the four asserts above rule out each of the possible error conditions
     let arrow = if columns.is_empty() {
         RecordBatch::try_new_with_options(
-            Arc::clone(&schema),
+            Arc::clone(schema),
             columns,
             &RecordBatchOptions::new().with_row_count(Some(tile.cell_num() as usize)),
         )
     } else {
-        RecordBatch::try_new(Arc::clone(&schema), columns)
+        RecordBatch::try_new(Arc::clone(schema), columns)
     };
 
     let arrow = arrow.expect("Logic error: preconditions for constructing RecordBatch not met");

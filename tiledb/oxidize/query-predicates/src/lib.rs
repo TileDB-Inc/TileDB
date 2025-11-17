@@ -18,6 +18,7 @@ mod ffi {
 
         fn compile(&mut self) -> Result<()>;
 
+        #[allow(clippy::needless_lifetimes)] // NB: cxx does not seem to handle this lint
         unsafe fn field_names<'a>(&'a self) -> Vec<&'a str>;
 
         #[cxx_name = "add_predicate"]
