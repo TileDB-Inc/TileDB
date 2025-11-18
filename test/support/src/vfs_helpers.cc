@@ -55,6 +55,10 @@
 
 #include "tiledb/sm/rest/rest_client.h"
 
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/rest/rest_client_remote.h"
+#endif
+
 namespace tiledb::test {
 
 tiledb::sm::URI test_dir(const std::string& prefix) {
@@ -523,6 +527,16 @@ TileDBFSTest::TileDBFSTest(const std::vector<size_t>& test_tree)
           "tiledb://unit-workspace/unit-teamspace/",
           "rest-s3",
           true) {
+  auto client = tiledb::sm::RestClientFactory::make(
+      g_helper_stats,
+      tiledb::sm::Config(),
+      compute_,
+      *tiledb::test::g_helper_logger(),
+      get_test_memory_tracker());
+  if (client->rest_legacy()) {
+    SKIP("TILEDB FS VFS is not supported on legacy REST server");
+  }
+
   for (size_t i = 1; i <= test_tree_.size(); i++) {
     sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
     if (test_tree_[i - 1] > 0) {
