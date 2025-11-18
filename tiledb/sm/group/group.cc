@@ -768,20 +768,25 @@ std::string Group::dump(
   // Create a set to track visited groups and prevent cycles
   std::unordered_set<std::string> visited;
   visited.insert(group_uri_.to_string());
-  return dump(indent_size, num_indents, recursive, print_self, visited);
+
+  // Create a string stream to hold the dump output
+  std::stringstream ss;
+
+  dump(indent_size, num_indents, recursive, print_self, visited, ss);
+  return ss.str();
 }
 
-std::string Group::dump(
+void Group::dump(
     const uint64_t indent_size,
     const uint64_t num_indents,
     bool recursive,
     bool print_self,
-    std::unordered_set<std::string>& visited) const {
+    std::unordered_set<std::string>& visited,
+    std::stringstream& ss) const {
   // Build the indentation literal and the leading indentation literal.
   const std::string indent(indent_size, '-');
   const std::string l_indent(indent_size * num_indents, '-');
 
-  std::stringstream ss;
   if (print_self) {
     ss << l_indent << group_uri_.last_path_part() << " "
        << object_type_str(ObjectType::GROUP) << std::endl;
@@ -799,7 +804,7 @@ std::string Group::dump(
       // Check if we've already visited this group to avoid cycles
       std::string member_uri_str = member_uri.to_string();
       if (visited.find(member_uri_str) != visited.end()) {
-        ss << " (cycle detected)" << std::endl;
+        ss << std::endl;
         continue;
       }
 
@@ -809,8 +814,8 @@ std::string Group::dump(
         ss << std::endl;
         // Mark this group as visited before recursing
         visited.insert(member_uri_str);
-        ss << group_rec.dump(
-            indent_size, num_indents + 2, recursive, false, visited);
+        group_rec.dump(
+            indent_size, num_indents + 2, recursive, false, visited, ss);
         // Remove from visited set after recursion to allow the same group
         // to appear in different branches (but not in the same path)
         visited.erase(member_uri_str);
@@ -824,8 +829,6 @@ std::string Group::dump(
       ss << std::endl;
     }
   }
-
-  return ss.str();
 }
 
 /* ********************************* */

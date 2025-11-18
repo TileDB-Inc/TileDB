@@ -532,14 +532,15 @@ class Group {
    * @param recursive
    * @param print_self
    * @param visited Set of visited group URIs to detect cycles
-   * @return string representation
+   * @param ss Stringstream to append output to
    */
-  std::string dump(
+  void dump(
       const uint64_t indent_size,
       const uint64_t num_indents,
       bool recursive,
       bool print_self,
-      std::unordered_set<std::string>& visited) const;
+      std::unordered_set<std::string>& visited,
+      std::stringstream& ss) const;
 };
 }  // namespace tiledb::sm
 

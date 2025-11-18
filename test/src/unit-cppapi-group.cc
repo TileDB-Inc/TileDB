@@ -1206,7 +1206,6 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(dump_recursive = group_a.dump(true));
   CHECK(dump_recursive.find("group_b") != std::string::npos);
   CHECK(dump_recursive.find("group_a") != std::string::npos);
-  CHECK(dump_recursive.find("(cycle detected)") != std::string::npos);
 
   group_a.close();
 }
