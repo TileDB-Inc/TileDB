@@ -523,6 +523,23 @@ class Group {
 
   /** Opens an group for writes. */
   void group_open_for_writes();
+
+  /**
+   * Helper for dump with cycle detection
+   *
+   * @param indent_size
+   * @param num_indents
+   * @param recursive
+   * @param print_self
+   * @param visited Set of visited group URIs to detect cycles
+   * @return string representation
+   */
+  std::string dump(
+      const uint64_t indent_size,
+      const uint64_t num_indents,
+      bool recursive,
+      bool print_self,
+      std::unordered_set<std::string>& visited) const;
 };
 }  // namespace tiledb::sm
 
