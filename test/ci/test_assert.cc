@@ -160,18 +160,30 @@ TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
   REQUIRE(order_.empty());
 
   tiledb::common::passert_failure_run_callbacks();
-  CHECK(order_ == std::vector<int>{10000, 100, 0});
+  if (builtWithAssertions) {
+    CHECK(order_ == std::vector<int>{10000, 100, 0});
+  } else {
+    CHECK(order_ == std::vector<int>{});
+  }
   order_.clear();
 
   tiledb::common::passert_failure_run_callbacks();
-  CHECK(order_ == std::vector<int>{10001, 101, 1});
+  if (builtWithAssertions) {
+    CHECK(order_ == std::vector<int>{10001, 101, 1});
+  } else {
+    CHECK(order_ == std::vector<int>{});
+  }
   order_.clear();
 
   SECTION("Remove x") {
     inc_x.reset();
 
     tiledb::common::passert_failure_run_callbacks();
-    CHECK(order_ == std::vector<int>{10002, 102});
+    if (builtWithAssertions) {
+      CHECK(order_ == std::vector<int>{10002, 102});
+    } else {
+      CHECK(order_ == std::vector<int>{});
+    }
     order_.clear();
   }
 
@@ -179,7 +191,11 @@ TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
     inc_y.reset();
 
     tiledb::common::passert_failure_run_callbacks();
-    CHECK(order_ == std::vector<int>{10002, 2});
+    if (builtWithAssertions) {
+      CHECK(order_ == std::vector<int>{10002, 2});
+    } else {
+      CHECK(order_ == std::vector<int>{});
+    }
     order_.clear();
   }
 
@@ -187,7 +203,11 @@ TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
     inc_z.reset();
 
     tiledb::common::passert_failure_run_callbacks();
-    CHECK(order_ == std::vector<int>{102, 2});
+    if (builtWithAssertions) {
+      CHECK(order_ == std::vector<int>{102, 2});
+    } else {
+      CHECK(order_ == std::vector<int>{});
+    }
     order_.clear();
   }
 }
