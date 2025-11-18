@@ -218,21 +218,21 @@ class SupportedFsS3 : public SupportedFs {
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  virtual bool is_rest();
+  virtual bool is_rest() override;
 
   /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return false;
   }
 
@@ -303,14 +303,14 @@ class SupportedFsAzure : public SupportedFs {
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -319,7 +319,7 @@ class SupportedFsAzure : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return false;
   }
 
@@ -386,14 +386,14 @@ class SupportedFsGCS : public SupportedFs {
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -402,7 +402,7 @@ class SupportedFsGCS : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return false;
   }
 
@@ -475,7 +475,7 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Get the name of the filesystem's file prefix
@@ -489,7 +489,7 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -498,7 +498,7 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return true;
   }
 
@@ -570,14 +570,14 @@ class SupportedFsMem : public SupportedFs {
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -586,7 +586,7 @@ class SupportedFsMem : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return true;
   }
 
