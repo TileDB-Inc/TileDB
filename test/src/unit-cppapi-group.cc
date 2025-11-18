@@ -1165,3 +1165,48 @@ TEST_CASE(
     CHECK(group.is_relative(name));
   }
 }
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Group with cycle, dump and is_relative",
+    "[cppapi][group][cycle][non-rest]") {
+  // Create groups that form a cycle
+  std::string group_a_uri = vfs_test_setup_.array_uri("group_a");
+  std::string group_b_uri = vfs_test_setup_.array_uri("group_b");
+  tiledb::Group::create(ctx_, group_a_uri);
+  tiledb::Group::create(ctx_, group_b_uri);
+
+  // Open group A and add group B as a member
+  {
+    tiledb::Group group_a(ctx_, group_a_uri, TILEDB_WRITE);
+    group_a.add_member(group_b_uri, false, "group_b");
+    group_a.close();
+  }
+
+  // Open group B and add group A as a member, creating a cycle
+  {
+    tiledb::Group group_b(ctx_, group_b_uri, TILEDB_WRITE);
+    group_b.add_member(group_a_uri, false, "group_a");
+    group_b.close();
+  }
+
+  // Open group A for reading and test cycle handling
+  tiledb::Group group_a(ctx_, group_a_uri, TILEDB_READ);
+
+  // Test is_relative - this should not hang even with cycles
+  CHECK_NOTHROW(group_a.is_relative("group_b"));
+
+  // Test dump with recursive=false - this should not hang
+  std::string dump_non_recursive;
+  CHECK_NOTHROW(dump_non_recursive = group_a.dump(false));
+  CHECK(dump_non_recursive.find("group_b") != std::string::npos);
+
+  // Test dump with recursive=true - this should not hang even with cycles
+  std::string dump_recursive;
+  CHECK_NOTHROW(dump_recursive = group_a.dump(true));
+  CHECK(dump_recursive.find("group_b") != std::string::npos);
+  CHECK(dump_recursive.find("group_a") != std::string::npos);
+  CHECK(dump_recursive.find("(cycle detected)") != std::string::npos);
+
+  group_a.close();
+}
