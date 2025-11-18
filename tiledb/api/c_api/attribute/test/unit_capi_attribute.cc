@@ -360,7 +360,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C API: tiledb_attribute_dump argument validation", "[capi][attribute]") {
+    "C API: tiledb_attribute_dump_str argument validation",
+    "[capi][attribute]") {
   ordinary_attribute_1 attr{};
   // SECTION("success") omitted to avoid log noise
   SECTION("null context") {

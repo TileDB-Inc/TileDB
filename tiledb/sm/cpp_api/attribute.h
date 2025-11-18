@@ -476,20 +476,6 @@ class Attribute {
     return attr_;
   }
 
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-  /**
-   * Dumps information about the attribute in an ASCII representation to an
-   * output.
-   *
-   * @param out (Optional) File to dump output to. Defaults to `stdout`.
-   */
-  TILEDB_DEPRECATED
-  void dump(FILE* out = stdout) const {
-    ctx_.get().handle_error(
-        tiledb_attribute_dump(ctx_.get().ptr().get(), attr_.get(), out));
-  }
-#endif
-
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
