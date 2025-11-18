@@ -1436,14 +1436,6 @@ class S3 : public FilesystemBase {
   Status initiate_multipart_request(
       Aws::Http::URI aws_uri, MultiPartUploadState* state);
 
-  /** Waits for the input object to be propagated. */
-  Status wait_for_object_to_propagate(
-      const Aws::String& bucketName, const Aws::String& objectKey) const;
-
-  /** Waits for the input object to be deleted. */
-  Status wait_for_object_to_be_deleted(
-      const Aws::String& bucketName, const Aws::String& objectKey) const;
-
   /** Waits for the bucket to be created. */
   Status wait_for_bucket_to_be_created(const URI& bucket_uri) const;
 
