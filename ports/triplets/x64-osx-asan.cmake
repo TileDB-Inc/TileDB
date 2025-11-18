@@ -11,6 +11,12 @@ set(VCPKG_CXX_FLAGS "-fsanitize=address")
 # Fix CMake 4.0 errors in ports supporting very old CMake verions.
 set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
 
+# Hide symbols in the AWS SDK. Fixes symbol collisions with other libraries
+# like arrow (https://github.com/apache/arrow/issues/42154).
+if("${PORT}" MATCHES "^aws-")
+    set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DCMAKE_CXX_VISIBILITY_PRESET=hidden;-DCMAKE_C_VISIBILITY_PRESET=hidden")
+endif()
+
 # Hide symbols in spdlog. Fixes symbol collisions in downstream projects
 # (https://github.com/gabime/spdlog/pull/3322 was rejected).
 if("${PORT}" MATCHES "spdlog")

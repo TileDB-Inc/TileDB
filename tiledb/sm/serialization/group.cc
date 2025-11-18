@@ -331,6 +331,10 @@ Status group_create_details_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
   }
+  if (!legacy) {
+    // TileDB-Server requests do not support custom storage locations.
+    return Status::Ok();
+  }
 
   const auto& group_uri = group->group_uri();
   if (group_uri.is_tiledb()) {
