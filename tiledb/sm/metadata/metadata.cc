@@ -210,8 +210,16 @@ void Metadata::store(
   resources.stats().add_counter(
       "write_meta_size", size_computation_serializer.size());
 
+  // For LocalFS use a .tmp extension until write is flushed.
+  URI metadata_uri = get_uri(uri);
+  if (uri.is_file()) {
+    metadata_uri = URI(metadata_uri.to_string() + ".tmp");
+  }
   // Create a metadata file name
-  GenericTileIO::store_data(resources, get_uri(uri), tile, encryption_key);
+  GenericTileIO::store_data(resources, metadata_uri, tile, encryption_key);
+  if (uri.is_file()) {
+    resources.vfs().move_file(metadata_uri, get_uri(uri));
+  }
 }
 
 void Metadata::del(const char* key) {

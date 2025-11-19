@@ -366,7 +366,20 @@ Status ArrayDirectory::load() {
 
       // Load (in parallel) the array metadata URIs
       tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-        load_array_meta_uris();
+        float delay = 250;
+        constexpr int max_retries = 25;
+        for (int retry = 0; retry <= max_retries; ++retry) {
+          if (load_array_meta_uris()) {
+            break;
+          }
+          // Retry if some metadata files were still flushing to disk.
+          std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+          resources_.get().logger()->info(
+              "Encountered partially written array metadata while opening the "
+              "array. Waiting {}ms and retrying.", delay);
+          // Apply default REST backoff and retry up to 25 times.
+          delay *= 1.25;
+        }
         return Status::Ok();
       }));
     }
@@ -832,13 +845,17 @@ ArrayDirectory::load_consolidated_commit_uris(
   return {Status::Ok(), uris, uris_set};
 }
 
-void ArrayDirectory::load_array_meta_uris() {
+bool ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
   {
     auto timer_se = stats_->start_timer("list_array_meta_uris");
     array_meta_dir_uris =
         ls(uri_.join_path(constants::array_metadata_dir_name));
+  }
+  auto pred = [](const URI& uri) { return uri.to_string().ends_with(".tmp"); };
+  if (uri_.is_file() && std::ranges::any_of(array_meta_dir_uris, pred)) {
+    return false;
   }
 
   // Compute array metadata URIs and vacuum URIs to vacuum. */
@@ -855,6 +872,7 @@ void ArrayDirectory::load_array_meta_uris() {
   throw_if_not_ok(st2);
   array_meta_uris_ = std::move(array_meta_filtered_uris.value());
   array_meta_dir_uris.clear();
+  return true;
 }
 
 void ArrayDirectory::load_array_schema_uris() {
