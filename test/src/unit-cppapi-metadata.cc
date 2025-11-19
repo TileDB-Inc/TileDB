@@ -30,6 +30,8 @@
  * Tests the C++ API for array metadata.
  */
 
+#include <tiledb/api/c_api/array/array_api_internal.h>
+#include <latch>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -178,6 +180,55 @@ TEST_CASE_METHOD(
 
   // Close array
   array.close();
+}
+
+TEST_CASE_METHOD(
+    CPPMetadataFx,
+    "C++ API: Metadata write / read at timestamp smr",
+    "[cppapi][metadata][timestamp][smr]") {
+  create_default_array_1d();
+  Context ctx;
+
+  std::vector<uint64_t> a(100);
+  std::iota(a.begin(), a.end(), 0);
+  std::vector<uint64_t> b(1000);
+  std::iota(b.begin(), b.end(), 0);
+
+  const auto tp = TemporalPolicy(TimestampStartEnd, 0, 1);
+  std::latch latch(2);
+  std::string meta[]{"a", "b", "c", "d", "e", "f"};
+  Array array1(ctx, std::string(array_name_), TILEDB_WRITE, tp);
+  array1.put_metadata("a", TILEDB_UINT64, 100, a.data());
+  array1.close();
+
+  Array array(ctx, std::string(array_name_), TILEDB_WRITE, tp);
+  std::thread t1([&]() {
+    for (const auto& x : meta) {
+      array.put_metadata(x, TILEDB_UINT64, 1000, b.data());
+    }
+    latch.count_down();
+    array.close();
+  });
+
+  std::thread t2([&]() {
+    latch.arrive_and_wait();
+    Array read_array(ctx, std::string(array_name_), TILEDB_READ, tp);
+
+    for (const auto& x : meta) {
+      tiledb_datatype_t type;
+      uint32_t value_num = 0;
+      const void* data;
+      read_array.get_metadata(x, &type, &value_num, &data);
+      std::cout << "'value_num':" << value_num << std::endl;
+      std::cout << "'" << x << "': ";
+      for (size_t i = 0; i < value_num; ++i) {
+        std::cout << ((const uint64_t*)data)[i] << ",";
+      }
+      std::cout << std::endl;
+    }
+    read_array.close();
+  });
+  t1.join(), t2.join();
 }
 
 TEST_CASE_METHOD(

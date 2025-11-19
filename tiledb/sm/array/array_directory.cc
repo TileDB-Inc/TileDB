@@ -366,18 +366,17 @@ Status ArrayDirectory::load() {
 
       // Load (in parallel) the array metadata URIs
       tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-        float delay = 250;
-        constexpr int max_retries = 25;
+        int delay = 250, max_retries = 25;
         for (int retry = 0; retry <= max_retries; ++retry) {
           if (load_array_meta_uris()) {
             break;
           }
-          // Retry if some metadata files were still flushing to disk.
+          // Retry is triggered if metadata files were still flushing to disk.
           std::this_thread::sleep_for(std::chrono::milliseconds(delay));
           resources_.get().logger()->info(
               "Encountered partially written array metadata while opening the "
               "array. Waiting {}ms and retrying.", delay);
-          // Apply default REST backoff and retry up to 25 times.
+          // Apply (default REST) backoff and retry up to 25 times.
           delay *= 1.25;
         }
         return Status::Ok();
