@@ -527,9 +527,10 @@ TileDBFSTest::TileDBFSTest(const std::vector<size_t>& test_tree)
           "tiledb://unit-workspace/unit-teamspace/",
           "rest-s3",
           true) {
+  tiledb::sm::Config conf;
   auto client = tiledb::sm::RestClientFactory::make(
       g_helper_stats,
-      tiledb::sm::Config(),
+      conf,
       compute_,
       *tiledb::test::g_helper_logger(),
       get_test_memory_tracker());
