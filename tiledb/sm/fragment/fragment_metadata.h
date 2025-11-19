@@ -833,6 +833,11 @@ class FragmentMetadata {
     return version_;
   }
 
+  /** has_tile_global_order_bounds accessor */
+  bool& has_tile_global_order_bounds() {
+    return has_tile_global_order_bounds_;
+  }
+
   /** timestamp_range accessor */
   std::pair<uint64_t, uint64_t>& timestamp_range() {
     return timestamp_range_;

@@ -433,8 +433,12 @@ Status fragment_metadata_from_capnp(
   }
 
   if (frag_meta_reader.hasGtOffsets()) {
-    generic_tile_offsets_from_capnp(
-        frag_meta_reader.getGtOffsets(), frag_meta->generic_tile_offsets());
+    auto& gtOffsets = frag_meta->generic_tile_offsets();
+    generic_tile_offsets_from_capnp(frag_meta_reader.getGtOffsets(), gtOffsets);
+    if (!(gtOffsets.tile_global_order_min_offsets_.empty() &&
+          gtOffsets.tile_global_order_max_offsets_.empty())) {
+      frag_meta->has_tile_global_order_bounds() = true;
+    }
   }
 
   frag_meta->loaded_metadata()->set_loaded_metadata(loaded_metadata);
