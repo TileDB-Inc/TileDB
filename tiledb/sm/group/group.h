@@ -34,6 +34,9 @@
 #define TILEDB_GROUP_H
 
 #include <atomic>
+#include <functional>
+#include <sstream>
+#include <unordered_set>
 
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -48,6 +51,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class ContextResources;
+class URI;
 
 class GroupDetailsException : public StatusException {
  public:
@@ -524,6 +528,19 @@ class Group {
   /** Opens an group for writes. */
   void group_open_for_writes();
 
+  // Hash and equality for std::reference_wrapper<URI>
+  struct URIRefHash {
+    size_t operator()(std::reference_wrapper<URI> ref) const {
+      return std::hash<URI>{}(ref.get());
+    }
+  };
+  struct URIRefEqual {
+    bool operator()(
+        std::reference_wrapper<URI> a, std::reference_wrapper<URI> b) const {
+      return a.get() == b.get();
+    }
+  };
+
   /**
    * Helper for dump with cycle detection
    *
@@ -531,7 +548,7 @@ class Group {
    * @param num_indents
    * @param recursive
    * @param print_self
-   * @param visited Set of visited group URIs to detect cycles
+   * @param visited Set of visited group URI references to detect cycles
    * @param ss Stringstream to append output to
    */
   void dump(
@@ -539,7 +556,8 @@ class Group {
       const uint64_t num_indents,
       bool recursive,
       bool print_self,
-      std::unordered_set<std::string>& visited,
+      std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>&
+          visited,
       std::stringstream& ss) const;
 };
 }  // namespace tiledb::sm

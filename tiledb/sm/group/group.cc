@@ -766,8 +766,9 @@ std::string Group::dump(
     bool recursive,
     bool print_self) const {
   // Create a set to track visited groups and prevent cycles
-  std::unordered_set<std::string> visited;
-  visited.insert(group_uri_.to_string());
+  std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>
+      visited;
+  visited.insert(std::ref(const_cast<URI&>(group_uri_)));
 
   // Create a string stream to hold the dump output
   std::stringstream ss;
@@ -781,7 +782,8 @@ void Group::dump(
     const uint64_t num_indents,
     bool recursive,
     bool print_self,
-    std::unordered_set<std::string>& visited,
+    std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>&
+        visited,
     std::stringstream& ss) const {
   // Build the indentation literal and the leading indentation literal.
   const std::string indent(indent_size, '-');
@@ -802,8 +804,7 @@ void Group::dump(
       }
 
       // Check if we've already visited this group to avoid cycles
-      std::string member_uri_str = member_uri.to_string();
-      if (visited.find(member_uri_str) != visited.end()) {
+      if (visited.find(std::ref(member_uri)) != visited.end()) {
         ss << std::endl;
         continue;
       }
@@ -813,12 +814,12 @@ void Group::dump(
         group_rec.open(QueryType::READ);
         ss << std::endl;
         // Mark this group as visited before recursing
-        visited.insert(member_uri_str);
+        visited.insert(std::ref(member_uri));
         group_rec.dump(
             indent_size, num_indents + 2, recursive, false, visited, ss);
         // Remove from visited set after recursion to allow the same group
         // to appear in different branches (but not in the same path)
-        visited.erase(member_uri_str);
+        visited.erase(std::ref(member_uri));
         group_rec.close();
       } catch (GroupNotFoundException&) {
         // If the group no longer exists in storage it will be listed but we
