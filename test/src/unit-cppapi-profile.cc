@@ -374,3 +374,31 @@ TEST_CASE(
       loaded_explicit_profile.get_param("rest.server_address") ==
       "https://explicit.server");
 }
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile::save with overwrite",
+    "[cppapi][profile][save][overwrite]") {
+  Profile p1(name_, tempdir_.path());
+  p1.set_param("rest.token", "token1");
+  p1.save();
+
+  // Attempt to save again without overwrite should fail
+  Profile p2(name_, tempdir_.path());
+  p2.set_param("rest.token", "token2");
+  REQUIRE_THROWS_WITH(
+      p2.save(false),
+      Catch::Matchers::ContainsSubstring(
+          "This profile already exists. Use the overwrite parameter"));
+
+  // Verify that the original profile is unchanged
+  Profile loaded1 = Profile::load(name_, tempdir_.path());
+  REQUIRE(loaded1.get_param("rest.token") == "token1");
+
+  // Save with overwrite=true should succeed
+  REQUIRE_NOTHROW(p2.save(true));
+
+  // Verify that the profile was updated
+  Profile loaded2 = Profile::load(name_, tempdir_.path());
+  REQUIRE(loaded2.get_param("rest.token") == "token2");
+}

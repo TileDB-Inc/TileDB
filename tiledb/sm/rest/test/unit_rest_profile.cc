@@ -196,8 +196,8 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       p2.save_to_file(),
       Catch::Matchers::Equals("RestProfile: Failed to save 'default'; This "
-                              "profile has already been saved and must be "
-                              "explicitly removed in order to be replaced."));
+                              "profile already exists. "
+                              "Use the overwrite parameter to replace it."));
   RestProfile::remove_profile(std::nullopt, dir_);
   p2.save_to_file();
 
@@ -270,4 +270,34 @@ TEST_CASE_METHOD(
         p.load_from_file(),
         Catch::Matchers::ContainsSubstring("Error parsing file"));
   }
+}
+
+TEST_CASE_METHOD(
+    RestProfileFx,
+    "REST Profile: save_to_file with overwrite",
+    "[rest_profile][save][overwrite]") {
+  RestProfile p1(create_profile());
+  p1.set_param("rest.token", "token1");
+  p1.save_to_file();
+
+  // Attempt to save again without overwrite should fail
+  RestProfile p2(create_profile());
+  p2.set_param("rest.token", "token2");
+  REQUIRE_THROWS_WITH(
+      p2.save_to_file(false),
+      Catch::Matchers::ContainsSubstring(
+          "This profile already exists. Use the overwrite parameter"));
+
+  // Verify that the original profile is unchanged
+  RestProfile loaded1(create_profile());
+  loaded1.load_from_file();
+  CHECK(*loaded1.get_param("rest.token") == "token1");
+
+  // Save with overwrite=true should succeed
+  REQUIRE_NOTHROW(p2.save_to_file(true));
+
+  // Verify that the profile is updated
+  RestProfile loaded2(create_profile());
+  loaded2.load_from_file();
+  CHECK(*loaded2.get_param("rest.token") == "token2");
 }

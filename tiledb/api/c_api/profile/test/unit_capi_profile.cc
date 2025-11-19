@@ -229,11 +229,11 @@ TEST_CASE_METHOD(
   tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
   SECTION("success") {
-    rc = tiledb_profile_save(profile, &err);
+    rc = tiledb_profile_save(profile, 0, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null profile") {
-    rc = tiledb_profile_save(nullptr, &err);
+    rc = tiledb_profile_save(nullptr, 0, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 
@@ -249,7 +249,7 @@ TEST_CASE_METHOD(
   tiledb_error_t* err = nullptr;
   tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
-  rc = tiledb_profile_save(profile, &err);
+  rc = tiledb_profile_save(profile, 0, &err);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   tiledb_profile_t* loaded_profile;
   // Use the same name and directory
@@ -275,7 +275,7 @@ TEST_CASE_METHOD(
   tiledb_profile_alloc(name_, dir_.c_str(), &profile, &err);
   REQUIRE(profile != nullptr);
   SECTION("success") {
-    rc = tiledb_profile_save(profile, &err);
+    rc = tiledb_profile_save(profile, 0, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     rc = tiledb_profile_remove(name_, dir_.c_str(), &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
@@ -308,4 +308,56 @@ TEST_CASE_METHOD(
   }
 
   tiledb_profile_free(&profile);
+}
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
+    "C API: tiledb_profile_save with overwrite",
+    "[capi][profile][save][overwrite]") {
+  capi_return_t rc;
+  tiledb_profile_t* p1;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, dir_.c_str(), &p1, &err);
+  tiledb_profile_set_param(p1, "rest.token", "token1", &err);
+  rc = tiledb_profile_save(p1, 0, &err);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  // Attempt to save again without overwrite should fail
+  tiledb_profile_t* p2;
+  tiledb_profile_alloc(name_, dir_.c_str(), &p2, &err);
+  tiledb_profile_set_param(p2, "rest.token", "token2", &err);
+  rc = tiledb_profile_save(p2, 0, &err);
+  REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  REQUIRE(err != nullptr);
+  tiledb_error_free(&err);
+
+  // Verify that the original profile is unchanged
+  tiledb_profile_t* loaded1;
+  tiledb_profile_alloc(name_, dir_.c_str(), &loaded1, &err);
+  tiledb_profile_load(loaded1, &err);
+
+  tiledb_string_t* value;
+  tiledb_profile_get_param(loaded1, "rest.token", &value, &err);
+  const char* value_ptr;
+  size_t value_len;
+  tiledb_string_view(value, &value_ptr, &value_len);
+  CHECK(std::string(value_ptr, value_len) == "token1");
+
+  // Save with overwrite=1 should succeed
+  rc = tiledb_profile_save(p2, 1, &err);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  // Verify that the profile is updated
+  tiledb_profile_t* loaded2;
+  tiledb_profile_alloc(name_, dir_.c_str(), &loaded2, &err);
+  tiledb_profile_load(loaded2, &err);
+  tiledb_profile_get_param(loaded2, "rest.token", &value, &err);
+  tiledb_string_view(value, &value_ptr, &value_len);
+  CHECK(std::string(value_ptr, value_len) == "token2");
+
+  tiledb_string_free(&value);
+  tiledb_profile_free(&p1);
+  tiledb_profile_free(&p2);
+  tiledb_profile_free(&loaded1);
+  tiledb_profile_free(&loaded2);
 }
