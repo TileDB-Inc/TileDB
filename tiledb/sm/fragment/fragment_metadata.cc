@@ -388,6 +388,8 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
         loaded_metadata_ptr_->tile_global_order_max_buffer()[dim].data();
     memcpy(&max_data[offset], tile_max.value().data(), fixed_size);
   }
+
+  has_tile_global_order_bounds_ = true;
 }
 
 /**
@@ -1321,7 +1323,7 @@ void FragmentMetadata::store_v15_or_higher(
   }
 
   if (!dense_ &&
-      version_ >= constants::fragment_metadata_global_order_bounds_version) {
+      version_ >= constants::fragment_metadata_data_directory_version) {
     const auto num_dims = array_schema_->dim_num();
     // Store global order mins
     gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
@@ -1846,6 +1848,10 @@ void FragmentMetadata::write_footer(Serializer& serializer) const {
   write_file_var_sizes(serializer);
   write_file_validity_sizes(serializer);
   write_generic_tile_offsets(serializer);
+
+  if (version_ >= constants::fragment_metadata_data_directory_version) {
+    write_data_directories(serializer);
+  }
 }
 
 /* ****************************** */
@@ -2395,10 +2401,8 @@ void FragmentMetadata::load_generic_tile_offsets(Deserializer& deserializer) {
     load_generic_tile_offsets_v11(deserializer);
   } else if (version_ >= 12 && version_ < 16) {
     load_generic_tile_offsets_v12_v15(deserializer);
-  } else if (version_ >= 16 && version_ < 23) {
-    load_generic_tile_offsets_v16_v22(deserializer);
   } else {
-    load_generic_tile_offsets_v23_or_higher(deserializer);
+    load_generic_tile_offsets_v16_or_higher(deserializer);
   }
 }
 
@@ -2552,7 +2556,7 @@ void FragmentMetadata::load_generic_tile_offsets_v12_v15(
       deserializer.read<uint64_t>();
 }
 
-void FragmentMetadata::load_generic_tile_offsets_v16_v22(
+void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
     Deserializer& deserializer) {
   // Load R-Tree offset
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
@@ -2598,63 +2602,41 @@ void FragmentMetadata::load_generic_tile_offsets_v16_v22(
   gt_offsets_.processed_conditions_offsets_ = deserializer.read<uint64_t>();
 }
 
-void FragmentMetadata::load_generic_tile_offsets_v23_or_higher(
-    Deserializer& deserializer) {
-  // Load R-Tree offset
-  gt_offsets_.rtree_ = deserializer.read<uint64_t>();
+void FragmentMetadata::load_data_directories(Deserializer& deserializer) {
+  auto count = deserializer.read<uint32_t>();
 
-  // Load offsets for tile offsets
-  auto num = num_dims_and_attrs();
-  gt_offsets_.tile_offsets_.resize(num);
-  deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
-
-  // Load offsets for tile var offsets
-  gt_offsets_.tile_var_offsets_.resize(num);
-  deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
-
-  // Load offsets for tile var sizes
-  gt_offsets_.tile_var_sizes_.resize(num);
-  deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
-
-  // Load offsets for tile validity offsets
-  gt_offsets_.tile_validity_offsets_.resize(num);
-  deserializer.read(
-      &gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
-
-  // Load offsets for tile min offsets
-  gt_offsets_.tile_min_offsets_.resize(num);
-  deserializer.read(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
-
-  // Load offsets for tile max offsets
-  gt_offsets_.tile_max_offsets_.resize(num);
-  deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
-
-  if (!dense_) {
-    // Load offsets for the tile global order bounds
-    const auto num_dims = array_schema_->dim_num();
-    gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
-    gt_offsets_.tile_global_order_max_offsets_.resize(num_dims);
-    deserializer.read(
-        gt_offsets_.tile_global_order_min_offsets_.data(),
-        num_dims * sizeof(uint64_t));
-    deserializer.read(
-        gt_offsets_.tile_global_order_max_offsets_.data(),
-        num_dims * sizeof(uint64_t));
+  for (uint32_t i = 0; i < count; i++) {
+    auto identifier = deserializer.read<DataDirectoryIdentifier>();
+    auto data_size = deserializer.read<uint32_t>();
+    switch (identifier) {
+      case DataDirectoryIdentifier::tile_global_order_offsets:
+        if (data_size != 2 * array_schema_->dim_num() * sizeof(uint64_t)) {
+          throw FragmentMetadataStatusException(
+              "Invalid size of tile global order bound offsets data directory");
+        }
+        load_tile_global_order_offsets(deserializer);
+        has_tile_global_order_bounds_ = true;
+        break;
+      default:
+        // Ignore unknown data directories per the storage format spec.
+        deserializer.skip(data_size);
+        break;
+    }
   }
+}
 
-  // Load offsets for tile sum offsets
-  gt_offsets_.tile_sum_offsets_.resize(num);
-  deserializer.read(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
-
-  // Load offsets for tile null count offsets
-  gt_offsets_.tile_null_count_offsets_.resize(num);
+void FragmentMetadata::load_tile_global_order_offsets(
+    Deserializer& deserializer) {
+  // Load offsets for the tile global order bounds
+  const auto num_dims = array_schema_->dim_num();
+  gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
+  gt_offsets_.tile_global_order_max_offsets_.resize(num_dims);
   deserializer.read(
-      &gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
-
-  gt_offsets_.fragment_min_max_sum_null_count_offset_ =
-      deserializer.read<uint64_t>();
-
-  gt_offsets_.processed_conditions_offsets_ = deserializer.read<uint64_t>();
+      gt_offsets_.tile_global_order_min_offsets_.data(),
+      num_dims * sizeof(uint64_t));
+  deserializer.read(
+      gt_offsets_.tile_global_order_max_offsets_.data(),
+      num_dims * sizeof(uint64_t));
 }
 
 void FragmentMetadata::load_array_schema_name(Deserializer& deserializer) {
@@ -2803,6 +2785,10 @@ void FragmentMetadata::load_footer(
 
   load_generic_tile_offsets(deserializer);
 
+  if (version_ >= 23) {
+    load_data_directories(deserializer);
+  }
+
   // If the footer_size is not set lets calculate from how much of the
   // buffer we read
   if (footer_size_ == 0) {
@@ -2883,18 +2869,6 @@ void FragmentMetadata::write_generic_tile_offsets(
     serializer.write(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
   }
 
-  if (!dense_ &&
-      version_ >= constants::fragment_metadata_global_order_bounds_version) {
-    // Write the tile global order bound offsets
-    const auto num_dims = array_schema_->dim_num();
-    serializer.write(
-        gt_offsets_.tile_global_order_min_offsets_.data(),
-        num_dims * sizeof(uint64_t));
-    serializer.write(
-        gt_offsets_.tile_global_order_max_offsets_.data(),
-        num_dims * sizeof(uint64_t));
-  }
-
   // Write tile sum offsets
   if (version_ >= 11) {
     serializer.write(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
@@ -2913,6 +2887,29 @@ void FragmentMetadata::write_generic_tile_offsets(
 
   if (version_ >= 16) {
     serializer.write<uint64_t>(gt_offsets_.processed_conditions_offsets_);
+  }
+}
+
+void FragmentMetadata::write_data_directories(Serializer& serializer) const {
+  uint32_t count = 0;
+
+  if (has_tile_global_order_bounds_) {
+    count++;
+  }
+
+  serializer.write(count);
+
+  if (has_tile_global_order_bounds_) {
+    serializer.write(DataDirectoryIdentifier::tile_global_order_offsets);
+    const auto num_dims = array_schema_->dim_num();
+    serializer.write<uint32_t>(2 * num_dims * sizeof(uint64_t));
+
+    serializer.write(
+        gt_offsets_.tile_global_order_min_offsets_.data(),
+        num_dims * sizeof(uint64_t));
+    serializer.write(
+        gt_offsets_.tile_global_order_max_offsets_.data(),
+        num_dims * sizeof(uint64_t));
   }
 }
 
