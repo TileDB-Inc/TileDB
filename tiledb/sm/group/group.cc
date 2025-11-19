@@ -765,11 +765,30 @@ std::string Group::dump(
     const uint64_t num_indents,
     bool recursive,
     bool print_self) const {
+  // Create a set to track visited groups and prevent cycles
+  std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>
+      visited;
+  visited.insert(std::ref(const_cast<URI&>(group_uri_)));
+
+  // Create a string stream to hold the dump output
+  std::stringstream ss;
+
+  dump(indent_size, num_indents, recursive, print_self, visited, ss);
+  return ss.str();
+}
+
+void Group::dump(
+    const uint64_t indent_size,
+    const uint64_t num_indents,
+    bool recursive,
+    bool print_self,
+    std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>&
+        visited,
+    std::stringstream& ss) const {
   // Build the indentation literal and the leading indentation literal.
   const std::string indent(indent_size, '-');
   const std::string l_indent(indent_size * num_indents, '-');
 
-  std::stringstream ss;
   if (print_self) {
     ss << l_indent << group_uri_.last_path_part() << " "
        << object_type_str(ObjectType::GROUP) << std::endl;
@@ -784,11 +803,23 @@ std::string Group::dump(
         member_uri = group_uri_.join_path(it->uri().to_string());
       }
 
+      // Check if we've already visited this group to avoid cycles
+      if (visited.find(std::ref(member_uri)) != visited.end()) {
+        ss << std::endl;
+        continue;
+      }
+
       Group group_rec(resources_, member_uri);
       try {
         group_rec.open(QueryType::READ);
         ss << std::endl;
-        ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
+        // Mark this group as visited before recursing
+        visited.insert(std::ref(member_uri));
+        group_rec.dump(
+            indent_size, num_indents + 2, recursive, false, visited, ss);
+        // Remove from visited set after recursion to allow the same group
+        // to appear in different branches (but not in the same path)
+        visited.erase(std::ref(member_uri));
         group_rec.close();
       } catch (GroupNotFoundException&) {
         // If the group no longer exists in storage it will be listed but we
@@ -799,8 +830,6 @@ std::string Group::dump(
       ss << std::endl;
     }
   }
-
-  return ss.str();
 }
 
 /* ********************************* */
