@@ -352,11 +352,6 @@ bool S3::supports_uri(const URI& uri) const {
 void S3::create_bucket(const URI& bucket) const {
   throw_if_not_ok(init_client());
 
-  if (!bucket.is_s3()) {
-    throw S3Exception(
-        std::string("URI is not an S3 URI: " + bucket.to_string()));
-  }
-
   Aws::Http::URI aws_uri = bucket.c_str();
   Aws::S3::Model::CreateBucketRequest create_bucket_request;
   create_bucket_request.SetBucket(aws_uri.GetAuthority());
@@ -424,10 +419,6 @@ bool S3::is_empty_bucket(const URI& bucket) const {
 bool S3::is_bucket(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
-  }
-
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::HeadBucketRequest head_bucket_request;
   head_bucket_request.SetBucket(aws_uri.GetAuthority());
@@ -479,10 +470,6 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) {
 uint64_t S3::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
 
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::GetObjectRequest get_object_request;
@@ -570,11 +557,6 @@ void S3::remove_dir(const URI& uri) const {
 void S3::touch(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string(
-        "Cannot create file; URI is not an S3 URI: " + uri.to_string()));
-  }
-
   if (uri.to_string().back() == '/') {
     throw S3Exception(std::string(
         "Cannot create file; URI is a directory: " + uri.to_string()));
@@ -620,10 +602,6 @@ void S3::write(
     uint64_t length,
     bool remote_global_order_write) {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
-  }
 
   if (remote_global_order_write) {
     global_order_write_buffered(uri, buffer, length);
@@ -678,10 +656,6 @@ void S3::write(
 
 void S3::remove_file(const URI& uri) const {
   throw_if_not_ok(init_client());
-
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
   Aws::S3::Model::DeleteObjectRequest delete_object_request;
@@ -781,9 +755,6 @@ void S3::flush(const URI& uri, bool finalize) {
   if (!s3_params_.use_multipart_upload_) {
     throw_if_not_ok(flush_direct(uri));
     return;
-  }
-  if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
   }
 
   // Flush and delete file buffer. For multipart requests, we must
@@ -950,10 +921,6 @@ bool S3::is_dir(const URI& uri) const {
 bool S3::is_file(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
-
   bool exists = false;
   Aws::Http::URI aws_uri = uri.c_str();
   throw_if_not_ok(
@@ -1019,11 +986,8 @@ std::vector<directory_entry> S3::ls_with_sizes(
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
+  auto protocol = prefix.backend_name() + "://";
   auto prefix_str = prefix_dir.to_string();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
-
   Aws::Http::URI aws_uri = prefix_str.c_str();
   std::string aws_auth(aws_uri.GetAuthority());
   Aws::S3::Model::ListObjectsV2Request list_objects_request;
@@ -1056,7 +1020,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
       std::string file(object.GetKey());
       uint64_t size = object.GetSize();
       entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(file), size, false);
+          protocol + aws_auth + add_front_slash(file), size, false);
     }
 
     for (const auto& object :
@@ -1065,7 +1029,7 @@ std::vector<directory_entry> S3::ls_with_sizes(
       // For "directories" it doesn't seem possible to get a shallow size in
       // S3, so the size of such an entry will be 0 in S3.
       entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)),
+          protocol + aws_auth + add_front_slash(remove_trailing_slash(file)),
           0,
           true);
     }
@@ -1099,10 +1063,6 @@ Status S3::move_object(const URI& old_uri, const URI& new_uri) const {
 uint64_t S3::file_size(const URI& uri) const {
   throw_if_not_ok(init_client());
 
-  if (!uri.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + uri.to_string());
-  }
-
   Aws::Http::URI aws_uri = uri.to_string().c_str();
 
   Aws::S3::Model::HeadObjectRequest head_object_request;
@@ -1125,7 +1085,7 @@ uint64_t S3::file_size(const URI& uri) const {
     }
     throw S3Exception(
         std::string(
-            "Cannot retrieve S3 object size; Error while listing file s3://") +
+            "Cannot retrieve S3 object size; Error while listing file ") +
         uri.to_string() + outcome_error_message(head_object_outcome) +
         additional_context);
   }
@@ -1185,19 +1145,20 @@ void S3::global_order_write(
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
     unique_rl.unlock();
+
+    MultiPartUploadState state;
+    throw_if_not_ok(initiate_multipart_request(aws_uri, &state));
+
     UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
 
     state_iter =
-        multipart_upload_states_.emplace(uri_path, MultiPartUploadState())
-            .first;
+        multipart_upload_states_.emplace(uri_path, std::move(state)).first;
 
     unique_wl.unlock();
 
     if (is_file(uri)) {
       remove_file(uri);
     }
-
-    throw_if_not_ok(initiate_multipart_request(aws_uri, &state_iter->second));
   } else {
     // Unlock, as make_upload_part_req will reaquire as necessary.
     unique_rl.unlock();
@@ -1812,6 +1773,8 @@ Status S3::write_multipart(
       std::string path(aws_uri.GetPath());
       MultiPartUploadState new_state;
 
+      throw_if_not_ok(initiate_multipart_request(aws_uri, &new_state));
+
       passert(multipart_upload_states_.count(path) == 0);
       multipart_upload_states_.emplace(std::move(path), std::move(new_state));
       state = &multipart_upload_states_.at(uri_path);
@@ -1824,11 +1787,6 @@ Status S3::write_multipart(
       // Delete file if it exists (overwrite) and initiate multipart request
       if (is_file(uri)) {
         remove_file(uri);
-      }
-
-      const Status st = initiate_multipart_request(aws_uri, state);
-      if (!st.ok()) {
-        return st;
       }
     } else {
       // If another thread switched state, switch back to a read lock
@@ -2031,13 +1989,11 @@ S3Scanner::S3Scanner(
     bool recursive,
     int max_keys)
     : LsScanner(prefix, std::move(result_filter), recursive)
-    , client_(client) {
+    , client_(client)
+    , protocol_(prefix.backend_name() + "://") {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
 
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
   list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
@@ -2061,13 +2017,11 @@ S3Scanner::S3Scanner(
     bool recursive,
     int max_keys)
     : LsScanner(prefix, std::move(result_filter), recursive)
-    , client_(client) {
+    , client_(client)
+    , protocol_(prefix.backend_name() + "://") {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
 
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
   list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
@@ -2166,11 +2120,12 @@ void S3Scanner::next(typename Iterator::pointer& ptr) {
     ptr = fetch_results();
   }
 
-  std::string bucket = "s3://" + std::string(list_objects_request_.GetBucket());
+  std::string bucket =
+      protocol_ + std::string(list_objects_request_.GetBucket());
   while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
-    // The object key does not contain s3:// prefix or the bucket name.
+    // The object key does not contain protocol prefix or the bucket name.
     std::string path =
         bucket + S3::add_front_slash(std::string(object.GetKey()));
 

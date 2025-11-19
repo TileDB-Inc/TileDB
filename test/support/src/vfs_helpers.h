@@ -122,9 +122,8 @@ class SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(
+  virtual void prepare_config(
       tiledb_config_t* config, tiledb_error_t* error) = 0;
 
   /**
@@ -134,9 +133,8 @@ class SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
 
   /**
    * Removes bucket / container if exists
@@ -145,9 +143,8 @@ class SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
 
   /**
    * Get the name of the filesystem's directory
@@ -196,48 +193,46 @@ class SupportedFsS3 : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates bucket if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes bucket if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  virtual bool is_rest();
+  virtual bool is_rest() override;
 
   /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return false;
   }
 
@@ -283,41 +278,39 @@ class SupportedFsAzure : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates container if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes container if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -326,7 +319,7 @@ class SupportedFsAzure : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return false;
   }
 
@@ -368,41 +361,39 @@ class SupportedFsGCS : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates bucket if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes bucket if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -411,7 +402,7 @@ class SupportedFsGCS : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return false;
   }
 
@@ -459,34 +450,32 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * No-op
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * No-op
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Get the name of the filesystem's file prefix
@@ -500,7 +489,7 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -509,7 +498,7 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return true;
   }
 
@@ -556,41 +545,39 @@ class SupportedFsMem : public SupportedFs {
    *
    * @param config Configuration parameters
    * @param error Error parameter
-   * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual void prepare_config(
+      tiledb_config_t* config, tiledb_error_t* error) override;
 
   /**
    * Creates container if does not exist
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Removes container if exists
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) override;
 
   /**
    * Get the name of the filesystem's directory
    *
    * @return string directory name
    */
-  virtual std::string temp_dir();
+  virtual std::string temp_dir() override;
 
   /**
    * Checks if the filesystem is accessed via REST
    *
    * @return true if REST, false if not
    */
-  inline bool is_rest() {
+  inline bool is_rest() override {
     return false;
   }
 
@@ -599,7 +586,7 @@ class SupportedFsMem : public SupportedFs {
    *
    * @return true if local, false if not
    */
-  inline bool is_local() {
+  inline bool is_local() override {
     return true;
   }
 
@@ -633,19 +620,11 @@ struct vfs_config {
     }
 
     if constexpr (tiledb::sm::filesystem::s3_enabled) {
-      SupportedFsS3 fs_s3;
-      auto st = fs_s3.prepare_config(config, error);
-      if (!st.ok()) {
-        throw std::runtime_error("error preparing S3 config");
-      }
+      SupportedFsS3().prepare_config(config, error);
     }
 
     if constexpr (tiledb::sm::filesystem::azure_enabled) {
-      SupportedFsAzure fs_azure;
-      auto st = fs_azure.prepare_config(config, error);
-      if (!st.ok()) {
-        throw std::runtime_error("error preparing Azure config");
-      }
+      SupportedFsAzure().prepare_config(config, error);
     }
   }
 
@@ -1028,8 +1007,16 @@ class VFSTestBase {
    * @param test_tree Vector used to build test directory and objects.
    *    For each element we create a nested directory with N objects.
    * @param prefix The URI prefix to use for the test directory.
+   * @param vfs_backend The value of the "--vfs" command-line option that
+   * enables this backend.
+   * @param skip_test_config Whether to skip calling create_test_config
+   * to configure the VFS.
    */
-  VFSTestBase(const std::vector<size_t>& test_tree, const std::string& prefix);
+  VFSTestBase(
+      const std::vector<size_t>& test_tree,
+      const std::string& prefix,
+      const std::string& vfs_backend,
+      bool skip_test_config = false);
 
  public:
   /** Type definition for objects returned from ls_recursive */
@@ -1085,21 +1072,6 @@ class VFSTestBase {
   bool is_supported_;
 };
 
-/**
- * Test object for tiledb::sm::VFS functionality. When constructed, this test
- * object creates a temporary directory and populates it using the test_tree
- * vector passed to the constructor. For each element in the vector, we create a
- * nested directory with N objects. The constructor also writes `10 * N` bytes
- * of data to each object created for testing returned object sizes are correct.
- *
- * This test object can be used for any valid VFS URI prefix, and is not
- * specific to any one backend.
- */
-class VFSTest : public VFSTestBase {
- public:
-  VFSTest(const std::vector<size_t>& test_tree, const std::string& prefix);
-};
-
 /** Test object for tiledb::sm::S3 functionality. */
 class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
  public:
@@ -1128,7 +1100,7 @@ class LocalFsTest : public VFSTestBase {
 class AzureTest : public VFSTestBase {
  public:
   explicit AzureTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "azure://") {
+      : VFSTestBase(test_tree, "azure://", "azure") {
 #ifdef HAVE_AZURE
     vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
@@ -1158,7 +1130,7 @@ class GCSTest : public VFSTestBase {
   explicit GCSTest(
       const std::vector<size_t>& test_tree,
       const std::string& protocol = "gcs://")
-      : VFSTestBase(test_tree, protocol) {
+      : VFSTestBase(test_tree, protocol, "gcs") {
 #ifdef HAVE_GCS
     vfs_.create_bucket(temp_dir_);
     for (size_t i = 1; i <= test_tree_.size(); i++) {
@@ -1182,6 +1154,12 @@ class GCSTest : public VFSTestBase {
   }
 };
 
+/** Stub test object for TileDB FS functionality. */
+class TileDBFSTest : public VFSTestBase {
+ public:
+  explicit TileDBFSTest(const std::vector<size_t>& test_tree);
+};
+
 /** Stub test object for tiledb::sm::GS functionality. */
 class GSTest : public GCSTest {
  public:
@@ -1194,7 +1172,7 @@ class GSTest : public GCSTest {
 class MemFsTest : public VFSTestBase {
  public:
   explicit MemFsTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "mem://") {
+      : VFSTestBase(test_tree, "mem://", "memfs") {
   }
 };
 }  // namespace tiledb::test

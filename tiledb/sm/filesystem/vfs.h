@@ -1012,6 +1012,10 @@ class VFS : FilesystemBase,
 
   LocalFS local_;
 
+#if HAVE_S3
+  tdb_unique_ptr<FilesystemBase> tiledbfs_;
+#endif
+
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
 
