@@ -34,7 +34,6 @@
 #include "tiledb/api/c_api/backend/backend_api_external.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/config/config.h"
 
 struct BackendTestCase {
   BackendTestCase(
@@ -57,7 +56,7 @@ struct BackendTestCase {
 
 TEST_CASE("C API: Test backend identification", "[capi][backend]") {
   // Create a context for the tests
-  auto cfg = tiledb_config_handle_t::make_handle(tiledb::sm::Config());
+  auto cfg = tiledb_config_handle_t::make_handle();
   auto ctx = tiledb_ctx_handle_t::make_handle(cfg->config());
 
   // clang-format off
@@ -67,7 +66,7 @@ TEST_CASE("C API: Test backend identification", "[capi][backend]") {
     BackendTestCase("https://example.com/path", TILEDB_BACKEND_S3, "HTTPS URI (treated as S3)"),
     BackendTestCase("azure://container/path", TILEDB_BACKEND_AZURE, "Azure URI"),
     BackendTestCase("gcs://bucket/path", TILEDB_BACKEND_GCS, "GCS URI"),
-    BackendTestCase("gs://bucket/path", TILEDB_BACKEND_GCS, "GS URI"));
+    BackendTestCase("tiledb://", TILEDB_BACKEND_GCS, "GS URI"));
   // clang-format on
 
   DYNAMIC_SECTION(test.description_) {
@@ -81,7 +80,7 @@ TEST_CASE(
     "C API: Test backend identification with invalid URI",
     "[capi][backend][error]") {
   // Create a context for the tests
-  auto cfg = tiledb_config_handle_t::make_handle(tiledb::sm::Config());
+  auto cfg = tiledb_config_handle_t::make_handle();
   auto ctx = tiledb_ctx_handle_t::make_handle(cfg->config());
 
   tiledb_backend_t backend;

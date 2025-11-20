@@ -36,13 +36,10 @@
 #include <compare>
 #include <string>
 
-#include "tiledb/api/c_api/backend/backend_api_external.h"
 #include "tiledb/common/status.h"
 
 // Forward declarations
 struct tiledb_ctx_handle_t;
-typedef struct tiledb_ctx_handle_t tiledb_ctx_t;
-
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -324,9 +321,6 @@ class URI {
 
   /** Returns the backend name given by backend://my/path */
   std::string backend_name() const;
-
-  /** Returns the backend type of the URI */
-  tiledb_backend_t backend_type(tiledb_ctx_t* ctx) const;
 
   /** For comparing URIs alphanumerically. */
   bool operator==(const URI& uri) const;

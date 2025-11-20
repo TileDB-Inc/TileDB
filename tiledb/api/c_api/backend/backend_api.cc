@@ -34,6 +34,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 namespace tiledb::api {
 
@@ -46,7 +47,22 @@ capi_return_t tiledb_uri_get_backend_name(
     throw CAPIException("Cannot get backend name; Invalid URI");
   }
 
-  *uri_backend = tiledb::sm::URI(uri).backend_type(ctx);
+  if (tiledb::sm::URI::is_s3(uri)) {
+    *uri_backend = TILEDB_BACKEND_S3;
+  } else if (tiledb::sm::URI::is_azure(uri)) {
+    *uri_backend = TILEDB_BACKEND_AZURE;
+  } else if (tiledb::sm::URI::is_gcs(uri)) {
+    *uri_backend = TILEDB_BACKEND_GCS;
+  } else if (tiledb::sm::URI::is_tiledb(uri)) {
+    if (ctx->rest_client().rest_legacy()) {
+      *uri_backend = TILEDB_BACKEND_TILEDB_v1;
+    } else {
+      *uri_backend = TILEDB_BACKEND_TILEDB_v2;
+    }
+  } else {
+    throw CAPIException("Cannot get backend name; Unknown backend");
+  }
+
   return TILEDB_OK;
 }
 

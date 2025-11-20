@@ -144,7 +144,6 @@ if (TILEDB_CPP_API)
     src/test-cppapi-current-domain.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
-    src/unit-cppapi-backend.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc

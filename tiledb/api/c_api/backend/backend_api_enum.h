@@ -34,7 +34,5 @@
     TILEDB_BACKEND_ENUM(TILEDB_v1) = 3,
     /** TileDB REST v2 backend */
     TILEDB_BACKEND_ENUM(TILEDB_v2) = 4,
-    /** Invalid backend */
-    TILEDB_BACKEND_ENUM(INVALID) = 5,
 #endif
 
