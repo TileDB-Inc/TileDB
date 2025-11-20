@@ -1,13 +1,11 @@
 /**
- * @file   tiledb
- *
- * @author Ravi Gaddipati
+ * @file tiledb/api/c_api/backend/backend_api.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,48 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file defines the backend section of the C API for TileDB.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#include "backend_api_external.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/filesystem/uri.h"
 
-#ifdef TILEDB_NO_API_DEPRECATION_WARNINGS
-// Define these before including tiledb_export.h to avoid their normal
-// definitions.
-#ifndef TILEDB_DEPRECATED
-#define TILEDB_DEPRECATED
-#endif
-#ifndef TILEDB_DEPRECATED_EXPORT
-#define TILEDB_DEPRECATED_EXPORT
-#endif
-#endif
+namespace tiledb::api {
 
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "backend.h"
-#include "config.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "error.h"
-#include "exception.h"
-#include "filter.h"
-#include "filter_list.h"
-#include "fragment_info.h"
-#include "group.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "query_condition.h"
-#include "schema_base.h"
-#include "stats.h"
-#include "subarray.h"
-#include "tiledb.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
+capi_return_t tiledb_uri_get_backend_name(
+    tiledb_ctx_t* ctx, const char* uri, tiledb_backend_t* uri_backend) {
+  ensure_output_pointer_is_valid(uri_backend);
 
-#endif  // TILEDB_CPP_H
+  auto uri_to_check = tiledb::sm::URI(uri);
+  if (uri_to_check.is_invalid()) {
+    throw CAPIException("Cannot get backend name; Invalid URI");
+  }
+
+  *uri_backend = tiledb::sm::URI(uri).backend_type(ctx);
+  return TILEDB_OK;
+}
+
+}  // namespace tiledb::api
+
+using tiledb::api::api_entry_with_context;
+
+CAPI_INTERFACE(
+    uri_get_backend_name,
+    tiledb_ctx_t* ctx,
+    const char* uri,
+    tiledb_backend_t* uri_backend) {
+  return api_entry_with_context<tiledb::api::tiledb_uri_get_backend_name>(
+      ctx, uri, uri_backend);
+}

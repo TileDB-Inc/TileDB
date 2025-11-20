@@ -1,13 +1,7 @@
-/**
- * @file   tiledb
- *
- * @author Ravi Gaddipati
- *
- * @section LICENSE
- *
+/*
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,51 +20,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares the C++ API for TileDB.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
-
-#ifdef TILEDB_NO_API_DEPRECATION_WARNINGS
-// Define these before including tiledb_export.h to avoid their normal
-// definitions.
-#ifndef TILEDB_DEPRECATED
-#define TILEDB_DEPRECATED
+// clang-format off
+#ifdef TILEDB_BACKEND_ENUM
+    /** S3 backend */
+    TILEDB_BACKEND_ENUM(S3) = 0,
+    /** Azure backend */
+    TILEDB_BACKEND_ENUM(AZURE) = 1,
+    /** GCS backend */
+    TILEDB_BACKEND_ENUM(GCS) = 2,
+    /** TileDB REST v1 backend */
+    TILEDB_BACKEND_ENUM(TILEDB_v1) = 3,
+    /** TileDB REST v2 backend */
+    TILEDB_BACKEND_ENUM(TILEDB_v2) = 4,
+    /** Invalid backend */
+    TILEDB_BACKEND_ENUM(INVALID) = 5,
 #endif
-#ifndef TILEDB_DEPRECATED_EXPORT
-#define TILEDB_DEPRECATED_EXPORT
-#endif
-#endif
 
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "backend.h"
-#include "config.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "error.h"
-#include "exception.h"
-#include "filter.h"
-#include "filter_list.h"
-#include "fragment_info.h"
-#include "group.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "query_condition.h"
-#include "schema_base.h"
-#include "stats.h"
-#include "subarray.h"
-#include "tiledb.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
-
-#endif  // TILEDB_CPP_H

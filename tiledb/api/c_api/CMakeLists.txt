@@ -106,6 +106,9 @@ add_subdirectory(domain)
 # `attribute`: depends on `filter_list`, `datatype`
 add_subdirectory(attribute)
 
+# `backend`: depends on `context`, `uri`
+add_subdirectory(backend)
+
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
 

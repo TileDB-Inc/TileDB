@@ -1,13 +1,12 @@
 /**
- * @file   tiledb
- *
- * @author Ravi Gaddipati
+ * @file
+ * tiledb/api/c_api/backend/test/compile_capi_backend_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,48 +28,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * Verify backend API headers compile as C.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#include "tiledb/api/c_api/backend/backend_api_external.h"
 
-#ifdef TILEDB_NO_API_DEPRECATION_WARNINGS
-// Define these before including tiledb_export.h to avoid their normal
-// definitions.
-#ifndef TILEDB_DEPRECATED
-#define TILEDB_DEPRECATED
-#endif
-#ifndef TILEDB_DEPRECATED_EXPORT
-#define TILEDB_DEPRECATED_EXPORT
-#endif
-#endif
-
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "backend.h"
-#include "config.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "error.h"
-#include "exception.h"
-#include "filter.h"
-#include "filter_list.h"
-#include "fragment_info.h"
-#include "group.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "query_condition.h"
-#include "schema_base.h"
-#include "stats.h"
-#include "subarray.h"
-#include "tiledb.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
-
-#endif  // TILEDB_CPP_H
+int main() {
+  return 0;
+}

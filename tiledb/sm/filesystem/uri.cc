@@ -31,10 +31,12 @@
  */
 
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -395,6 +397,24 @@ std::string URI::to_path(const std::string& uri) {
 
 std::string URI::backend_name() const {
   return uri_.substr(0, uri_.find_first_of(':'));
+}
+
+tiledb_backend_t URI::backend_type(tiledb_ctx_t* ctx) const {
+  if (is_s3()) {
+    return TILEDB_BACKEND_S3;
+  } else if (is_azure()) {
+    return TILEDB_BACKEND_AZURE;
+  } else if (is_gcs()) {
+    return TILEDB_BACKEND_GCS;
+  } else if (is_tiledb()) {
+    if (ctx->rest_client().rest_legacy()) {
+      return TILEDB_BACKEND_TILEDB_v1;
+    } else {
+      return TILEDB_BACKEND_TILEDB_v2;
+    }
+  }
+
+  return TILEDB_BACKEND_INVALID;
 }
 
 std::string URI::to_path() const {
