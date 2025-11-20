@@ -49,7 +49,7 @@ struct BackendTestCase {
 
   void run(tiledb_ctx_t* ctx) {
     tiledb_backend_t backend;
-    REQUIRE(tiledb_uri_get_backend_name(ctx, uri_, &backend) == TILEDB_OK);
+    REQUIRE(tiledb_uri_get_backend_protocol(ctx, uri_, &backend) == TILEDB_OK);
     REQUIRE(backend == expected_);
   }
 };
@@ -86,11 +86,11 @@ TEST_CASE(
   tiledb_backend_t backend;
 
   // Empty URI should fail
-  REQUIRE(tiledb_uri_get_backend_name(ctx, "", &backend) == TILEDB_ERR);
+  REQUIRE(tiledb_uri_get_backend_protocol(ctx, "", &backend) == TILEDB_ERR);
 
   // Invalid scheme should fail
   REQUIRE(
-      tiledb_uri_get_backend_name(ctx, "invalid://path", &backend) ==
+      tiledb_uri_get_backend_protocol(ctx, "invalid://path", &backend) ==
       TILEDB_ERR);
 
   tiledb_ctx_handle_t::break_handle(ctx);

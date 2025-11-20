@@ -38,7 +38,7 @@
 
 namespace tiledb::api {
 
-capi_return_t tiledb_uri_get_backend_name(
+capi_return_t tiledb_uri_get_backend_protocol(
     tiledb_ctx_t* ctx, const char* uri, tiledb_backend_t* uri_backend) {
   ensure_output_pointer_is_valid(uri_backend);
 
@@ -75,6 +75,6 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     const char* uri,
     tiledb_backend_t* uri_backend) {
-  return api_entry_with_context<tiledb::api::tiledb_uri_get_backend_name>(
+  return api_entry_with_context<tiledb::api::tiledb_uri_get_backend_protocol>(
       ctx, uri, uri_backend);
 }

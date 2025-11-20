@@ -57,7 +57,7 @@ typedef enum {
  *
  * @code{.c}
  * tiledb_backend_t backend;
- * tiledb_uri_get_backend_name(ctx, "s3://bucket/path", &backend);
+ * tiledb_uri_get_backend_protocol(ctx, "s3://bucket/path", &backend);
  * // backend == TILEDB_BACKEND_S3
  * @endcode
  *
@@ -66,7 +66,7 @@ typedef enum {
  * @param uri_backend Set to the backend type of the URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_uri_get_backend_name(
+TILEDB_EXPORT capi_return_t tiledb_uri_get_backend_protocol(
     tiledb_ctx_t* ctx,
     const char* uri,
     tiledb_backend_t* uri_backend) TILEDB_NOEXCEPT;
