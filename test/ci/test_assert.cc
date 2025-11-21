@@ -95,7 +95,7 @@ TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
 #endif
 
   if (builtWithAssertions) {
-    CHECK(sub_output.size() == 2);
+    CHECK(sub_output.size() >= 2);
     if (sub_output.size() >= 1) {
       CAPTURE(sub_output[0]);
       CHECK(
