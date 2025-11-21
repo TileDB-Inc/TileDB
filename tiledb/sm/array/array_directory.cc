@@ -842,9 +842,12 @@ void ArrayDirectory::load_array_meta_uris() {
         uri_.join_path(constants::array_metadata_dir_name), &unfiltered_uris));
     for (const auto& unfiltered_uri : unfiltered_uris) {
       const auto& uri = unfiltered_uri.to_string();
-      if (!uri.ends_with(constants::temp_file_suffix)) {
-        array_meta_dir_uris.emplace_back(uri);
+      if (uri.ends_with(constants::temp_file_suffix)) {
+        resources_.get().logger()->debug(
+            "Skipping partial array metadata file: '{}'", uri);
+        continue;
       }
+      array_meta_dir_uris.emplace_back(uri);
     }
   }
 
