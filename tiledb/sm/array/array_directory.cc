@@ -366,19 +366,7 @@ Status ArrayDirectory::load() {
 
       // Load (in parallel) the array metadata URIs
       tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-        int delay = 250, max_retries = 25;
-        for (int retry = 0; retry <= max_retries; ++retry) {
-          if (load_array_meta_uris()) {
-            break;
-          }
-          // Retry is triggered if metadata files were still flushing to disk.
-          std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-          resources_.get().logger()->info(
-              "Encountered partially written array metadata while opening the "
-              "array. Waiting {}ms and retrying.", delay);
-          // Apply (default REST) backoff and retry up to 25 times.
-          delay *= 1.25;
-        }
+        load_array_meta_uris();
         return Status::Ok();
       }));
     }
@@ -606,7 +594,7 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
   std::vector<URI> uris;
   uris.reserve(dir_entries.size());
 
-  for (auto entry : dir_entries) {
+  for (const auto& entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
 
     // Always list directories
@@ -844,17 +832,20 @@ ArrayDirectory::load_consolidated_commit_uris(
   return {Status::Ok(), uris, uris_set};
 }
 
-bool ArrayDirectory::load_array_meta_uris() {
+void ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
   {
     auto timer_se = stats_->start_timer("list_array_meta_uris");
-    array_meta_dir_uris =
-        ls(uri_.join_path(constants::array_metadata_dir_name));
-  }
-  auto pred = [](const URI& uri) { return uri.to_string().ends_with(".tmp"); };
-  if (uri_.is_file() && std::ranges::any_of(array_meta_dir_uris, pred)) {
-    return false;
+    std::vector<URI> unfiltered_uris;
+    throw_if_not_ok(resources_.get().vfs().ls(
+        uri_.join_path(constants::array_metadata_dir_name), &unfiltered_uris));
+    for (const auto& unfiltered_uri : unfiltered_uris) {
+      const auto& uri = unfiltered_uri.to_string();
+      if (!uri.ends_with(constants::temp_file_suffix)) {
+        array_meta_dir_uris.emplace_back(uri);
+      }
+    }
   }
 
   // Compute array metadata URIs and vacuum URIs to vacuum. */
@@ -871,7 +862,6 @@ bool ArrayDirectory::load_array_meta_uris() {
   throw_if_not_ok(st2);
   array_meta_uris_ = std::move(array_meta_filtered_uris.value());
   array_meta_dir_uris.clear();
-  return true;
 }
 
 void ArrayDirectory::load_array_schema_uris() {
