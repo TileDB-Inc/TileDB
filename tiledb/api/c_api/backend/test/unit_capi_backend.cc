@@ -32,32 +32,36 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/api/c_api/backend/backend_api_external.h"
-#include "tiledb/api/c_api/config/config_api_internal.h"
-#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api/config/config_api_external.h"
+#include "tiledb/api/c_api/context/context_api_external.h"
 
 struct BackendTestCase {
   BackendTestCase(
-      const char* uri, tiledb_backend_t expected, const char* description)
+      const char* uri, tiledb_data_protocol_t expected, const char* description)
       : uri_(uri)
       , expected_(expected)
       , description_(description) {
   }
 
   const char* uri_;
-  tiledb_backend_t expected_;
+  tiledb_data_protocol_t expected_;
   const char* description_;
 
   void run(tiledb_ctx_t* ctx) {
-    tiledb_backend_t backend;
-    REQUIRE(tiledb_uri_get_backend_protocol(ctx, uri_, &backend) == TILEDB_OK);
+    tiledb_data_protocol_t backend;
+    REQUIRE(tiledb_uri_get_data_protocol(ctx, uri_, &backend) == TILEDB_OK);
     REQUIRE(backend == expected_);
   }
 };
 
 TEST_CASE("C API: Test backend identification", "[capi][backend]") {
   // Create a context for the tests
-  auto cfg = tiledb_config_handle_t::make_handle();
-  auto ctx = tiledb_ctx_handle_t::make_handle(cfg->config());
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // clang-format off
   BackendTestCase test = GENERATE(
@@ -66,32 +70,36 @@ TEST_CASE("C API: Test backend identification", "[capi][backend]") {
     BackendTestCase("https://example.com/path", TILEDB_BACKEND_S3, "HTTPS URI (treated as S3)"),
     BackendTestCase("azure://container/path", TILEDB_BACKEND_AZURE, "Azure URI"),
     BackendTestCase("gcs://bucket/path", TILEDB_BACKEND_GCS, "GCS URI"),
-    BackendTestCase("tiledb://", TILEDB_BACKEND_GCS, "GS URI"));
+    BackendTestCase("gs://bucket/path", TILEDB_BACKEND_GCS, "GS URI"));
   // clang-format on
 
   DYNAMIC_SECTION(test.description_) {
     test.run(ctx);
   }
 
-  tiledb_ctx_handle_t::break_handle(ctx);
+  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE(
     "C API: Test backend identification with invalid URI",
     "[capi][backend][error]") {
   // Create a context for the tests
-  auto cfg = tiledb_config_handle_t::make_handle();
-  auto ctx = tiledb_ctx_handle_t::make_handle(cfg->config());
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+  tiledb_config_free(&config);
 
-  tiledb_backend_t backend;
+  tiledb_data_protocol_t backend;
 
   // Empty URI should fail
-  REQUIRE(tiledb_uri_get_backend_protocol(ctx, "", &backend) == TILEDB_ERR);
+  REQUIRE(tiledb_uri_get_data_protocol(ctx, "", &backend) == TILEDB_ERR);
 
   // Invalid scheme should fail
   REQUIRE(
-      tiledb_uri_get_backend_protocol(ctx, "invalid://path", &backend) ==
+      tiledb_uri_get_data_protocol(ctx, "invalid://path", &backend) ==
       TILEDB_ERR);
 
-  tiledb_ctx_handle_t::break_handle(ctx);
+  tiledb_ctx_free(&ctx);
 }

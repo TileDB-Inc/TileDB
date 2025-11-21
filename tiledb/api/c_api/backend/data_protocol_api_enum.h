@@ -23,16 +23,17 @@
  */
 
 // clang-format off
-#ifdef TILEDB_BACKEND_ENUM
+#ifdef TILEDB_DATA_PROTOCOL_ENUM
     /** S3 backend */
-    TILEDB_BACKEND_ENUM(S3) = 0,
+    TILEDB_DATA_PROTOCOL_ENUM(S3) = 0,
     /** Azure backend */
-    TILEDB_BACKEND_ENUM(AZURE) = 1,
+    TILEDB_DATA_PROTOCOL_ENUM(AZURE) = 1,
     /** GCS backend */
-    TILEDB_BACKEND_ENUM(GCS) = 2,
+    TILEDB_DATA_PROTOCOL_ENUM(GCS) = 2,
     /** TileDB REST v1 backend */
-    TILEDB_BACKEND_ENUM(TILEDB_v1) = 3,
+    TILEDB_DATA_PROTOCOL_ENUM(TILEDB_v1) = 3,
     /** TileDB REST v2 backend */
-    TILEDB_BACKEND_ENUM(TILEDB_v2) = 4,
+    TILEDB_DATA_PROTOCOL_ENUM(TILEDB_v2) = 4,
 #endif
+
 

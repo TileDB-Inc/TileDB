@@ -45,10 +45,10 @@ extern "C" {
  */
 typedef enum {
 /** Helper macro for defining backend enums. */
-#define TILEDB_BACKEND_ENUM(id) TILEDB_BACKEND_##id
-#include "tiledb/api/c_api/backend/backend_api_enum.h"
-#undef TILEDB_BACKEND_ENUM
-} tiledb_backend_t;
+#define TILEDB_DATA_PROTOCOL_ENUM(id) TILEDB_BACKEND_##id
+#include "tiledb/api/c_api/backend/data_protocol_api_enum.h"
+#undef TILEDB_DATA_PROTOCOL_ENUM
+} tiledb_data_protocol_t;
 
 /**
  * Returns the backend type for a given URI.
@@ -56,8 +56,8 @@ typedef enum {
  * **Example:**
  *
  * @code{.c}
- * tiledb_backend_t backend;
- * tiledb_uri_get_backend_protocol(ctx, "s3://bucket/path", &backend);
+ * tiledb_data_protocol_t backend;
+ * tiledb_uri_get_data_protocol(ctx, "s3://bucket/path", &backend);
  * // backend == TILEDB_BACKEND_S3
  * @endcode
  *
@@ -66,10 +66,10 @@ typedef enum {
  * @param uri_backend Set to the backend type of the URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_uri_get_backend_protocol(
+TILEDB_EXPORT capi_return_t tiledb_uri_get_data_protocol(
     tiledb_ctx_t* ctx,
     const char* uri,
-    tiledb_backend_t* uri_backend) TILEDB_NOEXCEPT;
+    tiledb_data_protocol_t* uri_backend) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
