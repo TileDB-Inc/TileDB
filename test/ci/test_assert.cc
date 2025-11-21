@@ -67,14 +67,52 @@ TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
         std::filesystem::temp_directory_path() / "try_assert.log";
     sprintf(
         command,
-        "%s %s",
+        "%s %s 2>&1",
         TILEDB_PATH_TO_TRY_ASSERT,
         try_assert_logfile.value().string().c_str());
   } else {
-    sprintf(command, "%s", TILEDB_PATH_TO_TRY_ASSERT);
+    sprintf(command, "%s 2>&1", TILEDB_PATH_TO_TRY_ASSERT);
   }
 
-  const int retval = system(command);
+#ifdef _WIN32
+  FILE* sub = _popen(command, "r");
+#else
+  FILE* sub = popen(command, "r");
+#endif
+  REQUIRE(sub);
+
+  std::vector<std::string> sub_output;
+  {
+    char linebuf[1024];
+    while (fgets(linebuf, sizeof(linebuf), sub) != nullptr) {
+      sub_output.push_back(std::string(linebuf));
+    }
+  }
+#ifdef _WIN32
+  const int retval = _pclose(sub);
+#else
+  const int retval = pclose(sub);
+#endif
+
+  if (builtWithAssertions) {
+    CHECK(sub_output.size() >= 2);
+    if (sub_output.size() >= 1) {
+      CAPTURE(sub_output[0]);
+      CHECK(
+          sub_output[0].find(
+              "FATAL TileDB core library internal error: false") == 0);
+    }
+    if (sub_output.size() >= 2) {
+      CAPTURE(sub_output[1]);
+      CHECK(sub_output[1].find("try_assert.cc") != std::string::npos);
+    }
+  } else {
+    CHECK(sub_output.size() == 1);
+    if (sub_output.size() >= 1) {
+      CAPTURE(sub_output[0]);
+      CHECK(sub_output[0].find("Assert did not exit!") == 0);
+    }
+  }
 
   // in case value is one not currently accepted, report what was returned.
   std::cout << "retval is " << retval << " (0x" << std::hex << retval
@@ -160,18 +198,30 @@ TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
   REQUIRE(order_.empty());
 
   tiledb::common::passert_failure_run_callbacks();
-  CHECK(order_ == std::vector<int>{10000, 100, 0});
+  if (builtWithAssertions) {
+    CHECK(order_ == std::vector<int>{10000, 100, 0});
+  } else {
+    CHECK(order_ == std::vector<int>{});
+  }
   order_.clear();
 
   tiledb::common::passert_failure_run_callbacks();
-  CHECK(order_ == std::vector<int>{10001, 101, 1});
+  if (builtWithAssertions) {
+    CHECK(order_ == std::vector<int>{10001, 101, 1});
+  } else {
+    CHECK(order_ == std::vector<int>{});
+  }
   order_.clear();
 
   SECTION("Remove x") {
     inc_x.reset();
 
     tiledb::common::passert_failure_run_callbacks();
-    CHECK(order_ == std::vector<int>{10002, 102});
+    if (builtWithAssertions) {
+      CHECK(order_ == std::vector<int>{10002, 102});
+    } else {
+      CHECK(order_ == std::vector<int>{});
+    }
     order_.clear();
   }
 
@@ -179,7 +229,11 @@ TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
     inc_y.reset();
 
     tiledb::common::passert_failure_run_callbacks();
-    CHECK(order_ == std::vector<int>{10002, 2});
+    if (builtWithAssertions) {
+      CHECK(order_ == std::vector<int>{10002, 2});
+    } else {
+      CHECK(order_ == std::vector<int>{});
+    }
     order_.clear();
   }
 
@@ -187,7 +241,11 @@ TEST_CASE("CI: passert callback registration non-FIFO", "[assertions]") {
     inc_z.reset();
 
     tiledb::common::passert_failure_run_callbacks();
-    CHECK(order_ == std::vector<int>{102, 2});
+    if (builtWithAssertions) {
+      CHECK(order_ == std::vector<int>{102, 2});
+    } else {
+      CHECK(order_ == std::vector<int>{});
+    }
     order_.clear();
   }
 }
