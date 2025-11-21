@@ -142,19 +142,28 @@ capi_return_t tiledb_ctx_set_tag(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_ctx_get_rest_data_model(
-    tiledb_ctx_t* ctx, tiledb_rest_data_model_t* data_model) {
-  ensure_output_pointer_is_valid(data_model);
+capi_return_t tiledb_ctx_get_data_protocol(
+    tiledb_ctx_t* ctx, const char* uri, tiledb_data_protocol_t* data_protocol) {
+  ensure_output_pointer_is_valid(data_protocol);
 
-  if (!ctx->has_rest_client()) {
-    throw CAPIException(
-        "Cannot get REST data model; REST client not configured");
+  auto uri_to_check = tiledb::sm::URI(uri);
+  if (uri_to_check.is_invalid()) {
+    throw CAPIException("Cannot get data protocol; Invalid URI");
   }
 
-  if (ctx->rest_client().rest_legacy()) {
-    *data_model = TILEDB_REST_DATA_MODEL_v2;
+  if (tiledb::sm::URI::is_tiledb(uri)) {
+    if (!ctx->has_rest_client()) {
+      throw CAPIException(
+          "Cannot get data protocol; REST client not configured");
+    }
+
+    if (ctx->rest_client().rest_legacy()) {
+      *data_protocol = TILEDB_DATA_PROTOCOL_v2;
+    } else {
+      *data_protocol = TILEDB_DATA_PROTOCOL_v3;
+    }
   } else {
-    *data_model = TILEDB_REST_DATA_MODEL_v3;
+    *data_protocol = TILEDB_DATA_PROTOCOL_v2;
   }
 
   return TILEDB_OK;
@@ -226,9 +235,10 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    ctx_get_rest_data_model,
+    ctx_get_data_protocol,
     tiledb_ctx_t* ctx,
-    tiledb_rest_data_model_t* data_model) {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_get_rest_data_model>(
-      ctx, data_model);
+    const char* uri,
+    tiledb_data_protocol_t* data_protocol) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_get_data_protocol>(
+      ctx, uri, data_protocol);
 }

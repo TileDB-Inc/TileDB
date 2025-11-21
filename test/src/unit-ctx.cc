@@ -106,43 +106,56 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
 }
 
 TEST_CASE(
-    "C API: Test context REST data model",
-    "[capi][ctx][rest-data-model][rest]") {
+    "C API: Test context data protocol", "[capi][ctx][data-protocol][rest]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   tiledb_ctx_t* ctx = vfs_test_setup.ctx_c;
 
-  tiledb_rest_data_model_t data_model;
-  auto rc = tiledb_ctx_get_rest_data_model(ctx, &data_model);
+  tiledb_data_protocol_t data_protocol;
 
-  // If the rest client has been initialized and configured, check the data
-  // model
-  if (vfs_test_setup.is_rest()) {
-    REQUIRE(rc == TILEDB_OK);
-    if (vfs_test_setup.is_legacy_rest()) {
-      REQUIRE(data_model == TILEDB_REST_DATA_MODEL_v2);
-    } else {
-      REQUIRE(data_model == TILEDB_REST_DATA_MODEL_v3);
+  SECTION("tiledb:// URI") {
+    if (vfs_test_setup.is_rest()) {
+      auto rc = tiledb_ctx_get_data_protocol(
+          ctx, "tiledb://workspace/teamspace/array", &data_protocol);
+      REQUIRE(rc == TILEDB_OK);
+      if (vfs_test_setup.is_legacy_rest()) {
+        REQUIRE(data_protocol == TILEDB_DATA_PROTOCOL_v2);
+      } else {
+        REQUIRE(data_protocol == TILEDB_DATA_PROTOCOL_v3);
+      }
     }
-  } else {
-    REQUIRE(rc != TILEDB_OK);
+  }
+
+  SECTION("non-tiledb:// URI") {
+    auto rc = tiledb_ctx_get_data_protocol(
+        ctx, "azure://bucket/array", &data_protocol);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(data_protocol == TILEDB_DATA_PROTOCOL_v2);
   }
 }
 
 TEST_CASE(
-    "C++ API: Test context REST data model",
-    "[cppapi][ctx][rest-data-model][rest]") {
+    "C++ API: Test context data protocol",
+    "[cppapi][ctx][data-protocol][rest]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   tiledb::Context ctx{vfs_test_setup.ctx()};
 
-  // If the rest client has been initialized and configured, check the data
-  // model
-  if (vfs_test_setup.is_rest()) {
-    if (vfs_test_setup.is_legacy_rest()) {
-      REQUIRE(ctx.rest_data_model() == tiledb::Context::RestDataModel::v2);
-    } else {
-      REQUIRE(ctx.rest_data_model() == tiledb::Context::RestDataModel::v3);
+  SECTION("tiledb:// URI") {
+    if (vfs_test_setup.is_rest()) {
+      if (vfs_test_setup.is_legacy_rest()) {
+        REQUIRE(
+            ctx.data_protocol("tiledb://namespace/array") ==
+            tiledb::Context::DataProtocol::v2);
+      } else {
+        REQUIRE(
+            ctx.data_protocol("tiledb://namespace/array") ==
+            tiledb::Context::DataProtocol::v3);
+      }
     }
-  } else {
-    REQUIRE_THROWS(ctx.rest_data_model());
+  }
+
+  SECTION("non-tiledb:// URI") {
+    REQUIRE(
+        ctx.data_protocol("s3://namespace/array") ==
+        tiledb::Context::DataProtocol::v2);
   }
 }

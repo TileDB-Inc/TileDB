@@ -51,10 +51,10 @@ typedef struct tiledb_ctx_handle_t tiledb_ctx_t;
  */
 typedef enum {
   /** REST API v2 (legacy) */
-  TILEDB_REST_DATA_MODEL_v2 = 0,
+  TILEDB_DATA_PROTOCOL_v2 = 0,
   /** REST API v3 (Tiledb 3.0+) */
-  TILEDB_REST_DATA_MODEL_v3 = 1
-} tiledb_rest_data_model_t;
+  TILEDB_DATA_PROTOCOL_v3 = 1
+} tiledb_data_protocol_t;
 
 /**
  * Creates a TileDB context, which contains the TileDB storage manager
@@ -243,16 +243,20 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_set_tag(
  * **Example:**
  *
  * @code{.c}
- * tiledb_rest_data_model_t data_model;
- * tiledb_ctx_get_rest_data_model(ctx, &data_model);
+ * tiledb_data_protocol_t data_protocol;
+ * tiledb_ctx_get_data_protocol(ctx, "tiledb://workspace/teamspace/array",
+ * &data_protocol);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param data_model Set to the REST data model version.
+ * @param uri The URI to check.
+ * @param data_protocol Set to the data protocol version.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_ctx_get_rest_data_model(
-    tiledb_ctx_t* ctx, tiledb_rest_data_model_t* data_model) TILEDB_NOEXCEPT;
+TILEDB_EXPORT capi_return_t tiledb_ctx_get_data_protocol(
+    tiledb_ctx_t* ctx,
+    const char* uri,
+    tiledb_data_protocol_t* data_protocol) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

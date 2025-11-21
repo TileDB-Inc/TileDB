@@ -222,29 +222,32 @@ class Context {
   }
 
   /**
-   * REST data model version enum.
+   * Data protocol version enum.
    */
-  enum class RestDataModel : uint8_t {
-    /** REST API v2 (legacy) */
-    v2 = TILEDB_REST_DATA_MODEL_v2,
-    /** REST API v3 (Tiledb 3.0+) */
-    v3 = TILEDB_REST_DATA_MODEL_v3
+  enum class DataProtocol : uint8_t {
+    /** Data protocol v2 (legacy) */
+    v2 = TILEDB_DATA_PROTOCOL_v2,
+    /** Data protocol v3 (TileDB 3.0+) */
+    v3 = TILEDB_DATA_PROTOCOL_v3
   };
 
   /**
-   * Returns the REST data model version for this context.
-   * Throws a TileDBError if the REST client is not configured.
+   * Returns the data protocol version for the given URI.
    *
    * **Example:**
    * @code{.cpp}
    * tiledb::Context ctx;
-   * auto data_model = ctx.rest_data_model();
+   * auto data_protocol = ctx.data_protocol("tiledb://namespace/array");
    * @endcode
+   *
+   * @param uri The URI to check.
+   * @return The data protocol version.
    */
-  RestDataModel rest_data_model() const {
-    tiledb_rest_data_model_t model;
-    handle_error(tiledb_ctx_get_rest_data_model(ctx_.get(), &model));
-    return static_cast<RestDataModel>(model);
+  DataProtocol data_protocol(const std::string& uri) const {
+    tiledb_data_protocol_t protocol;
+    handle_error(
+        tiledb_ctx_get_data_protocol(ctx_.get(), uri.c_str(), &protocol));
+    return static_cast<DataProtocol>(protocol);
   }
 
   /** Returns a JSON-formatted string of the stats. */
