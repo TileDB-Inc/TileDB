@@ -143,11 +143,11 @@ TEST_CASE(
     if (vfs_test_setup.is_rest()) {
       if (vfs_test_setup.is_legacy_rest()) {
         REQUIRE(
-            ctx.data_protocol("tiledb://namespace/array") ==
+            ctx.data_protocol("tiledb://workspace/teamspace/array") ==
             tiledb::Context::DataProtocol::v2);
       } else {
         REQUIRE(
-            ctx.data_protocol("tiledb://namespace/array") ==
+            ctx.data_protocol("tiledb://workspace/teamspace/array") ==
             tiledb::Context::DataProtocol::v3);
       }
     }
@@ -155,7 +155,7 @@ TEST_CASE(
 
   SECTION("non-tiledb:// URI") {
     REQUIRE(
-        ctx.data_protocol("s3://namespace/array") ==
+        ctx.data_protocol("s3://bucket/array") ==
         tiledb::Context::DataProtocol::v2);
   }
 }

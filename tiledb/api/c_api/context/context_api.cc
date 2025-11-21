@@ -144,6 +144,7 @@ capi_return_t tiledb_ctx_set_tag(
 
 capi_return_t tiledb_ctx_get_data_protocol(
     tiledb_ctx_t* ctx, const char* uri, tiledb_data_protocol_t* data_protocol) {
+  ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(data_protocol);
 
   auto uri_to_check = tiledb::sm::URI(uri);
