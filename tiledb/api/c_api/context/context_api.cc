@@ -142,6 +142,24 @@ capi_return_t tiledb_ctx_set_tag(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_ctx_get_rest_data_model(
+    tiledb_ctx_t* ctx, tiledb_rest_data_model_t* data_model) {
+  ensure_output_pointer_is_valid(data_model);
+
+  if (!ctx->has_rest_client()) {
+    throw CAPIException(
+        "Cannot get REST data model; REST client not configured");
+  }
+
+  if (ctx->rest_client().rest_legacy()) {
+    *data_model = TILEDB_REST_DATA_MODEL_v2;
+  } else {
+    *data_model = TILEDB_REST_DATA_MODEL_v3;
+  }
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_with_context;
@@ -205,4 +223,12 @@ CAPI_INTERFACE(
     ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_set_tag>(
       ctx, key, value);
+}
+
+CAPI_INTERFACE(
+    ctx_get_rest_data_model,
+    tiledb_ctx_t* ctx,
+    tiledb_rest_data_model_t* data_model) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_get_rest_data_model>(
+      ctx, data_model);
 }

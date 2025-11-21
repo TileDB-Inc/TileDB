@@ -33,6 +33,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -101,5 +102,47 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
       REQUIRE(rest_client.extra_headers().size() == 4);
       REQUIRE(rest_client.extra_headers().at("tag1") == "value3");
     }
+  }
+}
+
+TEST_CASE(
+    "C API: Test context REST data model",
+    "[capi][ctx][rest-data-model][rest]") {
+  tiledb::test::VFSTestSetup vfs_test_setup{};
+  tiledb_ctx_t* ctx = vfs_test_setup.ctx_c;
+
+  tiledb_rest_data_model_t data_model;
+  auto rc = tiledb_ctx_get_rest_data_model(ctx, &data_model);
+
+  // If the rest client has been initialized and configured, check the data
+  // model
+  if (vfs_test_setup.is_rest()) {
+    REQUIRE(rc == TILEDB_OK);
+    if (vfs_test_setup.is_legacy_rest()) {
+      REQUIRE(data_model == TILEDB_REST_DATA_MODEL_v2);
+    } else {
+      REQUIRE(data_model == TILEDB_REST_DATA_MODEL_v3);
+    }
+  } else {
+    REQUIRE(rc != TILEDB_OK);
+  }
+}
+
+TEST_CASE(
+    "C++ API: Test context REST data model",
+    "[cppapi][ctx][rest-data-model][rest]") {
+  tiledb::test::VFSTestSetup vfs_test_setup{};
+  tiledb::Context ctx{vfs_test_setup.ctx()};
+
+  // If the rest client has been initialized and configured, check the data
+  // model
+  if (vfs_test_setup.is_rest()) {
+    if (vfs_test_setup.is_legacy_rest()) {
+      REQUIRE(ctx.rest_data_model() == tiledb::Context::RestDataModel::v2);
+    } else {
+      REQUIRE(ctx.rest_data_model() == tiledb::Context::RestDataModel::v3);
+    }
+  } else {
+    REQUIRE_THROWS(ctx.rest_data_model());
   }
 }

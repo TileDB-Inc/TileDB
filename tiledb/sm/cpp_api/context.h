@@ -221,6 +221,32 @@ class Context {
     handle_error(tiledb_ctx_set_tag(ctx_.get(), key.c_str(), value.c_str()));
   }
 
+  /**
+   * REST data model version enum.
+   */
+  enum class RestDataModel : uint8_t {
+    /** REST API v2 (legacy) */
+    v2 = TILEDB_REST_DATA_MODEL_v2,
+    /** REST API v3 (Tiledb 3.0+) */
+    v3 = TILEDB_REST_DATA_MODEL_v3
+  };
+
+  /**
+   * Returns the REST data model version for this context.
+   * Throws a TileDBError if the REST client is not configured.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto data_model = ctx.rest_data_model();
+   * @endcode
+   */
+  RestDataModel rest_data_model() const {
+    tiledb_rest_data_model_t model;
+    handle_error(tiledb_ctx_get_rest_data_model(ctx_.get(), &model));
+    return static_cast<RestDataModel>(model);
+  }
+
   /** Returns a JSON-formatted string of the stats. */
   std::string stats() {
     char* c_str;
