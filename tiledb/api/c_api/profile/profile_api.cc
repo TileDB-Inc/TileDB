@@ -102,9 +102,10 @@ capi_return_t tiledb_profile_get_param(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_profile_save(tiledb_profile_t* profile) {
+capi_return_t tiledb_profile_save(
+    tiledb_profile_t* profile, uint8_t overwrite) {
   ensure_profile_is_valid(profile);
-  profile->profile()->save_to_file();
+  profile->profile()->save_to_file(overwrite != 0);
   return TILEDB_OK;
 }
 
@@ -189,8 +190,12 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    profile_save, tiledb_profile_t* profile, tiledb_error_t** error) {
-  return api_entry_error<tiledb::api::tiledb_profile_save>(error, profile);
+    profile_save,
+    tiledb_profile_t* profile,
+    uint8_t overwrite,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_save>(
+      error, profile, overwrite);
 }
 
 CAPI_INTERFACE(

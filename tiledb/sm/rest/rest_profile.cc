@@ -219,8 +219,8 @@ void RestProfile::save_to_file(const bool overwrite) {
       if (data.contains(name_) && !overwrite) {
         throw RestProfileException(
             "Failed to save '" + name_ +
-            "'; This profile has already been saved "
-            "and must be explicitly removed in order to be replaced.");
+            "'; This profile already exists. "
+            "Use the overwrite parameter to replace it.");
       }
 
       if (overwrite) {

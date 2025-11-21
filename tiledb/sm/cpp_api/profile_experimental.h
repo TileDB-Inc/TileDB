@@ -229,10 +229,15 @@ class Profile {
     return ret;
   }
 
-  /** Saves the profile to the local file. */
-  void save() {
+  /**
+   * Saves the profile to the local file.
+   *
+   * @param overwrite If true, overwrite the existing profile.
+   */
+  void save(bool overwrite = false) {
     tiledb_error_t* capi_error = nullptr;
-    int rc = tiledb_profile_save(profile_.get(), &capi_error);
+    int rc =
+        tiledb_profile_save(profile_.get(), overwrite ? 1 : 0, &capi_error);
     if (rc != TILEDB_OK) {
       const char* msg_cstr;
       tiledb_error_message(capi_error, &msg_cstr);
