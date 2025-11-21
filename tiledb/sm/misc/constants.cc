@@ -261,6 +261,9 @@ const std::string con_commits_file_suffix = ".con";
 /** Suffix for the special ignore files used in TileDB. */
 const std::string ignore_file_suffix = ".ign";
 
+/** Suffix for temporary array metadata files used in TileDB for LocalFS. */
+const std::string temp_file_suffix = ".tmp";
+
 /** Default datatype for a generic tile. */
 const Datatype generic_tile_datatype = Datatype::CHAR;
 

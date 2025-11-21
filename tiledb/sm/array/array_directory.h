@@ -726,7 +726,7 @@ class ArrayDirectory {
   load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
 
   /** Loads the array metadata URIs. */
-  bool load_array_meta_uris();
+  void load_array_meta_uris();
 
   /** Loads the array schema URIs. */
   void load_array_schema_uris();

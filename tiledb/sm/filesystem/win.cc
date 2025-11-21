@@ -383,13 +383,25 @@ std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
+
+      // Do not attempt to retrieve file size for temporary metadata files that
+      // are still flushing to disk.
+      const bool temp_metadata =
+          URI(file_path)
+              .parent_path()
+              .remove_trailing_slash()
+              .to_string()
+              .ends_with(constants::array_metadata_dir_name) &&
+          file_path.ends_with(constants::temp_file_suffix);
+
       if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
         entries.emplace_back(file_path, 0, true);
       } else {
         ULARGE_INTEGER size;
         size.LowPart = find_data.nFileSizeLow;
         size.HighPart = find_data.nFileSizeHigh;
-        entries.emplace_back(file_path, size.QuadPart, false);
+        entries.emplace_back(
+            file_path, temp_metadata ? 0 : size.QuadPart, false);
       }
     }
 

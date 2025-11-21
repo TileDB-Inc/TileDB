@@ -375,6 +375,15 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
+    // Do not attempt to retrieve file size for temporary metadata files that
+    // are still flushing to disk.
+    const bool temp_metadata =
+        URI(abspath)
+            .parent_path()
+            .remove_trailing_slash()
+            .to_string()
+            .ends_with(constants::array_metadata_dir_name) &&
+        abspath.ends_with(constants::temp_file_suffix);
 
     // Getting the file size here incurs an additional system call
     // via file_size() and ls() calls will feel this too.
@@ -383,7 +392,7 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
     if (next_path->d_type == DT_DIR) {
       entries.emplace_back(abspath, 0, true);
     } else {
-      uint64_t size = file_size(URI(abspath));
+      uint64_t size = temp_metadata ? 0 : file_size(URI(abspath));
       entries.emplace_back(abspath, size, false);
     }
   }

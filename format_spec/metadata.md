@@ -17,11 +17,13 @@ my_array                            # array folder
 ```
 
 The metadata folder can contain any number of [timestamped](./timestamped_name.md):
-* [metadata files](#array-metadata-file)
+* [metadata files](#metadata-file)
 * [vacuum files](./vacuum_file.md)
 * **Note**: the timestamped names do _not_ include the format version.
 
 ## Metadata File
+
+Metadata files with the `.tmp` extension are used for local filesystems only, indicating the metadata is still being flushed to disk.
 
 The metadata file consists of a single [generic tile](./generic_tile.md), containing multiple entries with the following data:
 

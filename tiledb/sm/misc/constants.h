@@ -260,6 +260,9 @@ extern const std::string con_commits_file_suffix;
 /** Suffix for the special ignore files used in TileDB. */
 extern const std::string ignore_file_suffix;
 
+/** Suffix for temporary array metadata files used in TileDB for LocalFS. */
+extern const std::string temp_file_suffix;
+
 /** The fragment metadata file name. */
 extern const std::string fragment_metadata_filename;
 
