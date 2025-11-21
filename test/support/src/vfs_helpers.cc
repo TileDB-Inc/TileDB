@@ -169,6 +169,10 @@ Status SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  if (rest_) {
+    // REST CI gets configured by environment variables.
+    return Status::Ok();
+  }
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -556,7 +560,7 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
   std::sort(expected_results_.begin(), expected_results_.end());
 }
 
-bool VFSTestSetup::is_legacy_rest() {
+bool VFSTestSetup::is_legacy_rest() const {
   return is_rest() && ctx_c->rest_client().rest_legacy();
 }
 

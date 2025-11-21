@@ -36,6 +36,7 @@
 #include <test/support/tdb_catch_prng.h>
 #include <filesystem>
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 
@@ -836,7 +837,7 @@ struct VFSTestSetup {
     tiledb_vfs_is_bucket(ctx_c, vfs_c, default_storage().c_str(), &is_bucket);
     if (!is_bucket) {
       tiledb_vfs_create_bucket(ctx_c, vfs_c, default_storage().c_str());
-    } else {
+    } else if (remove_tmpdir) {
       tiledb_vfs_empty_bucket(ctx_c, vfs_c, default_storage().c_str());
     }
   };
@@ -855,7 +856,7 @@ struct VFSTestSetup {
     return fs_vec[0]->is_rest();
   }
 
-  bool is_legacy_rest();
+  bool is_legacy_rest() const;
 
   bool is_local() const {
     return fs_vec[0]->is_local();
@@ -903,6 +904,49 @@ struct VFSTestSetup {
 
   Context ctx() {
     return Context(ctx_c, false);
+  }
+
+  /**
+   * TileDB-Server does not support custom storage locations for array or group
+   * creation, default storage configuration should be used instead. Default
+   * storage in TileDB-Server will generate a group or array UUID to use as the
+   * prefix for create the asset within the default bucket.
+   *
+   * This helper fetches the backend location REST generated for the new asset
+   * during creation.
+   *
+   * @param creation_uri The URI passed to array / group create request.
+   * @return The backend storage location for the created array / group.
+   */
+  std::string get_backend_uri(const std::string& creation_uri) const {
+    if (is_legacy_rest() || !sm::URI(creation_uri).is_tiledb()) {
+      const std::string prefix = "tiledb://unit/";
+      if (creation_uri.starts_with(prefix)) {
+        return creation_uri.substr(prefix.length());
+      }
+      return creation_uri;
+    }
+    std::vector<sm::URI> uris;
+    REQUIRE(vfs_c->ls(sm::URI(default_storage()), &uris).ok());
+    return uris.back().to_string();
+  }
+
+  std::string fragment_dir(const std::string& uri) const {
+    sm::URI backend_uri(get_backend_uri(uri));
+    return backend_uri.join_path(sm::constants::array_fragments_dir_name)
+        .to_string();
+  }
+
+  std::string fragment_metadata_dir(const std::string& uri) const {
+    sm::URI backend_uri(get_backend_uri(uri));
+    return backend_uri.join_path(sm::constants::array_fragment_meta_dir_name)
+        .to_string();
+  }
+
+  std::string commits_dir(const std::string& uri) const {
+    sm::URI backend_uri(get_backend_uri(uri));
+    return backend_uri.join_path(sm::constants::array_commits_dir_name)
+        .to_string();
   }
 
   ~VFSTestSetup() {
