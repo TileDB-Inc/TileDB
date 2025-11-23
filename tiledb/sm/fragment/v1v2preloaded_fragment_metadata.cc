@@ -165,6 +165,12 @@ void V1V2PreloadedFragmentMetadata::load_fragment_min_max_sum_null_count(
   return;
 }
 
+void V1V2PreloadedFragmentMetadata::load_fragment_tile_global_order_bounds(
+    const EncryptionKey&) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */
@@ -200,6 +206,18 @@ void V1V2PreloadedFragmentMetadata::load_tile_min_values(
 }
 
 void V1V2PreloadedFragmentMetadata::load_tile_max_values(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_global_order_min_values(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_global_order_max_values(
     const EncryptionKey&, unsigned) {
   // N/A for v1_v2 preloaded meta
   return;

@@ -151,6 +151,24 @@ struct tiledb_fragment_info_handle_t
         fid, mid, dim_name, start_size, end_size);
   }
 
+  Status get_global_order_lower_bound(
+      uint32_t fid,
+      uint32_t mid,
+      size_t* dimension_sizes,
+      void** dimension_ptrs) {
+    return fragment_info_->get_global_order_lower_bound(
+        fid, mid, dimension_sizes, dimension_ptrs);
+  }
+
+  Status get_global_order_upper_bound(
+      uint32_t fid,
+      uint32_t mid,
+      size_t* dimension_sizes,
+      void** dimension_ptrs) {
+    return fragment_info_->get_global_order_upper_bound(
+        fid, mid, dimension_sizes, dimension_ptrs);
+  }
+
   Status get_non_empty_domain(uint32_t fid, uint32_t did, void* domain) const {
     return fragment_info_->get_non_empty_domain(fid, did, domain);
   }
