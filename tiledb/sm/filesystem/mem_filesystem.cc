@@ -185,7 +185,8 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
 
     if (offset + nbytes > size_)
       return LOG_STATUS(Status_MemFSError(fmt::format(
-          "Cannot read from file; Read exceeds file size: offset {} nbytes {} "
+          "Cannot read from file; Read exceeds file size: offset {} nbytes "
+          "{} "
           "size_ {}",
           offset,
           nbytes,
@@ -559,7 +560,8 @@ MemFilesystem::FSNode* MemFilesystem::create_dir_internal(
       cur->children_[token] = tdb_unique_ptr<FSNode>(tdb_new(Directory));
     } else if (!cur->is_dir()) {
       throw MemFSException(std::string(
-          "Cannot create directory, a file with that name exists already: " +
+          "Cannot create directory, a file with that name exists "
+          "already: " +
           path));
     }
 
