@@ -263,7 +263,8 @@ uint64_t Posix::read(
   uint64_t file_size = this->file_size(URI(path));
   if (offset + nbytes > file_size) {
     throw IOError(fmt::format(
-        "Cannot read from file; Read exceeds file size: offset {}, nbytes {}, "
+        "Cannot read from file; Read exceeds file size: offset {}, nbytes "
+        "{}, "
         "file_size {}, URI {}",
         offset,
         nbytes,

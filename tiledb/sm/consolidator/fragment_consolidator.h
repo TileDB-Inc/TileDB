@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -293,27 +293,32 @@ class FragmentConsolidator : public Consolidator {
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
    * @param cw A workspace containing buffers for the queries
-   * @return Status
    */
-  Status consolidate_internal(
+  void consolidate_internal(
       shared_ptr<Array> array_for_reads,
       shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
-      URI* new_fragment_uri,
-      FragmentConsolidationWorkspace& cw);
+      URI* new_fragment_uri);
 
   /**
-   * Copies the array by reading from the fragments to be consolidated
-   * with `query_r` and writing to the new fragment with `query_w`.
+   * Copies the array by concurrently reading from the fragments to be
+   * consolidated with `query_r` and writing to the new fragment with `query_w`.
    * It also appropriately sets the query buffers.
    *
    * @param query_r The read query.
    * @param query_w The write query.
-   * @param cw A workspace containing buffers for the queries
+   * @param reader_array_schema_latest The reader's latest array schema.
+   * @param avg_var_cell_sizes A map of the reader's computed average cell size
+   * for var size attrs / dims.
+   * @param buffer_size The size of the buffers.
    */
   void copy_array(
-      Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw);
+      Query* query_r,
+      Query* query_w,
+      const ArraySchema& reader_array_schema_latest,
+      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
+      uint64_t buffer_size);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves

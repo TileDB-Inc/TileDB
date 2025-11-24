@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -7585,29 +7585,6 @@ TEST_CASE_METHOD(
     vacuum_dense(mode);
     remove_dense_array();
   }
-}
-
-TEST_CASE_METHOD(
-    ConsolidationFx,
-    "C API: Test consolidation, sparse string, no progress",
-    "[capi][consolidation][sparse][string][no-progress][non-rest]") {
-  remove_sparse_string_array();
-  create_sparse_string_array();
-
-  write_sparse_string_full();
-  write_sparse_string_unordered();
-  consolidate_sparse_string(1, true);
-
-  tiledb_error_t* err = NULL;
-  tiledb_ctx_get_last_error(ctx_, &err);
-
-  const char* msg;
-  tiledb_error_message(err, &msg);
-  CHECK(
-      std::string("FragmentConsolidator: Consolidation read 0 cells, no "
-                  "progress can be made") == msg);
-
-  remove_sparse_string_array();
 }
 
 TEST_CASE_METHOD(
