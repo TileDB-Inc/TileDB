@@ -216,21 +216,40 @@ bool URI::is_timestamped_name() const {
       return false;
     }
   }
+  auto get_suffix = [](const std::string& p) -> std::string {
+    size_t suffix_separator = p.find('.');
+    if (suffix_separator == std::string::npos) {
+      return "";
+    }
+    return p.substr(suffix_separator);
+  };
 
   // Separator between uuid[_v].
   size_t uuid_separator = part.find('_', t2_separator + 1);
-  std::string uuid = part.substr(t2_separator + 1, uuid_separator);
+  std::string uuid =
+      part.substr(t2_separator + 1, uuid_separator - t2_separator - 1);
+  std::string suffix;
+  if (uuid_separator == std::string::npos) {
+    // There is no version; Check the UUID for the final suffix.
+    suffix = get_suffix(uuid);
+    uuid = uuid.substr(0, uuid.size() - suffix.size());
+  } else {
+    std::string version = part.substr(uuid_separator + 1);
+    // Check the version for the final suffix.
+    suffix = get_suffix(version);
+    version = version.substr(0, version.size() - suffix.size());
+    if (version.size() > std::to_string(constants::format_version).size()) {
+      return false;
+    }
+  }
+
   // UUIDs generated for timestamped names are 32 characters long.
   if (uuid.size() != 32) {
     return false;
   }
 
-  // Version is optional and may not appear in files using a timestamped name.
-  if (uuid_separator != std::string::npos) {
-    std::string version = part.substr(uuid_separator + 1);
-    if (version.size() > std::to_string(constants::format_version).size()) {
-      return false;
-    }
+  if (!suffix.empty() && suffix != constants::vacuum_file_suffix) {
+    return false;
   }
 
   return true;
