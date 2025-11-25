@@ -208,7 +208,8 @@ bool URI::is_timestamped_name() const {
 
   // Validate the timestamps are formatted correctly.
   std::string t1 = part.substr(2, t1_separator - 2);
-  std::string t2 = part.substr(t1_separator + 1, t2_separator - t1_separator - 1);
+  std::string t2 =
+      part.substr(t1_separator + 1, t2_separator - t1_separator - 1);
   for (const auto& t : {t1, t2}) {
     if (!std::ranges::all_of(t, [](const char c) { return std::isdigit(c); })) {
       return false;
