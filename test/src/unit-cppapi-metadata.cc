@@ -195,7 +195,7 @@ TEST_CASE_METHOD(
     std::latch get_metadata(2);
     std::thread t1([&]() {
       Array array(ctx, std::string(array_name_), TILEDB_WRITE);
-      array.put_metadata("a", TILEDB_UINT64, b.size(), b.data());
+      array.put_metadata("a", TILEDB_UINT64, (uint32_t)b.size(), b.data());
       get_metadata.count_down();
       array.close();
     });
