@@ -375,25 +375,11 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
-    // Do not attempt to retrieve file size for temporary metadata files that
-    // are still flushing to disk.
-    const bool temp_metadata =
-        URI(abspath)
-            .parent_path()
-            .remove_trailing_slash()
-            .to_string()
-            .ends_with(constants::array_metadata_dir_name) &&
-        abspath.ends_with(constants::temp_file_suffix);
 
-    // Getting the file size here incurs an additional system call
-    // via file_size() and ls() calls will feel this too.
-    // If this penalty becomes noticeable, we should just duplicate
-    // this implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
       entries.emplace_back(abspath, 0, true);
     } else {
-      uint64_t size = temp_metadata ? 0 : file_size(URI(abspath));
-      entries.emplace_back(abspath, size, false);
+      entries.emplace_back(abspath, file_size(URI(abspath)), false);
     }
   }
   return entries;
@@ -401,8 +387,23 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
-  for (auto& fs : ls_with_sizes(URI(path))) {
-    paths->emplace_back(fs.path().native());
+  struct dirent* next_path = nullptr;
+  auto dir = PosixDIR::open(path);
+  if (dir.empty()) {
+    return {};
+  }
+
+  while ((next_path = readdir(dir.get())) != nullptr) {
+    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, "..")) {
+      continue;
+    }
+    std::string abspath = path + "/" + next_path->d_name;
+
+    if (next_path->d_type == DT_DIR) {
+      paths->emplace_back(abspath);
+    } else {
+      paths->emplace_back(abspath);
+    }
   }
 
   return Status::Ok();

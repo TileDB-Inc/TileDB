@@ -191,6 +191,49 @@ bool URI::is_tiledb() const {
   return utils::parse::starts_with(uri_, "tiledb://");
 }
 
+bool URI::is_timestamped_name() const {
+  std::string part = last_path_part();
+  // __1_2_<32-digit-UUID> must be at minimum 38 characters long.
+  if (!part.starts_with("__") || part.size() < 38) {
+    return false;
+  }
+
+  // Separator between t1_t2.
+  size_t t1_separator = part.find('_', 2);
+  // Separator between t2_uuid.
+  size_t t2_separator = part.find('_', t1_separator + 1);
+  if (t1_separator == std::string::npos || t2_separator == std::string::npos) {
+    return false;
+  }
+
+  // Validate the timestamps are formatted correctly.
+  std::string t1 = part.substr(2, t1_separator - 2);
+  std::string t2 = part.substr(t1_separator + 1, t2_separator - t1_separator - 1);
+  for (const auto& t : {t1, t2}) {
+    if (!std::ranges::all_of(t, [](const char c) { return std::isdigit(c); })) {
+      return false;
+    }
+  }
+
+  // Separator between uuid[_v].
+  size_t uuid_separator = part.find('_', t2_separator + 1);
+  std::string uuid = part.substr(t2_separator + 1, uuid_separator);
+  // UUIDs generated for timestamped names are 32 characters long.
+  if (uuid.size() != 32) {
+    return false;
+  }
+
+  // Version is optional and may not appear in files using a timestamped name.
+  if (uuid_separator != std::string::npos) {
+    std::string version = part.substr(uuid_separator + 1);
+    if (version.size() > std::to_string(constants::format_version).size()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 std::optional<size_t> URI::get_storage_component_index(
     size_t start_index) const {
   // Find '://' between path and array name. iff it exists
