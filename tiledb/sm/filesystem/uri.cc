@@ -211,7 +211,8 @@ bool URI::is_timestamped_name() const {
   std::string t2 =
       part.substr(t1_separator + 1, t2_separator - t1_separator - 1);
   for (const auto& t : {t1, t2}) {
-    if (!std::ranges::all_of(t, [](const char c) { return std::isdigit(c); })) {
+    if (!std::all_of(
+            t.begin(), t.end(), [](const char c) { return std::isdigit(c); })) {
       return false;
     }
   }
