@@ -23,8 +23,6 @@ The metadata folder can contain any number of [timestamped](./timestamped_name.m
 
 ## Metadata File
 
-Metadata files with the `.tmp` extension are used for local filesystems only, indicating the metadata is still being flushed to disk.
-
 The metadata file consists of a single [generic tile](./generic_tile.md), containing multiple entries with the following data:
 
 | **Field** | **Type** | **Description** |
