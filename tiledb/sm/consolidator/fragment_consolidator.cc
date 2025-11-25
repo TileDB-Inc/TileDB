@@ -617,8 +617,14 @@ void FragmentConsolidator::consolidate_internal(
     }
   }
 
+  // Compute memory budgets
+  uint64_t total_weights =
+      config_.buffers_weight_ + config_.reader_weight_ + config_.writer_weight_;
+  uint64_t single_unit_budget = config_.total_budget_ / total_weights;
+  uint64_t reader_budget = config_.reader_weight_ * single_unit_budget;
+  uint64_t writer_budget = config_.writer_weight_ * single_unit_budget;
+
   // Create queries
-  uint64_t buffer_size = 10485760;  // 10 MB
   tdb_unique_ptr<Query> query_r = nullptr;
   tdb_unique_ptr<Query> query_w = nullptr;
   throw_if_not_ok(create_queries(
@@ -628,8 +634,8 @@ void FragmentConsolidator::consolidate_internal(
       query_r,
       query_w,
       new_fragment_uri,
-      buffer_size,
-      buffer_size));
+      reader_budget,
+      writer_budget));
 
   // Get the vacuum URI
   URI vac_uri;
@@ -646,8 +652,7 @@ void FragmentConsolidator::consolidate_internal(
       query_r.get(),
       query_w.get(),
       array_schema,
-      array_for_reads->get_average_var_cell_sizes(),
-      buffer_size);
+      array_for_reads->get_average_var_cell_sizes());
 
   // Finalize write query
   auto st = query_w->finalize();
@@ -674,21 +679,22 @@ void FragmentConsolidator::copy_array(
     Query* query_r,
     Query* query_w,
     const ArraySchema& reader_array_schema_latest,
-    std::unordered_map<std::string, uint64_t> average_var_cell_sizes,
-    uint64_t buffer_size) {
-  // The maximum number of buffers the reader may allocate.
-  uint64_t max_buffer_count = 10;
+    std::unordered_map<std::string, uint64_t> average_var_cell_sizes) {
+  // The size of the buffers.
+  uint64_t buffer_size = 10485760;  // 10 MB
+  uint64_t initial_buffer_size =
+      buffer_size;  // initial, "ungrown", value of `buffer_size`.
 
-  // Deque which stores the buffers passed between the reader and writer. Cannot
-  // exceed size `max_buffer_count`.
+  // Deque which stores the buffers passed between the reader and writer.
+  // Cannot exceed `config_.total_budget_`.
   ProducerConsumerQueue<std::variant<
       tdb_shared_ptr<FragmentConsolidationWorkspace>,
       std::exception_ptr>>
       buffer_queue;
 
   // Atomic counter of the queue buffers allocated by the reader.
-  // May not exceed `max_buffer_count`.
-  std::atomic<uint64_t> buffer_count = 0;
+  // May not exceed `config_.total_budget_`.
+  std::atomic<uint64_t> allocated_buffer_size = 0;
 
   // Flag indicating an ongoing read. The reader will stop once set to `false`.
   std::atomic<bool> reading = true;
@@ -716,7 +722,17 @@ void FragmentConsolidator::copy_array(
         // will always contain fixed size data, whether it is tile offsets for
         // var size attribute/dimension or the actual fixed size data so we can
         // use its size to know if any cells were written or not.
-        if (cw->sizes().at(0) > 0) {
+        if (cw->sizes().at(0) == 0) {
+          if (buffer_size == initial_buffer_size) {
+            // If the first read failed, throw.
+            throw FragmentConsolidatorException(
+                "Consolidation read 0 cells, no progress can be made");
+          }
+          // If it's not the first read, grow the buffer and try again.
+          buffer_size += std::min(
+              config_.total_budget_ - allocated_buffer_size, (2 * buffer_size));
+          continue;
+        } else {
           buffer_queue.push(cw);
         }
 
@@ -733,9 +749,10 @@ void FragmentConsolidator::copy_array(
         buffer_queue.push(std::current_exception());
         reading = false;
       }
-      buffer_count++;
+      allocated_buffer_size += buffer_size;
 
-      io_tp.wait_until([&]() { return buffer_count < max_buffer_count; });
+      io_tp.wait_until(
+          [&]() { return allocated_buffer_size < config_.total_budget_; });
     }
     return Status::Ok();
   });
@@ -762,7 +779,7 @@ void FragmentConsolidator::copy_array(
       // been altered by the read query.
       set_query_buffers(query_w, *writebuf.get());
       throw_if_not_ok(query_w->submit());
-      buffer_count--;
+      allocated_buffer_size -= buffer_size;
     } catch (...) {
       reading = false;  // Stop the reader.
       throw;
