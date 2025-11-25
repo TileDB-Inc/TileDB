@@ -748,7 +748,7 @@ class S3 : public FilesystemBase {
    * @return All entries that are contained in the parent
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& parent) const override;
+      const URI& parent, bool get_sizes) const override;
 
   /**
    * Disconnects a S3 client.

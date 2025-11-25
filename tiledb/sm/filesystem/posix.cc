@@ -361,7 +361,8 @@ void Posix::write(
   }
 }
 
-std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
+std::vector<directory_entry> Posix::ls_with_sizes(
+    const URI& uri, bool get_sizes) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   auto dir = PosixDIR::open(path);
@@ -379,7 +380,8 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
     if (next_path->d_type == DT_DIR) {
       entries.emplace_back(abspath, 0, true);
     } else {
-      entries.emplace_back(abspath, file_size(URI(abspath)), false);
+      entries.emplace_back(
+          abspath, get_sizes ? file_size(URI(abspath)) : 0, false);
     }
   }
   return entries;

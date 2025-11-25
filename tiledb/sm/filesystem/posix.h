@@ -228,7 +228,7 @@ class Posix : public LocalFilesystem {
    * @return A list of directory_entry objects
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri) const override;
+      const URI& uri, bool get_sizes) const override;
 
   /**
    * Lists files one level deep under a given path.

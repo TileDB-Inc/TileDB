@@ -638,7 +638,7 @@ std::vector<std::string> Azure::ls(
   return paths;
 }
 
-std::vector<directory_entry> Azure::ls_with_sizes(const URI& uri) const {
+std::vector<directory_entry> Azure::ls_with_sizes(const URI& uri, bool) const {
   return ls_with_sizes(uri, "/");
 }
 

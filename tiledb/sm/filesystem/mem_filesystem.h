@@ -159,7 +159,7 @@ class MemFilesystem : public FilesystemBase {
    * @return A list of directory_entry objects
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& path) const override;
+      const URI& path, bool get_sizes) const override;
 
   /**
    * Move a given filesystem path.

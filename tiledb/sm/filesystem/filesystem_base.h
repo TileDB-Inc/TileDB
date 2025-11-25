@@ -147,10 +147,11 @@ class FilesystemBase {
    * Retrieves all the entries contained in the parent.
    *
    * @param parent The target directory to list.
+   * @param get_sizes Flag to toggle retrieving file sizes.
    * @return All entries that are contained in the parent
    */
   virtual std::vector<tiledb::common::filesystem::directory_entry>
-  ls_with_sizes(const URI& parent) const = 0;
+  ls_with_sizes(const URI& parent, bool get_sizes = true) const = 0;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
