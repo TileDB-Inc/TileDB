@@ -381,7 +381,7 @@ Status MemFilesystem::ls(
     const std::string& path, std::vector<std::string>* const paths) const {
   iassert(paths);
 
-  for (auto& fs : ls_with_sizes(URI(path), true)) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 
@@ -389,7 +389,7 @@ Status MemFilesystem::ls(
 }
 
 std::vector<directory_entry> MemFilesystem::ls_with_sizes(
-    const URI& path, bool) const {
+    const URI& path) const {
   auto abspath = path.to_path();
   std::vector<std::string> tokens = tokenize(abspath);
 

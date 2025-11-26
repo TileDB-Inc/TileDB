@@ -459,7 +459,7 @@ class Azure : public FilesystemBase {
    * @return All entries that are contained in the prefix URI.
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri, bool get_sizes) const override;
+      const URI& uri) const override;
 
   /**
    * Lists objects and object information that start with `uri`.

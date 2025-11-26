@@ -599,8 +599,7 @@ class VFS : FilesystemBase,
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  std::vector<directory_entry> ls_with_sizes(
-      const URI& parent, bool get_sizes = true) const override;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking

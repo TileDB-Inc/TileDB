@@ -348,14 +348,6 @@ bool Win::is_file(const URI& uri) const {
   return PathFileExists(path.c_str()) && !PathIsDirectory(path.c_str());
 }
 
-Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
-  for (auto& fs : ls_with_sizes(URI(path), false)) {
-    paths->emplace_back(fs.path().native());
-  }
-
-  return Status::Ok();
-}
-
 std::vector<directory_entry> Win::ls_with_sizes(
     const URI& uri, bool get_sizes) const {
   auto path = uri.to_path();
