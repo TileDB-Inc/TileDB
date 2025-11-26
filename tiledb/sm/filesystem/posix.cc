@@ -389,23 +389,8 @@ std::vector<directory_entry> Posix::ls_with_sizes(
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
-  struct dirent* next_path = nullptr;
-  auto dir = PosixDIR::open(path);
-  if (dir.empty()) {
-    return {};
-  }
-
-  while ((next_path = readdir(dir.get())) != nullptr) {
-    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, "..")) {
-      continue;
-    }
-    std::string abspath = path + "/" + next_path->d_name;
-
-    if (next_path->d_type == DT_DIR) {
-      paths->emplace_back(abspath);
-    } else {
-      paths->emplace_back(abspath);
-    }
+  for (auto& fs : ls_with_sizes(URI(path), false)) {
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
