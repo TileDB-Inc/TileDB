@@ -510,7 +510,7 @@ std::vector<directory_entry> GCS::ls_with_sizes(
   return entries;
 }
 
-std::vector<directory_entry> GCS::ls_with_sizes(const URI& uri, bool) const {
+std::vector<directory_entry> GCS::ls_with_sizes(const URI& uri) const {
   return ls_with_sizes(uri, "/", -1);
 }
 

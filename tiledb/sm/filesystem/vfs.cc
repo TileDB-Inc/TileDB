@@ -364,15 +364,16 @@ bool VFS::is_bucket(const URI& uri) const {
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
 
-  for (auto& fs : ls_with_sizes(parent, false)) {
+  const auto entries = parent.is_file() ? local_.ls_with_sizes(parent, false) :
+                                          ls_with_sizes(parent);
+  for (const auto& fs : entries) {
     uris->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-std::vector<directory_entry> VFS::ls_with_sizes(
-    const URI& parent, bool get_sizes) const {
+std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   auto instrument = make_log_duration_instrument(parent, "ls");
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
@@ -386,7 +387,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(
 
   std::vector<directory_entry> entries;
   auto& fs = get_fs(parent);
-  entries = fs.ls_with_sizes(parent, get_sizes);
+  entries = fs.ls_with_sizes(parent);
 
   parallel_sort(
       compute_tp_,

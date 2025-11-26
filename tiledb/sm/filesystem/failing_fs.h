@@ -88,7 +88,7 @@ class FailingFS : public FilesystemBase {
   }
 
   virtual std::vector<tiledb::common::filesystem::directory_entry>
-  ls_with_sizes(const URI&, bool) const override {
+  ls_with_sizes(const URI&) const override {
     throw get_exception();
   }
 

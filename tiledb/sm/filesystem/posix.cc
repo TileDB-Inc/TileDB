@@ -387,15 +387,6 @@ std::vector<directory_entry> Posix::ls_with_sizes(
   return entries;
 }
 
-Status Posix::ls(
-    const std::string& path, std::vector<std::string>* paths) const {
-  for (auto& fs : ls_with_sizes(URI(path), false)) {
-    paths->emplace_back(fs.path().native());
-  }
-
-  return Status::Ok();
-}
-
 std::string Posix::abs_path(std::string_view path) {
   std::string resolved_path = abs_path_internal(path);
 

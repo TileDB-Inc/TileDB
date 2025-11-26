@@ -672,7 +672,7 @@ void S3::remove_file(const URI& uri) const {
   }
 }
 
-std::vector<directory_entry> S3::ls_with_sizes(const URI& parent, bool) const {
+std::vector<directory_entry> S3::ls_with_sizes(const URI& parent) const {
   return ls_with_sizes(parent, "/", -1);
 }
 

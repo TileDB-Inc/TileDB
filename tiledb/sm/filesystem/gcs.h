@@ -358,7 +358,7 @@ class GCS : public FilesystemBase {
    * @return A list of directory_entry objects.
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& uri, bool get_sizes) const override;
+      const URI& uri) const override;
 
   /**
    * Copies the directory at 'old_uri' to `new_uri`.
