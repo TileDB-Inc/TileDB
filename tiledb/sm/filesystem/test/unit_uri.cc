@@ -332,8 +332,9 @@ TEST_CASE("URI: Test is_timestamped_name", "[uri][is_timestamped_name]") {
   };
   for (const auto& test : test_uris) {
     URI uri(test.first);
-    CHECK(uri.is_timestamped_name() == test.second);
-    INFO(test.first);
+    DYNAMIC_SECTION("Checking is_timestamped_name URI: " << test.first) {
+      CHECK(uri.is_timestamped_name() == test.second);
+    }
   }
 }
 
