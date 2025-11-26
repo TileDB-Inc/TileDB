@@ -419,6 +419,13 @@ class Group {
    */
   const shared_ptr<GroupDetails> group_details() const;
 
+  /**
+   * Set the group URI
+   *
+   * @param uri
+   */
+  void set_uri(const URI& uri);
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
