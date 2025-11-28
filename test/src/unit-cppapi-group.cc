@@ -1132,27 +1132,28 @@ TEST_CASE(
   REQUIRE_NOTHROW(
       tiledb::create_group(ctx, created_group_uri + "/relative_group2"));
 
-  auto group_w = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  auto group_w1 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
   // Add the relative member we created on S3 to the parent group after
   // creation
-  CHECK_NOTHROW(group_w.add_member("relative_group2", true, "relative_group2"));
-  REQUIRE_NOTHROW(group_w.close());
+  CHECK_NOTHROW(
+      group_w1.add_member("relative_group2", true, "relative_group2"));
+  REQUIRE_NOTHROW(group_w1.close());
 
   // Attempts to add the same array as a member with the same name.
-  REQUIRE_NOTHROW(group_w.open(TILEDB_WRITE));
-  CHECK_NOTHROW(group_w.add_member("relative_array", true, "relative_array"));
-  REQUIRE_THROWS(group_w.close());
+  auto group_w2 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group_w2.add_member("relative_array", true, "relative_array"));
+  REQUIRE_THROWS(group_w2.close());
 
   // Attempts to add the same array as a member with a different name.
-  REQUIRE_NOTHROW(group_w.open(TILEDB_WRITE));
+  auto group_w3 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
   CHECK_NOTHROW(
-      group_w.add_member("relative_array", true, "relative_array_rename"));
-  REQUIRE_THROWS(group_w.close());
+      group_w3.add_member("relative_array", true, "relative_array_rename"));
+  REQUIRE_THROWS(group_w3.close());
 
   // Attempts to add the same group as a member with the same name.
-  REQUIRE_NOTHROW(group_w.open(TILEDB_WRITE));
-  CHECK_NOTHROW(group_w.add_member("relative_group", true, "relative_group"));
-  REQUIRE_THROWS(group_w.close());
+  auto group_w4 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group_w4.add_member("relative_group", true, "relative_group"));
+  REQUIRE_THROWS(group_w4.close());
 
   auto group_r = tiledb::Group(ctx, group_uri, TILEDB_READ);
   tiledb::sm::URI member_uri(array_member_uri);
