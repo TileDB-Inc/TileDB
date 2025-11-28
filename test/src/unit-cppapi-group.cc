@@ -1130,31 +1130,38 @@ TEST_CASE(
   auto created_group_uri = vfs.ls(vfs_test_setup.default_storage()).back();
   // Creates a new group at a relative backend storage location using S3 URI.
   REQUIRE_NOTHROW(
-      tiledb::create_group(ctx, created_group_uri + "/groups/relative_group"));
+      tiledb::create_group(ctx, created_group_uri + "/relative_group2"));
 
-  auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  auto group_w1 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  // Add the relative member we created on S3 to the parent group after
+  // creation
+  CHECK_NOTHROW(
+      group_w1.add_member("relative_group2", true, "relative_group2"));
+  REQUIRE_NOTHROW(group_w1.close());
+
   // Attempts to add the same array as a member with the same name.
-  CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
-  CHECK_NOTHROW(
-      group.add_member("relative_array", true, "relative_array_rename"));
-  CHECK_NOTHROW(group.add_member("relative_group", true, "relative_group"));
-  // Add the relative member we created on S3 to the parent group after creation
-  CHECK_NOTHROW(
-      group.add_member("groups/relative_group", true, "relative_group_nested"));
-  CHECK_NOTHROW(
-      group.add_member("relative_group", true, "relative_group_rename"));
-  REQUIRE_NOTHROW(group.close());
+  auto group_w2 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group_w2.add_member("relative_array", true, "relative_array"));
+  REQUIRE_THROWS(group_w2.close());
 
-  REQUIRE_NOTHROW(group.open(TILEDB_READ));
+  // Attempts to add the same array as a member with a different name.
+  auto group_w3 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(
+      group_w3.add_member("relative_array", true, "relative_array_rename"));
+  REQUIRE_THROWS(group_w3.close());
+
+  // Attempts to add the same group as a member with the same name.
+  auto group_w4 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group_w4.add_member("relative_group", true, "relative_group"));
+  REQUIRE_THROWS(group_w4.close());
+
+  auto group_r = tiledb::Group(ctx, group_uri, TILEDB_READ);
   tiledb::sm::URI member_uri(array_member_uri);
-  CHECK(group.member_count() == 5);
-  for (const std::string name :
-       {"relative_array",
-        "relative_array_rename",
-        "relative_group",
-        "relative_group_nested",
-        "relative_group_rename"}) {
-    auto member = group.member(name);
+  std::vector<std::string> expected_members = {
+      "relative_array", "relative_group", "relative_group2"};
+  CHECK(group_r.member_count() == expected_members.size());
+  for (const std::string& name : expected_members) {
+    auto member = group_r.member(name);
     auto object_type = tiledb::Object::Type::Group;
     if (name.find("array") != std::string::npos) {
       object_type = tiledb::Object::Type::Array;
@@ -1162,7 +1169,7 @@ TEST_CASE(
     CHECK(member.type() == object_type);
     CHECK(member.name() == name);
     CHECK(member.uri() == group_uri + "/" + name);
-    CHECK(group.is_relative(name));
+    CHECK(group_r.is_relative(name));
   }
 }
 
