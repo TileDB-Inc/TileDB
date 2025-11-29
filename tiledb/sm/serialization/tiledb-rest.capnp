@@ -996,6 +996,8 @@ struct Group {
 
     metadata  @1 :ArrayMetadata;
     # metadata attached to group
+
+    logicalURI @2 :Text;
   }
 
   config @0 :Config;

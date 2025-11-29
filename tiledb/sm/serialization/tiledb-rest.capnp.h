@@ -1387,7 +1387,7 @@ struct Group::GroupDetails {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a2ea10c715b475c1, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(a2ea10c715b475c1, 0, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -12205,6 +12205,9 @@ class Group::GroupDetails::Reader {
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader getMetadata()
       const;
 
+  inline bool hasLogicalURI() const;
+  inline ::capnp::Text::Reader getLogicalURI() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -12276,6 +12279,13 @@ class Group::GroupDetails::Builder {
           value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>
   disownMetadata();
+
+  inline bool hasLogicalURI();
+  inline ::capnp::Text::Builder getLogicalURI();
+  inline void setLogicalURI(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initLogicalURI(unsigned int size);
+  inline void adoptLogicalURI(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownLogicalURI();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -29913,6 +29923,47 @@ Group::GroupDetails::Builder::disownMetadata() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::disown(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool Group::GroupDetails::Reader::hasLogicalURI() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Group::GroupDetails::Builder::hasLogicalURI() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Group::GroupDetails::Reader::getLogicalURI()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Group::GroupDetails::Builder::getLogicalURI() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void Group::GroupDetails::Builder::setLogicalURI(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Group::GroupDetails::Builder::initLogicalURI(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void Group::GroupDetails::Builder::adoptLogicalURI(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+Group::GroupDetails::Builder::disownLogicalURI() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
 inline bool GroupUpdate::Reader::hasConfig() const {

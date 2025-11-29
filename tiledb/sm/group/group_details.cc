@@ -260,6 +260,11 @@ const URI& GroupDetails::group_uri() const {
   return group_uri_;
 }
 
+void GroupDetails::set_group_uri(const std::string& uri) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  group_uri_ = URI(uri);
+}
+
 uint64_t GroupDetails::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
 

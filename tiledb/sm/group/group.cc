@@ -317,6 +317,11 @@ const shared_ptr<GroupDetails> Group::group_details() const {
   return group_details_;
 }
 
+void Group::set_uri(const URI& uri) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  group_uri_ = uri;
+}
+
 QueryType Group::get_query_type() const {
   // Error if the group is not open
   if (!is_open_) {
