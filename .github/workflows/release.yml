@@ -133,4 +133,4 @@ jobs:
         with:
           name: Release failed
           label: release
-          assignee: davisp,dudoslav,ihnorton,teo-tsirpanis
+          assignee: ihnorton,ypatia,teo-tsirpanis
