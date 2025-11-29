@@ -10,6 +10,7 @@ type_mapping = {
     "FORMAT": "## Disk Format",
     "BREAKING_API": "## Breaking C API changes",
     "BREAKING_BEHAVIOR": "## Breaking behavior",
+    "BUILD": "## Build system changes",
     "FEATURE": "## New features",
     "IMPROVEMENT": "## Improvements",
     "DEPRECATION": "## Deprecations",
