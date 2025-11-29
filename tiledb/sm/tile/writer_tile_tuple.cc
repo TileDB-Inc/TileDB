@@ -92,6 +92,10 @@ void WriterTileTuple::set_metadata(
     const uint64_t min_size,
     const void* max,
     const uint64_t max_size,
+    const void* global_order_min,
+    const uint64_t global_order_min_size,
+    const void* global_order_max,
+    const uint64_t global_order_max_size,
     const ByteVec& sum,
     const uint64_t null_count) {
   min_.resize(min_size);
@@ -104,6 +108,16 @@ void WriterTileTuple::set_metadata(
   max_size_ = max_size;
   if (max != nullptr) {
     memcpy(max_.data(), max, max_size);
+  }
+
+  if (global_order_min != nullptr) {
+    global_order_min_.emplace(global_order_min_size);
+    memcpy(global_order_min_->data(), global_order_min, global_order_min_size);
+  }
+
+  if (global_order_max != nullptr) {
+    global_order_max_.emplace(global_order_max_size);
+    memcpy(global_order_max_->data(), global_order_max, global_order_max_size);
   }
 
   sum_ = sum;

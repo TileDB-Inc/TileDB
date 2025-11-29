@@ -273,10 +273,9 @@ int Domain::cell_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (cell_order_ == Layout::ROW_MAJOR || cell_order_ == Layout::HILBERT) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto res = cell_order_cmp_func_[d](
-          dimension_ptr(d),
-          left.dimension_datum_view(d),
-          right.dimension_datum_view(d));
+      const auto ldatum = left.dimension_datum_view(d);
+      const auto rdatum = right.dimension_datum_view(d);
+      auto res = cell_order_cmp(d, ldatum, rdatum);
 
       if (res == 1 || res == -1)
         return res;
@@ -284,10 +283,9 @@ int Domain::cell_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto res = cell_order_cmp_func_[d](
-          dimension_ptr(d),
-          left.dimension_datum_view(d),
-          right.dimension_datum_view(d));
+      const auto ldatum = left.dimension_datum_view(d);
+      const auto rdatum = right.dimension_datum_view(d);
+      auto res = cell_order_cmp(d, ldatum, rdatum);
 
       if (res == 1 || res == -1)
         return res;
@@ -491,15 +489,24 @@ bool Domain::has_dimension(const std::string& name) const {
   return false;
 }
 
-unsigned Domain::get_dimension_index(const std::string& name) const {
+std::optional<unsigned> Domain::dimension_index(const std::string& name) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (dimension_ptrs_[d]->name() == name) {
       return d;
     }
   }
 
-  throw std::invalid_argument(
-      "Cannot get dimension index; Invalid dimension name");
+  return std::nullopt;
+}
+
+unsigned Domain::get_dimension_index(const std::string& name) const {
+  const auto maybe = dimension_index(name);
+  if (maybe.has_value()) {
+    return maybe.value();
+  } else {
+    throw std::invalid_argument(
+        "Cannot get dimension index; Invalid dimension name");
+  }
 }
 
 bool Domain::null_tile_extents() const {
