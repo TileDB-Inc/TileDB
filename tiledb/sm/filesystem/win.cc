@@ -350,6 +350,11 @@ bool Win::is_file(const URI& uri) const {
 
 std::vector<directory_entry> Win::ls_with_sizes(
     const URI& uri, bool get_sizes) const {
+  // Noop if the parent path is not a directory, do not error out.
+  if (!is_dir(uri)) {
+    return {};
+  }
+
   auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");

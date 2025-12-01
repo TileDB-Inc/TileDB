@@ -226,18 +226,19 @@ bool URI::is_timestamped_name() const {
 
   // Separator between uuid[_v].
   size_t uuid_separator = part.find('_', t2_separator + 1);
-  std::string uuid =
-      part.substr(t2_separator + 1, uuid_separator - t2_separator - 1);
+  std::string uuid;
   std::string suffix;
   if (uuid_separator == std::string::npos) {
     // There is no version; Check the UUID for the final suffix.
+    uuid = part.substr(t2_separator + 1);
     suffix = get_suffix(uuid);
-    uuid = uuid.substr(0, uuid.size() - suffix.size());
+    uuid.resize(uuid.size() - suffix.size());
   } else {
+    uuid = part.substr(t2_separator + 1, uuid_separator - t2_separator - 1);
     std::string version = part.substr(uuid_separator + 1);
     // Check the version for the final suffix.
     suffix = get_suffix(version);
-    version = version.substr(0, version.size() - suffix.size());
+    version.resize(version.size() - suffix.size());
     if (version.size() > std::to_string(constants::format_version).size()) {
       return false;
     }

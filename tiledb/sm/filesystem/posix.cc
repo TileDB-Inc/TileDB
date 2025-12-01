@@ -363,6 +363,11 @@ void Posix::write(
 
 std::vector<directory_entry> Posix::ls_with_sizes(
     const URI& uri, bool get_sizes) const {
+  // Noop if the parent uri is not a directory, do not error out.
+  if (!is_dir(uri)) {
+    return {};
+  }
+
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   auto dir = PosixDIR::open(path);
