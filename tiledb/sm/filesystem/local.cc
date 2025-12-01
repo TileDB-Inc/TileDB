@@ -126,6 +126,11 @@ LsObjects LocalFilesystem::ls_filtered_v2(
 
 Status LocalFilesystem::ls(
     const std::string& path, std::vector<std::string>* paths) const {
+  // Noop if the parent ` path ` is not a directory, do not error out.
+  if (!is_dir(URI(path))) {
+    return Status::Ok();
+  }
+
   for (auto& fs : ls_with_sizes(URI(path), false)) {
     paths->emplace_back(fs.path().native());
   }

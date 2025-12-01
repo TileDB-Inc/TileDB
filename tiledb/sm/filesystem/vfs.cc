@@ -364,12 +364,21 @@ bool VFS::is_bucket(const URI& uri) const {
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
 
-  const auto entries = parent.is_file() ? local_.ls_with_sizes(parent, false) :
-                                          ls_with_sizes(parent);
+  auto entries = parent.is_file() ? local_.ls_with_sizes(parent, false) :
+                                    ls_with_sizes(parent);
+  if (parent.is_file()) {
+    parallel_sort(
+        compute_tp_,
+        entries.begin(),
+        entries.end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
+  }
+
   for (const auto& fs : entries) {
     uris->emplace_back(fs.path().native());
   }
-
   return Status::Ok();
 }
 
