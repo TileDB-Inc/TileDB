@@ -325,13 +325,13 @@ TEST_CASE("URI: Test is_timestamped_name", "[uri][is_timestamped_name]") {
       {"___1_035477e475b011ac8c2f01a13532cca", false},
       {"_1_1_035477e475b011ac8c2f01a13532ccad", false},
       {"__1_1_035477e475b011ac8c2f01a13532ccad.", false},
-      {"__1_1_035477e475b011a_c8c2f01a13532ccad.", false},
+      {"__1_1_035477e475b011a_c8c2f01a13532ccad.vaC", false},
       {"", false},
       {"______", false},
       {"__1_2_3", false},
   };
   for (const auto& test : test_uris) {
-    URI uri(test.first);
+    URI uri(test.first, false);
     DYNAMIC_SECTION("URI: " << test.first) {
       CHECK(uri.is_timestamped_name() == test.second);
     }
