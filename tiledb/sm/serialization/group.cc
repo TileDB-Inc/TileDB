@@ -187,7 +187,6 @@ Status group_details_from_capnp(
   if (group_details_reader.hasLogicalURI()) {
     const char* logical_uri = group_details_reader.getLogicalURI().cStr();
     group->set_uri(URI(logical_uri));
-    group->group_details()->set_group_uri(logical_uri);
   }
 
   group->group_details()->set_modified();

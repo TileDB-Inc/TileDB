@@ -320,6 +320,7 @@ const shared_ptr<GroupDetails> Group::group_details() const {
 void Group::set_uri(const URI& uri) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_uri_ = uri;
+  group_details_->set_group_uri(uri);
 }
 
 QueryType Group::get_query_type() const {

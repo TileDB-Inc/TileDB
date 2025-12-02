@@ -185,7 +185,7 @@ class GroupDetails {
   const URI& group_uri() const;
 
   /** Sets the group URI. */
-  void set_group_uri(const std::string& uri);
+  void set_group_uri(const URI& uri);
 
   /**
    * Get count of members
