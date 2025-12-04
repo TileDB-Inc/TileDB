@@ -853,7 +853,7 @@ struct VFSTestSetup {
       return "tiledb://unit/" + temp_dir + array_name;
     }
     return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
-           temp_dir + array_name;
+           array_name;
   }
 
   /**
