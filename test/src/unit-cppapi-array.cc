@@ -96,6 +96,36 @@ struct CPPArrayFxJsonSerialization : public CPPArrayFx {
   }
 };
 
+TEST_CASE("Create array with bad body", "[cppapi][array][create][rest]") {
+  test::VFSTestSetup vfs_test_setup;
+  if (!vfs_test_setup.is_rest()) {
+    SKIP("This test is only valid for remote REST arrays.");
+  }
+  std::string array_uri = vfs_test_setup.array_uri("array");
+  Context ctx = vfs_test_setup.ctx();
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{0, 100}}, 25);
+  domain.add_dimensions(d1);
+  schema.set_domain(domain);
+  auto a1 = Attribute::create<int>(ctx, "a1");
+  schema.add_attributes(a1);
+
+  REQUIRE_NOTHROW(Array::create(ctx, array_uri, schema));
+  Array array(ctx, array_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(array.close());
+
+  std::string bad_uri = array_uri + "/" + "s3://bucket/";
+  if (vfs_test_setup.is_legacy_rest()) {
+    REQUIRE_NOTHROW(Array::create(ctx, bad_uri, schema));
+    Array legacy_array(ctx, bad_uri, TILEDB_WRITE);
+    CHECK_NOTHROW(legacy_array.close());
+  } else {
+    REQUIRE_THROWS(Array::create(ctx, bad_uri, schema));
+  }
+}
+
 TEST_CASE("Config", "[cppapi][config][non-rest]") {
   // Primarily to instansiate operator[]/= template
   tiledb::Config cfg;
