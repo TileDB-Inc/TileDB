@@ -196,7 +196,8 @@ void array_create_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    const std::string& storage_uri);
+    const std::string& storage_uri,
+    bool legacy);
 
 /**
  * Deserialize an ArrayCreateRequest

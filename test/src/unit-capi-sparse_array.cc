@@ -220,7 +220,7 @@ SparseArrayFx::SparseArrayFx()
   for (const auto& fs : fs_vec_)
     create_temp_dir(fs->temp_dir());
 
-  prefix_ = vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir(), ctx_);
+  prefix_ = vfs_array_uri(fs_vec_[0], "sparse-array-fx", ctx_);
 }
 
 SparseArrayFx::~SparseArrayFx() {
