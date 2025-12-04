@@ -336,15 +336,15 @@ Status group_create_details_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
   }
-  if (!legacy) {
-    // TileDB-Server requests do not support custom storage locations.
-    return Status::Ok();
-  }
 
   const auto& group_uri = group->group_uri();
   if (group_uri.is_tiledb()) {
     URI::RESTURIComponents rest_uri;
     RETURN_NOT_OK(group->group_uri().get_rest_components(legacy, &rest_uri));
+    if (!legacy && !rest_uri.asset_storage.empty()) {
+      return LOG_STATUS(Status_SerializationError(
+          "TileDB-Server does not support custom backend storage locations."));
+    }
     group_create_details_builder->setUri(rest_uri.asset_storage);
   } else {
     group_create_details_builder->setUri(group_uri.to_string());
