@@ -169,7 +169,7 @@ std::string vfs_array_uri(
     return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
            array_name;
   } else {
-    return array_name;
+    return fs->temp_dir() + "/" + array_name;
   }
 }
 

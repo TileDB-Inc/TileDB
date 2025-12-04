@@ -338,7 +338,8 @@ void RestClientRemote::post_array_create_to_rest(
       array_schema,
       serialization_type_,
       buff,
-      {rest_legacy() ? rest_uri.asset_storage : ""});
+      rest_uri.asset_storage,
+      rest_legacy());
 
   const auto creation_access_credentials_name{
       config_->get<std::string>("rest.creation_access_credentials_name")};

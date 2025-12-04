@@ -179,7 +179,7 @@ StringDimsFx::StringDimsFx()
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   auto temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir, ctx_);
+  prefix_ = vfs_array_uri(fs_vec_[0], "strings-dim-fx", ctx_);
 }
 
 StringDimsFx::~StringDimsFx() {

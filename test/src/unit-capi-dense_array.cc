@@ -252,7 +252,7 @@ DenseArrayFx::DenseArrayFx()
     : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
-  prefix_ = vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir(), ctx_);
+  prefix_ = vfs_array_uri(fs_vec_[0], "dense-array-fx", ctx_);
   std::srand(0);
 }
 
@@ -3499,7 +3499,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-multi-fragment][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_multi_fragment/";
+  std::string array_name = prefix_ + "dense_multi_fragment";
 
   create_dense_array_1_attribute(array_name);
 

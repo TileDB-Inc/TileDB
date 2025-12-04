@@ -1276,7 +1276,12 @@ shared_ptr<ArraySchema> array_schema_deserialize(
 void array_create_to_capnp(
     capnp::ArrayCreateRequest::Builder* array_create_builder,
     const ArraySchema& array_schema,
-    const std::string& storage_uri) {
+    const std::string& storage_uri,
+    bool legacy) {
+  if (!legacy && !storage_uri.empty()) {
+    throw ArraySchemaSerializationException(
+        "TileDB-Server does not support custom backend storage locations.");
+  }
   array_create_builder->setUri(storage_uri);
   auto schema_builder = array_create_builder->initSchema();
   throw_if_not_ok(array_schema_to_capnp(array_schema, &schema_builder, true));
@@ -1286,12 +1291,14 @@ void array_create_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    const std::string& storage_uri) {
+    const std::string& storage_uri,
+    bool legacy) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArrayCreateRequest::Builder arrayCreateBuilder =
         message.initRoot<capnp::ArrayCreateRequest>();
-    array_create_to_capnp(&arrayCreateBuilder, array_schema, storage_uri);
+    array_create_to_capnp(
+        &arrayCreateBuilder, array_schema, storage_uri, legacy);
 
     switch (serialize_type) {
       case SerializationType::JSON: {
