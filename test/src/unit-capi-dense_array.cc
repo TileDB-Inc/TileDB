@@ -852,7 +852,7 @@ void DenseArrayFx::check_sorted_reads() {
   uint64_t capacity = 250000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = prefix_ + "sorted_reads_array";
+  std::string array_name = prefix_ + "/sorted_reads_array";
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -1025,7 +1025,7 @@ void DenseArrayFx::check_sorted_writes() {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = prefix_ + "sorted_writes_array";
+  std::string array_name = prefix_ + "/sorted_writes_array";
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -1110,7 +1110,7 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes() {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = prefix_ + "invalid_cell_num_dense_writes_array";
+  std::string array_name = prefix_ + "/invalid_cell_num_dense_writes_array";
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -1183,7 +1183,7 @@ void DenseArrayFx::check_simultaneous_writes() {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = prefix_ + "simultaneous_writes_array";
+  std::string array_name = prefix_ + "/simultaneous_writes_array";
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -1501,7 +1501,7 @@ void DenseArrayFx::create_large_dense_array_1_attribute(
 }
 
 void DenseArrayFx::check_return_coords(bool split_coords) {
-  std::string array_name = prefix_ + "return_coords";
+  std::string array_name = prefix_ + "/return_coords";
   create_dense_array(array_name);
   write_dense_array(array_name);
   read_dense_array_with_coords_full_global(array_name, split_coords);
@@ -2836,7 +2836,7 @@ void DenseArrayFx::read_large_dense_array(
 }
 
 void DenseArrayFx::check_non_empty_domain() {
-  std::string array_name = prefix_ + "dense_non_empty_domain";
+  std::string array_name = prefix_ + "/dense_non_empty_domain";
   create_dense_array(array_name);
 
   // Check empty domain
@@ -3000,7 +3000,7 @@ TEST_CASE_METHOD(
     "[capi][dense][invalid_set_query_buffer][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_invalid_set_query_buffer";
+  std::string array_name = prefix_ + "/dense_invalid_set_query_buffer";
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -3085,7 +3085,7 @@ TEST_CASE_METHOD(
     "[capi][dense][open-array-checks][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_open_array";
+  std::string array_name = prefix_ + "/dense_open_array";
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -3166,7 +3166,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-reopen-array-checks][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_open_array";
+  std::string array_name = prefix_ + "/dense_open_array";
 
   create_dense_array(array_name);
   write_dense_array(array_name);
@@ -3282,7 +3282,7 @@ TEST_CASE_METHOD(
     "[capi][dense][uri-ending-slash][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "with_ending_slash";
+  std::string array_name = prefix_ + "/with_ending_slash";
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -3297,7 +3297,7 @@ TEST_CASE_METHOD(
     "[capi][dense][write-missing-attributes][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_write_missing_attributes";
+  std::string array_name = prefix_ + "/dense_write_missing_attributes";
 
   create_dense_array(array_name);
   write_dense_array_missing_attributes(array_name);
@@ -3310,7 +3310,7 @@ TEST_CASE_METHOD(
     "[capi][dense][read_empty][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_empty";
+  std::string array_name = prefix_ + "/dense_read_empty";
 
   create_dense_array_1_attribute(array_name);
 
@@ -3405,7 +3405,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-read-empty][dense-read-empty-merge][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_empty_merge";
+  std::string array_name = prefix_ + "/dense_read_empty_merge";
 
   create_dense_array_1_attribute(array_name);
 
@@ -3499,7 +3499,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-multi-fragment][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_multi_fragment";
+  std::string array_name = prefix_ + "/dense_multi_fragment";
 
   create_dense_array_1_attribute(array_name);
 
@@ -3620,7 +3620,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-is-open][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_is_open";
+  std::string array_name = prefix_ + "/dense_is_open";
 
   create_dense_array(array_name);
 
@@ -3658,7 +3658,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-get-schema][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_get_schema";
+  std::string array_name = prefix_ + "/dense_get_schema";
 
   create_dense_array(array_name);
 
@@ -3691,7 +3691,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-col-updates][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense-col-updates";
+  std::string array_name = prefix_ + "/dense-col-updates";
 
   create_dense_array_1_attribute(array_name);
 
@@ -3856,7 +3856,7 @@ TEST_CASE_METHOD(
     "[capi][dense][splitting][unary-range][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "unary-range";
+  std::string array_name = prefix_ + "/unary-range";
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -3945,7 +3945,7 @@ TEST_CASE_METHOD(
     "[capi][dense][default-dim][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "default-dim";
+  std::string array_name = prefix_ + "/default-dim";
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -4007,7 +4007,7 @@ TEST_CASE_METHOD(
     "rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_same_tile";
+  std::string array_name = prefix_ + "/dense_read_same_tile";
 
   create_dense_array_same_tile(array_name);
 
@@ -4139,7 +4139,7 @@ TEST_CASE_METHOD(
     "[capi][dense][multi-index][simple][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_multi_index_simple";
+  std::string array_name = prefix_ + "/dense_read_multi_index_simple";
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4188,7 +4188,7 @@ TEST_CASE_METHOD(
     "[capi][dense][multi-index][complex][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_multi_index_complex";
+  std::string array_name = prefix_ + "/dense_read_multi_index_complex";
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4254,7 +4254,7 @@ TEST_CASE_METHOD(
     "[capi][dense][multi-index][cross-tile-boundary][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_multi_index_cross_tile";
+  std::string array_name = prefix_ + "/dense_read_multi_index_cross_tile";
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4303,7 +4303,7 @@ TEST_CASE_METHOD(
     "[capi][dense][multi-index][out-of-order-ranges][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_multi_out_of_order";
+  std::string array_name = prefix_ + "/dense_read_multi_out_of_order";
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4352,7 +4352,7 @@ TEST_CASE_METHOD(
     "[capi][dense][multi-index][out-of-order-ranges-2][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_read_multi_index_coalesce";
+  std::string array_name = prefix_ + "/dense_read_multi_index_coalesce";
 
   create_large_dense_array_1_attribute(array_name);
 
