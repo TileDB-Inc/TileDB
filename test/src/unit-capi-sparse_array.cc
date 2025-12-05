@@ -76,7 +76,7 @@ struct SparseArrayFx {
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
   int ITER_NUM = 5;
-  const std::string ARRAY = "sparse_array";
+  const std::string ARRAY = "/sparse_array";
 
   tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
   const char* encryption_key = nullptr;
@@ -220,7 +220,7 @@ SparseArrayFx::SparseArrayFx()
   for (const auto& fs : fs_vec_)
     create_temp_dir(fs->temp_dir());
 
-  prefix_ = vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir(), ctx_);
+  prefix_ = vfs_array_uri(fs_vec_[0], "sparse-array-fx", ctx_);
 }
 
 SparseArrayFx::~SparseArrayFx() {
@@ -2456,7 +2456,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, duplicates",
     "[capi][sparse][dups][rest-fails][sc-42987]") {
-  std::string array_name = prefix_ + "dups";
+  std::string array_name = prefix_ + "/dups";
   create_sparse_array(array_name);
 
   SECTION("- unordered, error check") {
@@ -2496,7 +2496,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, non-empty domain",
     "[capi][sparse][non-empty][rest]") {
-  std::string array_name = prefix_ + "sparse_non_empty";
+  std::string array_name = prefix_ + "/sparse_non_empty";
   check_non_empty_domain(array_name);
 }
 
@@ -2504,7 +2504,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, invalid offsets on write",
     "[capi][sparse][invalid-offsets][rest]") {
-  std::string array_name = prefix_ + "invalid_offs";
+  std::string array_name = prefix_ + "/invalid_offs";
   create_sparse_array(array_name);
   check_invalid_offsets(array_name);
 }
@@ -2513,7 +2513,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, no results",
     "[capi][sparse][no-results][rest-fails][sc-43108]") {
-  std::string array_name = prefix_ + "no_results";
+  std::string array_name = prefix_ + "/no_results";
   create_sparse_array(array_name);
   write_partial_sparse_array(array_name);
   check_sparse_array_no_results(array_name);
@@ -2523,7 +2523,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, missing attributes in writes",
     "[capi][sparse][write-missing-attributes][rest-fails][sc-43108]") {
-  std::string array_name = prefix_ + "sparse_write_missing_attributes";
+  std::string array_name = prefix_ + "/sparse_write_missing_attributes";
   create_sparse_array(array_name);
   write_sparse_array_missing_attributes(array_name);
   check_sparse_array_no_results(array_name);
@@ -2533,7 +2533,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, error setting subarray on sparse write",
     "[capi][sparse][set-subarray][rest]") {
-  std::string array_name = prefix_ + "sparse_set_subarray";
+  std::string array_name = prefix_ + "/sparse_set_subarray";
   create_sparse_array(array_name);
 
   // Open array
@@ -2577,7 +2577,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, check if coords exist",
     "[capi][sparse][coords-exist][rest-fails][sc-43108]") {
-  std::string array_name = prefix_ + "sparse_coords_exist";
+  std::string array_name = prefix_ + "/sparse_coords_exist";
   create_sparse_array(array_name);
 
   // Open array
@@ -2641,7 +2641,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order check on write",
     "[capi][sparse][write-global-check][rest]") {
-  std::string array_name = prefix_ + "sparse_write_global_check";
+  std::string array_name = prefix_ + "/sparse_write_global_check";
   create_sparse_array(array_name);
 
   // Open array
@@ -2702,7 +2702,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, invalidate cached max buffer sizes",
     "[capi][sparse][invalidate-max-sizes][rest]") {
-  std::string array_name = prefix_ + "sparse_invalidate_max_sizes";
+  std::string array_name = prefix_ + "/sparse_invalidate_max_sizes";
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
@@ -2887,7 +2887,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size",
     "[capi][sparse][calibrate-est-size][rest]") {
-  std::string array_name = prefix_ + "sparse_calibrate_est_size";
+  std::string array_name = prefix_ + "/sparse_calibrate_est_size";
 
   create_sparse_array(array_name);
 
@@ -2965,7 +2965,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size, unary",
     "[capi][sparse][calibrate-est-size-unary][rest]") {
-  std::string array_name = prefix_ + "sparse_calibrate_est_size_unary";
+  std::string array_name = prefix_ + "/sparse_calibrate_est_size_unary";
 
   create_sparse_array(array_name);
 
@@ -3039,7 +3039,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size, huge range",
     "[capi][sparse][calibrate-est-size-huge-range][rest]") {
-  std::string array_name = prefix_ + "sparse_calibrate_est_size_huge_range";
+  std::string array_name = prefix_ + "/sparse_calibrate_est_size_huge_range";
   const uint64_t dim_domain[4] = {1, UINT64_MAX - 1, 1, UINT64_MAX - 1};
 
   create_sparse_array(array_name, TILEDB_ROW_MAJOR, dim_domain);
@@ -3118,7 +3118,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, complete",
     "[capi][sparse][MR][2D][complete][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_subarray_2d_complete";
+  std::string array_name = prefix_ + "/sparse_multi_subarray_2d_complete";
 
   create_sparse_array(array_name);
   write_sparse_array(array_name);
@@ -3207,7 +3207,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, multiplicities",
     "[capi][sparse][multi-subarray-2d-multiplicities][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_subarray_2d_multiplicities";
+  std::string array_name = prefix_ + "/sparse_multi_subarray_2d_multiplicities";
 
   create_sparse_array(array_name);
   write_sparse_array(array_name);
@@ -3308,7 +3308,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, incomplete",
     "[capi][sparse][multi-subarray-2d-incomplete][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_subarray_2d_incomplete";
+  std::string array_name = prefix_ + "/sparse_multi_subarray_2d_incomplete";
 
   create_sparse_array(array_name);
   write_sparse_array(array_name);
@@ -3421,7 +3421,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, complete, col",
     "[capi][sparse][multi-subarray-2d-complete-col][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_subarray_2d_complete_col";
+  std::string array_name = prefix_ + "/sparse_multi_subarray_2d_complete_col";
 
   create_sparse_array(array_name, TILEDB_COL_MAJOR);
   write_sparse_array(array_name);
@@ -3498,7 +3498,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array 2, multi-range subarray, row-major",
     "[capi][sparse][multi-range-row][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_row";
+  std::string array_name = prefix_ + "/sparse_multi_range_row";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -3670,7 +3670,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major",
     "[capi][sparse][multi-range-col][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_col";
+  std::string array_name = prefix_ + "/sparse_multi_range_col";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -3842,7 +3842,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 1",
     "[capi][sparse][multi-range-row-incomplete-1][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_1";
+  std::string array_name = prefix_ + "/sparse_multi_range_row_incomplete_1";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4034,7 +4034,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 1",
     "[capi][sparse][multi-range-col-incomplete-1][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_1";
+  std::string array_name = prefix_ + "/sparse_multi_range_col_incomplete_1";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4226,7 +4226,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 2",
     "[capi][sparse][multi-range-row-incomplete-2][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_2";
+  std::string array_name = prefix_ + "/sparse_multi_range_row_incomplete_2";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4458,7 +4458,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 2",
     "[capi][sparse][multi-range-col-incomplete-2][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_2";
+  std::string array_name = prefix_ + "/sparse_multi_range_col_incomplete_2";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4690,7 +4690,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 3",
     "[capi][sparse][multi-range-row-incomplete-3][rest-fails][sc-43108]") {
-  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_3";
+  std::string array_name = prefix_ + "/sparse_multi_range_row_incomplete_3";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4962,7 +4962,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 4",
     "[capi][sparse][multi-range-row-incomplete-4][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_4";
+  std::string array_name = prefix_ + "/sparse_multi_range_row_incomplete_4";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5274,7 +5274,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 4",
     "[capi][sparse][multi-range-col-incomplete-4][rest]") {
-  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_4";
+  std::string array_name = prefix_ + "/sparse_multi_range_col_incomplete_4";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5586,7 +5586,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 5",
     "[capi][sparse][multi-range-row-incomplete-5][rest-fails][sc-43108]") {
-  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_5";
+  std::string array_name = prefix_ + "/sparse_multi_range_row_incomplete_5";
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
   create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
@@ -5716,7 +5716,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 5",
     "[capi][sparse][multi-range-col-incomplete-5][rest-fails][sc-43108]") {
-  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_5";
+  std::string array_name = prefix_ + "/sparse_multi_range_col_incomplete_5";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5847,7 +5847,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers][rest]") {
-  std::string array_name = prefix_ + "sparse_write_global_check";
+  std::string array_name = prefix_ + "/sparse_write_global_check";
   create_sparse_array(array_name);
 
   // Open array
@@ -5903,7 +5903,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers",
     "[capi][sparse][split-coords]") {
-  std::string array_name = prefix_ + "sparse_split_coords";
+  std::string array_name = prefix_ + "/sparse_split_coords";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6102,7 +6102,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global][rest]") {
-  std::string array_name = prefix_ + "sparse_split_coords_global";
+  std::string array_name = prefix_ + "/sparse_split_coords_global";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6297,7 +6297,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, errors",
     "[capi][sparse][split-coords][errors][rest]") {
-  std::string array_name = prefix_ + "sparse_split_coords_errors";
+  std::string array_name = prefix_ + "/sparse_split_coords_errors";
   create_sparse_array(array_name);
 
   // Prepare cell buffers
@@ -6478,7 +6478,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers for reads",
     "[capi][sparse][split-coords][read][rest]") {
-  std::string array_name = prefix_ + "sparse_split_coords_read";
+  std::string array_name = prefix_ + "/sparse_split_coords_read";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6678,7 +6678,7 @@ TEST_CASE_METHOD(
     "C API: Test sparse array, split coordinate buffers for reads, subset of "
     "dimensions",
     "[capi][sparse][split-coords][read][subset][rest]") {
-  std::string array_name = prefix_ + "sparse_split_coords_read_subset";
+  std::string array_name = prefix_ + "/sparse_split_coords_read_subset";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6870,7 +6870,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write][rest]") {
-  std::string array_name = prefix_ + "sparse_split_coords_read_subset";
+  std::string array_name = prefix_ + "/sparse_split_coords_read_subset";
   create_sparse_array(array_name);
 
   std::vector<uint64_t> d1 = {1, 1, 2, 2};

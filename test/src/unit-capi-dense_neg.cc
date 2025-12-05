@@ -538,8 +538,7 @@ TEST_CASE_METHOD(
     "[capi][dense-neg][dense-neg-vector][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string vector_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "dense_neg_vector", ctx_);
+  std::string vector_name = vfs_array_uri(fs_vec_[0], "dense_neg_vector", ctx_);
 
   create_dense_vector(vector_name);
   write_dense_vector(vector_name);
@@ -554,8 +553,7 @@ TEST_CASE_METHOD(
     "[capi][dense-neg][dense-neg-array][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "dense_neg_array", ctx_);
+  std::string array_name = vfs_array_uri(fs_vec_[0], "dense_neg_array", ctx_);
 
   create_dense_array(array_name);
   write_dense_array_global(array_name);

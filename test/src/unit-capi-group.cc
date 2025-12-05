@@ -397,7 +397,7 @@ TEST_CASE_METHOD(
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1", ctx_);
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], "group1", ctx_);
 
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
@@ -1550,10 +1550,10 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
 
-  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1", ctx_);
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], "group1", ctx_);
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
-  std::string group2_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group2", ctx_);
+  std::string group2_uri = vfs_array_uri(fs_vec_[0], "group2", ctx_);
   REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
 
   tiledb_group_t* group1;

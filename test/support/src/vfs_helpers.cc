@@ -164,12 +164,12 @@ std::string vfs_array_uri(
     tiledb_ctx_t* ctx) {
   bool legacy = fs->is_rest() ? ctx->rest_client().rest_legacy() : false;
   if (fs->is_rest() && legacy) {
-    return "tiledb://unit/" + array_name;
+    return "tiledb://unit/" + fs->temp_dir() + array_name;
   } else if (fs->is_rest() && !legacy) {
     return "tiledb://unit-workspace/unit-teamspace/" + random_label() + "/" +
            array_name;
   } else {
-    return array_name;
+    return fs->temp_dir() + array_name;
   }
 }
 

@@ -148,6 +148,25 @@ void GroupCPPFx::create_array(const std::string& path) const {
 
 TEST_CASE_METHOD(
     GroupCPPFx,
+    "C++ API: Test creating group with bad body",
+    "[cppapi][group][rest]") {
+  if (!vfs_test_setup_.is_rest()) {
+    SKIP("This test is only valid for remote REST groups.");
+  }
+  std::string group_uri = vfs_test_setup_.array_uri("group");
+
+  REQUIRE_NOTHROW(tiledb::Group::create(ctx_, group_uri));
+  tiledb::Group group(ctx_, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group.close());
+
+  if (!vfs_test_setup_.is_legacy_rest()) {
+    std::string bad_uri = group_uri + "/s3://bucket";
+    REQUIRE_THROWS(tiledb::Group::create(ctx_, bad_uri));
+  }
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
     "C++ API: Test creating group with config",
     "[cppapi][group][config][rest]") {
   std::string group1_uri = vfs_test_setup_.array_uri("group1");
