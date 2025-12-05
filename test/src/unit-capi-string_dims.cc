@@ -1968,7 +1968,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 2d",
     "[capi][sparse][string-dims][2d][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   int32_t dom[] = {1, 10};

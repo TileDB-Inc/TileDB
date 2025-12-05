@@ -3620,7 +3620,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-is-open][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_is_open/";
+  std::string array_name = prefix_ + "dense_is_open";
 
   create_dense_array(array_name);
 
@@ -3658,7 +3658,7 @@ TEST_CASE_METHOD(
     "[capi][dense][dense-get-schema][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string array_name = prefix_ + "dense_get_schema/";
+  std::string array_name = prefix_ + "dense_get_schema";
 
   create_dense_array(array_name);
 
