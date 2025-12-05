@@ -275,17 +275,17 @@ Status FragmentConsolidator::consolidate(
 
     // Consolidate the selected fragments
     URI new_fragment_uri;
-    try {
-      consolidate_internal(
-          array_for_reads,
-          array_for_writes,
-          to_consolidate,
-          union_non_empty_domains,
-          &new_fragment_uri);
-    } catch (...) {
+    st = consolidate_internal(
+        array_for_reads,
+        array_for_writes,
+        to_consolidate,
+        union_non_empty_domains,
+        &new_fragment_uri);
+    if (!st.ok()) {
+      std::cerr << "FAILED: " << st.message() << std::endl;
       throw_if_not_ok(array_for_reads->close());
       throw_if_not_ok(array_for_writes->close());
-      throw;
+      return st;
     }
 
     // Load info of the consolidated fragment and add it
@@ -463,17 +463,17 @@ Status FragmentConsolidator::consolidate_fragments(
 
   // Consolidate the selected fragments
   URI new_fragment_uri;
-  try {
-    consolidate_internal(
-        array_for_reads,
-        array_for_writes,
-        to_consolidate,
-        union_non_empty_domains,
-        &new_fragment_uri);
-  } catch (...) {
+  st = consolidate_internal(
+      array_for_reads,
+      array_for_writes,
+      to_consolidate,
+      union_non_empty_domains,
+      &new_fragment_uri);
+  if (!st.ok()) {
+    std::cerr << "FAILED: " << st.message() << std::endl;
     throw_if_not_ok(array_for_reads->close());
     throw_if_not_ok(array_for_writes->close());
-    throw;
+    return st;
   }
 
   // Load info of the consolidated fragment and add it
@@ -572,7 +572,7 @@ bool FragmentConsolidator::are_consolidatable(
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
 }
 
-void FragmentConsolidator::consolidate_internal(
+Status FragmentConsolidator::consolidate_internal(
     shared_ptr<Array> array_for_reads,
     shared_ptr<Array> array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
@@ -583,7 +583,7 @@ void FragmentConsolidator::consolidate_internal(
   array_for_reads->load_fragments(to_consolidate);
 
   if (array_for_reads->is_empty()) {
-    return;
+    return Status::Ok();
   }
 
   // Get schema
@@ -627,7 +627,7 @@ void FragmentConsolidator::consolidate_internal(
   // Create queries
   tdb_unique_ptr<Query> query_r = nullptr;
   tdb_unique_ptr<Query> query_w = nullptr;
-  throw_if_not_ok(create_queries(
+  RETURN_NOT_OK(create_queries(
       array_for_reads,
       array_for_writes,
       union_non_empty_domains,
@@ -649,21 +649,22 @@ void FragmentConsolidator::consolidate_internal(
 
   // Read from one array and write to the other
   copy_array(
-      query_r.get(),
-      query_w.get(),
+      std::move(query_r),
+      std::move(query_w),
       array_schema,
-      array_for_reads->get_average_var_cell_sizes());
+      array_for_reads->get_average_var_cell_sizes(),
+      new_fragment_uri);
 
-  // Finalize write query
-  auto st = query_w->finalize();
-  if (!st.ok()) {
-    if (resources_.vfs().is_dir(*new_fragment_uri))
-      resources_.vfs().remove_dir(*new_fragment_uri);
-    throw FragmentConsolidatorException(st.message());
-  }
+  // // Finalize write query
+  // auto st = query_w->finalize();
+  // if (!st.ok()) {
+  //   if (resources_.vfs().is_dir(*new_fragment_uri))
+  //     resources_.vfs().remove_dir(*new_fragment_uri);
+  //   return st;
+  // }
 
   // Write vacuum file
-  st = write_vacuum_file(
+  auto st = write_vacuum_file(
       array_for_reads->array_schema_latest().write_version(),
       array_for_reads->array_uri(),
       vac_uri,
@@ -671,19 +672,23 @@ void FragmentConsolidator::consolidate_internal(
   if (!st.ok()) {
     if (resources_.vfs().is_dir(*new_fragment_uri))
       resources_.vfs().remove_dir(*new_fragment_uri);
-    throw FragmentConsolidatorException(st.message());
+    return st;
   }
+  return st;
 }
 
 void FragmentConsolidator::copy_array(
-    Query* query_r,
-    Query* query_w,
+    shared_ptr<Query> query_r,
+    shared_ptr<Query> query_w,
     const ArraySchema& reader_array_schema_latest,
-    std::unordered_map<std::string, uint64_t> average_var_cell_sizes) {
+    std::unordered_map<std::string, uint64_t> average_var_cell_sizes,
+    URI* new_fragment_uri) {
   // The size of the buffers.
-  uint64_t buffer_size = 10485760;  // 10 MB
-  uint64_t initial_buffer_size =
-      buffer_size;  // initial, "ungrown", value of `buffer_size`.
+  uint64_t buffer_size = std::min(
+      (uint64_t)10485760,
+      config_.total_budget_);  // 10 MB, or total_mem_budget if smaller.
+  // Initial, "ungrown", value of `buffer_size`.
+  const uint64_t initial_buffer_size = buffer_size;
 
   // Deque which stores the buffers passed between the reader and writer.
   // Cannot exceed `config_.total_budget_`.
@@ -715,7 +720,7 @@ void FragmentConsolidator::copy_array(
             reader_array_schema_latest,
             average_var_cell_sizes,
             buffer_size);
-        set_query_buffers(query_r, *cw.get());
+        set_query_buffers(query_r.get(), *cw.get());
         throw_if_not_ok(query_r->submit());
 
         // Only continue if Consolidation can make progress. The first buffer
@@ -731,7 +736,8 @@ void FragmentConsolidator::copy_array(
           // If it's not the first read, grow the buffer and try again.
           buffer_size += std::min(
               config_.total_budget_ - allocated_buffer_size, (2 * buffer_size));
-          continue;
+          // continue; -> we want to try again, but need to append
+          // allocated_buffer_size & potentially wait on writer
         } else {
           buffer_queue.push(cw);
         }
@@ -777,16 +783,28 @@ void FragmentConsolidator::copy_array(
     try {
       // Explicitly set the write query buffers, as the sizes may have
       // been altered by the read query.
-      set_query_buffers(query_w, *writebuf.get());
+      set_query_buffers(query_w.get(), *writebuf.get());
       throw_if_not_ok(query_w->submit());
       allocated_buffer_size -= buffer_size;
     } catch (...) {
       reading = false;  // Stop the reader.
+      throw_if_not_ok(read_task.wait());
+      if (resources_.vfs().is_dir(*new_fragment_uri)) {
+        resources_.vfs().remove_dir(*new_fragment_uri);
+      }
       throw;
     }
   }
 
   throw_if_not_ok(read_task.wait());
+
+  // Finalize write query
+  auto st = query_w->finalize();
+  if (!st.ok()) {
+    if (resources_.vfs().is_dir(*new_fragment_uri))
+      resources_.vfs().remove_dir(*new_fragment_uri);
+    throw st.message();
+  }
 }
 
 Status FragmentConsolidator::create_queries(
