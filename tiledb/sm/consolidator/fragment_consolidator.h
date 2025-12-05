@@ -293,8 +293,10 @@ class FragmentConsolidator : public Consolidator {
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
    * @param cw A workspace containing buffers for the queries
+   *
+   * @return Status
    */
-  void consolidate_internal(
+  Status consolidate_internal(
       shared_ptr<Array> array_for_reads,
       shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
@@ -311,12 +313,15 @@ class FragmentConsolidator : public Consolidator {
    * @param reader_array_schema_latest The reader's latest array schema.
    * @param avg_var_cell_sizes A map of the reader's computed average cell size
    * for var size attrs / dims.
+   * @param new_fragment_uri The URI of the fragment created after
+   *     consolidating the `to_consolidate` fragments.
    */
   void copy_array(
-      Query* query_r,
-      Query* query_w,
+      shared_ptr<Query> query_r,
+      shared_ptr<Query> query_w,
       const ArraySchema& reader_array_schema_latest,
-      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes);
+      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
+      URI* new_fragment_uri);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
