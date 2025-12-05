@@ -47,6 +47,7 @@
 #include <iostream>
 #include <numeric>
 #include <sstream>
+#include <variant>
 
 using namespace tiledb::common;
 
@@ -282,7 +283,6 @@ Status FragmentConsolidator::consolidate(
         union_non_empty_domains,
         &new_fragment_uri);
     if (!st.ok()) {
-      std::cerr << "FAILED: " << st.message() << std::endl;
       throw_if_not_ok(array_for_reads->close());
       throw_if_not_ok(array_for_writes->close());
       return st;
