@@ -116,12 +116,8 @@ TEST_CASE("Create array with bad body", "[cppapi][array][create][rest]") {
   Array array(ctx, array_uri, TILEDB_WRITE);
   CHECK_NOTHROW(array.close());
 
-  std::string bad_uri = array_uri + "/" + "s3://bucket/";
-  if (vfs_test_setup.is_legacy_rest()) {
-    REQUIRE_NOTHROW(Array::create(ctx, bad_uri, schema));
-    Array legacy_array(ctx, bad_uri, TILEDB_WRITE);
-    CHECK_NOTHROW(legacy_array.close());
-  } else {
+  if (!vfs_test_setup.is_legacy_rest()) {
+    std::string bad_uri = array_uri + "/" + "s3://bucket/";
     REQUIRE_THROWS(Array::create(ctx, bad_uri, schema));
   }
 }

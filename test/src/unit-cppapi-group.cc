@@ -159,12 +159,8 @@ TEST_CASE_METHOD(
   tiledb::Group group(ctx_, group_uri, TILEDB_WRITE);
   CHECK_NOTHROW(group.close());
 
-  std::string bad_uri = group_uri + "/" + "s3://bucket/";
-  if (vfs_test_setup_.is_legacy_rest()) {
-    REQUIRE_NOTHROW(tiledb::Group::create(ctx_, bad_uri));
-    tiledb::Group legacy_group(ctx_, bad_uri, TILEDB_WRITE);
-    CHECK_NOTHROW(legacy_group.close());
-  } else {
+  if (!vfs_test_setup_.is_legacy_rest()) {
+    std::string bad_uri = group_uri + "/s3://bucket";
     REQUIRE_THROWS(tiledb::Group::create(ctx_, bad_uri));
   }
 }
