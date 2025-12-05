@@ -491,7 +491,7 @@ TEST_CASE_METHOD(
     SparseNegFx,
     "C API: Test 1d sparse vector with negative domain",
     "[capi][sparse-neg][sparse-neg-vector][rest]") {
-  std::string vector_name = prefix_ + "sparse_neg_vector";
+  std::string vector_name = prefix_ + "/sparse_neg_vector";
   create_sparse_vector(vector_name);
   write_sparse_vector(vector_name);
   read_sparse_vector(vector_name);

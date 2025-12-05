@@ -339,7 +339,7 @@ void RestClientRemote::post_array_create_to_rest(
         "TileDB-Server does not support custom backend storage locations.");
   }
   serialization::array_create_serialize(
-      array_schema, serialization_type_, buff, uri.to_string());
+      array_schema, serialization_type_, buff, rest_uri.asset_storage);
 
   const auto creation_access_credentials_name{
       config_->get<std::string>("rest.creation_access_credentials_name")};

@@ -752,7 +752,7 @@ TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (float, int64)",
     "[capi][sparse][heter][float-int64][non-rest]") {
-  std::string array_name = prefix_ + "sparse_array_heter";
+  std::string array_name = prefix_ + "/sparse_array_heter";
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -1114,7 +1114,7 @@ TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (int64, float)",
     "[capi][sparse][heter][int64-float][non-rest]") {
-  std::string array_name = prefix_ + "sparse_array_heter";
+  std::string array_name = prefix_ + "/sparse_array_heter";
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
