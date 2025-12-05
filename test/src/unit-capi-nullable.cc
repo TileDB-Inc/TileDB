@@ -212,6 +212,9 @@ NullableArrayFx::NullableArrayFx() {
 }
 
 NullableArrayFx::~NullableArrayFx() {
+  vfs_test_remove_temp_dir(ctx_, vfs_, temp_dir_.path());
+  CHECK(vfs_test_close(vfs_test_get_fs_vec(), ctx_, vfs_).ok());
+
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
 }
