@@ -7589,6 +7589,43 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ConsolidationFx,
+    "C API: Test consolidation, sparse string, no progress",
+    "[!shouldfail][capi][consolidation][sparse][string][no-progress][non-"
+    "rest]") {
+  remove_sparse_string_array();
+  create_sparse_string_array();
+
+  write_sparse_string_full();
+  write_sparse_string_unordered();
+
+  uint64_t string_size = 1;
+
+  SECTION("too small") {
+    string_size = 1;
+  }
+
+  // Consolidation currently fails to respect the memory budget.
+  // Once this is resolved, the test can be unmarked as `shouldfail`.
+  SECTION("too large") {
+    string_size = 60 * 10485760;  // 6 GB (over default memory budget of 5GB)
+  }
+
+  consolidate_sparse_string(string_size, true);
+
+  tiledb_error_t* err = NULL;
+  tiledb_ctx_get_last_error(ctx_, &err);
+
+  const char* msg;
+  tiledb_error_message(err, &msg);
+  CHECK(
+      std::string("FragmentConsolidator: Consolidation read 0 cells, no "
+                  "progress can be made") == msg);
+
+  remove_sparse_string_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
     "C API: Test consolidation, fragments/commits out of order",
     "[capi][consolidation][fragments-commits][out-of-order][non-rest]") {
   remove_sparse_array();
