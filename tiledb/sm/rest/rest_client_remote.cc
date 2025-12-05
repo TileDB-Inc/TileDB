@@ -334,12 +334,12 @@ void RestClientRemote::post_array_create_to_rest(
 
   URI::RESTURIComponents rest_uri;
   throw_if_not_ok(uri.get_rest_components(rest_legacy(), &rest_uri));
+  if (!rest_uri.asset_storage.empty()) {
+    throw RestClientException(
+        "TileDB-Server does not support custom backend storage locations.");
+  }
   serialization::array_create_serialize(
-      array_schema,
-      serialization_type_,
-      buff,
-      rest_uri.asset_storage,
-      rest_legacy());
+      array_schema, serialization_type_, buff, uri.to_string());
 
   const auto creation_access_credentials_name{
       config_->get<std::string>("rest.creation_access_credentials_name")};
@@ -1437,8 +1437,16 @@ Status RestClientRemote::post_group_create_to_rest(
 
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
+
+  URI::RESTURIComponents rest_uri;
+  RETURN_NOT_OK(
+      group->group_uri().get_rest_components(rest_legacy(), &rest_uri));
+  if (!rest_legacy() && !rest_uri.asset_storage.empty()) {
+    throw RestClientException(
+        "TileDB-Server does not support custom backend storage locations.");
+  }
   RETURN_NOT_OK(serialization::group_create_serialize(
-      group, serialization_type_, buff, rest_legacy()));
+      group, serialization_type_, buff, rest_uri));
 
   // Credential used for creating a group as a child of an existing REST group.
   const auto creation_access_credentials_name{
@@ -1451,8 +1459,6 @@ Status RestClientRemote::post_group_create_to_rest(
 
   // Init curl and form the URL
   Curl curlc(logger_);
-  URI::RESTURIComponents rest_uri;
-  RETURN_NOT_OK(uri.get_rest_components(rest_legacy(), &rest_uri));
   const std::string cache_key =
       rest_uri.server_namespace + ":" + rest_uri.server_path;
   RETURN_NOT_OK(

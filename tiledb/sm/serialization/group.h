@@ -146,7 +146,7 @@ Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer,
-    bool legacy);
+    const URI::RESTURIComponents& rest_uri);
 
 /**
  * Serialize a group metadata for remote POSTING
