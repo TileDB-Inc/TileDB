@@ -77,7 +77,7 @@ SparseNegFx::SparseNegFx()
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   auto temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir, ctx_);
+  prefix_ = vfs_array_uri(fs_vec_[0], "sparse-neg-fx", ctx_);
 }
 
 SparseNegFx::~SparseNegFx() {
@@ -491,7 +491,7 @@ TEST_CASE_METHOD(
     SparseNegFx,
     "C API: Test 1d sparse vector with negative domain",
     "[capi][sparse-neg][sparse-neg-vector][rest]") {
-  std::string vector_name = prefix_ + "sparse_neg_vector";
+  std::string vector_name = prefix_ + "/sparse_neg_vector";
   create_sparse_vector(vector_name);
   write_sparse_vector(vector_name);
   read_sparse_vector(vector_name);
