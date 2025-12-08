@@ -2905,12 +2905,14 @@ void FragmentMetadata::write_optional_sections(Serializer& serializer) const {
     const auto num_dims = array_schema_->dim_num();
     serializer.write<uint32_t>(2 * num_dims * sizeof(uint64_t));
 
+    iassert(gt_offsets_.tile_global_order_min_offsets_.size() == num_dims);
     serializer.write(
         gt_offsets_.tile_global_order_min_offsets_.data(),
-        num_dims * sizeof(uint64_t));
+        gt_offsets_.tile_global_order_min_offsets_.size() * sizeof(uint64_t));
+    iassert(gt_offsets_.tile_global_order_max_offsets_.size() == num_dims);
     serializer.write(
         gt_offsets_.tile_global_order_max_offsets_.data(),
-        num_dims * sizeof(uint64_t));
+        gt_offsets_.tile_global_order_max_offsets_.size() * sizeof(uint64_t));
   }
 }
 
