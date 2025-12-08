@@ -1323,7 +1323,7 @@ void FragmentMetadata::store_v15_or_higher(
   }
 
   if (!dense_ &&
-      version_ >= constants::fragment_metadata_data_directory_version) {
+      version_ >= constants::fragment_metadata_optional_section_version) {
     const auto num_dims = array_schema_->dim_num();
     // Store global order mins
     gt_offsets_.tile_global_order_min_offsets_.resize(num_dims);
@@ -1849,8 +1849,8 @@ void FragmentMetadata::write_footer(Serializer& serializer) const {
   write_file_validity_sizes(serializer);
   write_generic_tile_offsets(serializer);
 
-  if (version_ >= constants::fragment_metadata_data_directory_version) {
-    write_data_directories(serializer);
+  if (version_ >= constants::fragment_metadata_optional_section_version) {
+    write_optional_sections(serializer);
   }
 }
 
@@ -2602,23 +2602,24 @@ void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
   gt_offsets_.processed_conditions_offsets_ = deserializer.read<uint64_t>();
 }
 
-void FragmentMetadata::load_data_directories(Deserializer& deserializer) {
+void FragmentMetadata::load_optional_sections(Deserializer& deserializer) {
   auto count = deserializer.read<uint32_t>();
 
   for (uint32_t i = 0; i < count; i++) {
-    auto identifier = deserializer.read<DataDirectoryIdentifier>();
+    auto identifier = deserializer.read<OptionalSectionIdentifier>();
     auto data_size = deserializer.read<uint32_t>();
     switch (identifier) {
-      case DataDirectoryIdentifier::tile_global_order_offsets:
+      case OptionalSectionIdentifier::tile_global_order_offsets:
         if (data_size != 2 * array_schema_->dim_num() * sizeof(uint64_t)) {
           throw FragmentMetadataStatusException(
-              "Invalid size of tile global order bound offsets data directory");
+              "Invalid size of tile global order bound offsets optional "
+              "section");
         }
         load_tile_global_order_offsets(deserializer);
         has_tile_global_order_bounds_ = true;
         break;
       default:
-        // Ignore unknown data directories per the storage format spec.
+        // Ignore unknown optional sections per the storage format spec.
         deserializer.skip(data_size);
         break;
     }
@@ -2785,8 +2786,8 @@ void FragmentMetadata::load_footer(
 
   load_generic_tile_offsets(deserializer);
 
-  if (version_ >= 23) {
-    load_data_directories(deserializer);
+  if (version_ >= constants::fragment_metadata_optional_section_version) {
+    load_optional_sections(deserializer);
   }
 
   // If the footer_size is not set lets calculate from how much of the
@@ -2890,7 +2891,7 @@ void FragmentMetadata::write_generic_tile_offsets(
   }
 }
 
-void FragmentMetadata::write_data_directories(Serializer& serializer) const {
+void FragmentMetadata::write_optional_sections(Serializer& serializer) const {
   uint32_t count = 0;
 
   if (has_tile_global_order_bounds_) {
@@ -2900,7 +2901,7 @@ void FragmentMetadata::write_data_directories(Serializer& serializer) const {
   serializer.write(count);
 
   if (has_tile_global_order_bounds_) {
-    serializer.write(DataDirectoryIdentifier::tile_global_order_offsets);
+    serializer.write(OptionalSectionIdentifier::tile_global_order_offsets);
     const auto num_dims = array_schema_->dim_num();
     serializer.write<uint32_t>(2 * num_dims * sizeof(uint64_t));
 

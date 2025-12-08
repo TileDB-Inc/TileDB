@@ -73,9 +73,9 @@ class FragmentMetadataStatusException : public StatusException {
 };
 
 /**
- * Contains identifiers for fragment metadata footer data directories.
+ * Contains identifiers for fragment metadata footer optional sections.
  */
-enum class DataDirectoryIdentifier : uint64_t {
+enum class OptionalSectionIdentifier : uint64_t {
   tile_global_order_offsets = 0,
 };
 
@@ -1073,9 +1073,9 @@ class FragmentMetadata {
   void load_generic_tile_offsets_v16_or_higher(Deserializer& deserializer);
 
   /**
-   * Loads the footer's data directories.
+   * Loads the footer's optional sections.
    */
-  void load_data_directories(Deserializer& deserializer);
+  void load_optional_sections(Deserializer& deserializer);
 
   /**
    * Loads the offsets for the tile global order bounds.
@@ -1228,8 +1228,8 @@ class FragmentMetadata {
   /** Writes the generic tile offsets to the buffer. */
   void write_generic_tile_offsets(Serializer& serializer) const;
 
-  /** Writes the footer's data directories to the buffer. */
-  void write_data_directories(Serializer& serializer) const;
+  /** Writes the footer's optional sections to the buffer. */
+  void write_optional_sections(Serializer& serializer) const;
 
   /** Writes the array schema name. */
   void write_array_schema_name(Serializer& serializer) const;
