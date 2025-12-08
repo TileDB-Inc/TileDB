@@ -313,15 +313,12 @@ class FragmentConsolidator : public Consolidator {
    * @param reader_array_schema_latest The reader's latest array schema.
    * @param avg_var_cell_sizes A map of the reader's computed average cell size
    * for var size attrs / dims.
-   * @param new_fragment_uri The URI of the fragment created after
-   *     consolidating the `to_consolidate` fragments.
    */
   void copy_array(
-      shared_ptr<Query> query_r,
-      shared_ptr<Query> query_w,
+      Query* query_r,
+      Query* query_w,
       const ArraySchema& reader_array_schema_latest,
-      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
-      URI* new_fragment_uri);
+      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
