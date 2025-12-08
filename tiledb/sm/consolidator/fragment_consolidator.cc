@@ -470,7 +470,6 @@ Status FragmentConsolidator::consolidate_fragments(
       union_non_empty_domains,
       &new_fragment_uri);
   if (!st.ok()) {
-    std::cerr << "FAILED: " << st.message() << std::endl;
     throw_if_not_ok(array_for_reads->close());
     throw_if_not_ok(array_for_writes->close());
     return st;
@@ -647,48 +646,48 @@ Status FragmentConsolidator::consolidate_internal(
         "Internal consolidation failed with exception" + std::string(e.what()));
   }
 
-  // Read from one array and write to the other
-  copy_array(
-      std::move(query_r),
-      std::move(query_w),
-      array_schema,
-      array_for_reads->get_average_var_cell_sizes(),
-      new_fragment_uri);
-
-  // // Finalize write query
-  // auto st = query_w->finalize();
-  // if (!st.ok()) {
-  //   if (resources_.vfs().is_dir(*new_fragment_uri))
-  //     resources_.vfs().remove_dir(*new_fragment_uri);
-  //   return st;
-  // }
-
-  // Write vacuum file
-  auto st = write_vacuum_file(
-      array_for_reads->array_schema_latest().write_version(),
-      array_for_reads->array_uri(),
-      vac_uri,
-      to_consolidate);
-  if (!st.ok()) {
-    if (resources_.vfs().is_dir(*new_fragment_uri))
+  // Consolidate fragments
+  try {
+    // Read from one array and write to the other
+    copy_array(
+        query_r.get(),
+        query_w.get(),
+        array_schema,
+        array_for_reads->get_average_var_cell_sizes());
+    // Write vacuum file
+    throw_if_not_ok(write_vacuum_file(
+        array_for_reads->array_schema_latest().write_version(),
+        array_for_reads->array_uri(),
+        vac_uri,
+        to_consolidate));
+  } catch (...) {
+    if (resources_.vfs().is_dir(*new_fragment_uri)) {
       resources_.vfs().remove_dir(*new_fragment_uri);
-    return st;
+    }
+    std::rethrow_exception(std::current_exception());
   }
-  return st;
+
+  return Status::Ok();
 }
 
 void FragmentConsolidator::copy_array(
-    shared_ptr<Query> query_r,
-    shared_ptr<Query> query_w,
+    Query* query_r,
+    Query* query_w,
     const ArraySchema& reader_array_schema_latest,
-    std::unordered_map<std::string, uint64_t> average_var_cell_sizes,
-    URI* new_fragment_uri) {
+    std::unordered_map<std::string, uint64_t> average_var_cell_sizes) {
   // The size of the buffers.
-  uint64_t buffer_size = std::min(
-      (uint64_t)10485760,
-      config_.total_budget_);  // 10 MB, or total_mem_budget if smaller.
+  // 10MB by default, unless total_budget_ is smaller, or buffer_size_ is set.
+  uint64_t buffer_size =
+      config_.buffer_size_ != 0 ?
+          config_.buffer_size_ :
+          std::min((uint64_t)10485760, config_.total_budget_);
   // Initial, "ungrown", value of `buffer_size`.
   const uint64_t initial_buffer_size = buffer_size;
+  if (buffer_size > config_.total_budget_) {
+    throw FragmentConsolidatorException(
+        "Consolidation cannot proceed without disrespecting the memory "
+        "budget.");
+  }
 
   // Deque which stores the buffers passed between the reader and writer.
   // Cannot exceed `config_.total_budget_`.
@@ -720,7 +719,7 @@ void FragmentConsolidator::copy_array(
             reader_array_schema_latest,
             average_var_cell_sizes,
             buffer_size);
-        set_query_buffers(query_r.get(), *cw.get());
+        set_query_buffers(query_r, *cw.get());
         throw_if_not_ok(query_r->submit());
 
         // Only continue if Consolidation can make progress. The first buffer
@@ -736,8 +735,6 @@ void FragmentConsolidator::copy_array(
           // If it's not the first read, grow the buffer and try again.
           buffer_size += std::min(
               config_.total_budget_ - allocated_buffer_size, (2 * buffer_size));
-          // continue; -> we want to try again, but need to append
-          // allocated_buffer_size & potentially wait on writer
         } else {
           buffer_queue.push(cw);
         }
@@ -753,7 +750,10 @@ void FragmentConsolidator::copy_array(
       } catch (...) {
         // Enqueue caught-exceptions to be handled by the writer.
         buffer_queue.push(std::current_exception());
+        allocated_buffer_size++;  // increase buffer size to maintain queue
+                                  // logic
         reading = false;
+        break;
       }
       allocated_buffer_size += buffer_size;
 
@@ -783,28 +783,21 @@ void FragmentConsolidator::copy_array(
     try {
       // Explicitly set the write query buffers, as the sizes may have
       // been altered by the read query.
-      set_query_buffers(query_w.get(), *writebuf.get());
+      set_query_buffers(query_w, *writebuf.get());
       throw_if_not_ok(query_w->submit());
       allocated_buffer_size -= buffer_size;
     } catch (...) {
       reading = false;  // Stop the reader.
       throw_if_not_ok(read_task.wait());
-      if (resources_.vfs().is_dir(*new_fragment_uri)) {
-        resources_.vfs().remove_dir(*new_fragment_uri);
-      }
       throw;
     }
   }
 
+  // Wait for reader to finish
   throw_if_not_ok(read_task.wait());
 
   // Finalize write query
-  auto st = query_w->finalize();
-  if (!st.ok()) {
-    if (resources_.vfs().is_dir(*new_fragment_uri))
-      resources_.vfs().remove_dir(*new_fragment_uri);
-    throw st.message();
-  }
+  throw_if_not_ok(query_w->finalize());
 }
 
 Status FragmentConsolidator::create_queries(
