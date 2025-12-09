@@ -163,7 +163,6 @@ void Posix::touch(const URI& uri) const {
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT, file_permissions_);
   if (fd == -1) {
     auto err = errno;
-    ::close(fd);
     throw IOError(
         std::string("Failed to create file '") + filename + "'; " +
         strerror(err));
