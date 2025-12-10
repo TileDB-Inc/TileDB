@@ -50,6 +50,10 @@
 
 #include <numeric>
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/query_predicates.h"
+#endif
+
 namespace tiledb::sm {
 
 class SparseIndexReaderBaseException : public StatusException {
@@ -141,7 +145,7 @@ uint64_t SparseIndexReaderBase::available_memory() {
 
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
-  return frag_meta.has_delete_meta() || condition_.has_value() ||
+  return frag_meta.has_delete_meta() || predicates_.has_predicates() ||
          (!delete_and_update_conditions_.empty() &&
           !deletes_consolidation_no_purge_);
 }
@@ -248,8 +252,8 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
-  if (condition_.has_value()) {
-    for (auto& name : condition_->field_names()) {
+  if (predicates_.has_predicates()) {
+    for (auto& name : predicates_.field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
@@ -610,7 +614,7 @@ void SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (condition_.has_value() || !delete_and_update_conditions_.empty() ||
+  if (predicates_.has_predicates() || !delete_and_update_conditions_.empty() ||
       use_timestamps_) {
     // Process all tiles in parallel.
     throw_if_not_ok(parallel_for(
@@ -656,15 +660,40 @@ void SparseIndexReaderBase::apply_query_condition(
           }
 
           // Compute the result of the query condition for this tile.
-          if (condition_.has_value()) {
+          if (predicates_.condition_.has_value()) {
             QueryCondition::Params params(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
-            throw_if_not_ok(condition_->apply_sparse<BitmapType>(
+            throw_if_not_ok(predicates_.condition_->apply_sparse<BitmapType>(
                 params, *rt, rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
           }
+
+#ifdef HAVE_RUST
+          if (predicates_.datafusion_.has_value()) {
+            rust::Slice<BitmapType> bitmap(
+                rt->post_dedup_bitmap().data(), rt->post_dedup_bitmap().size());
+            static_assert(
+                std::is_same_v<BitmapType, uint8_t> ||
+                std::is_same_v<BitmapType, uint64_t>);
+            try {
+              if constexpr (std::is_same_v<BitmapType, uint8_t>) {
+                predicates_.datafusion_.value()->evaluate_into_bitmap_u8(
+                    *rt, bitmap);
+              } else {
+                predicates_.datafusion_.value()->evaluate_into_bitmap_u64(
+                    *rt, bitmap);
+              }
+            } catch (const rust::Error& e) {
+              throw SparseIndexReaderBaseException(
+                  "Error evaluating expression: " + std::string(e.what()));
+            }
+            if (array_schema_.allows_dups()) {
+              rt->count_cells();
+            }
+          }
+#endif
 
           // Apply delete conditions.
           if (!delete_and_update_conditions_.empty()) {

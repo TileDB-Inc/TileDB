@@ -881,7 +881,7 @@ struct VFSTestSetup {
     return "tiledb://unit-workspace/unit-teamspace/" + backend + name + label;
   }
 
-  Context ctx() {
+  Context ctx() const {
     return Context(ctx_c, false);
   }
 
