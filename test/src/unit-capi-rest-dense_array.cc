@@ -638,6 +638,64 @@ void DenseArrayRESTFx::check_sorted_reads() {
   tiledb_query_free(&query);
 }
 
+void test_incomplete_read(bool resubmit_incomplete) {
+  VFSTestSetup vfs_test_setup;
+  auto ctx = vfs_test_setup.ctx();
+
+  const std::string uri = vfs_test_setup.array_uri("incomplete_reads_array");
+  if (tiledb::Object::object(ctx, uri).type() == tiledb::Object::Type::Array) {
+    tiledb::Array::delete_array(ctx, uri);
+  }
+  // Note: The tiledb-server.yaml needs to set MaxUserQueryBufferSize to a value
+  // less than this to trigger resubmit loop server side. Otherwise the test is
+  // invalid, as the server will complete the query in a single submit.
+  constexpr size_t a_size = 50L * 1024 * 1024 / sizeof(uint64_t);
+
+  tiledb::Domain domain(ctx);
+  domain.add_dimension(
+      tiledb::Dimension::create<uint64_t>(ctx, "rows", {1, a_size}, 1000));
+  tiledb::Attribute attr = tiledb::Attribute::create<uint64_t>(ctx, "a");
+  tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).add_attribute(attr);
+  tiledb::Array::create(uri, schema);
+
+  tiledb::Array array(ctx, uri, TILEDB_WRITE);
+  tiledb::Query query(ctx, array);
+  std::vector<uint64_t> a(a_size);
+  std::iota(a.begin(), a.end(), 0);
+  query.set_data_buffer("a", a.data(), a_size);
+  query.submit();
+  array.close();
+
+  array.open(TILEDB_READ);
+  std::vector<uint64_t> a_read(a_size);
+  size_t incompletes = 0;
+  tiledb::Query::Status query_status;
+  do {
+    tiledb::Query query_r(ctx, array);
+    tiledb::Subarray subarray(ctx, array);
+    subarray.add_range(0, 1UL, a_size);
+    query_r.set_subarray(subarray);
+    query_r.set_data_buffer("a", a_read.data(), a_size);
+    query_r.submit();
+    query_status = query_r.query_status();
+    if (query_status == tiledb::Query::Status::INCOMPLETE) {
+      incompletes++;
+    }
+  } while (query_status == tiledb::Query::Status::INCOMPLETE);
+  array.close();
+
+  CHECK(a.size() == a_read.size());
+  CHECK_THAT(a, Catch::Matchers::Equals(a_read));
+  if (resubmit_incomplete) {
+    CHECK(incompletes == 1);
+  } else {
+    CHECK(incompletes > 1);
+  }
+
+  tiledb::Array::delete_array(ctx, uri);
+}
+
 void DenseArrayRESTFx::check_incomplete_reads() {
   // Parameters used in this test
   int64_t domain_size_0 = 5000;
@@ -1706,10 +1764,14 @@ TEST_CASE_METHOD(
   tiledb_error_t* error;
   tiledb_config_t* config;
   tiledb_config_alloc(&config, &error);
-  REQUIRE(
-      tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error) ==
-      TILEDB_OK);
-  check_incomplete_reads();
+  // Test using the default config value for rest.resubmit_incomplete.
+  test_incomplete_read(true);
+
+  // Disable rest.resubmit_incomplete and verify manual resubmits client side.
+  // REQUIRE(
+  //     tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error)
+  //     == TILEDB_OK);
+  // check_incomplete_read(false);
 }
 
 TEST_CASE_METHOD(
