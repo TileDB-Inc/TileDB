@@ -1,3 +1,70 @@
+# TileDB v2.30.0 Release Notes
+
+
+## New features
+
+* Support `VFS::copy_file` across filesystems. [#5636](https://github.com/TileDB-Inc/TileDB/pull/5636)
+* Add support for copying directories across filesystems. [#5666](https://github.com/TileDB-Inc/TileDB/pull/5666)
+* Add VFS support for `tiledb://` URIs. [#5631](https://github.com/TileDB-Inc/TileDB/pull/5631)
+
+
+## Improvements
+
+* Improve performance of listing files in Windows. [#5617](https://github.com/TileDB-Inc/TileDB/pull/5617)
+* Improve performance when opening arrays. [#5651](https://github.com/TileDB-Inc/TileDB/pull/5651)
+* Update shuffle and bitshuffle filter implementations to use `blosc2`. [#5620](https://github.com/TileDB-Inc/TileDB/pull/5620)
+* Add handling for empty `profiles.json`. [#5685](https://github.com/TileDB-Inc/TileDB/pull/5685)
+* Create a reusable workflow for building artifacts. [#5691](https://github.com/TileDB-Inc/TileDB/pull/5691)
+* Reduce latency when uploading objects on S3 and GCS. [#5688](https://github.com/TileDB-Inc/TileDB/pull/5688)
+* Fix flaky schema evolution test using explicit timestamp ordering. [#5689](https://github.com/TileDB-Inc/TileDB/pull/5689)
+* Add cycle detection to `Group::dump()`. [#5693](https://github.com/TileDB-Inc/TileDB/pull/5693)
+
+
+## Deprecations
+
+* Remove deprecated dump APIs. [#5585](https://github.com/TileDB-Inc/TileDB/pull/5585)
+
+
+## Defects removed
+
+* Fix building `tests` with `s3` enabled. [#5624](https://github.com/TileDB-Inc/TileDB/pull/5624)
+* Use function-local static for `logger_prefix_` to ensure safe, single-time initialization. [#5630](https://github.com/TileDB-Inc/TileDB/pull/5630)
+* Check `non_empty_domain.sizes` size before access. [#5650](https://github.com/TileDB-Inc/TileDB/pull/5650)
+* 0-byte read `GCS` bug fix. [#5673](https://github.com/TileDB-Inc/TileDB/pull/5673)
+* Fix dense global order writer use of `max_fragment_size_`. [#5655](https://github.com/TileDB-Inc/TileDB/pull/5655)
+* Do not provide storage URIs in TileDB-Server REST requests. [#5687](https://github.com/TileDB-Inc/TileDB/pull/5687)
+* Update group URI to Logical URI coming from the Server [#5710](https://github.com/TileDB-Inc/TileDB/pull/5710)
+* Error if storage location is provided in array / group create request. [#5713](https://github.com/TileDB-Inc/TileDB/pull/5713)
+
+
+## API changes
+
+### C API
+
+* Move `tiledb_ctx_alloc_with_error` function to stable APIs header. [#5667](https://github.com/TileDB-Inc/TileDB/pull/5667)
+* Expose `overwrite` parameter in `tiledb_profile_save`. [#5695](https://github.com/TileDB-Inc/TileDB/pull/5695)
+* Add C API for getting REST data protocol. [#5697](https://github.com/TileDB-Inc/TileDB/pull/5697)
+
+### C++ API
+
+* Improved error reporting when creating a context fails. [#5667](https://github.com/TileDB-Inc/TileDB/pull/5667)
+* Expose the `overwrite` parameter in `Profile::save`. [#5695](https://github.com/TileDB-Inc/TileDB/pull/5695)
+* Add C++ API for getting REST data protocol. [#5697](https://github.com/TileDB-Inc/TileDB/pull/5697)
+
+
+## Build system changes
+
+* Improve build times when not specifying a build target. [#5606](https://github.com/TileDB-Inc/TileDB/pull/5606)
+* Acquire `nlohmann-json` from `vcpkg`. A vendored copy of the library is removed. [#5609](https://github.com/TileDB-Inc/TileDB/pull/5609)
+* Fix `zip_view` default constructor for C++20 concepts compliance. [#5611](https://github.com/TileDB-Inc/TileDB/pull/5611)
+* Fix compile errors in compilers defaulting to C23. [#5612](https://github.com/TileDB-Inc/TileDB/pull/5612)
+* Remove vendored `Boost` code. [#5619](https://github.com/TileDB-Inc/TileDB/pull/5619)
+* Bump `ubuntu` version to 24.04. [#5574](https://github.com/TileDB-Inc/TileDB/pull/5574)
+* Update `vcpkg` version baseline to https://github.com/microsoft/vcpkg/commit/3b9d086009cc1c2256e9c28ad44a00036fbd9b26. [#5616](https://github.com/TileDB-Inc/TileDB/pull/5616)
+* Remove vendored sources of `blosc` and `kiyo-masui/bitshuffle`, and add a dependency to `blosc2`. [#5620](https://github.com/TileDB-Inc/TileDB/pull/5620)
+* Fixed wrong release artifact names on macOS. [#5703](https://github.com/TileDB-Inc/TileDB/pull/5703)
+
+
 # TileDB v2.29.2 Release Notes
 
 
