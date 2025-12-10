@@ -1764,14 +1764,17 @@ TEST_CASE_METHOD(
   tiledb_error_t* error;
   tiledb_config_t* config;
   tiledb_config_alloc(&config, &error);
-  // Test using the default config value for rest.resubmit_incomplete.
-  test_incomplete_read(true);
+  const char* value;
+  REQUIRE(
+      tiledb_config_get(config, "rest.resubmit_incomplete", &value, &error) ==
+      TILEDB_OK);
+  REQUIRE(strcmp(value, "true") == 0);
 
   // Disable rest.resubmit_incomplete and verify manual resubmits client side.
-  // REQUIRE(
-  //     tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error)
-  //     == TILEDB_OK);
-  // check_incomplete_read(false);
+  REQUIRE(
+      tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error) ==
+      TILEDB_OK);
+  check_incomplete_reads();
 }
 
 TEST_CASE_METHOD(
