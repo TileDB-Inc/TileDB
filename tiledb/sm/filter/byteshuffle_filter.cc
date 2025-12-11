@@ -37,7 +37,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <blosc2.h>
+#include "blosc/tiledb-shuffle.h"
 
 using namespace tiledb::common;
 
@@ -94,16 +94,11 @@ Status ByteshuffleFilter::shuffle_part(
     const WriterTile&, const ConstBuffer* part, Buffer* output) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
-  int status = blosc2_shuffle(
+  blosc::shuffle(
       tile_type_size,
       part->size(),
       (uint8_t*)part->data(),
       (uint8_t*)output->cur_data());
-
-  if (status < 0) {
-    return Status_FilterError(
-        std::string("Shuffle error; ") + blosc2_error_string(status));
-  }
 
   return Status::Ok();
 }
@@ -151,16 +146,11 @@ Status ByteshuffleFilter::unshuffle_part(
     const Tile&, const ConstBuffer* part, Buffer* output) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
-  int status = blosc2_unshuffle(
+  blosc::unshuffle(
       tile_type_size,
       part->size(),
       (uint8_t*)part->data(),
       (uint8_t*)output->cur_data());
-
-  if (status < 0) {
-    return Status_FilterError(
-        std::string("Unshuffle error; ") + blosc2_error_string(status));
-  }
 
   return Status::Ok();
 }

@@ -104,21 +104,6 @@ class BitshuffleFilter : public Filter {
       FilterBuffer* output,
       const Config& config) const override;
 
-  /**
-   * Perform bit shuffling on the given input buffer.
-   *
-   * @param filter_data_type Datatype of the data to be shuffled.
-   * @param part Buffer containing data to be shuffled.
-   * @param output Buffer to hold shuffled data.
-   * @param invert If true, performs a bit unshuffle instead of a bit shuffle.
-   * @return Status
-   */
-  static Status shuffle_part(
-      Datatype filter_data_type,
-      const ConstBuffer& part,
-      Buffer& output,
-      bool invert);
-
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
   std::ostream& output(std::ostream& os) const override;
@@ -137,6 +122,26 @@ class BitshuffleFilter : public Filter {
    */
   Status compute_parts(
       FilterBuffer* input, std::vector<ConstBuffer>* parts) const;
+
+  /**
+   * Perform bit shuffling on the given input buffer.
+   *
+   * @param part Buffer containing data to be shuffled.
+   * @param output Buffer to hold shuffled data.
+   * @return Status
+   */
+  Status shuffle_part(
+      const WriterTile& tile, const ConstBuffer* part, Buffer* output) const;
+
+  /**
+   * Perform bit unshuffling on the given input buffer.
+   *
+   * @param part Buffer containing shuffled data.
+   * @param output Buffer to hold unshuffled data.
+   * @return Status
+   */
+  Status unshuffle_part(
+      const Tile& tile, const ConstBuffer* part, Buffer* output) const;
 };
 
 }  // namespace sm

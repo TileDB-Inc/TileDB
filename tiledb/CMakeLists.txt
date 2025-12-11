@@ -389,12 +389,37 @@ if (TILEDB_SERIALIZATION)
 
 endif()
 
+# 'External' source files included in the source tree.
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
+)
+list(APPEND TILEDB_EXTERNALS_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
+)
+
+#
+# Delegate configuration and detection of platform-specific code generation to
+# the subdirectory. For why the separation isn't clean, see comments there.
+#
+add_subdirectory(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc
+  ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
+list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
+list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
+set_source_files_properties(
+  ${TileDB_blosc_SOURCES}
+  PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
+
 ############################################################
 # Build core objects as a reusable object library
 ############################################################
 
 add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
+    ${TILEDB_EXTERNALS_SOURCES}
 )
 
 # List of libraries to be linked to TILEDB_CORE_OBJECTS.
@@ -425,6 +450,7 @@ target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
     "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api"
+    "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
 	# to pickup <build_dir>/tiledb for capnp gen'd files
     "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
@@ -471,6 +497,9 @@ add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
 # object store definitions
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE configuration_definitions)
+
+# blosc link dependencies
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
@@ -543,7 +572,6 @@ endif()
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
-find_package(Blosc2 CONFIG REQUIRED)
 find_package(BZip2 REQUIRED)
 find_package(LZ4 MODULE REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -552,7 +580,6 @@ find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
-    Blosc2::blosc2
     BZip2::BZip2
     lz4::lz4
     $<BUILD_INTERFACE:nlohmann_json::nlohmann_json>

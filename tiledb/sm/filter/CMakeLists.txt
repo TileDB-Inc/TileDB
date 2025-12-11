@@ -27,8 +27,6 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-find_package(Blosc2 CONFIG REQUIRED)
-
 #
 # `filter` object library
 #
@@ -41,18 +39,44 @@ conclude(object_library)
 # `bitshuffle_filter` object library
 #
 commence(object_library bitshuffle_filter)
-    this_target_sources(bitshuffle_filter.cc)
+    # Dependency on external/bitshuffle is direct, not by add_subdirectory
+    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/src/bitshuffle" OUTPUT_VARIABLE BITSHUFFLE_SOURCE_ROOT)
+    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/include/bitshuffle" OUTPUT_VARIABLE BITSHUFFLE_INCLUDE)
+    list(APPEND BITSHUFFLE_SOURCES
+        ${BITSHUFFLE_SOURCE_ROOT}/bitshuffle_core.cc
+        ${BITSHUFFLE_SOURCE_ROOT}/iochain.cc
+        )
+    this_target_sources(bitshuffle_filter.cc ${BITSHUFFLE_SOURCES})
     this_target_object_libraries(baseline buffer filter)
-    this_target_link_libraries(Blosc2::blosc2)
+    set_source_files_properties(
+        bitshuffle_filter.cc ${BITSHUFFLE_SOURCES}
+        PROPERTIES
+        INCLUDE_DIRECTORIES "${BITSHUFFLE_INCLUDE}"
+    )
 conclude(object_library)
 
 #
 # `byteshuffle_filter` object library
 #
+# `byteshuffle_filter` depends on blosc, so we need to add its subdirectory. At
+# the present time, that subdirectory is also being added in the main build.
+# Adding the same directory twice causes an error. Thus, in the interim, we use
+# `blosc-alt` for the binary. This also means that we're compiling blosc
+# separately for the main build and for the unit. These separation is temporary
+# for the duration of converting the main build into a unit-dependent one.
+#
 commence(object_library byteshuffle_filter)
-    this_target_sources(byteshuffle_filter.cc)
+    # Dependency on external/blosc
+    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/blosc" OUTPUT_VARIABLE BLOSC_SOURCE_ROOT)
+    cmake_path(APPEND CMAKE_BINARY_DIR "external/blosc-alt" OUTPUT_VARIABLE BLOSC_BINARY_ROOT)
+    add_subdirectory(${BLOSC_SOURCE_ROOT} ${BLOSC_BINARY_ROOT})
+    this_target_sources(byteshuffle_filter.cc ${TileDB_blosc_SOURCES})
     this_target_object_libraries(baseline buffer filter)
-    this_target_link_libraries(Blosc2::blosc2)
+    # [As of CMake 3.21] Setting private options on object libraries does not set
+    # the corresponding properties on sources in the object library.
+    set_source_files_properties(byteshuffle_filter.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE};${TileDB_blosc_INCLUDE_DIRS}")
+    set_source_files_properties(${TileDB_blosc_SOURCES} PROPERTIES INCLUDE_DIRECTORIES "${TileDB_blosc_INCLUDE_DIRS}")
+    set_source_files_properties(${TileDB_blosc_SOURCES} PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
 conclude(object_library)
 
 #

@@ -1,10 +1,6 @@
 {
     "builtin-baseline": "3b9d086009cc1c2256e9c28ad44a00036fbd9b26",
     "dependencies": [
-        {
-            "name": "blosc2",
-            "default-features": false
-        },
         "bzip2",
         "lz4",
         {

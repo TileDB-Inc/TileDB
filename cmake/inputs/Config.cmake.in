@@ -14,7 +14,6 @@
 if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   include(CMakeFindDependencyMacro)
   find_dependency(Threads)
-  find_dependency(Blosc2)
   find_dependency(BZip2)
   find_dependency(lz4)
   find_dependency(spdlog)
