@@ -58,7 +58,7 @@ std::ostream& ByteshuffleFilter::output(std::ostream& os) const {
 }
 
 void ByteshuffleFilter::run_forward(
-    const WriterTile& tile,
+    const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -82,7 +82,7 @@ void ByteshuffleFilter::run_forward(
     auto part_size = (uint32_t)part.size();
     throw_if_not_ok(output_metadata->write(&part_size, sizeof(uint32_t)));
 
-    throw_if_not_ok(shuffle_part(tile, &part, output_buf));
+    throw_if_not_ok(shuffle_part(filter_data_type_, part, *output_buf, false));
 
     if (output_buf->owns_data())
       output_buf->advance_size(part.size());
@@ -91,14 +91,22 @@ void ByteshuffleFilter::run_forward(
 }
 
 Status ByteshuffleFilter::shuffle_part(
-    const WriterTile&, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
+    Datatype filter_data_type,
+    const ConstBuffer& part,
+    Buffer& output,
+    bool invert) {
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type));
 
-  int status = blosc2_shuffle(
-      tile_type_size,
-      part->size(),
-      (uint8_t*)part->data(),
-      (uint8_t*)output->cur_data());
+  int status = invert ? blosc2_unshuffle(
+                            tile_type_size,
+                            part.size(),
+                            (uint8_t*)part.data(),
+                            (uint8_t*)output.cur_data()) :
+                        blosc2_shuffle(
+                            tile_type_size,
+                            part.size(),
+                            (uint8_t*)part.data(),
+                            (uint8_t*)output.cur_data());
 
   if (status < 0) {
     return Status_FilterError(
@@ -109,7 +117,7 @@ Status ByteshuffleFilter::shuffle_part(
 }
 
 Status ByteshuffleFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -130,7 +138,7 @@ Status ByteshuffleFilter::run_reverse(
     ConstBuffer part(nullptr, 0);
     RETURN_NOT_OK(input->get_const_buffer(part_size, &part));
 
-    RETURN_NOT_OK(unshuffle_part(tile, &part, output_buf));
+    RETURN_NOT_OK(shuffle_part(filter_data_type_, part, *output_buf, true));
 
     if (output_buf->owns_data())
       output_buf->advance_size(part_size);
@@ -143,24 +151,6 @@ Status ByteshuffleFilter::run_reverse(
   auto md_offset = input_metadata->offset();
   RETURN_NOT_OK(output_metadata->append_view(
       input_metadata, md_offset, input_metadata->size() - md_offset));
-
-  return Status::Ok();
-}
-
-Status ByteshuffleFilter::unshuffle_part(
-    const Tile&, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
-
-  int status = blosc2_unshuffle(
-      tile_type_size,
-      part->size(),
-      (uint8_t*)part->data(),
-      (uint8_t*)output->cur_data());
-
-  if (status < 0) {
-    return Status_FilterError(
-        std::string("Unshuffle error; ") + blosc2_error_string(status));
-  }
 
   return Status::Ok();
 }

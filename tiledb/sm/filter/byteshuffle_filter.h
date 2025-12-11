@@ -96,6 +96,21 @@ class ByteshuffleFilter : public Filter {
       FilterBuffer* output,
       const Config& config) const override;
 
+  /**
+   * Perform byte shuffling on the given input buffer.
+   *
+   * @param filter_data_type Datatype of the data to be shuffled.
+   * @param part Buffer containing data to be shuffled.
+   * @param output Buffer to hold shuffled data.
+   * @param invert If true, performs an unshuffle instead of a shuffle.
+   * @return Status
+   */
+  static Status shuffle_part(
+      Datatype filter_data_type,
+      const ConstBuffer& part,
+      Buffer& output,
+      bool invert);
+
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
   std::ostream& output(std::ostream& os) const override;
@@ -103,28 +118,6 @@ class ByteshuffleFilter : public Filter {
  private:
   /** Returns a new clone of this filter. */
   ByteshuffleFilter* clone_impl() const override;
-
-  /**
-   * Perform byte shuffling on the given input buffer.
-   *
-   * @param tile Current tile on which the filter is being run
-   * @param part Buffer containing data to be shuffled.
-   * @param output Buffer to hold shuffled data.
-   * @return Status
-   */
-  Status shuffle_part(
-      const WriterTile& tile, const ConstBuffer* part, Buffer* output) const;
-
-  /**
-   * Perform byte unshuffling on the given input buffer.
-   *
-   * @param tile Current tile on which the filter is being run
-   * @param part Buffer containing shuffled data.
-   * @param output Buffer to hold unshuffled data.
-   * @return Status
-   */
-  Status unshuffle_part(
-      const Tile& tile, const ConstBuffer* part, Buffer* output) const;
 };
 
 }  // namespace sm

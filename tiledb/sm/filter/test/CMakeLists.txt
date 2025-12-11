@@ -68,6 +68,25 @@ commence(unit_test float_scale_input_val)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)
 conclude(unit_test)
 
+commence(unit_test byteshuffle_compat)
+    # Dependency on external/blosc
+    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/blosc" OUTPUT_VARIABLE BLOSC_SOURCE_ROOT)
+    cmake_path(APPEND CMAKE_BINARY_DIR "external/blosc-alt" OUTPUT_VARIABLE BLOSC_BINARY_ROOT)
+    add_subdirectory(${BLOSC_SOURCE_ROOT} ${BLOSC_BINARY_ROOT})
+    # [As of CMake 3.21] Setting private options on object libraries does not set
+    # the corresponding properties on sources in the object library.
+    set_source_files_properties(${TileDB_blosc_SOURCES} PROPERTIES INCLUDE_DIRECTORIES "${TileDB_blosc_INCLUDE_DIRS}")
+    set_source_files_properties(${TileDB_blosc_SOURCES} PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
+    this_target_sources(unit_byteshuffle_compat.cc ${TileDB_blosc_SOURCES})
+    this_target_object_libraries(tiledb_crypto byteshuffle_filter)
+    this_target_link_libraries(Blosc2::blosc2)
+    set_source_files_properties(
+        unit_byteshuffle_compat.cc
+        PROPERTIES
+        INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE};${TileDB_blosc_INCLUDE_DIRS}"
+    )
+conclude(unit_test)
+
 commence(unit_test bitshuffle_compat)
     # Dependency on external/bitshuffle is direct, not by add_subdirectory
     cmake_path(APPEND TILEDB_SOURCE_ROOT "external/src/bitshuffle" OUTPUT_VARIABLE BITSHUFFLE_SOURCE_ROOT)
