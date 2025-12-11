@@ -7589,39 +7589,82 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test consolidation, sparse string, no progress",
-    "[capi][consolidation][sparse][string][no-progress][non-rest]") {
+    "C API: Test sparse fragment consolidation",
+    "[capi][consolidation][fragment][sparse][non-rest]") {
   remove_sparse_string_array();
   create_sparse_string_array();
-
   write_sparse_string_full();
   write_sparse_string_unordered();
 
-  uint64_t string_size = 1;
-  std::string errmsg = "";
+  SECTION("success") {
+    // Write large, 25MB chunk which outsizes the default buffer size of 10MB
+    const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+    uint64_t test_str_size = 26214400;
+    std::string test_str;
+    test_str.reserve(test_str_size);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
+    for (size_t i = 0; i < test_str_size; ++i) {
+      test_str += test_chars[dist(gen)];
+    }
+    REQUIRE(test_str.size() == test_str_size);
 
-  SECTION("too small") {
-    string_size = 1;
-    errmsg =
-        "FragmentConsolidator: Consolidation read 0 cells, no "
-        "progress can be made";
+    // Consolidate
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    int rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+
+    // Consolidate
+    if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+      std::string encryption_type_string =
+          encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+      rc = tiledb_config_set(
+          cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+      REQUIRE(err == nullptr);
+      rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+      REQUIRE(rc == TILEDB_OK);
+      REQUIRE(err == nullptr);
+      rc =
+          tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
+      tiledb_config_free(&cfg);
+    } else {
+      rc =
+          tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
+    }
+    tiledb_config_free(&cfg);
+    REQUIRE(rc == TILEDB_OK);
   }
 
-  SECTION("too large") {
-    string_size = 10737418240 + 2;  // over default memory budget of 10GB
-    errmsg =
-        "FragmentConsolidator: Consolidation cannot proceed without "
-        "disrespecting the memory budget.";
+  SECTION("no progress") {
+    uint64_t string_size = 1;
+    std::string errmsg = "";
+
+    DYNAMIC_SECTION("too small") {
+      string_size = 1;
+      errmsg =
+          "FragmentConsolidator: Consolidation read 0 cells, no "
+          "progress can be made";
+    }
+
+    DYNAMIC_SECTION("too large") {
+      string_size = 10737418240 + 2;  // over default memory budget of 10GB
+      errmsg =
+          "FragmentConsolidator: Consolidation cannot proceed without "
+          "disrespecting the memory budget.";
+    }
+
+    consolidate_sparse_string(string_size, true);
+
+    tiledb_error_t* err = NULL;
+    tiledb_ctx_get_last_error(ctx_, &err);
+
+    const char* msg;
+    tiledb_error_message(err, &msg);
+    CHECK(errmsg == msg);
   }
-
-  consolidate_sparse_string(string_size, true);
-
-  tiledb_error_t* err = NULL;
-  tiledb_ctx_get_last_error(ctx_, &err);
-
-  const char* msg;
-  tiledb_error_message(err, &msg);
-  CHECK(errmsg == msg);
 
   remove_sparse_string_array();
 }
