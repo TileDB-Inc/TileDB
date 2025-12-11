@@ -7,5 +7,8 @@ set(VCPKG_CMAKE_SYSTEM_NAME MinGW)
 
 set(VCPKG_BUILD_TYPE release)
 
+set(VCPKG_C_FLAGS "-mavx2")
+set(VCPKG_CXX_FLAGS "-mavx2")
+
 # Fix CMake 4.0 errors in ports supporting very old CMake verions.
 set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
