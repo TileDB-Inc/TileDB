@@ -64,7 +64,7 @@ if (CMAKE_USE_PTHREADS_INIT AND NOT MSVC)
 elseif(CMAKE_USE_WIN32_THREADS_INIT OR MSVC)
   message(DEBUG "Using blosc-provided pthread substitute for Win32")
   list(APPEND SOURCES
-    ${SOURCE_DIR}/src/win32/pthread.c
+    # ${SOURCE_DIR}/src/win32/pthread.c
   )
 else()
   message(FATAL_ERROR "Thread package found, but not a supported one")
