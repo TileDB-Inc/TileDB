@@ -2613,7 +2613,8 @@ void FragmentMetadata::load_optional_sections(Deserializer& deserializer) {
         if (data_size != 2 * array_schema_->dim_num() * sizeof(uint64_t)) {
           throw FragmentMetadataStatusException(
               "Invalid size of tile global order bound offsets optional "
-              "section");
+              "section. This might indicate a corrupted fragment metadata "
+              "file.");
         }
         load_tile_global_order_offsets(deserializer);
         has_tile_global_order_bounds_ = true;
