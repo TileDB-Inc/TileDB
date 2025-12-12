@@ -237,6 +237,7 @@ void check_save_to_file() {
   ss << "rest.load_enumerations_on_array_open_all_schemas false\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
+  ss << "rest.resubmit_incomplete true\n";
   ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
   ss << "rest.retry_http_codes 503\n";
@@ -609,6 +610,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["profile_name"] = "";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
+  all_param_values["rest.resubmit_incomplete"] = "true";
   all_param_values["rest.http_compressor"] = "any";
   all_param_values["rest.retry_count"] = "25";
   all_param_values["rest.retry_delay_factor"] = "1.25";
