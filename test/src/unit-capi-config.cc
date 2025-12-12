@@ -237,6 +237,7 @@ void check_save_to_file() {
   ss << "rest.load_enumerations_on_array_open_all_schemas false\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
+  ss << "rest.resubmit_incomplete true\n";
   ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
   ss << "rest.retry_http_codes 503\n";
