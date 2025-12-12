@@ -36,6 +36,7 @@ set(SOURCES
   targets/sc-18836.cc
   targets/sc-23712.cc
   targets/sc-44758.cc
+  targets/windows-commits-path-separator.cc
 )
 
 if (TILEDB_SERIALIZATION)
