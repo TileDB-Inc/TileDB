@@ -717,9 +717,9 @@ extern const format_version_t current_domain_version;
 /** The NDRectangle current_domain */
 extern const std::string current_domain_ndrectangle_str;
 
-/** The lowest version where fragment metadata contains per-tile global order
- * bounds */
-extern const format_version_t fragment_metadata_global_order_bounds_version;
+/** The lowest version where fragment metadata footer contains extensible
+ * optional sections. */
+extern const format_version_t fragment_metadata_optional_section_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
