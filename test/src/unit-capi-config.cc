@@ -609,6 +609,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["profile_name"] = "";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
+  all_param_values["rest.resubmit_incomplete"] = "true";
   all_param_values["rest.http_compressor"] = "any";
   all_param_values["rest.retry_count"] = "25";
   all_param_values["rest.retry_delay_factor"] = "1.25";
