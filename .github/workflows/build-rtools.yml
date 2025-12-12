@@ -1,4 +1,4 @@
-name: rtools40
+name: rtools
 on:
   workflow_call:
 
@@ -32,9 +32,10 @@ jobs:
           ref: ${{ steps.vcpkg_commit.outputs.ref }}
           # Vcpkg requires fetching all commits.
           fetch-depth: 0
-      - name: Install rtools40 if needed
-        uses: r-windows/install-rtools@master
-      - name: Building TileDB with Rtools40
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3'
+      - name: Build TileDB
         run: |
           export SystemDrive="$SYSTEMDRIVE"
           export SystemRoot="$SYSTEMROOT"
@@ -46,7 +47,7 @@ jobs:
           TILEDB_HOME: ${{ github.workspace }}
           MINGW_ARCH: ${{ matrix.msystem }}
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-        shell: c:\rtools40\usr\bin\bash.exe --login {0}
+        shell: c:\rtools43\usr\bin\bash.exe --login {0}
       - name: Set variables
         shell: bash
         id: get-values
