@@ -29,13 +29,9 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/misc/tdb_time.h"
 
-#include <thread>
 #include <chrono>
-
-using namespace tiledb::sm;
+#include <thread>
 
 TEST_CASE(
     "Regression: Windows commits consolidation path separator mismatch",
