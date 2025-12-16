@@ -61,8 +61,8 @@ jobs:
       - name: "Rename release artifact and create sha256 hash"
         run: |
           mkdir release
-          mv .github/workflows/mingw-w64-tiledb/*.pkg.tar.xz release/tiledb-windows-x86_64-mingw64_ucrt64-${{ steps.get-values.outputs.release_version }}.tar.xz
-          sha256sum release/tiledb-windows-x86_64-mingw64_ucrt64-${{ steps.get-values.outputs.release_version }}.tar.xz > release/tiledb-windows-x86_64-mingw64_ucrt64-${{ steps.get-values.outputs.release_version }}.tar.xz.sha256
+          mv .github/workflows/mingw-w64-tiledb/*.pkg.tar.zst release/tiledb-windows-x86_64-mingw64_ucrt64-${{ steps.get-values.outputs.release_version }}.tar.zst
+          sha256sum release/tiledb-windows-x86_64-mingw64_ucrt64-${{ steps.get-values.outputs.release_version }}.tar.zst > release/tiledb-windows-x86_64-mingw64_ucrt64-${{ steps.get-values.outputs.release_version }}.tar.zst.sha256
       - name: "Upload binaries"
         uses: actions/upload-artifact@v4
         with:
