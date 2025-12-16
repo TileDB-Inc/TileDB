@@ -228,6 +228,8 @@ class URI {
 
   /**
    * Checks if the last part of the URI is a valid timestamped name.
+   * This method does not validate file extensions. Only the timestamps, UUID,
+   * and version will be validated for the current URI.
    *
    * @return True if the last part if a timestamped name, else false.
    */

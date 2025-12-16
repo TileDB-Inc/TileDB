@@ -842,7 +842,8 @@ void ArrayDirectory::load_array_meta_uris() {
         uri_.join_path(constants::array_metadata_dir_name), &unfiltered_uris));
     for (const auto& unfiltered_uri : unfiltered_uris) {
       const auto& uri = unfiltered_uri.to_string();
-      if (!unfiltered_uri.is_timestamped_name()) {
+      if (unfiltered_uri.is_timestamped_name() &&
+          unfiltered_uri.to_string().ends_with(".tmp")) {
         resources_.get().logger()->debug(
             "Skipping partial array metadata file: '{}'", uri);
         continue;

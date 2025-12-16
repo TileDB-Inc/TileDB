@@ -147,7 +147,6 @@ class FilesystemBase {
    * Retrieves all the entries contained in the parent.
    *
    * @param parent The target directory to list.
-   * @param get_sizes Flag to toggle retrieving file sizes.
    * @return All entries that are contained in the parent
    */
   virtual std::vector<tiledb::common::filesystem::directory_entry>

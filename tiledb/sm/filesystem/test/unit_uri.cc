@@ -313,22 +313,25 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
 
 TEST_CASE("URI: Test is_timestamped_name", "[uri][is_timestamped_name]") {
   std::vector<std::pair<std::string, bool>> test_uris = {
-      {"__1764100213547_1764100213550_035477e475b011ac8c2f01a13532ccad.vac",
-       true},
       {"__1764100213547_1764100213550_035477e475b011ac8c2f01a13532ccad", true},
       {"__1_1_035477e475b011ac8c2f01a13532ccad", true},
       {"__1_1_035477e475b011ac8c2f01a13532ccad_22", true},
-      {"__1_1_035477e475b011ac8c2f01a13532ccad_22.vac", true},
-      {"__1_1_035477e475b011ac8c2f01a13532ccad_22.tmp", false},
-      {"__1_1_035477e475b011ac8c2f01a13532ccad.tmp", false},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad.", true},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad.vac", true},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad.tdb", true},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad.tmp", true},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad.a", true},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad,vac", false},
+      {"__1_1_035477e475b011ac8c2f01a13532ccad_vac", false},
       {"__1_1_035477e475b011ac8c2f01a13532cca", false},
-      {"___1_035477e475b011ac8c2f01a13532cca", false},
+      {"___1_035477e475b011ac8c2f01a13532ccad", false},
       {"_1_1_035477e475b011ac8c2f01a13532ccad", false},
-      {"__1_1_035477e475b011ac8c2f01a13532ccad.", false},
       {"__1_1_035477e475b011a_c8c2f01a13532ccad.vaC", false},
       {"", false},
       {"______", false},
       {"__1_2_3", false},
+      {"X", false},
+      {"__", false},
   };
   for (const auto& test : test_uris) {
     URI uri(test.first, false);

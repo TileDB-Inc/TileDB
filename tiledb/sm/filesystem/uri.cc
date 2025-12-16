@@ -249,10 +249,6 @@ bool URI::is_timestamped_name() const {
     return false;
   }
 
-  if (!suffix.empty() && suffix != constants::vacuum_file_suffix) {
-    return false;
-  }
-
   return true;
 }
 
