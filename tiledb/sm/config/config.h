@@ -150,6 +150,12 @@ class Config {
   /** The namespace that should be charged for the request. */
   static const std::string REST_PAYER_NAMESPACE;
 
+  /**
+   * If incomplete queries received from the server should be automatically
+   * resubmitted or not.
+   */
+  static const std::string REST_RESUBMIT_INCOMPLETE;
+
   /** The prefix to use for checking for parameter environment variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
