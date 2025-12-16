@@ -143,6 +143,9 @@ class NullableArrayFx {
   /** The unique local directory object. */
   TemporaryLocalDirectory temp_dir_;
 
+  // Vector of supported filesystems
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+
   /**
    * Compute the full array path given an array name.
    *
@@ -194,31 +197,21 @@ class NullableArrayFx {
       const void* subarray);
 };
 
-NullableArrayFx::NullableArrayFx() {
-  // Create a config.
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
-  throw_if_setup_failed(error == nullptr);
-
-  // Create the context.
-  throw_if_setup_failed(tiledb_ctx_alloc(config, &ctx_));
-  throw_if_setup_failed(ctx_ != nullptr);
-
-  // Create the VFS.
-  throw_if_setup_failed(tiledb_vfs_alloc(ctx_, config, &vfs_));
-  throw_if_setup_failed(vfs_ != nullptr);
-  tiledb_config_free(&config);
+NullableArrayFx::NullableArrayFx()
+    : fs_vec_(vfs_test_get_fs_vec()) {
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 NullableArrayFx::~NullableArrayFx() {
+  vfs_test_remove_temp_dir(ctx_, vfs_, fs_vec_[0]->temp_dir());
+  CHECK(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
 }
 
 const string NullableArrayFx::array_path(const string& array_name) {
-  return vfs_array_uri(
-      vfs_test_get_fs_vec()[0], temp_dir_.path() + array_name, ctx_);
+  return vfs_array_uri(fs_vec_[0], array_name, ctx_);
 }
 
 void NullableArrayFx::create_array(
