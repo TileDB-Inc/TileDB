@@ -119,3 +119,19 @@ TEST_CASE("REST capabilities endpoint", "[rest][capabilities]") {
     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
   }
 }
+
+TEST_CASE(
+    "Invalid rest.server_address configuration",
+    "[rest][server_address][config]") {
+  tiledb::test::VFSTestSetup vfs_test_setup;
+  auto ctx = vfs_test_setup.ctx();
+  auto config = ctx.config();
+  config["rest.server_address"] = "(http://127.0.0.1:8181),";
+  vfs_test_setup.update_config(config.ptr().get());
+  ctx = vfs_test_setup.ctx();
+  // Send any request to REST to validate we throw as expected.
+  CHECK_THROWS_WITH(
+      tiledb::Object::object(ctx, "tiledb://workspace/teamspace/array_name"),
+      Catch::Matchers::ContainsSubstring(
+          "Error submitting curl request; URL is incorrectly formatted: "));
+}

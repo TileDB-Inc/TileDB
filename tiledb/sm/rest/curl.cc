@@ -623,6 +623,12 @@ Status Curl::make_curl_request_common(
 
     /* perform the blocking network transfer */
     CURLcode curl_code = curl_easy_perform_instrumented(url, i);
+    if (curl_code == CURLE_URL_MALFORMAT) {
+      return LOG_STATUS(Status_RestError(
+          std::string(
+              "Error submitting curl request; URL is incorrectly formatted: ") +
+          url));
+    }
 
     long http_code = 0;
     if (curl_code == CURLE_OK) {
@@ -633,10 +639,17 @@ Status Curl::make_curl_request_common(
       }
     }
 
+    bool should_retry = should_retry_request(curl_code, http_code);
+    // Handle the error if we shouldn't retry and the curl request failed.
+    if (!should_retry && curl_code != CURLE_OK) {
+      return LOG_STATUS(Status_RestError(
+          std::string("Error submitting the Curl request: ") +
+          get_curl_errstr(curl_code)));
+    }
+
     // Exit if the request failed and we don't want to retry based on curl or
     // HTTP code, or if the write callback has elected to skip retries
-    if (!should_retry_request(curl_code, http_code) ||
-        write_cb_state.skip_retries) {
+    if (!should_retry || write_cb_state.skip_retries) {
       break;
     }
 
@@ -693,6 +706,7 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
   switch (curl_code) {
     // Curl status of okay or non transient errors shouldn't be retried
     case CURLE_OK:
+    case CURLE_UNSUPPORTED_PROTOCOL: /* 1 */
     case CURLE_URL_MALFORMAT:        /* 3 */
     case CURLE_SSL_ENGINE_NOTFOUND:  /* 53 - SSL crypto engine not found */
     case CURLE_SSL_ENGINE_SETFAILED: /* 54 - can not set SSL crypto engine as
@@ -717,7 +731,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
                                  error */
     case CURLE_SSL_CLIENTCERT: /* 98 - client-side certificate required */
       return false;
-    case CURLE_UNSUPPORTED_PROTOCOL:  /* 1 */
     case CURLE_FAILED_INIT:           /* 2 */
     case CURLE_NOT_BUILT_IN:          /* 4 - [was obsoleted in August 2007 for
                                         7.17.0, reused in April 2011 for 7.21.5] */
