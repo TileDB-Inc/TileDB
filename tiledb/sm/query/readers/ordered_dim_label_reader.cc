@@ -120,7 +120,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
-  if (condition_.has_value()) {
+  if (predicates_.has_predicates()) {
     throw OrderedDimLabelReaderException(
         "Ordered dimension label reader cannot process query condition");
   }

@@ -152,12 +152,9 @@ if (TILEDB_RUST)
   set(CARGO_INSTALL_ROOT ${CMAKE_BINARY_DIR}/cargo/install)
   set(CARGO_INSTALL_BIN ${CARGO_INSTALL_ROOT}/bin)
 
-  # pin version of cxxbridge due to https://github.com/dtolnay/cxx/issues/1436 build errors on MacOS
-  set(CXXBRIDGE_VERSION 1.0.138)
-
   execute_process(
     COMMAND
-      ${CARGO} install cxxbridge-cmd --version ${CXXBRIDGE_VERSION} --root ${CARGO_INSTALL_ROOT}
+      ${CARGO} install cxxbridge-cmd --root ${CARGO_INSTALL_ROOT}
   )
   execute_process(
     COMMAND
