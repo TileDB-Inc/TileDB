@@ -995,41 +995,71 @@ const char* Config::get_from_profile(
   return "";
 }
 
-const char* Config::get_from_config_or_fallback(
-    const std::string& param, bool* found) const {
+ConfigSource Config::lookup_param(
+    const std::string& param, const char** value, bool* found) const {
   // First check if the user has set the parameter
-  // If not, it may be a default value (if found in the config)
-  bool user_set_parameter = set_params_.find(param) != set_params_.end();
+  bool user_set = set_params_.find(param) != set_params_.end();
 
   // [1. user-set config parameters]
   bool found_config;
   const char* value_config = get_from_config(param, &found_config);
-  if (found_config && user_set_parameter) {
-    *found = found_config;
-    return value_config;
+  if (found_config && user_set) {
+    *value = value_config;
+    *found = true;
+    return ConfigSource::USER_SET;
   }
 
   // Check if param default should be ignored based on environment variables
   if (ignore_default_via_env(param)) {
+    *value = "";
     *found = true;
-    return "";
+    return ConfigSource::ENVIRONMENT;
   }
 
   // [2. env variables]
-  const char* value_env = get_from_env(param, found);
-  if (*found)
-    return value_env;
+  bool found_env;
+  const char* value_env = get_from_env(param, &found_env);
+  if (found_env) {
+    *value = value_env;
+    *found = true;
+    return ConfigSource::ENVIRONMENT;
+  }
 
   // [3. profiles]
-  const char* value_profile = get_from_profile(param, found);
-  if (*found)
-    return value_profile;
+  bool found_profile;
+  const char* value_profile = get_from_profile(param, &found_profile);
+  if (found_profile) {
+    *value = value_profile;
+    *found = true;
+    return ConfigSource::PROFILE;
+  }
 
   // [4. default config value]
-  *found = found_config;
+  if (found_config) {
+    *value = value_config;
+    *found = true;
+    return ConfigSource::DEFAULT;
+  }
 
-  // Final case: parameter value was not found.
-  return *found ? value_config : "";
+  // Parameter not found anywhere
+  *value = "";
+  *found = false;
+  return ConfigSource::DEFAULT;
+}
+
+const char* Config::get_from_config_or_fallback(
+    const std::string& param, bool* found) const {
+  const char* value;
+  lookup_param(param, &value, found);
+  return value;
+}
+
+ConfigSource Config::get_with_source(
+    const std::string& param, std::string* value, bool* found) const {
+  const char* value_cstr;
+  ConfigSource source = lookup_param(param, &value_cstr, found);
+  *value = *found ? value_cstr : "";
+  return source;
 }
 
 const std::map<std::string, std::string>

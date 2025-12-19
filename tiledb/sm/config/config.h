@@ -65,6 +65,17 @@ namespace tiledb::sm {
 class WhiteboxConfig;
 
 /**
+ * Enumeration representing the source of a configuration parameter value.
+ * Lower numeric values indicate higher priority.
+ */
+enum class ConfigSource {
+  USER_SET = 0,     // Explicitly set by user
+  ENVIRONMENT = 1,  // Environment variables
+  PROFILE = 2,      // Loaded from a profile
+  DEFAULT = 3       // Default value
+};
+
+/**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
  * Parsing to appropriate types happens on demand.
@@ -757,6 +768,17 @@ class Config {
   Status get_vector(
       const std::string& param, std::vector<T>* value, bool* found) const;
 
+  /**
+   * Get a configuration parameter value along with its source.
+   *
+   * @param param The parameter name to retrieve
+   * @param value Output parameter for the value (empty string if not found)
+   * @param found Output parameter indicating if the parameter was found
+   * @return ConfigSource indicating where the value came from
+   */
+  ConfigSource get_with_source(
+      const std::string& param, std::string* value, bool* found) const;
+
   /** Gets the set parameters. */
   const std::set<std::string>& set_params() const;
 
@@ -808,6 +830,18 @@ class Config {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /**
+   * Internal helper to lookup a configuration parameter from all sources
+   * following priority order: user-set > environment > profile > default.
+   *
+   * @param param The parameter name to lookup
+   * @param value Output parameter for the config value
+   * @param found Output parameter indicating if the parameter was found
+   * @return The source from which the value was obtained
+   */
+  ConfigSource lookup_param(
+      const std::string& param, const char** value, bool* found) const;
 
   /**
    * If `param` is one of the system configuration parameters, it checks
