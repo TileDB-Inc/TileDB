@@ -190,3 +190,28 @@ TEST_CASE("Config::set_profile - found", "[config]") {
   REQUIRE(found);
   CHECK(restored_username == "test_user");
 }
+
+TEST_CASE("Config::get_with_source - various sources", "[config]") {
+  Config c{};
+  std::string value;
+  bool found;
+
+  // Test default value
+  tiledb::sm::ConfigSource source =
+      c.get_with_source("rest.retry_count", &value, &found);
+  REQUIRE(found);
+  CHECK(value == "25");
+  CHECK(source == tiledb::sm::ConfigSource::DEFAULT);
+
+  // Test user-set value
+  CHECK(c.set("rest.retry_count", "50").ok());
+  source = c.get_with_source("rest.retry_count", &value, &found);
+  REQUIRE(found);
+  CHECK(value == "50");
+  CHECK(source == tiledb::sm::ConfigSource::USER_SET);
+
+  // Test non-existent parameter
+  source = c.get_with_source("nonexistent.param", &value, &found);
+  CHECK(!found);
+  CHECK(value == "");
+}
