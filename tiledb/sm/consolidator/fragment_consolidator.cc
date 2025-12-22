@@ -681,8 +681,6 @@ void FragmentConsolidator::copy_array(
       config_.buffer_size_ != 0 ?
           config_.buffer_size_ :
           std::min((uint64_t)10485760, config_.total_budget_);
-  // Initial, "ungrown", value of `buffer_size`.
-  const uint64_t initial_buffer_size = buffer_size;
   if (buffer_size > config_.total_budget_) {
     throw FragmentConsolidatorException(
         "Consolidation cannot proceed without disrespecting the memory "
@@ -727,14 +725,13 @@ void FragmentConsolidator::copy_array(
         // var size attribute/dimension or the actual fixed size data so we can
         // use its size to know if any cells were written or not.
         if (cw->sizes().at(0) == 0) {
-          if (buffer_size == initial_buffer_size) {
-            // If the first read failed, throw.
+          // Grow the buffer and try again.
+          buffer_size += 2 * buffer_size;
+          if (buffer_size > config_.total_budget_) {
             throw FragmentConsolidatorException(
-                "Consolidation read 0 cells, no progress can be made");
+                "Consolidation cannot proceed without disrespecting the memory "
+                "budget.");
           }
-          // If it's not the first read, grow the buffer and try again.
-          buffer_size += std::min(
-              config_.total_budget_ - allocated_buffer_size, (2 * buffer_size));
         } else {
           buffer_queue.push(cw);
         }

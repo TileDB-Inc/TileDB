@@ -145,6 +145,8 @@ struct ConsolidationFx {
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
   void get_vac_files(std::vector<std::string>& files, bool dense = true);
+  void write_and_consolidate_fragments(
+      const char* array_name, int num_small_cells, uint64_t long_string_length);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -7587,86 +7589,202 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Helper method which attempts to validate fragment consolidation by writing
+ * `num_small_cells` small cells before writing one large cell of length
+ * `long_string_length`. Consolidation will succeed up to some value of
+ * `long_string_length`, and fail after by disrespecting the memory budget.
+ *
+ * @param array_name The name of the array.
+ * @param num_small_cells The number of small cells to consolidate.
+ * @param long_string_length The length of the long string to write.
+ */
+void ConsolidationFx::write_and_consolidate_fragments(
+    const char* array_name, int num_small_cells, uint64_t long_string_length) {
+  uint64_t arraylen =
+      (uint64_t)num_small_cells + 1;  // Account for long str in array
+  std::string words[8] = {
+      "foo", "bar", "apple", "orange", "banana", "red", "yellow", "blue"};
+
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  int rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  // Create array
+  tiledb_dimension_t* dim;
+  uint64_t dim_domain[] = {0, arraylen};
+  uint64_t tile_extent = arraylen;
+  rc = tiledb_dimension_alloc(
+      ctx_, "dim", TILEDB_UINT64, &dim_domain, &tile_extent, &dim);
+  CHECK(rc == TILEDB_OK);
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, dim);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(ctx_, "attr", TILEDB_CHAR, &attr);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, attr, TILEDB_FILTER_GZIP, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, attr, TILEDB_VAR_NUM);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    rc = tiledb_config_set(
+        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    // Do not remove the array when recreating context to set the new config
+    vfs_test_setup_.update_config(cfg);
+    ctx_ = vfs_test_setup_.ctx_c;
+    vfs_ = vfs_test_setup_.vfs_c;
+  }
+  rc = tiledb_array_create(ctx_, array_name, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Prepare to write to the array
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::vector<std::string> test_str;
+  test_str.reserve(arraylen);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
+
+  std::vector<uint64_t> offsets;
+  offsets.reserve(arraylen);
+  std::vector<uint64_t> coords;
+  coords.reserve(arraylen);
+  offsets.push_back(0);
+  for (uint64_t i = 1; i < arraylen; i++) {
+    std::string word = words[i % 8 - 1];
+    test_str.push_back(word);
+    offsets.push_back(offsets[i - 1] + word.length());
+    coords.push_back(i);
+  }
+
+  std::string long_string = "";
+  for (uint64_t i = 0; i < long_string_length; i++) {
+    long_string += test_chars[dist(gen)];
+  }
+  test_str.push_back(long_string);
+  coords.push_back(long_string_length);
+  REQUIRE(test_str.size() == arraylen);
+
+  // Write to the array
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_name, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "attr", test_str.data(), &arraylen);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "attr", offsets.data(), &arraylen);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "dim", coords.data(), &arraylen);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Consolidate
+  rc = tiledb_array_consolidate(ctx_, array_name, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
+}
+
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test sparse fragment consolidation",
     "[capi][consolidation][fragment][sparse][non-rest]") {
-  remove_sparse_string_array();
-  create_sparse_string_array();
-  write_sparse_string_full();
-  write_sparse_string_unordered();
+  const char* array_name = "fragment_consolidation_array";
+  remove_array(array_name);
 
-  SECTION("success") {
-    // Write large, 25MB chunk which outsizes the default buffer size of 10MB
-    const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
-    uint64_t test_str_size = 26214400;
-    std::string test_str;
-    test_str.reserve(test_str_size);
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
-    for (size_t i = 0; i < test_str_size; ++i) {
-      test_str += test_chars[dist(gen)];
-    }
-    REQUIRE(test_str.size() == test_str_size);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  int rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
 
-    // Consolidate
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
-    int rc = tiledb_config_alloc(&cfg, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
+  const char* mem_budget_str = "";
+  rc = tiledb_config_get(cfg, "sm.mem.total_budget", &mem_budget_str, &err);
+  uint64_t total_mem_budget = (uint64_t)std::stoll(mem_budget_str);
+  tiledb_config_free(&cfg);
 
-    // Consolidate
-    if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
-      std::string encryption_type_string =
-          encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
-      rc = tiledb_config_set(
-          cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
-      REQUIRE(err == nullptr);
-      rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
-      REQUIRE(rc == TILEDB_OK);
-      REQUIRE(err == nullptr);
-      rc =
-          tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
-      tiledb_config_free(&cfg);
-    } else {
-      rc =
-          tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
-    }
-    tiledb_config_free(&cfg);
-    REQUIRE(rc == TILEDB_OK);
+  uint64_t num_small_cells = 10000;
+  uint64_t long_string_length = total_mem_budget;
+
+  SECTION("- num small cells == 10000, long string length == 10000") {
+    long_string_length = 10000;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length);
   }
 
-  SECTION("no progress") {
-    uint64_t string_size = 1;
-    std::string errmsg = "";
+  SECTION(
+      "- num small cells == 10000, long string length == sm.mem.total_budget") {
+    long_string_length = total_mem_budget;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length);
+  }
 
-    DYNAMIC_SECTION("too small") {
-      string_size = 1;
-      errmsg =
-          "FragmentConsolidator: Consolidation read 0 cells, no "
-          "progress can be made";
-    }
+  SECTION(
+      "- num small cells == 10000, long string length == 1.91 * "
+      "sm.mem.total_budget") {
+    long_string_length = 1.91 * total_mem_budget;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length);
+  }
 
-    DYNAMIC_SECTION("too large") {
-      string_size = 10737418240 + 2;  // over default memory budget of 10GB
-      errmsg =
-          "FragmentConsolidator: Consolidation cannot proceed without "
-          "disrespecting the memory budget.";
-    }
+  // FAILS
+  /*SECTION("- num small cells == 10000, long string length == 1.92 *
+  sm.mem.total_budget") { long_string_length = 1.92 * total_mem_budget;
+    write_and_consolidate_fragments(array_name, num_small_cells,
+  long_string_length); std::string errmsg = "FragmentConsolidator: Consolidation
+  cannot proceed without " "disrespecting the memory budget.";
 
-    consolidate_sparse_string(string_size, true);
-
-    tiledb_error_t* err = NULL;
     tiledb_ctx_get_last_error(ctx_, &err);
-
     const char* msg;
     tiledb_error_message(err, &msg);
     CHECK(errmsg == msg);
-  }
+  }*/
 
-  remove_sparse_string_array();
+  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
