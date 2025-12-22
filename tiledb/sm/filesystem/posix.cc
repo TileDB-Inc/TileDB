@@ -376,7 +376,13 @@ void Posix::write(
   }
 }
 
-std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
+std::vector<directory_entry> Posix::ls_with_sizes(
+    const URI& uri, bool get_sizes) const {
+  // Noop if the parent uri is not a directory, do not error out.
+  if (!is_dir(uri)) {
+    return {};
+  }
+
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   auto dir = PosixDIR::open(path);
@@ -391,27 +397,14 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
       continue;
     std::string abspath = path + "/" + next_path->d_name;
 
-    // Getting the file size here incurs an additional system call
-    // via file_size() and ls() calls will feel this too.
-    // If this penalty becomes noticeable, we should just duplicate
-    // this implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
       entries.emplace_back(abspath, 0, true);
     } else {
-      uint64_t size = file_size(URI(abspath));
-      entries.emplace_back(abspath, size, false);
+      entries.emplace_back(
+          abspath, get_sizes ? file_size(URI(abspath)) : 0, false);
     }
   }
   return entries;
-}
-
-Status Posix::ls(
-    const std::string& path, std::vector<std::string>* paths) const {
-  for (auto& fs : ls_with_sizes(URI(path))) {
-    paths->emplace_back(fs.path().native());
-  }
-
-  return Status::Ok();
 }
 
 std::string Posix::abs_path(std::string_view path) {

@@ -176,23 +176,13 @@ class Win : public LocalFilesystem {
 
   /**
    *
-   * Lists files one level deep under a given path.
-   *
-   * @param path  The parent path to list sub-paths.
-   * @param paths Pointer to a vector of strings to store the retrieved paths.
-   * @return Status
-   */
-  Status ls(const std::string& path, std::vector<std::string>* paths) const;
-
-  /**
-   *
    * Lists files and file information under a given path.
    *
    * @param path The parent path to list sub-paths.
    * @return A list of directory_entry objects
    */
   std::vector<tiledb::common::filesystem::directory_entry> ls_with_sizes(
-      const URI& path) const override;
+      const URI& path, bool get_sizes) const override;
 
   /**
    * Move a given filesystem path.

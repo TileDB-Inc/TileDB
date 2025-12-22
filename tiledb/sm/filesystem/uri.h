@@ -227,6 +227,15 @@ class URI {
   bool is_tiledb() const;
 
   /**
+   * Checks if the last part of the URI is a valid timestamped name.
+   * This method does not validate file extensions. Only the timestamps, UUID,
+   * and version will be validated for the current URI.
+   *
+   * @return True if the last part if a timestamped name, else false.
+   */
+  bool is_timestamped_name() const;
+
+  /**
    * Get the position in the input URI where the embedded storage URI starts, if
    * one can be found.
    *
