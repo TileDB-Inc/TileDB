@@ -2703,14 +2703,6 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
-  // Reopen for modify exclusive.
-  tiledb_array_free(&array);
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  REQUIRE(rc == TILEDB_OK);
-
-  rc = tiledb_array_open(ctx_, array, TILEDB_MODIFY_EXCLUSIVE);
-  REQUIRE(rc == TILEDB_OK);
-
   // ALlocate buffer
   tiledb_buffer_t* buff;
   rc = tiledb_buffer_alloc(ctx_, &buff);

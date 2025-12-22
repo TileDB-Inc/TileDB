@@ -42,6 +42,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
 
@@ -54,7 +55,6 @@ class ArraySchemaEvolution;
 class Context;
 class FragmentMetadata;
 class MemoryTracker;
-enum class QueryType : uint8_t;
 
 /**
  * Class to store opened array resources. The class is not C.41 compliant as the
@@ -984,10 +984,8 @@ class Array {
 
   /**
    * Sets the array state as open.
-   *
-   * @param query_type The QueryType of the Array.
    */
-  void set_array_open(const QueryType& query_type);
+  void set_array_open();
 
   /**
    * Sets the array state as open, used in serialization
@@ -998,9 +996,9 @@ class Array {
   void set_query_type(QueryType query_type);
 
   /**
-   * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
+   * Checks the array is open, in WRITE mode, before deleting data.
    */
-  void ensure_array_is_valid_for_delete(const URI& uri);
+  void ensure_array_is_valid_for_delete();
 
   /**
    * Returns a map of the computed average cell size for var size
