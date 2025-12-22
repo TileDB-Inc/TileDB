@@ -215,3 +215,74 @@ TEST_CASE("Config::get_with_source - various sources", "[config]") {
   CHECK(!found);
   CHECK(value == "");
 }
+
+TEST_CASE(
+    "Config::get_effective_rest_auth_method - REST authentication",
+    "[config]") {
+  Config c{};
+
+  SECTION("No authentication configured") {
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::INVALID);
+  }
+
+  SECTION("With user-set token") {
+    CHECK(c.set("rest.token", "my-token").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION("With user-set username/password") {
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK(c.set("rest.password", "pass").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::USERNAME_PASSWORD);
+  }
+
+  SECTION("Only username configured - invalid") {
+    CHECK(c.set("rest.username", "user").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::INVALID);
+  }
+
+  SECTION("Only password configured - invalid") {
+    CHECK(c.set("rest.password", "pass").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::INVALID);
+  }
+
+  SECTION(
+      "Priority: Both token and username/password with same priority - prefer "
+      "token") {
+    CHECK(c.set("rest.token", "my-token").ok());
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK(c.set("rest.password", "pass").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION(
+      "Priority: Profile with token, user-set username/password - prefer "
+      "user-set") {
+    // Create a profile with token configured
+    tiledb::sm::TemporaryLocalDirectory tempdir_;
+    std::string profile_dir(tempdir_.path());
+    std::string profile_name = "test_profile";
+    auto profile = tiledb::sm::RestProfile(profile_name, profile_dir);
+    profile.set_param("rest.token", "profile-token");
+    profile.save_to_file();
+
+    // Set profile in config
+    CHECK(c.set("profile_name", profile_name).ok());
+    CHECK(c.set("profile_dir", profile_dir).ok());
+
+    // User explicitly sets username/password in config
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK(c.set("rest.password", "pass").ok());
+
+    // Should return USERNAME_PASSWORD because user-set has higher priority than
+    // profile
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::USERNAME_PASSWORD);
+  }
+}
