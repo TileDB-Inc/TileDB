@@ -1635,7 +1635,7 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of invalid fragment writes",
     "[cppapi][deletes][fragments][invalid]") {
-  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete fragments
+  // Note: An array must be open in WRITE mode to delete fragments
   remove_sparse_array();
 
   // Write fragments at timestamps 1, 3
