@@ -27,7 +27,6 @@
  */
 
 #include "../array.h"
-#include "../consistency.h"
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -39,11 +38,9 @@ int main() {
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
 
-  ConsistencyController controller;
-  Array array(resources, URI{}, controller);
+  Array array(resources, URI{});
 
   (void)array.is_empty();
-  (void)controller.is_open(URI("test"));
 
   return 0;
 }

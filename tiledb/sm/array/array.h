@@ -40,7 +40,6 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
-#include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -265,11 +264,6 @@ class OpenedArray {
 };
 
 /**
- * Free function that returns a reference to the ConsistencyController object.
- */
-ConsistencyController& controller();
-
-/**
  * An array object to be opened for reads/writes. An ``Array`` instance
  * is associated with the timestamp it is opened at.
  *
@@ -282,8 +276,6 @@ ConsistencyController& controller();
  * @invariant atomicity must be maintained between the following:
  * 1. an open Array.
  * 2. the is_open_ flag.
- * 3. the existence of a ConsistencySentry object, which represents
- * open Array registration.
  *
  * @invariant mtx_ must not be locked outside of the scope of a member function.
  */
@@ -294,10 +286,7 @@ class Array {
   /* ********************************* */
 
   /** Constructor. */
-  Array(
-      ContextResources& resources,
-      const URI& array_uri,
-      ConsistencyController& cc = controller());
+  Array(ContextResources& resources, const URI& array_uri);
 
   /** Destructor. */
   ~Array() = default;
@@ -1115,15 +1104,9 @@ class Array {
   /** Memory tracker for the array. */
   shared_ptr<MemoryTracker> memory_tracker_;
 
-  /** A reference to the object which controls the present Array instance. */
-  ConsistencyController& consistency_controller_;
-
-  /** Lifespan maintenance of an open array in the ConsistencyController. */
-  std::optional<ConsistencySentry> consistency_sentry_;
-
   /**
-   * Mutex that protects atomicity between the existence of the
-   * ConsistencySentry registration and the is_open_ flag.
+   * Mutex that protects atomicity between the is_open_ and
+   * is_opening_or_closing_ flags.
    */
   std::mutex mtx_;
 

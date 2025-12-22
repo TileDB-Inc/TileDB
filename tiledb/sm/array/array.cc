@@ -78,19 +78,11 @@ class ArrayException : public StatusException {
 
 void ensure_supported_schema_version_for_read(format_version_t version);
 
-ConsistencyController& controller() {
-  static ConsistencyController controller;
-  return controller;
-}
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Array::Array(
-    ContextResources& resources,
-    const URI& array_uri,
-    ConsistencyController& cc)
+Array::Array(ContextResources& resources, const URI& array_uri)
     : resources_(resources)
     , array_uri_(array_uri)
     , array_uri_serialized_(array_uri)
@@ -102,9 +94,7 @@ Array::Array(
     , new_component_timestamp_(nullopt)
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
-    , memory_tracker_(resources_.create_memory_tracker())
-    , consistency_controller_(cc)
-    , consistency_sentry_(nullopt) {
+    , memory_tracker_(resources_.create_memory_tracker()) {
 }
 
 /* ********************************* */
@@ -317,8 +307,6 @@ Status Array::open_without_fragments(
       timestamp_end_opened_at(),
       is_remote());
 
-  /* Note: query_type_ MUST be set before calling set_array_open()
-    because it will be examined by the ConsistencyController. */
   query_type_ = QueryType::READ;
   memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
 
@@ -2015,12 +2003,6 @@ void Array::set_array_open(const QueryType& query_type) {
         "May not perform simultaneous open or close operations.");
   }
   is_opening_or_closing_ = true;
-  /**
-   * Note: there is no danger in passing *this here;
-   * only the pointer value is used and nothing is called on the Array objects.
-   */
-  consistency_sentry_.emplace(
-      consistency_controller_.make_sentry(array_uri_, *this, query_type));
   is_open_ = true;
 }
 
@@ -2064,8 +2046,6 @@ void Array::set_array_closed() {
     is_opening_or_closing_ = true;
   }
 
-  /* Note: the Sentry object will also be released upon Array destruction. */
-  consistency_sentry_.reset();
   is_open_ = false;
 }
 
@@ -2078,7 +2058,7 @@ void Array::ensure_array_is_valid_for_delete(const URI& uri) {
   }
 
   // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
+  if (!is_open()) {
     throw ArrayException("[ensure_array_is_valid_for_delete] Array is closed");
   }
 
