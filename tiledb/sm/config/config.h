@@ -76,6 +76,15 @@ enum class ConfigSource {
 };
 
 /**
+ * Enumeration of REST authentication methods.
+ */
+enum class RestAuthMethod {
+  TOKEN,              // Using token authentication
+  USERNAME_PASSWORD,  // Using username/password authentication
+  INVALID             // Authentication not properly configured or unavailable
+};
+
+/**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
  * Parsing to appropriate types happens on demand.
@@ -778,6 +787,25 @@ class Config {
    */
   ConfigSource get_with_source(
       const std::string& param, std::string* value, bool* found) const;
+
+  /**
+   * Get the effective REST authentication method.
+   *
+   * Determines which authentication method will be used based on priority:
+   * - User-set values have highest priority
+   * - Environment variables have second priority
+   * - Profile values have third priority
+   * - If both token and username/password have same priority, prefer token
+   *
+   * Returns INVALID if:
+   * - No authentication is configured
+   * - Username and password are at different priority levels
+   * - Only username or only password is configured (incomplete)
+   *
+   * @return RestAuthMethod indicating the authentication method (TOKEN,
+   * USERNAME_PASSWORD) or INVALID
+   */
+  RestAuthMethod get_effective_rest_auth_method() const;
 
   /** Gets the set parameters. */
   const std::set<std::string>& set_params() const;

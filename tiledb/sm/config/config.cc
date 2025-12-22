@@ -1062,6 +1062,66 @@ ConfigSource Config::get_with_source(
   return source;
 }
 
+RestAuthMethod Config::get_effective_rest_auth_method() const {
+  // Get token with source
+  std::string token;
+  bool found_token;
+  ConfigSource token_source =
+      get_with_source("rest.token", &token, &found_token);
+  bool has_token = found_token && !token.empty();
+
+  // Get username and password with sources
+  std::string username;
+  bool found_username;
+  ConfigSource username_source =
+      get_with_source("rest.username", &username, &found_username);
+
+  std::string password;
+  bool found_password;
+  ConfigSource password_source =
+      get_with_source("rest.password", &password, &found_password);
+
+  // Check for valid username/password combination
+  bool has_username = found_username && !username.empty();
+  bool has_password = found_password && !password.empty();
+
+  // Username and password must both be present
+  if (has_username && has_password) {
+    // Check if they are at the same priority level
+    if (username_source != password_source) {
+      // Username and password at different priority levels - invalid
+      return RestAuthMethod::INVALID;
+    }
+  } else if (has_username || has_password) {
+    // Only one of username/password is configured - invalid
+    return RestAuthMethod::INVALID;
+  }
+
+  bool has_user_pass = has_username && has_password;
+
+  // Neither authentication method is configured - invalid
+  if (!has_token && !has_user_pass) {
+    return RestAuthMethod::INVALID;
+  }
+
+  // Determine which authentication method to use based on priority
+  // Priority hierarchy: USER_SET (0) > ENVIRONMENT (1) > PROFILE (2) > DEFAULT
+  // (3) If both methods have the same priority, prefer token
+  if (has_token && has_user_pass) {
+    if (token_source <= username_source) {
+      return RestAuthMethod::TOKEN;
+    } else {
+      return RestAuthMethod::USERNAME_PASSWORD;
+    }
+  } else if (has_token) {
+    // Only token is configured
+    return RestAuthMethod::TOKEN;
+  } else {
+    // Only username/password is configured
+    return RestAuthMethod::USERNAME_PASSWORD;
+  }
+}
+
 const std::map<std::string, std::string>
 Config::get_all_params_from_config_or_env() const {
   std::map<std::string, std::string> values;
