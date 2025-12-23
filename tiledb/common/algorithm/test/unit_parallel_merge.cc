@@ -1488,11 +1488,6 @@ TEST_CASE("parallel merge destructor race", "[algorithm][parallel_merge]") {
   std::optional<tiledb::common::WhiteboxMemoryTracker> memory_tracker;
   memory_tracker.emplace();
 
-  std::barrier sync(2);
-  auto intercept =
-      tiledb::algorithm::intercept::spawn_next_merge_unit_drain().and_also(
-          [&]() { sync.arrive_and_wait(); });
-
   {
     ParallelMergeMemoryResources resources(memory_tracker.value());
     auto cmp =
@@ -1506,7 +1501,6 @@ TEST_CASE("parallel merge destructor race", "[algorithm][parallel_merge]") {
   // destruct memory tracker, this should be fine since the future finished...
   // right?
   memory_tracker.reset();
-  sync.arrive_and_wait();
 
   // NB: if the thread pool destructs first then it will wait for tasks to
   // finish, so the thread pool must destruct last

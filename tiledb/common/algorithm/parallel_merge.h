@@ -97,7 +97,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/producer_consumer_queue.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
-#include "tiledb/common/util/intercept.h"
 
 #include <algorithm>
 #include <memory>
@@ -112,10 +111,6 @@ class ParallelMergeException : public tiledb::common::StatusException {
       : tiledb::common::StatusException("ParallelMerge", detail) {
   }
 };
-
-namespace intercept {
-DECLARE_INTERCEPT(spawn_next_merge_unit_drain);
-}
 
 /**
  * Description of data which can be parallel-merged,
@@ -212,6 +207,8 @@ struct ParallelMergeFuture {
     uint64_t p_;
     tiledb::common::ThreadPool::Task task_;
   };
+
+  tdb::pmr::vector<tiledb::common::ThreadPool::Task> spawn_tasks_;
 
   tdb::pmr::vector<MergeUnit> merge_bounds_;
   tiledb::common::
@@ -594,7 +591,7 @@ class ParallelMerge {
     }
 
     if (p < parallel_factor - 1) {
-      pool->execute(
+      future->spawn_tasks_.push_back(pool->execute(
           spawn_next_merge_unit,
           pool,
           streams,
@@ -604,11 +601,18 @@ class ParallelMerge {
           target_unit_size,
           p + 1,
           output,
-          future);
+          future));
     } else {
-      future->merge_tasks_.drain();
+      // There is a small timing window after draining the queue
+      // before returning where the MergeUnit memory is in use.
+      // During this window the caller may be doing whatever it
+      // wants, including destructing the memory resource,
+      // which would then detect outstanding memory (CORE-241).
+      // So, clear these here to avoid that.
+      accumulated_stream_bounds.starts.clear();
+      accumulated_stream_bounds.ends.clear();
 
-      INTERCEPT(intercept::spawn_next_merge_unit_drain);
+      future->merge_tasks_.drain();
     }
 
     return tiledb::common::Status::Ok();
@@ -626,7 +630,7 @@ class ParallelMerge {
     const uint64_t target_unit_size =
         (total_items + (parallel_factor - 1)) / parallel_factor;
 
-    pool.execute(
+    future.spawn_tasks_.push_back(pool.execute(
         spawn_next_merge_unit,
         &pool,
         streams,
@@ -636,7 +640,7 @@ class ParallelMerge {
         target_unit_size,
         static_cast<uint64_t>(0),
         output,
-        &future);
+        &future));
   }
 
   // friend declarations for testing
