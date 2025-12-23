@@ -479,6 +479,7 @@ if(TILEDB_TESTS)
   add_library(tiledb_Catch2WithMain STATIC
     test/support/src/tdb_catch_main.cc)
   target_link_libraries(tiledb_Catch2WithMain PUBLIC Catch2::Catch2)
+  add_compile_definitions("TILEDB_INTERCEPTS")
 endif()
 
 # -------------------------------------------------------

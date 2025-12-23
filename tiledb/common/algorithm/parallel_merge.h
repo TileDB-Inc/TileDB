@@ -97,6 +97,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/producer_consumer_queue.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/common/util/intercept.h"
 
 #include <algorithm>
 #include <memory>
@@ -111,6 +112,10 @@ class ParallelMergeException : public tiledb::common::StatusException {
       : tiledb::common::StatusException("ParallelMerge", detail) {
   }
 };
+
+namespace intercept {
+DECLARE_INTERCEPT(spawn_next_merge_unit_drain);
+}
 
 /**
  * Description of data which can be parallel-merged,
@@ -602,6 +607,8 @@ class ParallelMerge {
           future);
     } else {
       future->merge_tasks_.drain();
+
+      INTERCEPT(intercept::spawn_next_merge_unit_drain);
     }
 
     return tiledb::common::Status::Ok();

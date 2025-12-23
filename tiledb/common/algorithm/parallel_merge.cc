@@ -38,6 +38,12 @@ using namespace tiledb::common;
 
 namespace tiledb::algorithm {
 
+namespace intercept {
+
+DEFINE_INTERCEPT(spawn_next_merge_unit_drain);
+
+}
+
 ParallelMergeFuture::ParallelMergeFuture(
     ParallelMergeMemoryResources& memory, size_t parallel_factor)
     : memory_(memory)
