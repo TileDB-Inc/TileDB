@@ -699,6 +699,7 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
         "Failed to parse config value '" + std::string(val) + "' for key '" +
         param + "' due to: " + status.to_string());
   }
+  *found = true;
   return Status::Ok();
 }
 
