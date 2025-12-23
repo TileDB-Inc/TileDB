@@ -164,12 +164,14 @@ void RestProfile::set_param(
   param_values_[param] = value;
 }
 
-const std::string* RestProfile::get_param(const std::string& param) const {
+std::optional<std::string_view> RestProfile::get_param(
+    const std::string& param) const {
   auto it = param_values_.find(param);
-  if (it != param_values_.end()) {
-    return &it->second;
+  if (it == param_values_.end()) {
+    return std::nullopt;
+  } else {
+    return it->second;
   }
-  return nullptr;
 }
 
 /**
