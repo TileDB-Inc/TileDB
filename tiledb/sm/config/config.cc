@@ -984,10 +984,10 @@ const char* Config::get_from_profile(
   }
   // If the profile was loaded successfully, try to get the parameter from it.
   if (rest_profile_.has_value()) {
-    const std::string* value = rest_profile_.value().get_param(param);
-    if (value) {
+    auto maybe_value = rest_profile_.value().get_param(param);
+    if (maybe_value.has_value()) {
       *found = true;
-      return value->c_str();
+      return maybe_value.value().data();
     }
   }
 
