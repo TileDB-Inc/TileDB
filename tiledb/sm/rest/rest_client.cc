@@ -56,8 +56,8 @@ RestClient::RestClient(const Config& config)
   /*
    * Initialization of `rest_server_`
    */
-  rest_server_ =
-      config.get<std::string>("rest.server_address", Config::must_find);
+  rest_server_ = std::string(
+      config.get<std::string_view>("rest.server_address", Config::must_find));
   if (rest_server_.ends_with('/')) {
     size_t pos = rest_server_.find_last_not_of('/');
     rest_server_.resize(pos + 1);
@@ -86,15 +86,15 @@ RestClient::RestClient(const Config& config)
     extra_headers_[key] = iter.value();
   }
 
-  if (auto payer =
-          config.get<std::string>("rest.payer_namespace", Config::must_find);
+  if (auto payer = config.get<std::string_view>(
+          "rest.payer_namespace", Config::must_find);
       !payer.empty()) {
-    extra_headers_["X-Payer"] = std::move(payer);
+    extra_headers_["X-Payer"] = std::string(payer);
   }
 }
 
-void RestClient::add_header(const std::string& name, const std::string& value) {
-  extra_headers_[name] = value;
+void RestClient::add_header(const std::string& name, std::string_view value) {
+  extra_headers_[name] = std::string(value);
 }
 
 std::shared_ptr<RestClient> RestClientFactory::make(

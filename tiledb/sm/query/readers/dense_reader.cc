@@ -606,8 +606,8 @@ void DenseReader::init_read_state() {
   }
 
   // Get config values.
-  offsets_format_mode_ =
-      config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
+  offsets_format_mode_ = std::string(
+      config_.get<std::string_view>("sm.var_offsets.mode", Config::must_find));
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     throw DenseReaderException(
         "Cannot initialize reader; Unsupported offsets format in "
