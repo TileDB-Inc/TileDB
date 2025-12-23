@@ -1042,7 +1042,7 @@ Status FragmentConsolidator::set_config(const Config& config) {
       "sm.consolidation.timestamp_start", Config::must_find);
   config_.timestamp_end_ = merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", Config::must_find);
-  std::string reader = merged_config.get<std::string>(
+  auto reader = merged_config.get<std::string_view>(
       "sm.query.sparse_global_order.reader", Config::must_find);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
   config_.with_timestamps_ = true;

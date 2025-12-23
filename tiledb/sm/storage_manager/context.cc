@@ -240,7 +240,7 @@ void Context::init_loggers(const Config& config) {
 }
 
 common::Logger::Level get_log_level(const Config& config) {
-  auto cfg_level = config.get<std::string>("config.logging_level");
+  auto cfg_level = config.get<std::string_view>("config.logging_level");
   if (cfg_level == "0") {
     return Logger::Level::FATAL;
   } else if (cfg_level == "1") {

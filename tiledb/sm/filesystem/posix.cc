@@ -48,6 +48,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <charconv>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -126,12 +127,14 @@ Posix::Posix(const Config& config) {
   // Initialize member variables with posix config parameters.
 
   // File and directory permissions are set by the user in octal.
-  std::string permissions = config.get<std::string>(
+  std::string_view permissions = config.get<std::string_view>(
       "vfs.file.posix_file_permissions", Config::must_find);
-  file_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
-  permissions = config.get<std::string>(
+  std::from_chars(permissions.begin(), permissions.end(), file_permissions_, 8);
+
+  permissions = config.get<std::string_view>(
       "vfs.file.posix_directory_permissions", Config::must_find);
-  directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
+  std::from_chars(
+      permissions.begin(), permissions.end(), directory_permissions_, 8);
 }
 
 bool Posix::supports_uri(const URI& uri) const {
