@@ -56,32 +56,32 @@ namespace tiledb::sm::utils::parse {
 /* ********************************* */
 
 /** Converts the input string into an `int` value. */
-Status convert(const std::string& str, int* value);
+Status convert(std::string_view str, int* value);
 
 /** Converts the input string into an `int64_t` value. */
-Status convert(const std::string& str, int64_t* value);
+Status convert(std::string_view str, int64_t* value);
 
 /** Converts the input string into a `uint64_t` value. */
-Status convert(const std::string& str, uint64_t* value);
+Status convert(std::string_view str, uint64_t* value);
 
 /** Converts the input string into a `uint32_t` value. */
-Status convert(const std::string& str, uint32_t* value);
+Status convert(std::string_view str, uint32_t* value);
 
 /** Converts the input string into a `float` value. */
-Status convert(const std::string& str, float* value);
+Status convert(std::string_view str, float* value);
 
 /** Converts the input string into a `double` value. */
-Status convert(const std::string& str, double* value);
+Status convert(std::string_view str, double* value);
 
 /** Converts the input string into a `bool` value. */
-Status convert(const std::string& str, bool* value);
+Status convert(std::string_view str, bool* value);
 
 /** Converts the input string into a `SerializationType` value. */
-Status convert(const std::string& str, SerializationType* value);
+Status convert(std::string_view str, SerializationType* value);
 
 /** Converts the input string into a `std::vector<T>` value. */
 template <class T>
-Status convert(const std::string& str, std::vector<T>* value) {
+Status convert(std::string_view str, std::vector<T>* value) {
   try {
     uint64_t start = 0;
     auto end = str.find(constants::config_delimiter);
@@ -122,12 +122,6 @@ std::optional<T> convert_optional(const std::string& str) {
   throw_if_not_ok(convert(str, &result));
   return result;
 }
-
-/** Returns `true` if the input string is a (potentially signed) integer. */
-bool is_int(const std::string& str);
-
-/** Returns `true` if the input string is an unsigned integer. */
-bool is_uint(const std::string& str);
 
 /** Converts the input value to string. */
 template <class T>
