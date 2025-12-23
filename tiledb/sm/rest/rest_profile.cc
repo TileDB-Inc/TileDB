@@ -121,15 +121,14 @@ const std::string RestProfile::DEFAULT_PROFILE_NAME{"default"};
  */
 
 RestProfile::RestProfile(
-    const std::optional<std::string>& name,
-    const std::optional<std::string>& dir)
+    std::optional<std::string_view> name, std::optional<std::string_view> dir)
     : version_(constants::rest_profile_version)
     , name_(
           name.has_value() && !name.value().empty() ?
-              name.value() :
+              std::string(name.value()) :
               RestProfile::DEFAULT_PROFILE_NAME) {
   if (dir.has_value() && !dir.value().empty()) {
-    dir_ = ensure_trailing_slash(dir.value());
+    dir_ = ensure_trailing_slash(std::string(dir.value()));
   } else if (getenv("TILEDB_PROFILE_DIR") != nullptr) {
     // If the user has set the TILEDB_PROFILE_DIR environment variable,
     // use that as the directory to store the profiles file.
