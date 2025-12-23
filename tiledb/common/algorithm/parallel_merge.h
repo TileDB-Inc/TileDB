@@ -208,6 +208,8 @@ struct ParallelMergeFuture {
     tiledb::common::ThreadPool::Task task_;
   };
 
+  tdb::pmr::vector<tiledb::common::ThreadPool::Task> spawn_tasks_;
+
   tdb::pmr::vector<MergeUnit> merge_bounds_;
   tiledb::common::
       ProducerConsumerQueue<MergeUnitTask, std::queue<MergeUnitTask>>
@@ -589,7 +591,7 @@ class ParallelMerge {
     }
 
     if (p < parallel_factor - 1) {
-      pool->execute(
+      future->spawn_tasks_.push_back(pool->execute(
           spawn_next_merge_unit,
           pool,
           streams,
@@ -599,8 +601,17 @@ class ParallelMerge {
           target_unit_size,
           p + 1,
           output,
-          future);
+          future));
     } else {
+      // There is a small timing window after draining the queue
+      // before returning where the MergeUnit memory is in use.
+      // During this window the caller may be doing whatever it
+      // wants, including destructing the memory resource,
+      // which would then detect outstanding memory (CORE-241).
+      // So, clear these here to avoid that.
+      accumulated_stream_bounds.starts.clear();
+      accumulated_stream_bounds.ends.clear();
+
       future->merge_tasks_.drain();
     }
 
@@ -619,7 +630,7 @@ class ParallelMerge {
     const uint64_t target_unit_size =
         (total_items + (parallel_factor - 1)) / parallel_factor;
 
-    pool.execute(
+    future.spawn_tasks_.push_back(pool.execute(
         spawn_next_merge_unit,
         &pool,
         streams,
@@ -629,7 +640,7 @@ class ParallelMerge {
         target_unit_size,
         static_cast<uint64_t>(0),
         output,
-        &future);
+        &future));
   }
 
   // friend declarations for testing
