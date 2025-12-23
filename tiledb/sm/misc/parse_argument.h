@@ -114,7 +114,7 @@ concept Convertible = requires(const std::string& str, T x) {
 /** Converts the input string into an std::optional value. Returns nullopt if
  * the input string is empty. */
 template <Convertible T>
-std::optional<T> convert_optional(const std::string& str) {
+std::optional<T> convert_optional(std::string_view str) {
   if (str.empty()) {
     return nullopt;
   }

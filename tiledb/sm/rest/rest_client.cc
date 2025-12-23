@@ -93,8 +93,8 @@ RestClient::RestClient(const Config& config)
   }
 }
 
-void RestClient::add_header(const std::string& name, const std::string& value) {
-  extra_headers_[name] = value;
+void RestClient::add_header(const std::string& name, std::string_view value) {
+  extra_headers_[name] = std::string(value);
 }
 
 std::shared_ptr<RestClient> RestClientFactory::make(

@@ -63,7 +63,7 @@ inline const std::string& serialization_type_str(
 
 /** Returns the serialization type given a string representation. */
 inline Status serialization_type_enum(
-    const std::string& serialization_type_str,
+    std::string_view serialization_type_str,
     SerializationType* serialization_type) {
   if (serialization_type_str == constants::serialization_type_json_str)
     *serialization_type = SerializationType::JSON;
@@ -71,7 +71,7 @@ inline Status serialization_type_enum(
     *serialization_type = SerializationType::CAPNP;
   else {
     return tiledb::common::Status_Error(
-        "Invalid SerializationType " + serialization_type_str);
+        "Invalid SerializationType " + std::string(serialization_type_str));
   }
   return Status::Ok();
 }
