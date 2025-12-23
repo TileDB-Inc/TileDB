@@ -50,15 +50,19 @@ namespace tiledb::sm::utils::parse {
 /* ********************************* */
 template <typename T>
 static Status convert(std::string_view str, T* value, const char* errdetail) {
-  const auto rc = std::from_chars(str.begin(), str.end(), *value);
+  size_t offset = 0;
+  if (!str.empty() && str.data()[0] == '+') {
+    offset = 1;
+  }
+  const auto rc = std::from_chars(str.begin() + offset, str.end(), *value);
   if (rc.ptr != str.end() || rc.ec == std::errc::invalid_argument) {
     std::stringstream err;
-    err << "Failed to convert string " << str << " to " << errdetail
+    err << "Failed to convert string '" << str << "' to " << errdetail
         << "; Invalid argument";
     return LOG_STATUS(Status_UtilsError(err.str()));
   } else if (rc.ec == std::errc::result_out_of_range) {
     std::stringstream err;
-    err << "Failed to convert string " << str << " to " << errdetail
+    err << "Failed to convert string '" << str << "' to " << errdetail
         << "; Value out of range";
     return LOG_STATUS(Status_UtilsError(err.str()));
   } else {
