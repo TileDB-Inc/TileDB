@@ -79,8 +79,8 @@ class RestProfile {
    * `std::nullopt`, the home directory is used.
    */
   RestProfile(
-      const std::optional<std::string>& name = std::nullopt,
-      const std::optional<std::string>& dir = std::nullopt);
+      std::optional<std::string_view> name = std::nullopt,
+      std::optional<std::string_view> dir = std::nullopt);
 
   /** Destructor. */
   ~RestProfile() = default;
