@@ -1122,11 +1122,11 @@ void Subarray::set_config(const QueryType query_type, const Config& config) {
       "sm.merge_overlapping_ranges_experimental", Config::MustFindMarker());
 
   if (query_type == QueryType::READ) {
-    const std::string read_range_oob_str =
-        config.get<std::string>("sm.read_range_oob", Config::must_find);
+    auto read_range_oob_str =
+        config.get<std::string_view>("sm.read_range_oob", Config::must_find);
     if (read_range_oob_str != "error" && read_range_oob_str != "warn")
       throw SubarrayException(
-          "[set_config] Invalid value " + read_range_oob_str +
+          "[set_config] Invalid value " + std::string(read_range_oob_str) +
           " for sm.read_range_obb. Acceptable values are 'error' or 'warn'.");
     err_on_range_oob_ = read_range_oob_str == "error";
   }

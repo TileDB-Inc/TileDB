@@ -1912,8 +1912,8 @@ void Reader::init_read_state() {
       config_.get<uint64_t>("sm.memory_budget", Config::must_find);
   const uint64_t memory_budget_var =
       config_.get<uint64_t>("sm.memory_budget_var", Config::must_find);
-  offsets_format_mode_ =
-      config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
+  offsets_format_mode_ = std::string(
+      config_.get<std::string_view>("sm.var_offsets.mode", Config::must_find));
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     throw ReaderException(
         "Cannot initialize reader; Unsupported offsets"

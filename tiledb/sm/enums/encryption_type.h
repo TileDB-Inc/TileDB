@@ -61,7 +61,7 @@ inline const std::string& encryption_type_str(EncryptionType encryption_type) {
 
 /** Returns the encryption type given a string representation. */
 inline tuple<Status, optional<EncryptionType>> encryption_type_enum(
-    const std::string& encryption_type_str) {
+    std::string_view encryption_type_str) {
   EncryptionType encryption_type;
   if (encryption_type_str == constants::no_encryption_str)
     encryption_type = EncryptionType::NO_ENCRYPTION;
@@ -69,7 +69,9 @@ inline tuple<Status, optional<EncryptionType>> encryption_type_enum(
     encryption_type = EncryptionType::AES_256_GCM;
   else {
     return {
-        Status_Error("Invalid EncryptionType " + encryption_type_str), nullopt};
+        Status_Error(
+            "Invalid EncryptionType " + std::string(encryption_type_str)),
+        nullopt};
   }
   return {Status::Ok(), encryption_type};
 }

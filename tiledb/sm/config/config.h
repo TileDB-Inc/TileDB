@@ -887,31 +887,46 @@ class Config {
 };
 
 /**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as `get_internal_string<false>`.
+ * An explicit specialization for `std::string_view`. It does not call a
+ * conversion function and it is thus the same as `get_internal_string<false>`.
  */
 template <>
-[[nodiscard]] inline std::optional<std::string> Config::get<std::string>(
-    const std::string& key) const {
+[[nodiscard]] inline std::optional<std::string_view>
+Config::get<std::string_view>(const std::string& key) const {
   auto maybe_value = get_internal_string<false>(key);
   if (maybe_value.has_value()) {
-    return std::string(maybe_value.value());
+    return maybe_value.value();
   } else {
     return std::nullopt;
   }
 }
 
 /**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as `get_internal_string<true>`
+ * An explicit specialization for `std::string_view`. It does not call a
+ * conversion function and it is thus the same as `get_internal_string<true>`
  *
  * Will throw if value is not found for provided config key
  */
 template <>
-inline std::string Config::get<std::string>(
+inline std::string_view Config::get<std::string_view>(
     const std::string& key, const Config::MustFindMarker&) const {
-  return std::string(get_internal_string<true>(key).value());
+  return get_internal_string<true>(key).value();
 }
+
+/**
+ * Disable specializations for `std::string` to avoid making unnecessary copies.
+ */
+template <>
+[[nodiscard]] inline std::optional<std::string> Config::get<std::string>(
+    const std::string& key) const = delete;
+
+/**
+ * Disable specializations for `std::string` to avoid making unnecessary copies.
+ */
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const = delete;
+
 }  // namespace tiledb::sm
 
 #ifdef TILEDB_DEPRECATE_CONFIG
