@@ -1100,7 +1100,7 @@ TEST_CASE(
 
   // Recursively delete the group.
   {
-    tiledb::Group g{ctx, "my_group", TILEDB_MODIFY_EXCLUSIVE};
+    tiledb::Group g{ctx, "my_group", TILEDB_WRITE};
     g.delete_group("my_group", true);
   }
 

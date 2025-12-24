@@ -130,7 +130,7 @@ class Group {
    *
    * Handles local and remote deletion of data from a group with the given URI.
    *
-   * @pre The group must be opened in MODIFY_EXCLUSIVE mode.
+   * @pre The group must be opened in WRITE mode.
    * @note If recursive == false, data added to the group will be left as-is.
    *
    * @param uri The URI of the group to be deleted.

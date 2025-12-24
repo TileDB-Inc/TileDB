@@ -230,7 +230,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_put_metadata(
  * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
  *
  * @param ctx The TileDB context.
- * @param group An group opened in MODIFY_EXCLUSIVE mode.
+ * @param group An group opened in WRITE mode.
  * @param uri The address of the group item to be deleted.
  * @param recursive True if all data inside the group is to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.

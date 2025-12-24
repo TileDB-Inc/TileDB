@@ -248,8 +248,7 @@ class Group {
   }
 
   /**
-   * Deletes all written data from an open group. The group must
-   * be opened in MODIFY_EXCLUSIVE mode, otherwise the function will error out.
+   * Deletes all written data from an open group.
    *
    * @param uri The address of the group item to be deleted.
    * @param recursive True if all data inside the group is to be deleted.

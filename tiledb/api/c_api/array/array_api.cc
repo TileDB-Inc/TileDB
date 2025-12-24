@@ -204,10 +204,7 @@ capi_return_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* array_uri) {
   // Open the array for exclusive modification
   try {
     throw_if_not_ok(array->open(
-        QueryType::MODIFY_EXCLUSIVE,
-        EncryptionType::NO_ENCRYPTION,
-        nullptr,
-        0));
+        QueryType::WRITE, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   } catch (...) {
     tiledb_array_t::break_handle(array);
     throw;
@@ -240,7 +237,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
     array->set_timestamp_start(timestamp_start);
     array->set_timestamp_end(timestamp_end);
     throw_if_not_ok(array->open(
-        static_cast<QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+        QueryType::WRITE,
         static_cast<EncryptionType>(TILEDB_NO_ENCRYPTION),
         nullptr,
         0));
@@ -296,7 +293,7 @@ capi_return_t tiledb_array_delete_fragments_list(
   // Open the array for exclusive modification
   try {
     throw_if_not_ok(array->open(
-        static_cast<QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+        QueryType::WRITE,
         static_cast<EncryptionType>(TILEDB_NO_ENCRYPTION),
         nullptr,
         0));
