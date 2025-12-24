@@ -2703,6 +2703,10 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
+  // Open the array for delete.
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
   // ALlocate buffer
   tiledb_buffer_t* buff;
   rc = tiledb_buffer_alloc(ctx_, &buff);
