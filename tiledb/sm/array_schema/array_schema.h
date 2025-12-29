@@ -246,14 +246,18 @@ class ArraySchema {
   /**
    * Checks the correctness of the array schema.
    *
+   * @param cfg The config to use for the check.
+   * @param on_creation Whether the check is on creation.
    * Throws if validation fails
    */
-  void check(const Config& cfg) const;
+  void check(const Config& cfg, bool on_creation = false) const;
 
   /**
    * Checks the correctness of the array schema without config access.
+   *
+   * @param on_creation Whether the check is on creation.
    */
-  void check_without_config() const;
+  void check_without_config(bool on_creation = false) const;
 
   /**
    * Throws an error if the provided schema does not match the definition given
