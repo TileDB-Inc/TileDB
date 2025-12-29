@@ -437,12 +437,12 @@ void ArraySchema::check_webp_filter() const {
   }
 }
 
-void ArraySchema::check(const Config& cfg) const {
-  check_without_config();
+void ArraySchema::check(const Config& cfg, bool on_creation) const {
+  check_without_config(on_creation);
   check_enumerations(cfg);
 }
 
-void ArraySchema::check_without_config() const {
+void ArraySchema::check_without_config(bool on_creation) const {
   if (domain_ == nullptr)
     throw ArraySchemaException{"Array schema check failed; Domain not set"};
 
@@ -497,7 +497,7 @@ void ArraySchema::check_without_config() const {
   // Note: external dimension labels do not need a schema since they are not
   // created when the array is created.
   for (auto label : dimension_labels_) {
-    if (!label->is_external()) {
+    if (on_creation && !label->is_external()) {
       if (!label->has_schema()) {
         throw ArraySchemaException{
             "Array schema check failed; Missing dimension label schema for "

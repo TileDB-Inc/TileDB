@@ -89,3 +89,35 @@ TEST_CASE_METHOD(
   auto dim_label_object = tiledb::Object::object(ctx_, dim_label.uri());
   CHECK(dim_label_object.type() == tiledb::Object::Type::Array);
 }
+
+TEST_CASE_METHOD(
+    TemporaryDirectoryFixture,
+    "Check array schema with dimension label after opening array",
+    "[cppapi][ArraySchema][DimensionLabel][regression][array_check]") {
+  // Set array name.
+  auto array_name = fullpath("simple_array_with_label");
+
+  // Create the C++ context.
+  tiledb::Context ctx_{ctx, false};
+
+  // Define label order for test.
+  auto label_type = TILEDB_STRING_ASCII;
+
+  // Create an array with a dimension label.
+  tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
+  tiledb::Domain domain(ctx_);
+  auto d1 = tiledb::Dimension::create<uint64_t>(ctx_, "x", {{0, 63}}, 64);
+  auto d2 = tiledb::Dimension::create<uint64_t>(ctx_, "y", {{0, 63}}, 64);
+  domain.add_dimension(d1);
+  schema.set_domain(domain);
+  auto a1 = tiledb::Attribute::create<double>(ctx_, "a");
+  schema.add_attribute(a1);
+  tiledb::ArraySchemaExperimental::add_dimension_label(
+      ctx_, schema, 0, "l1", TILEDB_INCREASING_DATA, label_type);
+  tiledb::Array::create(ctx_, array_name, schema);
+
+  // Open array after creating it.
+  tiledb::Array array(ctx_, array_name, TILEDB_READ);
+  // This should not throw an error.
+  array.schema().check();
+}
