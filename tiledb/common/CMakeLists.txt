@@ -62,6 +62,7 @@ add_library(assert_header INTERFACE)
     # can be removed when c++20 `<format>` is consistently supported
 find_package(fmt REQUIRED)
 target_link_libraries(assert_header INTERFACE fmt::fmt)
+target_include_directories(assert_header INTERFACE ${CMAKE_SOURCE_DIR})
 
 #
 # `assert` object library

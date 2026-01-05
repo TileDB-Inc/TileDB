@@ -40,6 +40,12 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
+namespace tiledb::common {
+struct WhiteboxMemoryTracker : public MemoryTracker {
+  using MemoryTracker::MemoryTracker;
+};
+}  // namespace tiledb::common
+
 namespace tiledb::algorithm {
 
 template <typename T>
@@ -1464,4 +1470,32 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
     CHECK(output.size() == expect.size());
     CHECK(output == expect);
   }
+}
+
+TEST_CASE("parallel merge destructor race", "[algorithm][parallel_merge]") {
+  ThreadPool pool(4);
+
+  std::vector<uint64_t> output(20);
+
+  ParallelMergeOptions options = {.parallel_factor = 4, .min_merge_items = 4};
+
+  std::optional<tiledb::common::WhiteboxMemoryTracker> memory_tracker;
+  memory_tracker.emplace();
+
+  {
+    ParallelMergeMemoryResources resources(memory_tracker.value());
+    auto cmp =
+        std::less<typename decltype(EXAMPLE_STREAMS)::value_type::value_type>{};
+    auto future =
+        parallel_merge(pool, resources, options, EXAMPLE_STREAMS, cmp, output);
+  }
+
+  // future is destructed which should have awaited the merge future
+
+  // destruct memory tracker, this should be fine since the future finished...
+  // right?
+  memory_tracker.reset();
+
+  // NB: if the thread pool destructs first then it will wait for tasks to
+  // finish, so the thread pool must destruct last
 }
