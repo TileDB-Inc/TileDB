@@ -480,7 +480,6 @@ if(TILEDB_TESTS)
     test/support/src/tdb_catch_main.cc)
   target_link_libraries(tiledb_Catch2WithMain PUBLIC Catch2::Catch2)
   target_include_directories(tiledb_Catch2WithMain PRIVATE ${CMAKE_SOURCE_DIR})
-  add_compile_definitions("TILEDB_INTERCEPTS")
 endif()
 
 # -------------------------------------------------------
