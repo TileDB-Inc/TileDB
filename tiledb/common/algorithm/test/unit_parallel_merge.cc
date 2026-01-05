@@ -35,10 +35,6 @@
 #include <test/support/tdb_catch.h>
 #include <test/support/tdb_rapidcheck.h>
 
-#if defined(TILEDB_INTERCEPTS)
-#include <barrier>
-#endif
-
 using namespace tiledb::algorithm;
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -1476,8 +1472,6 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
   }
 }
 
-#if defined(TILEDB_INTERCEPTS)
-
 TEST_CASE("parallel merge destructor race", "[algorithm][parallel_merge]") {
   ThreadPool pool(4);
 
@@ -1505,5 +1499,3 @@ TEST_CASE("parallel merge destructor race", "[algorithm][parallel_merge]") {
   // NB: if the thread pool destructs first then it will wait for tasks to
   // finish, so the thread pool must destruct last
 }
-
-#endif
