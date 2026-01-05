@@ -3,6 +3,8 @@
 //   (See accompanying file LICENSE.txt or copy at
 //        https://www.boost.org/LICENSE_1_0.txt)
 
+#include "tiledb/common/assert.h"
+
 // SPDX-License-Identifier: BSL-1.0
 #include <catch2/catch_session.hpp>
 #include <catch2/internal/catch_compiler_capabilities.hpp>
@@ -52,6 +54,16 @@ int main(int argc, char* argv[]) {
   // We want to force the linker not to discard the global variable
   // and its constructor, as it (optionally) registers leak detector
   (void)&Catch::leakDetector;
+
+  // Construct the passert callback state.
+  //
+  // Function-local static variables are destructed in reverse order
+  // of their construction. Doing this first ensures that any *other*
+  // function-local static varaibles which might use
+  // `PAssertFailureCallbackRegistration` in their destructors will destruct
+  // before this process state.
+  tiledb::common::PAssertFailureCallbackRegistration __passert_callback_state(
+      []() {});
 
   return Catch::Session().run(argc, argv);
 }
