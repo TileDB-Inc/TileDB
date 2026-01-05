@@ -49,13 +49,67 @@ namespace tiledb::sm::utils::parse {
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
 template <typename T>
+std::from_chars_result parse(const char* first, const char* last, T& value) {
+  return std::from_chars(first, last, value);
+}
+
+template <>
+std::from_chars_result parse<float>(
+    const char* first, const char* last, float& value) {
+  // some implementations specifically delete `from_chars` for
+  // float, so we must roll our own.
+  // Making a copy is not ideal but it is easy and not worse
+  // than what happened previously.
+
+  std::string copied(first, last);
+  char* endptr;
+  value = std::strtof(copied.c_str(), &endptr);
+  if (value == 0 && endptr == copied.c_str()) {
+    return std::from_chars_result{
+        .ptr = first, .ec = std::errc::invalid_argument};
+  } else if (value == HUGE_VALF) {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()),
+        .ec = std::errc::result_out_of_range};
+  } else {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()), .ec = {}};
+  }
+}
+
+template <>
+std::from_chars_result parse<double>(
+    const char* first, const char* last, double& value) {
+  // some implementations specifically delete `from_chars` for
+  // float, so we must roll our own.
+  // Making a copy is not ideal but it is easy and not worse
+  // than what happened previously.
+
+  std::string copied(first, last);
+  char* endptr;
+  value = std::strtod(copied.c_str(), &endptr);
+  if (value == 0 && endptr == copied.c_str()) {
+    return std::from_chars_result{
+        .ptr = first, .ec = std::errc::invalid_argument};
+  } else if (value == HUGE_VAL) {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()),
+        .ec = std::errc::result_out_of_range};
+  } else {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()), .ec = {}};
+  }
+}
+
+template <typename T>
 static Status convert(std::string_view str, T* value, const char* errdetail) {
   size_t offset = 0;
   if (!str.empty() && str.data()[0] == '+') {
     offset = 1;
   }
-  const auto rc = std::from_chars(str.begin() + offset, str.end(), *value);
-  if (rc.ptr != str.end() || rc.ec == std::errc::invalid_argument) {
+  const char* str_end = str.data() + str.size();
+  const auto rc = parse(str.data() + offset, str_end, *value);
+  if (rc.ptr != str_end || rc.ec == std::errc::invalid_argument) {
     std::stringstream err;
     err << "Failed to convert string '" << str << "' to " << errdetail
         << "; Invalid argument";

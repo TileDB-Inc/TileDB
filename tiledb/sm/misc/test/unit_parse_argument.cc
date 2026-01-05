@@ -62,3 +62,46 @@ TEST_CASE("Test to_str function for integers", "[to_str][integer]") {
   REQUIRE(to_str(&int64_value, Datatype::INT64) == "-10");
   REQUIRE(to_str(&uint64_value, Datatype::UINT64) == "10");
 }
+
+template <typename T>
+T try_convert(std::string_view str) {
+  T value;
+  Status s = tiledb::sm::utils::parse::convert(str, &value);
+  throw_if_not_ok(s);
+  return value;
+}
+
+TEST_CASE(
+    "utils::parse::convert float sanity test", "[utils::parse::convert]") {
+  CHECK(try_convert<float>("0") == static_cast<float>(0));
+  CHECK(try_convert<float>("1") == static_cast<float>(1));
+
+  CHECK_THROWS(
+      try_convert<float>("foobar"),
+      Catch::Matchers::ContainsSubstring("Invalid argument"));
+
+  CHECK_THROWS(
+      try_convert<float>(
+          "111111111111111111111111111111111111111111111111111111111111"),
+      Catch::Matchers::ContainsSubstring("out of range"));
+}
+
+TEST_CASE(
+    "utils::parse::convert double sanity test", "[utils::parse::convert]") {
+  CHECK(try_convert<double>("0") == static_cast<double>(0));
+  CHECK(try_convert<double>("1") == static_cast<double>(1));
+
+  CHECK_THROWS(
+      try_convert<double>("foobar"),
+      Catch::Matchers::ContainsSubstring("Invalid argument"));
+
+  CHECK_THROWS(
+      try_convert<double>(
+          "1111111111111111111111111111111111111111111111111111"
+          "1111111111111111111111111111111111111111111111111111"
+          "1111111111111111111111111111111111111111111111111111"
+          "1111111111111111111111111111111111111111111111111111"
+          "1111111111111111111111111111111111111111111111111111"
+          "1111111111111111111111111111111111111111111111111111"),
+      Catch::Matchers::ContainsSubstring("out of range"));
+}
