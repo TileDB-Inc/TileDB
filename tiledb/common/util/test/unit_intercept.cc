@@ -75,8 +75,9 @@ TEST_CASE("Intercept log", "[intercept]") {
 
   {
     auto cb = intercept::my_library_function_exit().and_also(
-        [&](int global, std::string_view arg, int local) {
-          values[std::string(arg)].emplace_back(std::make_pair(global, local));
+        [&values](int snapshot_global, std::string_view arg, int local) {
+          values[std::string(arg)].emplace_back(
+              std::make_pair(snapshot_global, local));
         });
 
     global = 0;
@@ -128,8 +129,8 @@ TEST_CASE("Intercept synchronize", "[intercept]") {
   std::barrier sync(2);
 
   auto cb = intercept::my_library_function_exit().and_also(
-      [&](int global, std::string_view, int) {
-        if (global == 2) {
+      [&sync](int snapshot_global, std::string_view, int) {
+        if (snapshot_global == 2) {
           // waits for the main thread
           sync.arrive_and_wait();
           // the main thread has arrived; wait for its signal to resume
