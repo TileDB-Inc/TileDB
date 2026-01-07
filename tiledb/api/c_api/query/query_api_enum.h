@@ -39,5 +39,5 @@
   /** Update query */
   TILEDB_QUERY_TYPE_ENUM(UPDATE) = 3,
   /** Alias to WRITE. Deprecated, use WRITE instead. */
-  TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) = 4,
+  TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) [[deprecated]] = 4,
 #endif
