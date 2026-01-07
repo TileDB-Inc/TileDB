@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/ast_helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -541,6 +542,9 @@ TEST_CASE(
   uint64_t offsets[2] = {0, 3};
   REQUIRE_THROWS(
       sm::ASTNodeVal("foo", data, 6, offsets, 0, sm::QueryConditionOp::IN));
+  // If the QC returned empty results, offsets may be empty.
+  REQUIRE_NOTHROW(
+      sm::ASTNodeVal("foo", nullptr, 0, offsets, 0, sm::QueryConditionOp::IN));
 }
 
 TEST_CASE(
@@ -596,6 +600,45 @@ TEST_CASE("AST Expression Errors", "[query-condition][set][error]") {
   REQUIRE_THROWS(expr->get_value_size());
   REQUIRE_THROWS(expr->get_data());
   REQUIRE_THROWS(expr->get_offsets());
+}
+
+TEST_CASE_METHOD(
+    CPPQueryConditionFx,
+    "Empty results - fixed sized attribute",
+    "[query-condition][set][fixed][rest]") {
+  test::VFSTestSetup vfs_test_setup;
+  auto type = GENERATE(
+      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
+  ctx_ = vfs_test_setup.ctx_c;
+  uri_ = vfs_test_setup.array_uri("query_condition_test_array");
+  create_array(type, false);
+
+  Array array(ctx_, uri_, TILEDB_READ);
+  std::vector<float> values = {2.0f, 4.0f};
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr1", values, TILEDB_IN);
+  check_read(
+      qc, [](const QCSetsCell& c) { return (c.a1 == 2.0f || c.a1 == 4.0f); });
+}
+
+TEST_CASE_METHOD(
+    CPPQueryConditionFx,
+    "Empty results - var sized attribute",
+    "[query-condition][set][var][rest]") {
+  test::VFSTestSetup vfs_test_setup;
+  auto type = GENERATE(
+      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
+  ctx_ = vfs_test_setup.ctx_c;
+  uri_ = vfs_test_setup.array_uri("query_condition_test_array");
+  create_array(type, false);
+
+  Array array(ctx_, uri_, TILEDB_READ);
+  std::vector<std::string> values = {"barney", "wilma"};
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
+  check_read(qc, [](const QCSetsCell& c) {
+    return (c.a2 == "barney" || c.a2 == "wilma");
+  });
 }
 
 CPPQueryConditionFx::CPPQueryConditionFx()
@@ -838,7 +881,7 @@ void CPPQueryConditionFx::check_read(
 }
 
 void CPPQueryConditionFx::rm_array() {
-  if (vfs_.is_dir(uri_)) {
+  if (!uri_.starts_with("tiledb://") && vfs_.is_dir(uri_)) {
     vfs_.remove_dir(uri_);
   }
 }
