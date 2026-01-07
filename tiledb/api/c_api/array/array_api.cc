@@ -290,7 +290,7 @@ capi_return_t tiledb_array_delete_fragments_list(
   tiledb_array_t* array = tiledb_array_t::make_handle(
       ctx->resources(), URI(uri_str, URI::must_be_valid));
 
-  // Open the array for exclusive modification
+  // Open the array
   try {
     throw_if_not_ok(array->open(
         QueryType::WRITE,
