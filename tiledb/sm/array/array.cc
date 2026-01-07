@@ -207,7 +207,7 @@ void Array::create(
   std::lock_guard<std::mutex> lock{object_mtx};
   array_schema->set_array_uri(array_uri);
   array_schema->generate_uri(array_schema->timestamp_range());
-  array_schema->check(resources.config());
+  array_schema->check(resources.config(), true);
 
   // Check current domain is specified correctly if set
   if (!array_schema->get_current_domain()->empty()) {
