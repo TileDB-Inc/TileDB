@@ -82,7 +82,6 @@ using QCSetsCellSelector = std::function<bool(QCSetsCell& cell)>;
 
 struct CPPQueryConditionFx {
   CPPQueryConditionFx();
-  ~CPPQueryConditionFx();
 
   void create_array(TestArrayType type, bool serialize);
   void write_delete(QueryCondition& qc);
@@ -122,6 +121,7 @@ struct CPPQueryConditionFx {
   T choose_value(std::vector<T>& values);
   float random();
 
+  test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
   Context ctx_;
   VFS vfs_;
@@ -606,11 +606,7 @@ TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "Empty results - fixed sized attribute",
     "[query-condition][set][fixed][rest]") {
-  test::VFSTestSetup vfs_test_setup;
-  auto type = GENERATE(
-      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
-  ctx_ = vfs_test_setup.ctx_c;
-  uri_ = vfs_test_setup.array_uri("query_condition_test_array");
+  auto type = TestArrayType::DENSE;
   create_array(type, false);
 
   Array array(ctx_, uri_, TILEDB_READ);
@@ -625,11 +621,8 @@ TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "Empty results - var sized attribute",
     "[query-condition][set][var][rest]") {
-  test::VFSTestSetup vfs_test_setup;
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
-  ctx_ = vfs_test_setup.ctx_c;
-  uri_ = vfs_test_setup.array_uri("query_condition_test_array");
   create_array(type, false);
 
   Array array(ctx_, uri_, TILEDB_READ);
@@ -642,13 +635,9 @@ TEST_CASE_METHOD(
 }
 
 CPPQueryConditionFx::CPPQueryConditionFx()
-    : uri_("query_condition_test_array")
+    : uri_(vfs_test_setup_.array_uri("query_condition_test_array"))
+    , ctx_(vfs_test_setup_.ctx())
     , vfs_(ctx_) {
-  rm_array();
-}
-
-CPPQueryConditionFx::~CPPQueryConditionFx() {
-  rm_array();
 }
 
 void CPPQueryConditionFx::create_array(TestArrayType type, bool serialize) {
@@ -877,12 +866,6 @@ void CPPQueryConditionFx::check_read(
   REQUIRE(attr6_read.size() == attr6_expected.size());
   for (size_t i = 0; i < attr6_expected.size(); i++) {
     REQUIRE(attr6_read[i] == attr6_expected[i]);
-  }
-}
-
-void CPPQueryConditionFx::rm_array() {
-  if (!uri_.starts_with("tiledb://") && vfs_.is_dir(uri_)) {
-    vfs_.remove_dir(uri_);
   }
 }
 
