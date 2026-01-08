@@ -122,10 +122,13 @@ ASTNodeVal::ASTNodeVal(
   }
 
   data_ = ByteVecValue(data_size);
-  memcpy(data_.data(), data, data_size);
-
   offsets_ = ByteVecValue(offsets_size);
-  memcpy(offsets_.data(), offsets, offsets_size);
+
+  // Copy data and offsets if non-empty.
+  if (data != nullptr) {
+    memcpy(data_.data(), data, data_size);
+    memcpy(offsets_.data(), offsets, offsets_size);
+  }
 
   generate_members();
 }
