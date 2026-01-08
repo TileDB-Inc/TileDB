@@ -147,7 +147,9 @@ struct CPPQueryConditionFx {
 #endif
 
 TEST_CASE_METHOD(
-    CPPQueryConditionFx, "IN - Float", "[query-condition][set][basic][float][rest]") {
+    CPPQueryConditionFx,
+    "IN - Float",
+    "[query-condition][set][basic][float][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
