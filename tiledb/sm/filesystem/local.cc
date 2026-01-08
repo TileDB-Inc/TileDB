@@ -124,6 +124,20 @@ LsObjects LocalFilesystem::ls_filtered_v2(
   return qualifyingPaths;
 }
 
+Status LocalFilesystem::ls(
+    const std::string& path, std::vector<std::string>* paths) const {
+  for (auto& fs : ls_with_sizes(URI(path), false)) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+std::vector<filesystem::directory_entry> LocalFilesystem::ls_with_sizes(
+    const URI& uri) const {
+  return ls_with_sizes(uri, true);
+}
+
 void LocalFilesystem::copy_file(const URI& old_uri, const URI& new_uri) {
   std::filesystem::copy_file(
       old_uri.to_path(),
