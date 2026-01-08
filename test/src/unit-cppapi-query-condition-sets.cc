@@ -604,23 +604,8 @@ TEST_CASE("AST Expression Errors", "[query-condition][set][error]") {
 
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
-    "Empty results - fixed sized attribute",
-    "[query-condition][set][fixed][rest]") {
-  auto type = GENERATE(
-      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
-  create_array(type, false);
-
-  Array array(ctx_, uri_, TILEDB_READ);
-  std::vector<float> values = {-2.0f, -4.0f};
-  auto qc =
-      QueryConditionExperimental::create(ctx_, "attr1", values, TILEDB_IN);
-  check_read(qc, [](const QCSetsCell&) { return false; });
-}
-
-TEST_CASE_METHOD(
-    CPPQueryConditionFx,
-    "Empty results - var sized attribute",
-    "[query-condition][set][var][rest]") {
+    "Empty results - enumerations",
+    "[query-condition][set][enumerations][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   create_array(type, false);
@@ -628,7 +613,7 @@ TEST_CASE_METHOD(
   Array array(ctx_, uri_, TILEDB_READ);
   std::vector<std::string> values = {"joe", "schmo"};
   auto qc =
-      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
+      QueryConditionExperimental::create(ctx_, "attr6", values, TILEDB_IN);
   check_read(qc, [](const QCSetsCell&) { return false; });
 }
 
