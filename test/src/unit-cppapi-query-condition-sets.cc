@@ -606,17 +606,24 @@ TEST_CASE("AST Expression Errors", "[query-condition][set][error]") {
 
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
-    "Empty results - enumerations",
+    "Empty value node - enumerations",
     "[query-condition][set][enumerations][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   create_array(type, false);
+  auto op = GENERATE(TILEDB_IN, TILEDB_NOT_IN);
 
   Array array(ctx_, uri_, TILEDB_READ);
+  // These enumerations do not match any enumerations written to the array.
   std::vector<std::string> values = {"joe", "schmo"};
-  auto qc =
-      QueryConditionExperimental::create(ctx_, "attr6", values, TILEDB_IN);
-  check_read(qc, [](const QCSetsCell&) { return false; });
+  // This results in an empty value node when rewriting the QC for the schema
+  // during query submission. See ASTNodeVal::rewrite_for_schema
+  auto qc = QueryConditionExperimental::create(ctx_, "attr6", values, op);
+  if (op == TILEDB_IN) {
+    check_read(qc, [](const QCSetsCell&) { return false; });
+  } else {
+    check_read(qc, [](const QCSetsCell& c) { return (c.a6 >= 0 && c.a6 < 4); });
+  }
 }
 
 CPPQueryConditionFx::CPPQueryConditionFx()
