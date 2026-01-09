@@ -622,16 +622,10 @@ Status Curl::make_curl_request_common(
     set_curl_request_options(url, write_cb, write_cb_state);
 
     /* perform the blocking network transfer */
-    CURLcode curl_code = curl_easy_perform_instrumented(url, i);
-    if (curl_code == CURLE_URL_MALFORMAT) {
-      return LOG_STATUS(Status_RestError(
-          std::string(
-              "Error submitting curl request; URL is incorrectly formatted: ") +
-          url));
-    }
+    *curl_code = curl_easy_perform_instrumented(url, i);
 
     long http_code = 0;
-    if (curl_code == CURLE_OK) {
+    if (*curl_code == CURLE_OK) {
       if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
           CURLE_OK) {
         return LOG_STATUS(Status_RestError(
@@ -639,30 +633,23 @@ Status Curl::make_curl_request_common(
       }
     }
 
-    bool should_retry = should_retry_request(curl_code, http_code);
-    // Handle the error if we shouldn't retry and the curl request failed.
-    if (!should_retry && curl_code != CURLE_OK) {
-      return LOG_STATUS(Status_RestError(
-          std::string("Error submitting the Curl request: ") +
-          get_curl_errstr(curl_code)));
-    }
-
     // Exit if the request failed and we don't want to retry based on curl or
     // HTTP code, or if the write callback has elected to skip retries
-    if (!should_retry || write_cb_state.skip_retries) {
+    if (!should_retry_request(*curl_code, http_code) ||
+        write_cb_state.skip_retries) {
       break;
     }
 
     // Set up the actual retry logic
     // Only sleep if this isn't the last failed request allowed
     if (i < retry_count_ - 1) {
-      if (curl_code != CURLE_OK) {
+      if (*curl_code != CURLE_OK) {
         global_logger().debug(
             "Request to {} failed with Curl error message \"{}\", will sleep "
             "{}ms, "
             "retry count {}",
             url,
-            get_curl_errstr(curl_code),
+            get_curl_errstr(*curl_code),
             retry_delay,
             i);
       } else {
