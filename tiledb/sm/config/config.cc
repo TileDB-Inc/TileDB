@@ -995,41 +995,131 @@ const char* Config::get_from_profile(
   return "";
 }
 
-const char* Config::get_from_config_or_fallback(
-    const std::string& param, bool* found) const {
+ConfigSource Config::lookup_param(
+    const std::string& param, const char** value, bool* found) const {
   // First check if the user has set the parameter
-  // If not, it may be a default value (if found in the config)
-  bool user_set_parameter = set_params_.find(param) != set_params_.end();
+  bool user_set = set_params_.find(param) != set_params_.end();
 
   // [1. user-set config parameters]
   bool found_config;
   const char* value_config = get_from_config(param, &found_config);
-  if (found_config && user_set_parameter) {
-    *found = found_config;
-    return value_config;
+  if (found_config && user_set) {
+    *value = value_config;
+    *found = true;
+    return ConfigSource::USER_SET;
   }
 
   // Check if param default should be ignored based on environment variables
   if (ignore_default_via_env(param)) {
+    *value = "";
     *found = true;
-    return "";
+    return ConfigSource::ENVIRONMENT;
   }
 
   // [2. env variables]
-  const char* value_env = get_from_env(param, found);
-  if (*found)
-    return value_env;
+  bool found_env;
+  const char* value_env = get_from_env(param, &found_env);
+  if (found_env) {
+    *value = value_env;
+    *found = true;
+    return ConfigSource::ENVIRONMENT;
+  }
 
   // [3. profiles]
-  const char* value_profile = get_from_profile(param, found);
-  if (*found)
-    return value_profile;
+  bool found_profile;
+  const char* value_profile = get_from_profile(param, &found_profile);
+  if (found_profile) {
+    *value = value_profile;
+    *found = true;
+    return ConfigSource::PROFILE;
+  }
 
   // [4. default config value]
-  *found = found_config;
+  if (found_config) {
+    *value = value_config;
+    *found = true;
+    return ConfigSource::DEFAULT;
+  }
 
-  // Final case: parameter value was not found.
-  return *found ? value_config : "";
+  // Parameter not found anywhere
+  *value = "";
+  *found = false;
+  return ConfigSource::DEFAULT;
+}
+
+const char* Config::get_from_config_or_fallback(
+    const std::string& param, bool* found) const {
+  const char* value;
+  lookup_param(param, &value, found);
+  return value;
+}
+
+ConfigSource Config::get_with_source(
+    const std::string& param, std::string* value, bool* found) const {
+  const char* value_cstr;
+  ConfigSource source = lookup_param(param, &value_cstr, found);
+  *value = *found ? value_cstr : "";
+  return source;
+}
+
+RestAuthMethod Config::get_effective_rest_auth_method() const {
+  // Get token with source
+  std::string token;
+  bool found_token;
+  ConfigSource token_source =
+      get_with_source("rest.token", &token, &found_token);
+  bool has_token = found_token && !token.empty();
+
+  // Get username and password with sources
+  std::string username;
+  bool found_username;
+  ConfigSource username_source =
+      get_with_source("rest.username", &username, &found_username);
+
+  std::string password;
+  bool found_password;
+  ConfigSource password_source =
+      get_with_source("rest.password", &password, &found_password);
+
+  // Check for valid username/password combination
+  bool has_username = found_username && !username.empty();
+  bool has_password = found_password && !password.empty();
+
+  // Username and password must both be present
+  if (has_username && has_password) {
+    // Check if they are at the same priority level
+    if (username_source != password_source) {
+      // Username and password at different priority levels - invalid
+      return RestAuthMethod::INVALID;
+    }
+  } else if (has_username || has_password) {
+    // Only one of username/password is configured - invalid
+    return RestAuthMethod::INVALID;
+  }
+
+  bool has_user_pass = has_username && has_password;
+
+  // Neither authentication method is configured - invalid
+  if (!has_token && !has_user_pass) {
+    return RestAuthMethod::INVALID;
+  }
+
+  // Determine which authentication method to use based on priority
+  // Priority hierarchy: USER_SET (0) > ENVIRONMENT (1) > PROFILE (2) > DEFAULT
+  // (3) If both methods have the same priority, prefer token
+  if (has_token && has_user_pass) {
+    if (token_source <= username_source) {
+      return RestAuthMethod::TOKEN;
+    } else {
+      return RestAuthMethod::USERNAME_PASSWORD;
+    }
+  } else if (has_token) {
+    // Only token is configured
+    return RestAuthMethod::TOKEN;
+  } else {
+    // Only username/password is configured
+    return RestAuthMethod::USERNAME_PASSWORD;
+  }
 }
 
 const std::map<std::string, std::string>
