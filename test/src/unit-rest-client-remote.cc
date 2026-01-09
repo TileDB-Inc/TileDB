@@ -135,5 +135,5 @@ TEST_CASE(
   // Send any request to REST to validate we throw as expected.
   CHECK_THROWS_WITH(
       tiledb::Object::object(ctx, "tiledb://workspace/teamspace/array_name"),
-      Catch::Matchers::ContainsSubstring("URL rjected"));
+      Catch::Matchers::ContainsSubstring("URL rejected"));
 }
