@@ -150,18 +150,18 @@ void Group::open(
   timestamp_end_ = timestamp_end;
 
   // Get encryption key from config
-  const std::string encryption_key_from_cfg =
-      config_.get<std::string>("sm.encryption_key", Config::must_find);
+  auto encryption_key_from_cfg =
+      config_.get<std::string_view>("sm.encryption_key", Config::must_find);
 
   EncryptionType encryption_type = EncryptionType::NO_ENCRYPTION;
   const void* encryption_key = nullptr;
   uint32_t key_length = 0;
 
   if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
+    encryption_key = encryption_key_from_cfg.data();
     key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    const std::string encryption_type_from_cfg =
-        config_.get<std::string>("sm.encryption_type", Config::must_find);
+    auto encryption_type_from_cfg =
+        config_.get<std::string_view>("sm.encryption_type", Config::must_find);
     auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
     throw_if_not_ok(st);
     encryption_type = et.value();

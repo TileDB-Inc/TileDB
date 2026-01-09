@@ -67,15 +67,16 @@ namespace tiledb::sm {
 /* ********************************* */
 
 GCSParameters::GCSParameters(const Config& config)
-    : endpoint_(config.get<std::string>("vfs.gcs.endpoint", Config::must_find))
-    , project_id_(
-          config.get<std::string>("vfs.gcs.project_id", Config::must_find))
-    , service_account_key_(config.get<std::string>(
-          "vfs.gcs.service_account_key", Config::must_find))
-    , workload_identity_configuration_(config.get<std::string>(
-          "vfs.gcs.workload_identity_configuration", Config::must_find))
-    , impersonate_service_account_(config.get<std::string>(
-          "vfs.gcs.impersonate_service_account", Config::must_find))
+    : endpoint_(std::string(
+          config.get<std::string_view>("vfs.gcs.endpoint", Config::must_find)))
+    , project_id_(std::string(config.get<std::string_view>(
+          "vfs.gcs.project_id", Config::must_find)))
+    , service_account_key_(std::string(config.get<std::string_view>(
+          "vfs.gcs.service_account_key", Config::must_find)))
+    , workload_identity_configuration_(std::string(config.get<std::string_view>(
+          "vfs.gcs.workload_identity_configuration", Config::must_find)))
+    , impersonate_service_account_(std::string(config.get<std::string_view>(
+          "vfs.gcs.impersonate_service_account", Config::must_find)))
     , multi_part_size_(
           config.get<uint64_t>("vfs.gcs.multi_part_size", Config::must_find))
     , max_parallel_ops_(

@@ -104,6 +104,7 @@
 
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/stdx_optional.h"
 #include "tiledb/sm/config/config.h"
 
 namespace tiledb::sm {
@@ -491,7 +492,9 @@ class MemoryTrackerReporter {
   MemoryTrackerReporter(
       const Config& cfg, shared_ptr<MemoryTrackerManager> manager)
       : manager_(manager)
-      , filename_(cfg.get<std::string>("sm.memory.tracker.reporter.filename"))
+      , filename_(::stdx::optional::transform(
+            cfg.get<std::string_view>("sm.memory.tracker.reporter.filename"),
+            [](std::string_view s) -> std::string { return std::string(s); }))
       , wait_time_ms_(cfg.get<int>("sm.memory.tracker.reporter.wait_time_ms"))
       , stop_(false) {
   }

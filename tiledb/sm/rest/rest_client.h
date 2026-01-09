@@ -273,7 +273,7 @@ class RestClient {
    * use of this function is for remote REST operations, it needs to be
    * available in both local and remote configurations for testing.
    */
-  void add_header(const std::string& name, const std::string& value);
+  void add_header(const std::string& name, std::string_view value);
 
   /**
    * Constant accessor to `extra_headers_` member variable.

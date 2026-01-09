@@ -47,14 +47,14 @@ EncryptionKey::EncryptionKey()
 }
 
 EncryptionKey::EncryptionKey(const Config& cfg) {
-  auto enc_type = cfg.get<std::string>("sm.encryption_type");
+  auto enc_type = cfg.get<std::string_view>("sm.encryption_type");
   if (enc_type.has_value()) {
     auto [st, opt_type] = encryption_type_enum(*enc_type);
     throw_if_not_ok(st);
     encryption_type_ = *opt_type;
   }
 
-  auto enc_key = cfg.get<std::string>("sm.encryption_key");
+  auto enc_key = cfg.get<std::string_view>("sm.encryption_key");
   if (enc_key.has_value()) {
     auto key_length = static_cast<uint32_t>(enc_key->size());
     if (!is_valid_key_length(encryption_type_, key_length)) {
@@ -62,7 +62,7 @@ EncryptionKey::EncryptionKey(const Config& cfg) {
           "Cannot create key; invalid key length for encryption type."));
     }
     key_length_ = key_length;
-    std::memcpy(key_, enc_key->c_str(), key_length);
+    std::memcpy(key_, enc_key->data(), key_length);
   } else {
     key_length_ = 0;
   }

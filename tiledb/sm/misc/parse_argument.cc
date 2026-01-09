@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 
 #include <algorithm>
+#include <charconv>
 #include <iomanip>
 #include <sstream>
 
@@ -47,128 +48,108 @@ namespace tiledb::sm::utils::parse {
 /* ********************************* */
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
-
-Status convert(const std::string& str, int* value) {
-  if (!is_int(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  }
-
-  try {
-    *value = std::stoi(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int; Value out of range";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  }
-
-  return Status::Ok();
+template <typename T>
+std::from_chars_result parse(const char* first, const char* last, T& value) {
+  return std::from_chars(first, last, value);
 }
 
-Status convert(const std::string& str, uint32_t* value) {
-  if (!is_uint(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  }
+template <>
+std::from_chars_result parse<float>(
+    const char* first, const char* last, float& value) {
+  // some implementations specifically delete `from_chars` for
+  // float, so we must roll our own.
+  // Making a copy is not ideal but it is easy and not worse
+  // than what happened previously.
 
-  try {
-    auto v = std::stoul(str);
-    if (v > UINT32_MAX)
-      throw std::out_of_range("Cannot convert long to unsigned int");
-    *value = (uint32_t)v;
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint32_t; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint32_t; Value out of range";
-    return LOG_STATUS(Status_UtilsError(errmsg));
+  std::string copied(first, last);
+  char* endptr;
+  value = std::strtof(copied.c_str(), &endptr);
+  if (value == 0 && endptr == copied.c_str()) {
+    return std::from_chars_result{
+        .ptr = first, .ec = std::errc::invalid_argument};
+  } else if (value == HUGE_VALF) {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()),
+        .ec = std::errc::result_out_of_range};
+  } else {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()), .ec = {}};
   }
-
-  return Status::Ok();
 }
 
-Status convert(const std::string& str, uint64_t* value) {
-  if (!is_uint(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  }
+template <>
+std::from_chars_result parse<double>(
+    const char* first, const char* last, double& value) {
+  // some implementations specifically delete `from_chars` for
+  // float, so we must roll our own.
+  // Making a copy is not ideal but it is easy and not worse
+  // than what happened previously.
 
-  try {
-    *value = std::stoull(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint64_t; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to uint64_t; Value out of range";
-    return LOG_STATUS(Status_UtilsError(errmsg));
+  std::string copied(first, last);
+  char* endptr;
+  value = std::strtod(copied.c_str(), &endptr);
+  if (value == 0 && endptr == copied.c_str()) {
+    return std::from_chars_result{
+        .ptr = first, .ec = std::errc::invalid_argument};
+  } else if (value == HUGE_VAL) {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()),
+        .ec = std::errc::result_out_of_range};
+  } else {
+    return std::from_chars_result{
+        .ptr = first + (endptr - copied.c_str()), .ec = {}};
   }
-
-  return Status::Ok();
 }
 
-Status convert(const std::string& str, int64_t* value) {
-  if (!is_int(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
+template <typename T>
+static Status convert(std::string_view str, T* value, const char* errdetail) {
+  size_t offset = 0;
+  if (!str.empty() && str.data()[0] == '+') {
+    offset = 1;
   }
-
-  try {
-    *value = std::stoll(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int64_t; Invalid argument";
-    return LOG_STATUS(Status_UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to int64_t; Value out of range";
-    return LOG_STATUS(Status_UtilsError(errmsg));
+  const char* str_end = str.data() + str.size();
+  const auto rc = parse(str.data() + offset, str_end, *value);
+  if (rc.ptr != str_end || rc.ec == std::errc::invalid_argument) {
+    std::stringstream err;
+    err << "Failed to convert string '" << str << "' to " << errdetail
+        << "; Invalid argument";
+    return LOG_STATUS(Status_UtilsError(err.str()));
+  } else if (rc.ec == std::errc::result_out_of_range) {
+    std::stringstream err;
+    err << "Failed to convert string '" << str << "' to " << errdetail
+        << "; Value out of range";
+    return LOG_STATUS(Status_UtilsError(err.str()));
+  } else {
+    return Status::Ok();
   }
-
-  return Status::Ok();
 }
 
-Status convert(const std::string& str, float* value) {
-  try {
-    *value = std::stof(str);
-  } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status_UtilsError(
-        "Failed to convert string to float32_t; Invalid argument"));
-  } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status_UtilsError(
-        "Failed to convert string to float32_t; Value out of range"));
-  }
-
-  return Status::Ok();
+Status convert(std::string_view str, int* value) {
+  return convert<int>(str, value, "int");
 }
 
-Status convert(const std::string& str, double* value) {
-  try {
-    *value = std::stod(str);
-  } catch (std::invalid_argument& e) {
-    return LOG_STATUS(Status_UtilsError(
-        "Failed to convert string to float64_t; Invalid argument"));
-  } catch (std::out_of_range& e) {
-    return LOG_STATUS(Status_UtilsError(
-        "Failed to convert string to float64_t; Value out of range"));
-  }
-
-  return Status::Ok();
+Status convert(std::string_view str, uint32_t* value) {
+  return convert<uint32_t>(str, value, "uint32_t");
 }
 
-Status convert(const std::string& str, bool* value) {
-  std::string lvalue = str;
+Status convert(std::string_view str, uint64_t* value) {
+  return convert<uint64_t>(str, value, "uint64_t");
+}
+
+Status convert(std::string_view str, int64_t* value) {
+  return convert<int64_t>(str, value, "int64_t");
+}
+
+Status convert(std::string_view str, float* value) {
+  return convert<float>(str, value, "float32_t");
+}
+
+Status convert(std::string_view str, double* value) {
+  return convert<double>(str, value, "float64_t");
+}
+
+Status convert(std::string_view str, bool* value) {
+  std::string lvalue(str);
   std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
   if (lvalue == "true") {
     *value = true;
@@ -182,8 +163,8 @@ Status convert(const std::string& str, bool* value) {
   return Status::Ok();
 }
 
-Status convert(const std::string& str, SerializationType* value) {
-  std::string lvalue = str;
+Status convert(std::string_view str, SerializationType* value) {
+  std::string lvalue(str);
   std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
   if (lvalue == "json") {
     *value = SerializationType::JSON;
@@ -196,40 +177,6 @@ Status convert(const std::string& str, SerializationType* value) {
   }
 
   return Status::Ok();
-}
-
-bool is_int(const std::string& str) {
-  // Check if empty
-  if (str.empty())
-    return false;
-
-  // Check first character
-  if (str[0] != '+' && str[0] != '-' && !(bool)isdigit(str[0]))
-    return false;
-
-  // Check rest of characters
-  for (size_t i = 1; i < str.size(); ++i)
-    if (!(bool)isdigit(str[i]))
-      return false;
-
-  return true;
-}
-
-bool is_uint(const std::string& str) {
-  // Check if empty
-  if (str.empty())
-    return false;
-
-  // Check first character
-  if (str[0] != '+' && !isdigit(str[0]))
-    return false;
-
-  // Check characters
-  for (size_t i = 1; i < str.size(); ++i)
-    if (!(bool)isdigit(str[i]))
-      return false;
-
-  return true;
 }
 
 template <class T>

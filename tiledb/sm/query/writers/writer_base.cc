@@ -134,8 +134,8 @@ WriterBase::WriterBase(
                             false :
                             !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
-  offsets_format_mode_ =
-      config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
+  offsets_format_mode_ = std::string(
+      config_.get<std::string_view>("sm.var_offsets.mode", Config::must_find));
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     throw WriterBaseException(
         "Cannot initialize writer; Unsupported offsets format in "

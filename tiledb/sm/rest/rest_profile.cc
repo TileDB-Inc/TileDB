@@ -121,15 +121,14 @@ const std::string RestProfile::DEFAULT_PROFILE_NAME{"default"};
  */
 
 RestProfile::RestProfile(
-    const std::optional<std::string>& name,
-    const std::optional<std::string>& dir)
+    std::optional<std::string_view> name, std::optional<std::string_view> dir)
     : version_(constants::rest_profile_version)
     , name_(
           name.has_value() && !name.value().empty() ?
-              name.value() :
+              std::string(name.value()) :
               RestProfile::DEFAULT_PROFILE_NAME) {
   if (dir.has_value() && !dir.value().empty()) {
-    dir_ = ensure_trailing_slash(dir.value());
+    dir_ = ensure_trailing_slash(std::string(dir.value()));
   } else if (getenv("TILEDB_PROFILE_DIR") != nullptr) {
     // If the user has set the TILEDB_PROFILE_DIR environment variable,
     // use that as the directory to store the profiles file.
@@ -164,12 +163,14 @@ void RestProfile::set_param(
   param_values_[param] = value;
 }
 
-const std::string* RestProfile::get_param(const std::string& param) const {
+std::optional<std::string_view> RestProfile::get_param(
+    const std::string& param) const {
   auto it = param_values_.find(param);
-  if (it != param_values_.end()) {
-    return &it->second;
+  if (it == param_values_.end()) {
+    return std::nullopt;
+  } else {
+    return it->second;
   }
-  return nullptr;
 }
 
 /**
