@@ -622,10 +622,10 @@ Status Curl::make_curl_request_common(
     set_curl_request_options(url, write_cb, write_cb_state);
 
     /* perform the blocking network transfer */
-    CURLcode curl_code = curl_easy_perform_instrumented(url, i);
+    *curl_code = curl_easy_perform_instrumented(url, i);
 
     long http_code = 0;
-    if (curl_code == CURLE_OK) {
+    if (*curl_code == CURLE_OK) {
       if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
           CURLE_OK) {
         return LOG_STATUS(Status_RestError(
@@ -635,7 +635,7 @@ Status Curl::make_curl_request_common(
 
     // Exit if the request failed and we don't want to retry based on curl or
     // HTTP code, or if the write callback has elected to skip retries
-    if (!should_retry_request(curl_code, http_code) ||
+    if (!should_retry_request(*curl_code, http_code) ||
         write_cb_state.skip_retries) {
       break;
     }
@@ -643,13 +643,13 @@ Status Curl::make_curl_request_common(
     // Set up the actual retry logic
     // Only sleep if this isn't the last failed request allowed
     if (i < retry_count_ - 1) {
-      if (curl_code != CURLE_OK) {
+      if (*curl_code != CURLE_OK) {
         global_logger().debug(
             "Request to {} failed with Curl error message \"{}\", will sleep "
             "{}ms, "
             "retry count {}",
             url,
-            get_curl_errstr(curl_code),
+            get_curl_errstr(*curl_code),
             retry_delay,
             i);
       } else {
@@ -693,6 +693,7 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
   switch (curl_code) {
     // Curl status of okay or non transient errors shouldn't be retried
     case CURLE_OK:
+    case CURLE_UNSUPPORTED_PROTOCOL: /* 1 */
     case CURLE_URL_MALFORMAT:        /* 3 */
     case CURLE_SSL_ENGINE_NOTFOUND:  /* 53 - SSL crypto engine not found */
     case CURLE_SSL_ENGINE_SETFAILED: /* 54 - can not set SSL crypto engine as
@@ -717,7 +718,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
                                  error */
     case CURLE_SSL_CLIENTCERT: /* 98 - client-side certificate required */
       return false;
-    case CURLE_UNSUPPORTED_PROTOCOL:  /* 1 */
     case CURLE_FAILED_INIT:           /* 2 */
     case CURLE_NOT_BUILT_IN:          /* 4 - [was obsoleted in August 2007 for
                                         7.17.0, reused in April 2011 for 7.21.5] */
