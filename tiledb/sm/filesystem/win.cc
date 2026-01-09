@@ -348,15 +348,13 @@ bool Win::is_file(const URI& uri) const {
   return PathFileExists(path.c_str()) && !PathIsDirectory(path.c_str());
 }
 
-Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
-  for (auto& fs : ls_with_sizes(URI(path))) {
-    paths->emplace_back(fs.path().native());
+std::vector<directory_entry> Win::ls_with_sizes(
+    const URI& uri, bool get_sizes) const {
+  // Noop if the parent path is not a directory, do not error out.
+  if (!is_dir(uri)) {
+    return {};
   }
 
-  return Status::Ok();
-}
-
-std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
   auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
@@ -383,13 +381,14 @@ std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
+
       if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
         entries.emplace_back(file_path, 0, true);
       } else {
         ULARGE_INTEGER size;
         size.LowPart = find_data.nFileSizeLow;
         size.HighPart = find_data.nFileSizeHigh;
-        entries.emplace_back(file_path, size.QuadPart, false);
+        entries.emplace_back(file_path, get_sizes ? size.QuadPart : 0, false);
       }
     }
 
