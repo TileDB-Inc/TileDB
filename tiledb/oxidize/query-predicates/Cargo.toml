@@ -1,18 +1,20 @@
 [package]
-name = "tiledb-test-query-condition"
+name = "tiledb-query-predicates"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
+arrow = { workspace = true }
 cxx = { workspace = true }
 datafusion = { workspace = true }
 itertools = { workspace = true }
 num-traits = { workspace = true }
 thiserror = { workspace = true }
 tiledb-arrow = { workspace = true }
-tiledb-common = { workspace = true }
 tiledb-cxx-interface = { workspace = true }
-tiledb-datatype = { workspace = true }
-tiledb-test-support-cxx-interface = { workspace = true }
+tiledb-expr = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }

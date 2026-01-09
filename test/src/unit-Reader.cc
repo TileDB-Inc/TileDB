@@ -163,7 +163,7 @@ TEST_CASE_METHOD(
   buffers.emplace(
       "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> aggregate_buffers;
-  std::optional<QueryCondition> condition;
+  QueryPredicates predicates;
   ThreadPool tp_cpu(4), tp_io(4);
   Array array(context.resources(), URI(array_name_));
   CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
@@ -183,7 +183,7 @@ TEST_CASE_METHOD(
       aggregate_buffers,
       subarray,
       Layout::ROW_MAJOR,
-      condition,
+      predicates,
       default_channel_aggregates,
       false);
   Reader reader(&g_helper_stats, g_helper_logger(), params);
