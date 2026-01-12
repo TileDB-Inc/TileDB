@@ -146,7 +146,9 @@ struct ConsolidationFx {
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
   void get_vac_files(std::vector<std::string>& files, bool dense = true);
   void write_and_consolidate_fragments(
-      const char* array_name, int num_small_cells, uint64_t long_string_length);
+      const char* array_name,
+      uint64_t num_small_cells,
+      uint64_t long_string_length);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -7600,9 +7602,9 @@ TEST_CASE_METHOD(
  * @param long_string_length The length of the long string to write.
  */
 void ConsolidationFx::write_and_consolidate_fragments(
-    const char* array_name, int num_small_cells, uint64_t long_string_length) {
-  uint64_t arraylen =
-      (uint64_t)num_small_cells + 1;  // Account for long str in array
+    const char* array_name,
+    uint64_t num_small_cells,
+    uint64_t long_string_length) {
   std::string words[8] = {
       "foo", "bar", "apple", "orange", "banana", "red", "yellow", "blue"};
 
@@ -7614,8 +7616,8 @@ void ConsolidationFx::write_and_consolidate_fragments(
 
   // Create array
   tiledb_dimension_t* dim;
-  uint64_t dim_domain[] = {0, arraylen};
-  uint64_t tile_extent = arraylen;
+  uint64_t tile_extent = std::max(num_small_cells + 1, long_string_length);
+  uint64_t dim_domain[] = {0, tile_extent};
   rc = tiledb_dimension_alloc(
       ctx_, "dim", TILEDB_UINT64, &dim_domain, &tile_extent, &dim);
   CHECK(rc == TILEDB_OK);
@@ -7668,35 +7670,27 @@ void ConsolidationFx::write_and_consolidate_fragments(
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 
-  // Prepare to write to the array
-  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
-  std::vector<std::string> test_str;
-  test_str.reserve(arraylen);
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
-
+  // Prepare to write small cells to the array
+  std::string test_str = "";
   std::vector<uint64_t> offsets;
-  offsets.reserve(arraylen);
+  offsets.reserve(num_small_cells);
   std::vector<uint64_t> coords;
-  coords.reserve(arraylen);
+  coords.reserve(num_small_cells);
   offsets.push_back(0);
-  for (uint64_t i = 1; i < arraylen; i++) {
+  for (uint64_t i = 0; i < num_small_cells; i++) {
     std::string word = words[i % 8 - 1];
-    test_str.push_back(word);
-    offsets.push_back(offsets[i - 1] + word.length());
-    coords.push_back(i);
+    test_str += word;
+    coords.push_back(i + 1);
+    if (i != num_small_cells - 1) {
+      offsets.push_back(offsets[i] + word.length());
+    }
   }
+  std::vector<char> test_vec(test_str.begin(), test_str.end());
+  uint64_t values_size = test_vec.size();
+  uint64_t offsets_size = sizeof(uint64_t) * offsets.size();
+  uint64_t coords_size = sizeof(uint64_t) * coords.size();
 
-  std::string long_string = "";
-  for (uint64_t i = 0; i < long_string_length; i++) {
-    long_string += test_chars[dist(gen)];
-  }
-  test_str.push_back(long_string);
-  coords.push_back(long_string_length);
-  REQUIRE(test_str.size() == arraylen);
-
-  // Write to the array
+  // Write small cells to the array
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name, &array);
   CHECK(rc == TILEDB_OK);
@@ -7708,13 +7702,52 @@ void ConsolidationFx::write_and_consolidate_fragments(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx_, query, "attr", test_str.data(), &arraylen);
+      ctx_, query, "attr", test_str.data(), &values_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx_, query, "attr", offsets.data(), &arraylen);
+      ctx_, query, "attr", offsets.data(), &offsets_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx_, query, "dim", coords.data(), &arraylen);
+      ctx_, query, "dim", coords.data(), &coords_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Prepare to write long string to the array
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<size_t> dist(0, test_chars.length() - 1);
+  std::vector<char> long_string;
+  for (uint64_t i = 0; i < long_string_length; i++) {
+    long_string.emplace_back(test_chars[dist(gen)]);
+  }
+  uint64_t str_size = long_string.size();
+  uint64_t offset = 0;
+  uint64_t offset_size = sizeof(uint64_t);
+  uint64_t coord = coords.back();
+  uint64_t coord_size = sizeof(uint64_t);
+
+  // Write long string to the array
+  rc = tiledb_array_alloc(ctx_, array_name, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "attr", &long_string, &str_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "attr", &offset, &offset_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "dim", &coord, &coord_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -7724,8 +7757,14 @@ void ConsolidationFx::write_and_consolidate_fragments(
   tiledb_query_free(&query);
 
   // Consolidate
-  rc = tiledb_array_consolidate(ctx_, array_name, cfg);
+  rc = tiledb_config_set(cfg, "sm.mem.total_budget", "100000", &err);
   REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.consolidation.step_min_frags", "2", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name, cfg);
+  CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 }
 
@@ -7742,48 +7781,16 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  const char* mem_budget_str = "";
-  rc = tiledb_config_get(cfg, "sm.mem.total_budget", &mem_budget_str, &err);
-  uint64_t total_mem_budget = (uint64_t)std::stoll(mem_budget_str);
+  uint64_t num_small_cells = 2;
+  uint64_t long_string_length = 40000;
+  SECTION(
+      "- num small cells == 2,"
+      "long string length == 40000") {
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length);
+  }
+
   tiledb_config_free(&cfg);
-
-  uint64_t num_small_cells = 10000;
-  uint64_t long_string_length = total_mem_budget;
-
-  SECTION("- num small cells == 10000, long string length == 10000") {
-    long_string_length = 10000;
-    write_and_consolidate_fragments(
-        array_name, num_small_cells, long_string_length);
-  }
-
-  SECTION(
-      "- num small cells == 10000, long string length == sm.mem.total_budget") {
-    long_string_length = total_mem_budget;
-    write_and_consolidate_fragments(
-        array_name, num_small_cells, long_string_length);
-  }
-
-  SECTION(
-      "- num small cells == 10000, long string length == 1.91 * "
-      "sm.mem.total_budget") {
-    long_string_length = 1.91 * total_mem_budget;
-    write_and_consolidate_fragments(
-        array_name, num_small_cells, long_string_length);
-  }
-
-  // FAILS
-  /*SECTION("- num small cells == 10000, long string length == 1.92 *
-  sm.mem.total_budget") { long_string_length = 1.92 * total_mem_budget;
-    write_and_consolidate_fragments(array_name, num_small_cells,
-  long_string_length); std::string errmsg = "FragmentConsolidator: Consolidation
-  cannot proceed without " "disrespecting the memory budget.";
-
-    tiledb_ctx_get_last_error(ctx_, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    CHECK(errmsg == msg);
-  }*/
-
   remove_array(array_name);
 }
 

@@ -151,6 +151,11 @@ class FragmentConsolidationWorkspace {
     return sizes_;
   };
 
+  /** Accessor for the total allocated buffer size. */
+  size_t total_buffer_size() const {
+    return backing_buffer_.size();
+  }
+
  private:
   /*** The backing buffer used for all buffers. */
   tdb::pmr::vector<std::byte> backing_buffer_;
@@ -313,12 +318,14 @@ class FragmentConsolidator : public Consolidator {
    * @param reader_array_schema_latest The reader's latest array schema.
    * @param avg_var_cell_sizes A map of the reader's computed average cell size
    * for var size attrs / dims.
+   * @param buffers_budget Memory budget allocated for consolidation buffers.
    */
   void copy_array(
       Query* query_r,
       Query* query_w,
       const ArraySchema& reader_array_schema_latest,
-      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes);
+      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
+      uint64_t buffers_budget);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
