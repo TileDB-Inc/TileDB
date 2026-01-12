@@ -789,7 +789,7 @@ instance_dense_consolidation(
  */
 TEST_CASE(
     "C++ API: Test consolidation dense array with max fragment size",
-    "[cppapi][consolidation][rest]") {
+    "[cppapi][consolidation]") {
   using Dim64 = templates::Dimension<sm::Datatype::UINT64>;
   using Dom64 = Dim64::domain_type;
   using DenseFragmentFixed = templates::Fragment<std::tuple<>, std::tuple<int>>;

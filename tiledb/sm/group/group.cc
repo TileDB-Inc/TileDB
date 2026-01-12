@@ -123,8 +123,14 @@ void Group::open(
     throw GroupException("Cannot open group; Group already open");
   }
 
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type == QueryType::MODIFY_EXCLUSIVE) {
+    resources_.logger()->warn(
+        "Opening group in MODIFY_EXCLUSIVE mode is deprecated and has no "
+        "additional behavior over WRITE. Use WRITE mode instead.");
+    query_type = QueryType::WRITE;
+  }
+
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
     throw GroupException("Cannot open group; Unsupported query type");
   }
 
@@ -133,8 +139,7 @@ void Group::open(
       timestamp_end = utils::time::timestamp_now_ms();
     } else {
       iassert(
-          query_type == QueryType::WRITE ||
-              query_type == QueryType::MODIFY_EXCLUSIVE,
+          query_type == QueryType::WRITE,
           "query_type = {}",
           query_type_str(query_type));
       timestamp_end = 0;
@@ -255,8 +260,7 @@ void Group::close() {
   if (remote_) {
     // Update group metadata for write queries if metadata was written by the
     // user
-    if (query_type_ == QueryType::WRITE ||
-        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
+    if (query_type_ == QueryType::WRITE) {
       if (metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
@@ -282,9 +286,7 @@ void Group::close() {
   } else {
     if (query_type_ == QueryType::READ) {
       close_for_reads();
-    } else if (
-        query_type_ == QueryType::WRITE ||
-        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
+    } else if (query_type_ == QueryType::WRITE) {
       try {
         close_for_writes();
       } catch (StatusException& exc) {
@@ -317,6 +319,12 @@ const shared_ptr<GroupDetails> Group::group_details() const {
   return group_details_;
 }
 
+void Group::set_uri(const URI& uri) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  group_uri_ = uri;
+  group_details_->set_group_uri(uri);
+}
+
 QueryType Group::get_query_type() const {
   // Error if the group is not open
   if (!is_open_) {
@@ -332,9 +340,9 @@ void Group::delete_group(const URI& uri, bool recursive) {
     throw GroupException("[delete_group] Group is not open");
   }
 
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupException("[delete_group] Query type must be MODIFY_EXCLUSIVE");
+  // Check that query type is WRITE
+  if (query_type_ != QueryType::WRITE) {
+    throw GroupException("[delete_group] Query type must be WRITE");
   }
 
   // Delete group data
@@ -358,7 +366,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
           Array::delete_array(resources_, member_uri);
         } else if (member->type() == ObjectType::GROUP) {
           Group group_rec(resources_, member_uri);
-          group_rec.open(QueryType::MODIFY_EXCLUSIVE);
+          group_rec.open(QueryType::WRITE);
           group_rec.delete_group(member_uri, true);
         }
       }
@@ -401,11 +409,9 @@ void Group::delete_metadata(const char* key) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type_ != QueryType::WRITE) {
     throw GroupException(
-        "Cannot delete metadata. Group was not opened in write or "
-        "modify_exclusive mode");
+        "Cannot delete metadata. Group was not opened in write mode");
   }
 
   // Check if key is null
@@ -427,11 +433,9 @@ void Group::put_metadata(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type_ != QueryType::WRITE) {
     throw GroupException(
-        "Cannot put metadata; Group was not opened in write or "
-        "modify_exclusive mode");
+        "Cannot put metadata; Group was not opened in write mode");
   }
 
   // Check if key is null
@@ -649,11 +653,9 @@ void Group::mark_member_for_addition(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type_ != QueryType::WRITE) {
     throw GroupException(
-        "Cannot add member; Group was not opened in write or modify_exclusive "
-        "mode");
+        "Cannot add member; Group was not opened in write mode");
   }
   group_details_->mark_member_for_addition(
       resources_, group_member_uri, relative, name, type);
@@ -667,11 +669,9 @@ void Group::mark_member_for_removal(const std::string& name) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type_ != QueryType::WRITE) {
     throw GroupException(
-        "Cannot get member; Group was not opened in write or modify_exclusive "
-        "mode");
+        "Cannot get member; Group was not opened in write mode");
   }
 
   group_details_->mark_member_for_removal(name);
@@ -765,11 +765,30 @@ std::string Group::dump(
     const uint64_t num_indents,
     bool recursive,
     bool print_self) const {
+  // Create a set to track visited groups and prevent cycles
+  std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>
+      visited;
+  visited.insert(std::ref(const_cast<URI&>(group_uri_)));
+
+  // Create a string stream to hold the dump output
+  std::stringstream ss;
+
+  dump(indent_size, num_indents, recursive, print_self, visited, ss);
+  return ss.str();
+}
+
+void Group::dump(
+    const uint64_t indent_size,
+    const uint64_t num_indents,
+    bool recursive,
+    bool print_self,
+    std::unordered_set<std::reference_wrapper<URI>, URIRefHash, URIRefEqual>&
+        visited,
+    std::stringstream& ss) const {
   // Build the indentation literal and the leading indentation literal.
   const std::string indent(indent_size, '-');
   const std::string l_indent(indent_size * num_indents, '-');
 
-  std::stringstream ss;
   if (print_self) {
     ss << l_indent << group_uri_.last_path_part() << " "
        << object_type_str(ObjectType::GROUP) << std::endl;
@@ -784,11 +803,23 @@ std::string Group::dump(
         member_uri = group_uri_.join_path(it->uri().to_string());
       }
 
+      // Check if we've already visited this group to avoid cycles
+      if (visited.find(std::ref(member_uri)) != visited.end()) {
+        ss << std::endl;
+        continue;
+      }
+
       Group group_rec(resources_, member_uri);
       try {
         group_rec.open(QueryType::READ);
         ss << std::endl;
-        ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
+        // Mark this group as visited before recursing
+        visited.insert(std::ref(member_uri));
+        group_rec.dump(
+            indent_size, num_indents + 2, recursive, false, visited, ss);
+        // Remove from visited set after recursion to allow the same group
+        // to appear in different branches (but not in the same path)
+        visited.erase(std::ref(member_uri));
         group_rec.close();
       } catch (GroupNotFoundException&) {
         // If the group no longer exists in storage it will be listed but we
@@ -799,8 +830,6 @@ std::string Group::dump(
       ss << std::endl;
     }
   }
-
-  return ss.str();
 }
 
 /* ********************************* */

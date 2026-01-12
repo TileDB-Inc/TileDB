@@ -179,7 +179,7 @@ StringDimsFx::StringDimsFx()
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   auto temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir, ctx_);
+  prefix_ = vfs_array_uri(fs_vec_[0], "strings-dim-fx", ctx_);
 }
 
 StringDimsFx::~StringDimsFx() {
@@ -938,7 +938,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, array schema",
     "[capi][sparse][string-dims][array-schema][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create dimension
   tiledb_domain_t* domain;
@@ -1035,7 +1035,7 @@ TEST_CASE_METHOD(
     "C API: Test sparse array with string dimensions, check duplicates, global "
     "order",
     "[capi][sparse][string-dims][duplicates][global][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   create_array(
       ctx_,
@@ -1097,7 +1097,7 @@ TEST_CASE_METHOD(
     "C API: Test sparse array with string dimensions, check duplicates, "
     "unordered",
     "[capi][sparse][string-dims][duplicates][unordered][rest]") {
-  std::string array_name = prefix_ + +"string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   create_array(
       ctx_,
@@ -1160,7 +1160,7 @@ TEST_CASE_METHOD(
     "C API: Test sparse array with string dimensions, check global order "
     "violation",
     "[capi][sparse][string-dims][global-order][violation][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   create_array(
       ctx_,
@@ -1222,7 +1222,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, errors",
     "[capi][sparse][string-dims][errors][rest-fails][sc-43167]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   create_array(
@@ -1336,7 +1336,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d",
     "[capi][sparse][string-dims][1d][basic][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   create_array(
@@ -1575,7 +1575,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d, consolidation",
     "[capi][sparse][string-dims][1d][consolidation][non-rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   create_array(
@@ -1751,7 +1751,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d, allow duplicates",
     "[capi][sparse][string-dims][1d][allow-dups][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   create_array(
@@ -1851,7 +1851,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d, dedup",
     "[capi][sparse][string-dims][1d][dedup][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   create_array(
@@ -1968,7 +1968,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 2d",
     "[capi][sparse][string-dims][2d][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   int32_t dom[] = {1, 10};
@@ -2238,7 +2238,7 @@ TEST_CASE_METHOD(
     "C API: Test multiple var size global writes 1",
     "[capi][sparse][var-size][multiple-global-writes-1][rest-fails][sc-"
     "43168]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   create_array(
       ctx_,
@@ -2347,7 +2347,7 @@ TEST_CASE_METHOD(
     "C API: Test multiple var size global writes 2",
     "[capi][sparse][var-size][multiple-global-writes-2][rest-fails][sc-"
     "43168]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   create_array(
       ctx_,
@@ -2470,7 +2470,7 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 2d, default ranges",
     "[capi][sparse][string-dims][2d][default-ranges][rest]") {
-  std::string array_name = prefix_ + "string_dims";
+  std::string array_name = prefix_ + "/string_dims";
 
   // Create array
   int32_t dom[] = {1, 10};

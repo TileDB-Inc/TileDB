@@ -301,7 +301,6 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/array_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/array_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/encryption_type_enum.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_type_enum.h"
@@ -479,7 +478,7 @@ if(TILEDB_TESTS)
   find_package(Catch2 REQUIRED)
   add_library(tiledb_Catch2WithMain STATIC
     test/support/src/tdb_catch_main.cc)
-  target_link_libraries(tiledb_Catch2WithMain PUBLIC Catch2::Catch2)
+  target_link_libraries(tiledb_Catch2WithMain PUBLIC assert_header Catch2::Catch2)
 endif()
 
 # -------------------------------------------------------

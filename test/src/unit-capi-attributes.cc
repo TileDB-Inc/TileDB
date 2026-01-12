@@ -161,8 +161,8 @@ TEST_CASE_METHOD(
   for (const auto& attr_name : attr_names) {
     for (const auto& fs : fs_vec_) {
       std::string temp_dir = fs->temp_dir();
-      std::string array_name = vfs_array_uri(
-          fs, temp_dir + "array-illegal-char" + std::to_string(num++), ctx_);
+      std::string array_name =
+          vfs_array_uri(fs, "array-illegal-char" + std::to_string(num++), ctx_);
 
       // Create new TileDB context with file lock config disabled, rest the
       // same.
@@ -277,8 +277,7 @@ TEST_CASE_METHOD(
 
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
-    std::string array_name =
-        vfs_array_uri(fs, temp_dir + "byte-attribute", ctx_);
+    std::string array_name = vfs_array_uri(fs, "byte-attribute", ctx_);
     std::string attr_name = "a";
 
     // Create new TileDB context with file lock config disabled, rest the
@@ -469,8 +468,7 @@ TEST_CASE_METHOD(
     "[capi][attributes][tiledb_bool][rest]") {
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
-    std::string array_name =
-        vfs_array_uri(fs, temp_dir + "bool-attribute", ctx_);
+    std::string array_name = vfs_array_uri(fs, "bool-attribute", ctx_);
 
     std::string attr_name = "attr";
 

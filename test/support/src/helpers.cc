@@ -210,6 +210,10 @@ void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing) {
   }
 }
 
+bool is_g_vfs_enabled(const std::string& vfs) {
+  return vfs == "memfs" || vfs == g_vfs;
+}
+
 int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
   if (!vfs.empty()) {
     if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {

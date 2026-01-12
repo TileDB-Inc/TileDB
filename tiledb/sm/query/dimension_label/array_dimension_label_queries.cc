@@ -104,7 +104,6 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
 
     case (QueryType::DELETE):
     case (QueryType::UPDATE):
-    case (QueryType::MODIFY_EXCLUSIVE):
       if (!label_buffers.empty() || subarray.has_label_ranges()) {
         throw DimensionLabelQueryException(
             "Failed to add dimension label queries. Query type " +

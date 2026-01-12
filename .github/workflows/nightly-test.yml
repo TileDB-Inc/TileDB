@@ -57,7 +57,7 @@ jobs:
         if: contains(matrix.os, 'windows')
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build -S $env:GITHUB_WORKSPACE -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -S $env:GITHUB_WORKSPACE -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_ASSERTIONS=${{ matrix.assertions }}
 
       - name: Build TileDB
         working-directory: ${{ matrix.working_directory || github.workspace }}
@@ -162,4 +162,4 @@ jobs:
         with:
           name: nightly GitHub Actions build
           label: nightly
-          assignee: davisp,dudoslav,ihnorton,teo-tsirpanis
+          assignee: ihnorton,ypatia,teo-tsirpanis

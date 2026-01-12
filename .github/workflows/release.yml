@@ -39,97 +39,11 @@ jobs:
             build/tiledb-*
 
   Package-Binary-Release:
-    name: Package Binary Release - ${{ matrix.platform }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: windows-x86_64
-            os: windows-2022
-            triplet: x64-windows-release
-          # We can safely use the latest image, since the real job will run in the manylinux container.
-          - platform: linux-x86_64
-            os: ubuntu-latest
-            manylinux: quay.io/pypa/manylinux_2_28_x86_64
-            triplet: x64-linux-release
-          - platform: linux-x86_64-noavx2
-            os: ubuntu-latest
-            cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
-            triplet: x64-linux-release
-            manylinux: quay.io/pypa/manylinux_2_28_x86_64
-          - platform: linux-aarch64
-            os: ubuntu-24.04-arm
-            triplet: arm64-linux-release
-            manylinux: quay.io/pypa/manylinux_2_28_aarch64
-          - platform: macos-x86_64
-            os: macos-latest
-            cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
-            MACOSX_DEPLOYMENT_TARGET: 11
-            triplet: x64-osx-release
-          - platform: macos-arm64
-            os: macos-latest
-            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
-            MACOSX_DEPLOYMENT_TARGET: 11
-            triplet: arm64-osx-release
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.manylinux || '' }}
-    env:
-      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
-
-    steps:
-      - name: Checkout TileDB
-        # v4 uses node 20 which is incompatible with the libc version of the manylinux image
-        uses: actions/checkout@v3
-      - name: 'Homebrew and SDKROOT setup on macOS'
-        run: |
-          brew install automake ninja
-          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-        if: ${{ startsWith(matrix.os, 'macos-') == true }}
-      - name: Set variables
-        id: get-values
-        run: |
-          release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
-          ref=${{ github.head_ref || github.ref_name }}
-          echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
-        shell: bash
-      - name: Install manylinux prerequisites
-        if: ${{ startsWith(matrix.platform, 'linux') == true }}
-        run: |
-          set -e pipefail
-          yum install -y ninja-build perl-IPC-Cmd curl zip unzip tar
-          echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
-      - name: Configure TileDB
-        run: |
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=ON \
-            -DCMAKE_INSTALL_PREFIX=./dist \
-            -DTILEDB_INSTALL_LIBDIR=lib \
-            -DTILEDB_S3=ON \
-            -DTILEDB_AZURE=ON \
-            -DTILEDB_GCS=ON \
-            -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_WEBP=ON \
-            -DTILEDB_TESTS=OFF \
-            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
-            ${{ matrix.cmake_args }}
-        shell: bash
-      - name: Build TileDB
-        env:
-          TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
-        run: cmake --build build -j4 --config Release --target package
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ matrix.platform }}
-          path: |
-            build/tiledb-*.tar.gz*
-            build/tiledb-*.zip*
-      - name: "Print log files (failed build only)"
-        shell: bash
-        run: |
-          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
-        if: failure() # only run this job if the build step failed
+    name: Build TileDB Binaries
+    uses: ./.github/workflows/build-artifacts.yml
+    with:
+      ref: ${{ github.ref }}
+      version: ''
 
   Build-R-Binaries:
     uses: ./.github/workflows/build-rtools40.yml
@@ -219,4 +133,4 @@ jobs:
         with:
           name: Release failed
           label: release
-          assignee: davisp,dudoslav,ihnorton,teo-tsirpanis
+          assignee: ihnorton,ypatia,teo-tsirpanis

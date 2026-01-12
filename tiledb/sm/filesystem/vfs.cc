@@ -38,6 +38,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
+#include "tiledb/sm/filesystem/failing_fs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -55,6 +56,40 @@ using namespace tiledb::sm::filesystem;
 
 namespace tiledb::sm {
 
+namespace {
+#ifdef HAVE_S3
+tdb_unique_ptr<FilesystemBase> make_tiledb_fs_failing(
+    const std::string& detail = "") {
+  return tdb_unique_ptr<FilesystemBase>(
+      tdb_new(FailingFS, "tiledb", "TileDB FS VFS not configured; " + detail));
+}
+
+tdb_unique_ptr<FilesystemBase> make_tiledbfs(
+    stats::Stats* parent_stats, ThreadPool* tp, const Config& config) {
+  auto rest_server =
+      config.get<std::string>("rest.server_address", Config::must_find);
+  if (rest_server.ends_with('/')) {
+    size_t pos = rest_server.find_last_not_of('/');
+    rest_server.resize(pos + 1);
+  }
+  if (rest_server.empty()) {
+    return make_tiledb_fs_failing("missing rest.server_address config option");
+  }
+  Config new_config{config};
+  throw_if_not_ok(
+      new_config.set("vfs.s3.endpoint_override", rest_server + "/v4/files"));
+  auto token = config.get<std::string>("rest.token");
+  if (token) {
+    throw_if_not_ok(new_config.set("vfs.s3.aws_access_key_id", *token));
+    throw_if_not_ok(new_config.set("vfs.s3.aws_secret_access_key", "unused"));
+  }
+  throw_if_not_ok(new_config.set("vfs.s3.use_virtual_addressing", "false"));
+  return tdb_unique_ptr<FilesystemBase>(
+      tdb_new(S3, parent_stats, tp, new_config));
+}
+#endif
+}  // namespace
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -69,6 +104,10 @@ VFS::VFS(
     , Azure_within_VFS(io_tp, config)
     , GCS_within_VFS(io_tp, config)
     , S3_within_VFS(stats_, io_tp, config)
+    , local_(config)
+#ifdef HAVE_S3
+    , tiledbfs_(make_tiledbfs(parent_stats, io_tp, config))
+#endif
     , config_(config)
     , logger_(logger)
     , compute_tp_(compute_tp)
@@ -84,6 +123,7 @@ VFS::VFS(
 
   if constexpr (s3_enabled) {
     supported_fs_.insert(Filesystem::S3);
+    supported_fs_.insert(Filesystem::TILEDBFS);
   }
 
 #ifdef HAVE_AZURE
@@ -93,8 +133,6 @@ VFS::VFS(
 #ifdef HAVE_GCS
   supported_fs_.insert(Filesystem::GCS);
 #endif
-
-  local_ = LocalFS(config_);
 
   supported_fs_.insert(Filesystem::MEMFS);
 }
@@ -130,6 +168,14 @@ const FilesystemBase& VFS::get_fs(const URI& uri) const {
   }
   if (uri.is_memfs()) {
     return memfs_;
+  }
+  if (uri.is_tiledb()) {
+#ifdef HAVE_S3
+    return *tiledbfs_;
+#else
+    throw VFSException(
+        "TileDB was built without S3 support, which is required for TileDB FS");
+#endif
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -173,7 +219,7 @@ Config VFS::config() const {
 }
 
 void VFS::create_dir(const URI& uri) const {
-  if (!uri.is_s3() && !uri.is_azure() && !uri.is_gcs()) {
+  if (!(uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_tiledb())) {
     if (this->is_dir(uri))
       return;
   }
@@ -281,7 +327,7 @@ void VFS::remove_files(
 }
 
 uint64_t VFS::max_parallel_ops(const URI& uri) const {
-  if (uri.is_s3()) {
+  if (uri.is_s3() || uri.is_tiledb()) {
     return config_.get<uint64_t>("vfs.s3.max_parallel_ops", Config::must_find);
   } else if (uri.is_azure()) {
     return config_.get<uint64_t>(
@@ -318,10 +364,21 @@ bool VFS::is_bucket(const URI& uri) const {
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
 
-  for (auto& fs : ls_with_sizes(parent)) {
-    uris->emplace_back(fs.path().native());
+  auto entries = parent.is_file() ? local_.ls_with_sizes(parent, false) :
+                                    ls_with_sizes(parent);
+  if (parent.is_file()) {
+    parallel_sort(
+        compute_tp_,
+        entries.begin(),
+        entries.end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
   }
 
+  for (const auto& fs : entries) {
+    uris->emplace_back(fs.path().native());
+  }
   return Status::Ok();
 }
 
@@ -330,7 +387,8 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
-  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
+  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure() ||
+        parent.is_tiledb())) {
     if (!this->is_dir(parent)) {
       return {};
     }
@@ -669,6 +727,8 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
     return supports_fs(Filesystem::AZURE);
   } else if (uri.is_gcs()) {
     return supports_fs(Filesystem::GCS);
+  } else if (uri.is_tiledb()) {
+    return supports_fs(Filesystem::TILEDBFS);
   } else {
     return true;
   }
@@ -717,6 +777,17 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
               "'; GCS does not support append mode");
         } else {
           throw BuiltWithout("GCS");
+        }
+      }
+      if (uri.is_tiledb()) {
+        if constexpr (s3_enabled) {
+          throw VFSException(
+              "Cannot open file '" + uri.to_string() +
+              "'; TileDB FS does not support append mode");
+        } else {
+          throw VFSException(
+              "TileDB was built without S3 support, which is required for "
+              "TileDB FS");
         }
       }
       break;
