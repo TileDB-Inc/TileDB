@@ -784,10 +784,12 @@ Status RestClientRemote::post_query_submit(
 
   // When a read query overflows the user buffer we may already have the next
   // part loaded in the scratch buffer.
+  Status cb_status;
   if (rest_scratch->size() > 0) {
     bool skip;
     query_post_call_back(
-        false, nullptr, 0, &skip, rest_scratch, query, copy_state);
+        false, nullptr, 0, &skip, rest_scratch, query, copy_state, &cb_status);
+    RETURN_NOT_OK(cb_status);
   }
 
   // Serialize query to send
@@ -833,7 +835,8 @@ Status RestClientRemote::post_query_submit(
       std::placeholders::_4,
       rest_scratch,
       query,
-      copy_state);
+      copy_state,
+      &cb_status);
 
   const Status st = curlc.post_data(
       stats_,
@@ -843,6 +846,13 @@ Status RestClientRemote::post_query_submit(
       rest_scratch.get(),
       std::move(write_cb),
       cache_key);
+
+  if (!cb_status.ok()) {
+    return LOG_STATUS(Status_RestError(
+        "Error submitting query to REST; "
+        "Failure within query post call back: " +
+        cb_status.message()));
+  }
 
   if (!st.ok() && copy_state->empty()) {
     return LOG_STATUS(Status_RestError(
@@ -867,7 +877,8 @@ size_t RestClientRemote::query_post_call_back(
     bool* const skip_retries,
     shared_ptr<Buffer> scratch,
     Query* query,
-    serialization::CopyState* copy_state) {
+    serialization::CopyState* copy_state,
+    Status* status) {
   // All return statements in this function must pass through this wrapper.
   // This is responsible for two things:
   // 1. The 'bytes_processed' may be negative in error scenarios. The negative
@@ -913,11 +924,11 @@ size_t RestClientRemote::query_post_call_back(
   // 'scratch' is empty, we could attempt to process 'contents' in-place and
   // only copy the remaining, unprocessed bytes into 'scratch'.
   scratch->set_offset(scratch->size());
-  Status st = scratch->write(contents, content_nbytes);
-  if (!st.ok()) {
+  *status = scratch->write(contents, content_nbytes);
+  if (!status->ok()) {
     LOG_ERROR(
         "Cannot copy libcurl response data; buffer write failed: " +
-        st.to_string());
+        status->to_string());
     return return_wrapper(bytes_processed);
   }
 
@@ -953,8 +964,8 @@ size_t RestClientRemote::query_post_call_back(
       // Copy the entire serialized buffer to a newly allocated, 8-byte
       // aligned auxiliary buffer.
       Buffer aux;
-      st = aux.write(scratch->cur_data(), query_size);
-      if (!st.ok()) {
+      *status = aux.write(scratch->cur_data(), query_size);
+      if (!status->ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
       }
@@ -963,7 +974,7 @@ size_t RestClientRemote::query_post_call_back(
       // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
-      st = serialization::query_deserialize(
+      *status = serialization::query_deserialize(
           aux,
           serialization_type_,
           true,
@@ -971,7 +982,7 @@ size_t RestClientRemote::query_post_call_back(
           query,
           compute_tp_,
           memory_tracker_);
-      if (!st.ok()) {
+      if (!status->ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
       }
@@ -980,7 +991,7 @@ size_t RestClientRemote::query_post_call_back(
       // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
-      st = serialization::query_deserialize(
+      *status = serialization::query_deserialize(
           // Pass only the part of the buffer after the offset. The offset is
           // important as we've been advancing it in the code.
           scratch->cur_span(),
@@ -990,7 +1001,7 @@ size_t RestClientRemote::query_post_call_back(
           query,
           compute_tp_,
           memory_tracker_);
-      if (!st.ok()) {
+      if (!status->ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
       }
@@ -1008,30 +1019,38 @@ size_t RestClientRemote::query_post_call_back(
 
   if (scratch->offset() != 0) {
     // Save any unprocessed query data in scratch by copying it to an
-    // auxillary buffer before we truncate scratch. Then copy any unprocessed
+    // auxiliary buffer before we truncate scratch. Then copy any unprocessed
     // bytes back into scratch.
     Buffer aux;
     if (length > 0) {
-      throw_if_not_ok(aux.write(scratch->data(scratch->offset()), length));
+      *status = aux.write(scratch->data(scratch->offset()), length);
+      if (!status->ok()) {
+        return return_wrapper(bytes_processed);
+      }
     }
 
     scratch->reset_size();
     scratch->reset_offset();
 
     if (length > 0) {
-      throw_if_not_ok(scratch->write(aux.data(), aux.size()));
+      *status = scratch->write(aux.data(), aux.size());
+      if (!status->ok()) {
+        return return_wrapper(bytes_processed);
+      }
     }
 
     if (scratch->size() != length) {
-      throw std::logic_error("");
+      *status = Status(Status_RestError(fmt::format(
+          "Unprocessed query data length {} does not match expected length "
+          "{}",
+          scratch->size(),
+          length)));
+      return return_wrapper(bytes_processed);
     }
   }
 
   bytes_processed += length;
-
-  if (static_cast<size_t>(bytes_processed) != content_nbytes) {
-    throw std::logic_error("");
-  }
+  // Curl will fail the request if bytes_processed != content_nbytes.
   return return_wrapper(bytes_processed);
 }
 
@@ -1125,6 +1144,7 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
           "/query/submit_and_finalize?type=" + query_type_str(query->type());
   }
 
+  Status cb_status;
   auto write_cb = std::bind(
       &RestClientRemote::query_post_call_back,
       this,
@@ -1134,7 +1154,8 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
       std::placeholders::_4,
       rest_scratch,
       query,
-      &copy_state);
+      &copy_state,
+      &cb_status);
 
   const Status st = curlc.post_data(
       stats_,
@@ -1145,6 +1166,12 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
       std::move(write_cb),
       cache_key);
 
+  if (!cb_status.ok()) {
+    return LOG_STATUS(Status_RestError(
+        "Error submitting query to REST; "
+        "Failure within query post call back: " +
+        cb_status.message()));
+  }
   if (!st.ok() && copy_state.empty()) {
     return LOG_STATUS(Status_RestError(
         "Error while submit_and_finalize query to REST; "
