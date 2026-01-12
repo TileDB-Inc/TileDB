@@ -69,6 +69,24 @@ class QueryExperimental {
   }
 
   /**
+   * Adds a predicate to be applied to a read query. The added predicate
+   * will be analyzed and evaluated in the subarray step, query condition
+   * step, or both.
+   *
+   * The predicate is parsed as an Apache DataFusion SQL expression and must
+   * evaluate to a boolean.
+   *
+   * @param ctx The TileDB context.
+   * @param query The TileDB query.
+   * @param predicate A text representation of the desired predicate.
+   */
+  static void add_predicate(
+      const Context& ctx, Query& query, const std::string& predicate) {
+    ctx.handle_error(tiledb_query_add_predicate(
+        ctx.ptr().get(), query.ptr().get(), predicate.c_str()));
+  }
+
+  /**
    * Get the number of relevant fragments from the subarray. Should only be
    * called after size estimation was asked for.
    *

@@ -42,8 +42,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 
 #ifdef HAVE_RUST
-#include "tiledb/oxidize/arrow.h"
-#include "tiledb/oxidize/expr.h"
+#include "tiledb/oxidize/query_predicates.h"
 #endif
 
 #include <algorithm>
@@ -166,30 +165,6 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
 
   tree_->rewrite_for_schema(array_schema);
 }
-
-#ifdef HAVE_RUST
-bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
-  if (!datafusion_.has_value()) {
-    std::vector<std::string> select(field_names().begin(), field_names().end());
-
-    try {
-      auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
-          array_schema, *tree_.get());
-      auto dfschema =
-          tiledb::oxidize::arrow::schema::create(array_schema, select);
-      auto physical_expr = tiledb::oxidize::datafusion::physical_expr::create(
-          *dfschema, std::move(logical_expr));
-
-      datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
-    } catch (const ::rust::Error& e) {
-      throw std::logic_error(
-          "Unexpected error compiling expression: " + std::string(e.what()));
-    }
-    return true;
-  }
-  return false;
-}
-#endif
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   if (!tree_) {
@@ -2919,26 +2894,8 @@ Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
     const ResultTile& result_tile,
     std::span<BitmapType> result_bitmap) {
-#ifdef HAVE_RUST
-  if (datafusion_.has_value()) {
-    try {
-      datafusion_.value().apply(params, result_tile, result_bitmap);
-    } catch (const ::rust::Error& e) {
-      throw std::logic_error(
-          "Unexpected error evaluating expression: " + std::string(e.what()));
-    }
-  } else {
-    apply_tree_sparse<BitmapType>(
-        tree_,
-        params,
-        result_tile,
-        std::multiplies<BitmapType>(),
-        result_bitmap);
-  }
-#else
   apply_tree_sparse<BitmapType>(
       tree_, params, result_tile, std::multiplies<BitmapType>(), result_bitmap);
-#endif
 
   return Status::Ok();
 }
@@ -2959,63 +2916,27 @@ uint64_t QueryCondition::condition_index() const {
   return condition_index_;
 }
 
-#ifdef HAVE_RUST
-template <typename BitmapType>
-void QueryCondition::Datafusion::apply(
-    const QueryCondition::Params&,
-    const ResultTile& result_tile,
-    std::span<BitmapType> result_bitmap) const {
-  const auto arrow =
-      tiledb::oxidize::arrow::record_batch::create(*schema_, result_tile);
-  const auto predicate_eval = expr_->evaluate(*arrow);
-  static_assert(
-      std::is_same_v<BitmapType, uint8_t> ||
-      std::is_same_v<BitmapType, uint64_t>);
-  if constexpr (std::is_same_v<BitmapType, uint8_t>) {
-    const auto predicate_out_u8 = predicate_eval->cast_to(Datatype::UINT8);
-    const auto bitmap = predicate_out_u8->values_u8();
-    if (predicate_out_u8->is_scalar() && bitmap.empty()) {
-      // all NULLs
-      for (auto& result : result_bitmap) {
-        result = 0;
-      }
-    } else if (predicate_out_u8->is_scalar()) {
-      // all the same value
-      for (auto& result : result_bitmap) {
-        result = result * bitmap[0];
-      }
-    } else if (bitmap.size() == result_bitmap.size()) {
-      for (uint64_t i = 0; i < bitmap.size(); i++) {
-        result_bitmap[i] *= bitmap[i];
-      }
-    } else {
-      throw std::logic_error(
-          "Expression evaluation bitmap has unexpected size");
-    }
+std::unordered_set<std::string> QueryPredicates::field_names() const {
+#ifndef HAVE_RUST
+  if (condition_.has_value()) {
+    return condition_.value().field_names();
   } else {
-    const auto predicate_out_u64 = predicate_eval->cast_to(Datatype::UINT64);
-    const auto bitmap = predicate_out_u64->values_u64();
-    if (predicate_out_u64->is_scalar() && bitmap.empty()) {
-      // all NULLs
-      for (auto& result : result_bitmap) {
-        result = 0;
-      }
-    } else if (predicate_out_u64->is_scalar()) {
-      // all the same value
-      for (auto& result : result_bitmap) {
-        result = result * bitmap[0];
-      }
-    } else if (bitmap.size() == result_bitmap.size()) {
-      for (uint64_t i = 0; i < result_bitmap.size(); i++) {
-        result_bitmap[i] *= bitmap[i];
-      }
-    } else {
-      throw std::logic_error(
-          "Expression evaluation bitmap has unexpected size");
+    return {};
+  }
+#else
+  std::unordered_set<std::string> ret;
+  if (condition_.has_value()) {
+    ret = condition_.value().field_names();
+  }
+  if (datafusion_.has_value()) {
+    const auto dffields = datafusion_.value()->field_names();
+    for (const auto& rstring : dffields) {
+      ret.insert(std::string(rstring.begin(), rstring.end()));
     }
   }
-}
+  return ret;
 #endif
+}
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(

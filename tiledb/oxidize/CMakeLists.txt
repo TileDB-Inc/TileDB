@@ -23,24 +23,25 @@ cxxbridge(
 
 cxxbridge(
   NAME
-    expr
-  SOURCES
-    lib.rs
-)
-
-cxxbridge(
-  NAME
     cxx-interface
   SOURCES
     array_schema.cc
     common/memory_tracker.rs
     sm/array_schema/mod.rs
+    sm/buffer.rs
     sm/enums/mod.rs
     sm/query/readers/mod.rs
     sm/query/ast/mod.rs
     sm/misc/mod.rs
     sm/tile/mod.rs
-) 
+)
+
+cxxbridge(
+  NAME
+    query-predicates
+  SOURCES
+    lib.rs
+)
 
 cxxbridge(
   NAME
@@ -60,7 +61,7 @@ oxidize(
   EXPORT
     arrow
     cxx-interface
-    expr
+    query-predicates
 )
 
 oxidize(
@@ -78,7 +79,7 @@ oxidize(
   EXPORT
     arrow
     cxx-interface
-    expr
+    query-predicates
     test-support-cxx-interface
 )
 

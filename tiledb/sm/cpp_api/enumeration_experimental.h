@@ -383,7 +383,7 @@ class Enumeration {
   static Enumeration create(
       const Context& ctx,
       const std::string& name,
-      std::vector<T>& values,
+      const std::vector<T>& values,
       bool ordered = false,
       std::optional<tiledb_datatype_t> type = std::nullopt) {
     using DataT = impl::TypeHandler<T>;
@@ -436,7 +436,7 @@ class Enumeration {
   static Enumeration create(
       const Context& ctx,
       const std::string& name,
-      std::vector<std::basic_string<T>>& values,
+      const std::vector<std::basic_string<T>>& values,
       bool ordered = false,
       std::optional<tiledb_datatype_t> type = std::nullopt) {
     using DataT = impl::TypeHandler<T>;

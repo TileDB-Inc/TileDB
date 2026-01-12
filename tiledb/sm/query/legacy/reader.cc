@@ -246,9 +246,15 @@ Status Reader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  if (condition_.has_value()) {
-    RETURN_NOT_OK(condition_->check(array_schema_));
+  if (predicates_.condition_.has_value()) {
+    RETURN_NOT_OK(predicates_.condition_->check(array_schema_));
   }
+#ifdef HAVE_RUST
+  if (predicates_.datafusion_.has_value()) {
+    return logger_->status(Status_ReaderError(
+        "tiledb_query_add_predicate is not supported for this query"));
+  }
+#endif
 
   if (buffers_.count(constants::delete_timestamps) != 0) {
     return logger_->status(
@@ -357,8 +363,8 @@ Status Reader::load_initial_data() {
   RETURN_CANCEL_OR_ERROR(generate_timestamped_conditions());
 
   // Make a list of dim/attr that will be loaded for query condition.
-  if (condition_.has_value()) {
-    qc_loaded_attr_names_set_.merge(condition_->field_names());
+  if (predicates_.condition_.has_value()) {
+    qc_loaded_attr_names_set_.merge(predicates_.condition_->field_names());
   }
   for (auto delete_and_update_condition : delete_and_update_conditions_) {
     qc_loaded_attr_names_set_.merge(delete_and_update_condition.field_names());
@@ -382,7 +388,8 @@ Status Reader::apply_query_condition(
     std::vector<ResultTile*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
-  if ((!condition_.has_value() && delete_and_update_conditions_.empty()) ||
+  if ((!predicates_.has_predicates() &&
+       delete_and_update_conditions_.empty()) ||
       result_cell_slabs.empty()) {
     return Status::Ok();
   }
@@ -407,8 +414,8 @@ Status Reader::apply_query_condition(
     stride = 1;
 
   QueryCondition::Params params(query_memory_tracker_, array_schema_);
-  if (condition_.has_value()) {
-    RETURN_NOT_OK(condition_->apply(
+  if (predicates_.condition_.has_value()) {
+    RETURN_NOT_OK(predicates_.condition_->apply(
         params, fragment_metadata_, result_cell_slabs, stride));
   }
 
@@ -2243,7 +2250,7 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
   // Query conditions mutate the result cell slabs to filter attributes.
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
-  if (condition_.has_value()) {
+  if (predicates_.has_predicates()) {
     return {
         logger_->status(Status_ReaderError(
             "Cannot read dense coordinates; dense coordinate "

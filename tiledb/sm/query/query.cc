@@ -59,6 +59,10 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/query_predicates.h"
+#endif
+
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -680,7 +684,7 @@ void Query::init() {
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
-      if (condition_.has_value()) {
+      if (predicates_.condition_.has_value()) {
         throw QueryException(
             "Cannot init query; Using query conditions and dimension labels "
             "together is not supported.");
@@ -716,6 +720,12 @@ void Query::init() {
           buffers_,
           fragment_name_));
     }
+
+#ifdef HAVE_RUST
+    if (predicates_.datafusion_.has_value()) {
+      predicates_.datafusion_.value()->compile();
+    }
+#endif
 
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
@@ -753,7 +763,7 @@ const std::optional<QueryCondition>& Query::condition() const {
         "Query condition is not available for write queries");
   }
 
-  return condition_;
+  return predicates_.condition_;
 }
 
 const std::vector<UpdateValue>& Query::update_values() const {
@@ -807,8 +817,8 @@ Status Query::process() {
     }
   }
 
-  if (condition_.has_value()) {
-    auto& names = condition_->enumeration_field_names();
+  if (predicates_.condition_.has_value()) {
+    auto& names = predicates_.condition_->enumeration_field_names();
     std::unordered_set<std::string> deduped_enmr_names;
     for (auto name : names) {
       auto attr = array_schema_->attribute(name);
@@ -832,29 +842,7 @@ Status Query::process() {
           return Status::Ok();
         }));
 
-    condition_->rewrite_for_schema(array_schema());
-
-    // experimental feature - maybe evaluate using datafusion
-    const std::string evaluator_param_name = "sm.query.condition_evaluator";
-    const auto evaluator = config_.get<std::string>(evaluator_param_name);
-    if (evaluator == "datafusion") {
-#ifdef HAVE_RUST
-      auto timer_se =
-          stats_->start_timer("query_condition_rewrite_to_datafusion");
-      condition_->rewrite_to_datafusion(array_schema());
-#else
-      std::stringstream ss;
-      ss << "Invalid value for parameter '" << evaluator_param_name
-         << "': 'datafusion' requires build configuration '-DTILEDB_RUST=ON'";
-      throw QueryException(ss.str());
-#endif
-    } else if (evaluator.has_value() && evaluator != "ast") {
-      std::stringstream ss;
-      ss << "Invalid value for parameter '" << evaluator_param_name
-         << "': found '" << evaluator.value()
-         << "', expected 'datafusion' or 'ast'";
-      throw QueryException(ss.str());
-    }
+    predicates_.condition_->rewrite_for_schema(array_schema());
   }
 
   if (type_ == QueryType::READ) {
@@ -1475,9 +1463,45 @@ Status Query::set_condition(const QueryCondition& condition) {
     throw std::invalid_argument("Query conditions must not be empty");
   }
 
-  condition_ = condition;
+  predicates_.condition_ = condition;
 
   return Status::Ok();
+}
+
+Status Query::add_predicate([[maybe_unused]] const char* predicate) {
+  if (type_ != QueryType::READ) {
+    return Status_QueryError(
+        "Cannot add query predicate; Operation only "
+        "applicable to read queries");
+  }
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    return Status_QueryError(
+        "Cannot add query predicate; Adding a predicate to an already "
+        "initialized query is not supported.");
+  }
+
+#ifndef HAVE_RUST
+  return Status_QueryError(
+      "Cannot add query predicate: feature requires build "
+      "configuration '-DTILEDB_RUST=ON'");
+#else
+  if (!predicates_.datafusion_.has_value()) {
+    try {
+      predicates_.datafusion_.emplace(
+          tiledb::oxidize::new_query_predicates(array_schema()));
+    } catch (const rust::Error& e) {
+      return Status_QueryError(
+          "Cannot add predicate: Schema error: " + std::string(e.what()));
+    }
+  }
+  try {
+    predicates_.datafusion_.value()->add_predicate(predicate);
+  } catch (const rust::Error& e) {
+    return Status_QueryError(
+        "Error adding predicate: " + std::string(e.what()));
+  }
+  return Status::Ok();
+#endif
 }
 
 Status Query::add_update_value(
@@ -1650,7 +1674,8 @@ Status Query::submit() {
       throw_if_not_ok(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
-      // If we cache an entire write a query may be uninitialized for N submits.
+      // If we cache an entire write a query may be uninitialized for N
+      // submits.
       if (!query_remote_buffer_storage_.has_value() &&
           type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
         query_remote_buffer_storage_.emplace(*this, buffers_);
@@ -1784,8 +1809,8 @@ bool Query::is_aggregate(std::string output_field_name) const {
 /* ****************************** */
 
 Layout Query::effective_layout() const {
-  // If the user has not set a layout, it will default to row-major, which will
-  // use the legacy reader on sparse arrays, and fail if aggregates were
+  // If the user has not set a layout, it will default to row-major, which
+  // will use the legacy reader on sparse arrays, and fail if aggregates were
   // specified. However, if only aggregates are specified and no regular data
   // buffers, the layout doesn't matter and we can transparently switch to the
   // much more efficient unordered layout.
@@ -1811,7 +1836,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       aggregate_buffers_,
       subarray_,
       layout,
-      condition_,
+      predicates_,
       default_channel_aggregates_,
       skip_checks_serialization);
   if (type_ == QueryType::WRITE) {
@@ -1869,8 +1894,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       all_dense &= frag_md->dense();
     }
 
-    // We are going to deprecate dense arrays with sparse fragments in 2.27 but
-    // log a warning for now.
+    // We are going to deprecate dense arrays with sparse fragments in 2.27
+    // but log a warning for now.
     if (array_schema_->dense() && !all_dense) {
       LOG_WARN(
           "This dense array contains sparse fragments. Support for reading "

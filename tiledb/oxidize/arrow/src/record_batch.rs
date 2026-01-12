@@ -6,15 +6,14 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray, PrimitiveArray,
+    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray, LargeStringArray,
+    PrimitiveArray,
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
-use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
-use arrow::record_batch::RecordBatch;
+use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field, Schema as ArrowSchema};
+use arrow::record_batch::{RecordBatch, RecordBatchOptions};
 use tiledb_cxx_interface::sm::query::readers::{ResultTile, TileTuple};
-use tiledb_cxx_interface::sm::tile::Tile;
 
-use super::*;
 use crate::offsets::Error as OffsetsError;
 
 /// An error creating a [RecordBatch] to represent a [ResultTile].
@@ -39,11 +38,10 @@ pub enum FieldError {
     InternalUnalignedValues,
     #[error("Internal error: invalid variable-length data offsets: {0}")]
     InternalOffsets(#[from] OffsetsError),
-}
-
-/// Wraps a [RecordBatch] for passing across the FFI boundary.
-pub struct ArrowRecordBatch {
-    pub arrow: RecordBatch,
+    #[error("Error reading tile: {0}")]
+    InvalidTileData(#[source] arrow::error::ArrowError),
+    #[error("Attributes with enumerations are not supported in text predicates")]
+    EnumerationNotSupported,
 }
 
 /// Returns a [RecordBatch] which contains the same contents as a [ResultTile].
@@ -56,11 +54,10 @@ pub struct ArrowRecordBatch {
 /// long as the returned [RecordBatch] is not used after the [ResultTile]
 /// is destructed.
 pub unsafe fn to_record_batch(
-    schema: &ArrowSchema,
+    schema: &Arc<ArrowSchema>,
     tile: &ResultTile,
-) -> Result<Box<ArrowRecordBatch>, Error> {
+) -> Result<RecordBatch, Error> {
     let columns = schema
-        .0
         .fields()
         .iter()
         .map(|f| {
@@ -87,23 +84,17 @@ pub unsafe fn to_record_batch(
         .collect::<Result<Vec<Arc<dyn ArrowArray>>, _>>()?;
 
     // SAFETY: should be clear from iteration
-    assert_eq!(schema.0.fields().len(), columns.len());
+    assert_eq!(schema.fields().len(), columns.len());
 
     // SAFETY: `tile_to_arrow_array` must do this, major internal error if not
     // which is not recoverable
     assert!(
         schema
-            .0
             .fields()
             .iter()
             .zip(columns.iter())
             .all(|(f, c)| f.data_type() == c.data_type())
     );
-
-    // SAFETY: `schema` has at least one field.
-    // This is not required in general, but `schema` is a projection of an `ArraySchema`
-    // which always has at least one dimension.
-    assert!(!columns.is_empty());
 
     // SAFETY: dependent on the correctness of `tile_to_arrow_array` AND the integrity of
     // the underlying `ResultTile`.
@@ -112,15 +103,24 @@ pub unsafe fn to_record_batch(
     assert!(
         columns.iter().all(|c| c.len() as u64 == tile.cell_num()),
         "Columns do not all have same number of cells: {:?} {:?}",
-        schema.0.fields(),
+        schema.fields(),
         columns.iter().map(|c| c.len()).collect::<Vec<_>>()
     );
 
     // SAFETY: the four asserts above rule out each of the possible error conditions
-    let arrow = RecordBatch::try_new(Arc::clone(&schema.0), columns)
-        .expect("Logic error: preconditions for constructing RecordBatch not met");
+    let arrow = if columns.is_empty() {
+        RecordBatch::try_new_with_options(
+            Arc::clone(schema),
+            columns,
+            &RecordBatchOptions::new().with_row_count(Some(tile.cell_num() as usize)),
+        )
+    } else {
+        RecordBatch::try_new(Arc::clone(schema), columns)
+    };
 
-    Ok(Box::new(ArrowRecordBatch { arrow }))
+    let arrow = arrow.expect("Logic error: preconditions for constructing RecordBatch not met");
+
+    Ok(arrow)
 }
 
 /// Returns an [ArrowArray] which contains the same contents as the provided
@@ -139,41 +139,40 @@ unsafe fn tile_to_arrow_array(
     unsafe {
         // SAFETY: the caller is responsible that each of the tiles tile out-live
         // the `Arc<dyn ArrowArray>` created here. See function docs.
-        to_arrow_array(f, tile.fixed_tile(), tile.var_tile(), tile.validity_tile())
+        to_arrow_array(
+            f,
+            tile.fixed_tile().as_slice(),
+            tile.var_tile().map(|t| t.as_slice()),
+            tile.validity_tile().map(|t| t.as_slice()),
+        )
     }
 }
 
 /// Returns an [ArrowArray] which contains the same contents as the provided
-/// triple of [Tile]s.
+/// triple of `&[u8]`s.
 ///
 /// If `var.is_some()`, then `fixed` contains the offsets and `var` contains
 /// the values. Otherwise, `fixed` contains the values.
 ///
-/// The `validity` [Tile] contains one value per cell.
+/// The `validity` `&[u8]` contains one value per cell.
 ///
 /// # Safety
 ///
 /// When possible this function avoids copying data. This means that the
-/// returned [ArrowArray] may reference data which lives inside the [Tile]s.
+/// returned [ArrowArray] may reference data which lives inside the `&[u8]`s.
 /// This function is safe to call as long as the returned [ArrowArray] is not
-/// used after those [Tile]s are destructed.
-unsafe fn to_arrow_array(
+/// used after the data which the `&[u8]` borrows are destructed.
+pub unsafe fn to_arrow_array(
     f: &Field,
-    fixed: &Tile,
-    var: Option<&Tile>,
-    validity: Option<&Tile>,
+    fixed: &[u8],
+    var: Option<&[u8]>,
+    validity: Option<&[u8]>,
 ) -> Result<Arc<dyn ArrowArray>, FieldError> {
     let null_buffer = if let Some(validity) = validity {
         if !f.is_nullable() {
             return Err(FieldError::UnexpectedValidityTile);
         }
-        Some(
-            validity
-                .as_slice()
-                .iter()
-                .map(|v| *v != 0)
-                .collect::<NullBuffer>(),
-        )
+        Some(validity.iter().map(|v| *v != 0).collect::<NullBuffer>())
     } else if f.is_nullable() {
         // NB: this is allowed even for nullable fields, it means that none of
         // the cells is `NULL`.  Note that due to schema evolution the arrow
@@ -221,6 +220,22 @@ unsafe fn to_arrow_array(
                 null_buffer,
             )))
         }
+        DataType::LargeUtf8 => {
+            let Some(var_tile) = var else {
+                return Err(FieldError::ExpectedVarTile);
+            };
+            let offsets = crate::offsets::try_from_bytes(1, fixed)?;
+            let values = unsafe {
+                // SAFETY: the caller is responsible that `fixed` out-lives
+                // the `Buffer` created here. See function docs.
+                to_buffer::<UInt8Type>(var_tile)
+            }?;
+
+            Ok(Arc::new(
+                LargeStringArray::try_new(offsets, values.into(), null_buffer)
+                    .map_err(FieldError::InvalidTileData)?,
+            ))
+        }
         DataType::LargeList(value_field) => {
             let Some(var_tile) = var else {
                 return Err(FieldError::ExpectedVarTile);
@@ -237,6 +252,12 @@ unsafe fn to_arrow_array(
                 values,
                 null_buffer,
             )))
+        }
+        DataType::Null => {
+            // NB: see `arrow/src/schema.rs`.
+            // This represents the value type of an attribute with an enumeration
+            // which we will implement later in CORE-285.
+            Err(FieldError::EnumerationNotSupported)
         }
         _ => {
             // SAFETY: ensured by limited range of return values of `crate::schema::arrow_datatype`
@@ -257,48 +278,63 @@ unsafe fn to_arrow_array(
 /// This function is safe to call as long as the returned [PrimitiveArray]
 /// is not used after the argument [Tile] is destructed.
 unsafe fn to_primitive_array<T>(
-    tile: &Tile,
+    bytes: &[u8],
     validity: Option<NullBuffer>,
 ) -> Result<Arc<dyn ArrowArray>, FieldError>
 where
     T: ArrowPrimitiveType,
 {
+    let values = unsafe {
+        // SAFETY: TODO add comment
+        to_buffer::<T>(bytes)
+    }?;
+    Ok(Arc::new(PrimitiveArray::<T>::new(values, validity)) as Arc<dyn ArrowArray>)
+}
+
+/// Returns a [Buffer] which refers to the data contained inside the `&[u8]`.
+///
+/// # Safety
+///
+/// This function is safe to call as long as the returned [Buffer]
+/// is not used after the argument [Tile] is destructed.
+unsafe fn to_buffer<T>(bytes: &[u8]) -> Result<ScalarBuffer<T::Native>, FieldError>
+where
+    T: ArrowPrimitiveType,
+{
     let (prefix, values, suffix) = {
         // SAFETY: transmuting u8 to primitive types is safe
-        unsafe { tile.as_slice().align_to::<T::Native>() }
+        unsafe { bytes.align_to::<T::Native>() }
     };
     if !(prefix.is_empty() && suffix.is_empty()) {
         return Err(FieldError::InternalUnalignedValues);
     }
-    let tile_buffer = if let Some(ptr) = std::ptr::NonNull::new(values.as_ptr() as *mut u8) {
-        // SAFETY:
-        //
-        // `Buffer::from_custom_allocation` creates a buffer which refers to an existing
-        // memory region whose ownership is tracked by some `Arc<dyn Allocation>`.
-        // `Allocation` is basically any type, whose `drop` implementation is responsible
-        // for freeing the memory.
-        //
-        // The tile memory which we reference lives on the `extern "C++"` side of the
-        // FFI boundary, as such we cannot use `Arc` to track its lifetime.
-        //
-        // As such:
-        // 1) we will use an object with trivial `drop` to set up the memory aliasing
-        // 2) there is an implicit lifetime requirement that the Tile must out-live
-        //    this Buffer, else we shall suffer use after free
-        // 3) the caller is responsible for upholding that guarantee
-        unsafe { Buffer::from_custom_allocation(ptr, tile.size() as usize, Arc::new(())) }
-    } else {
-        Buffer::from_vec(Vec::<T::Native>::new())
-    };
 
-    Ok(Arc::new(PrimitiveArray::<T>::new(
-        ScalarBuffer::from(tile_buffer),
-        validity,
-    )) as Arc<dyn ArrowArray>)
+    Ok(ScalarBuffer::<T::Native>::from(
+        if let Some(ptr) = std::ptr::NonNull::new(values.as_ptr() as *mut u8) {
+            // SAFETY:
+            //
+            // `Buffer::from_custom_allocation` creates a buffer which refers to an existing
+            // memory region whose ownership is tracked by some `Arc<dyn Allocation>`.
+            // `Allocation` is basically any type, whose `drop` implementation is responsible
+            // for freeing the memory.
+            //
+            // The tile memory which we reference lives on the `extern "C++"` side of the
+            // FFI boundary, as such we cannot use `Arc` to track its lifetime.
+            //
+            // As such:
+            // 1) we will use an object with trivial `drop` to set up the memory aliasing
+            // 2) there is an implicit lifetime requirement that the Tile must out-live
+            //    this Buffer, else we shall suffer use after free
+            // 3) the caller is responsible for upholding that guarantee
+            unsafe { Buffer::from_custom_allocation(ptr, bytes.len(), Arc::new(())) }
+        } else {
+            Buffer::from_vec(Vec::<T::Native>::new())
+        },
+    ))
 }
 
-/// Returns an [OffsetBuffer] which represents the contents of the [Tile].
-fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i64>, OffsetsError> {
+/// Returns an [OffsetBuffer] which represents the contents of the `[u8]`.
+fn to_offsets_buffer(value_field: &Field, bytes: &[u8]) -> Result<OffsetBuffer<i64>, OffsetsError> {
     let Some(value_size) = value_field.data_type().primitive_width() else {
         // SAFETY: all list types have primitive element
         // FIXME: this is true for schema fields, not generally true,
@@ -308,5 +344,5 @@ fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i6
             value_field.data_type()
         )
     };
-    crate::offsets::try_from_bytes(value_size, tile.as_slice())
+    crate::offsets::try_from_bytes(value_size, bytes)
 }

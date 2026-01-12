@@ -79,6 +79,25 @@ mod ffi {
 
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
+
+        #[namespace = "tiledb::oxidize::sm::enumeration"]
+        fn data_cxx(enumeration: &Enumeration) -> &[u8];
+
+        #[namespace = "tiledb::oxidize::sm::enumeration"]
+        fn offsets_cxx(enumeration: &Enumeration) -> &[u8];
+    }
+
+    #[namespace = "tiledb::oxidize::sm::enumeration"]
+    unsafe extern "C++" {
+        type ConstEnumeration;
+    }
+
+    #[namespace = "tiledb::oxidize::sm::array_schema"]
+    unsafe extern "C++" {
+        type MaybeEnumeration;
+
+        fn name(&self) -> &CxxString;
+        fn get(&self) -> SharedPtr<ConstEnumeration>;
     }
 
     #[namespace = "tiledb::sm"]
@@ -93,11 +112,17 @@ mod ffi {
         fn is_attr(&self, name: &CxxString) -> bool;
         fn is_dim(&self, name: &CxxString) -> bool;
 
+        fn has_attribute(&self, name: &CxxString) -> bool;
+        fn has_enumeration(&self, name: &CxxString) -> bool;
+
         #[cxx_name = "attribute"]
         fn attribute_by_idx(&self, idx: u32) -> *const Attribute;
 
         #[cxx_name = "attribute"]
         fn attribute_by_name(&self, name: &CxxString) -> *const Attribute;
+
+        #[cxx_name = "get_enumeration"]
+        fn const_enumeration_cxx(&self, name: &CxxString) -> SharedPtr<ConstEnumeration>;
 
         #[cxx_name = "cell_val_num"]
         fn cell_val_num_cxx(&self, name: &CxxString) -> u32;
@@ -116,11 +141,15 @@ mod ffi {
         fn set_cell_order(self: Pin<&mut ArraySchema>, order: Layout);
         fn set_capacity(self: Pin<&mut ArraySchema>, capacity: u64);
         fn set_allows_dups(self: Pin<&mut ArraySchema>, allows_dups: bool);
+
+        #[namespace = "tiledb::oxidize::sm::array_schema"]
+        fn enumerations(schema: &ArraySchema) -> UniquePtr<CxxVector<MaybeEnumeration>>;
     }
 
     impl SharedPtr<Attribute> {}
     impl SharedPtr<Dimension> {}
     impl SharedPtr<Domain> {}
+    impl SharedPtr<Enumeration> {}
     impl SharedPtr<ArraySchema> {}
     impl UniquePtr<Attribute> {}
     impl UniquePtr<Dimension> {}
@@ -135,7 +164,10 @@ use std::str::Utf8Error;
 
 use num_traits::ToBytes;
 
-pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain, Enumeration};
+pub use ffi::{
+    ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain, Enumeration,
+    MaybeEnumeration,
+};
 
 #[derive(Debug)]
 pub enum CellValNum {
@@ -154,6 +186,10 @@ impl CellValNum {
             u32::MAX => Some(Self::Var),
             n => Some(Self::Fixed(NonZeroU32::new(n)?)),
         }
+    }
+
+    pub fn is_var(&self) -> bool {
+        matches!(self, CellValNum::Var)
     }
 }
 
@@ -241,17 +277,19 @@ impl Attribute {
         CellValNum::from_cxx(cxx).unwrap()
     }
 
-    pub fn enumeration_name_cxx(&self) -> *const cxx::CxxString {
-        ffi::enumeration_name_cxx(self)
-    }
-
-    pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
-        let ptr = self.enumeration_name_cxx();
+    pub fn enumeration_name_cxx(&self) -> Option<&cxx::CxxString> {
+        let ptr = ffi::enumeration_name_cxx(self);
         if ptr.is_null() {
             return None;
         }
-        let cxx = unsafe { &*ptr };
-        Some(cxx.to_str())
+        Some(unsafe {
+            // SAFETY: null check above
+            &*ptr
+        })
+    }
+
+    pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
+        self.enumeration_name_cxx().map(|s| s.to_str())
     }
 }
 
@@ -306,6 +344,13 @@ impl Field<'_> {
         }
     }
 
+    pub fn enumeration_name_cxx(&self) -> Option<&cxx::CxxString> {
+        match self {
+            Self::Attribute(a) => a.enumeration_name_cxx(),
+            Self::Dimension(_) => None,
+        }
+    }
+
     pub fn enumeration_name(&self) -> Option<Result<&str, Utf8Error>> {
         match self {
             Self::Attribute(a) => a.enumeration_name(),
@@ -320,6 +365,24 @@ impl Enumeration {
 
         // SAFETY: non-zero would have been validated by the ArraySchema
         CellValNum::from_cxx(cxx).unwrap()
+    }
+
+    pub fn data(&self) -> &[u8] {
+        ffi::data_cxx(self)
+    }
+
+    pub fn offsets(&self) -> Option<&[u64]> {
+        let b = ffi::offsets_cxx(self);
+        if b.is_empty() {
+            None
+        } else {
+            let (prefix, offsets, suffix) = unsafe { b.align_to::<u64>() };
+
+            assert!(prefix.is_empty());
+            assert!(suffix.is_empty());
+
+            Some(offsets)
+        }
     }
 }
 
@@ -366,5 +429,32 @@ impl ArraySchema {
             .dimensions()
             .map(Field::Dimension)
             .chain(self.attributes().map(Field::Attribute))
+    }
+
+    pub fn enumeration_cxx(&self, name: &cxx::CxxString) -> cxx::SharedPtr<Enumeration> {
+        let e = self.const_enumeration_cxx(name);
+        assert_eq!(
+            std::mem::size_of::<cxx::SharedPtr<Enumeration>>(),
+            std::mem::size_of::<cxx::SharedPtr<ffi::ConstEnumeration>>()
+        );
+        unsafe {
+            // SAFETY:
+            // 1) SharedPtr has the same representation regardless of generic
+            // 2) the deleter for `Enumeration` and `const Enumeration` is the same
+            // 3) the `cxx::SharedPtr` Rust API does not provide a (safe) way to
+            //    get a mutable reference, so this transmutation preserves const-ness
+            std::mem::transmute::<_, cxx::SharedPtr<Enumeration>>(e)
+        }
+    }
+
+    pub fn enumeration(&self, name: &str) -> cxx::SharedPtr<Enumeration> {
+        cxx::let_cxx_string!(cxxname = name);
+        self.enumeration_cxx(&cxxname)
+    }
+
+    /// Returns a list of the enumerations in this schema, each of which
+    /// may or may not be loaded.
+    pub fn enumerations(&self) -> cxx::UniquePtr<cxx::Vector<MaybeEnumeration>> {
+        ffi::enumerations(self)
     }
 }

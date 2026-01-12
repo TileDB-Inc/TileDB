@@ -262,8 +262,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   stats_->add_counter("loop_num", 1);
 
   // Check that the query condition is valid.
-  if (condition_.has_value()) {
-    throw_if_not_ok(condition_->check(array_schema_));
+  if (predicates_.condition_.has_value()) {
+    throw_if_not_ok(predicates_.condition_->check(array_schema_));
   }
 
   get_dim_attr_stats();

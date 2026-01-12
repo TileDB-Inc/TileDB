@@ -30,4 +30,38 @@ void set_tile_extent(Dimension& dimension, rust::Slice<const uint8_t> domain) {
 
 }  // namespace dimension
 
+namespace enumeration {
+
+rust::Slice<const uint8_t> data_cxx(const Enumeration& enumeration) {
+  std::span<const uint8_t> span = enumeration.data();
+  return rust::Slice(span.data(), span.size());
+}
+
+rust::Slice<const uint8_t> offsets_cxx(const Enumeration& enumeration) {
+  std::span<const uint8_t> span = enumeration.offsets();
+  return rust::Slice(span.data(), span.size());
+}
+
+}  // namespace enumeration
+
+namespace array_schema {
+
+std::unique_ptr<std::vector<MaybeEnumeration>> enumerations(
+    const ArraySchema& schema) {
+  std::unique_ptr<std::vector<MaybeEnumeration>> e(
+      new std::vector<MaybeEnumeration>(schema.enumeration_map().size()));
+
+  for (const auto& enmr : schema.enumeration_map()) {
+    if (enmr.second == nullptr) {
+      e->push_back(MaybeEnumeration::not_loaded(enmr.first));
+    } else {
+      e->push_back(MaybeEnumeration::loaded(enmr.second));
+    }
+  }
+
+  return e;
+}
+
+}  // namespace array_schema
+
 }  // namespace tiledb::oxidize::sm

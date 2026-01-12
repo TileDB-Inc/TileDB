@@ -36,6 +36,7 @@
 
 #include "tiledb.h"
 #include "tiledb/common/unreachable.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/type/datatype_traits.h"
@@ -500,6 +501,18 @@ struct query_buffers<std::optional<T>> {
   std::vector<uint8_t> validity_;
 
   query_buffers() {
+  }
+
+  query_buffers(std::vector<std::optional<T>> cells) {
+    for (const auto& cell : cells) {
+      if (cell.has_value()) {
+        values_.push_back(cell.value());
+        validity_.push_back(1);
+      } else {
+        values_.push_back(T());
+        validity_.push_back(0);
+      }
+    }
   }
 
   query_buffers(const self_type& other) = default;
@@ -1265,6 +1278,26 @@ struct Fragment {
 };
 
 /**
+ * Specialization of `query_buffers` for variable-length non-nullable cells
+ * whose physical type is `char` and thus the "logical type" of each cell
+ * is `std::string`.
+ *
+ * See `query_buffers<std::vector<T>>`.
+ */
+template <>
+struct query_buffers<std::string> : public query_buffers<std::vector<char>> {
+  query_buffers() {
+  }
+
+  query_buffers(std::vector<std::string> cells) {
+    for (const auto& cell : cells) {
+      offsets_.push_back(values_.size());
+      values_.insert(values_.end(), cell.begin(), cell.end());
+    }
+  }
+};
+
+/**
  * Data for a one-dimensional array
  */
 template <DimensionType D, AttributeType... Att>
@@ -1308,6 +1341,8 @@ struct Fragment2D : public Fragment<std::tuple<D1, D2>, std::tuple<Att...>> {
 template <DimensionType D1, DimensionType D2, DimensionType D3, typename... Att>
 struct Fragment3D
     : public Fragment<std::tuple<D1, D2, D3>, std::tuple<Att...>> {
+  using self_type = Fragment3D<D1, D2, D3, Att...>;
+
   const query_buffers<D1>& d1() const {
     return std::get<0>(this->dimensions());
   }
@@ -1331,7 +1366,12 @@ struct Fragment3D
   query_buffers<D3>& d3() {
     return std::get<2>(this->dimensions());
   }
+
+  bool operator==(const self_type& other) const = default;
 };
+
+template <typename... Att>
+struct DenseFragment : public Fragment<std::tuple<>, std::tuple<Att...>> {};
 
 /**
  * Binds variadic field data to a tiledb query
@@ -1612,6 +1652,29 @@ void set_fields(
 }
 
 /**
+ * Adds the buffers from `fragment` to a query,
+ * using `schema` to look up field names for the positional fields of `F`.
+ */
+template <typename Asserter, FragmentType F>
+void set_fields(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    fragment_field_sizes_t<F>& field_sizes,
+    F& fragment,
+    const tiledb::sm::ArraySchema& schema,
+    const fragment_field_sizes_t<F>& field_cursors =
+        fragment_field_sizes_t<F>()) {
+  std::function<std::string(unsigned)> dim_name = [&](unsigned dim) {
+    return schema.domain().dimension_ptr(dim)->name();
+  };
+  std::function<std::string(unsigned)> att_name = [&](unsigned att) {
+    return schema.attribute(att)->name();
+  };
+  return set_fields<Asserter, F>(
+      ctx, query, field_sizes, fragment, dim_name, att_name, field_cursors);
+}
+
+/**
  * @return the number of cells written into `fields` by a read query
  */
 template <typename Asserter, FragmentType F>
@@ -1619,6 +1682,21 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
   return [&]<typename... Ts>(auto fields) {
     return query_applicator<Asserter, Ts...>::num_cells(fields, field_sizes);
   }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+}
+
+/**
+ * @return the concatenation of one or more fragments
+ */
+template <FragmentType F>
+F concat(std::initializer_list<F> fragments) {
+  F concat;
+  auto d = concat.dimensions();
+  auto a = concat.attributes();
+  for (const F& fragment : fragments) {
+    stdx::extend(d, fragment.dimensions());
+    stdx::extend(a, fragment.attributes());
+  }
+  return concat;
 }
 
 /**
