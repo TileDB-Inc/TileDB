@@ -362,7 +362,7 @@ Status Curl::set_headers(struct curl_slist** headers) const {
   try {
     auth_method = config_->get_effective_rest_auth_method();
   } catch (const StatusException& e) {
-    return LOG_STATUS(e.status());
+    return LOG_STATUS(e.extract_status());
   }
 
   if (auth_method == RestAuthMethod::TOKEN) {
