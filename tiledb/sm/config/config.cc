@@ -1025,7 +1025,7 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
 
   // Check if param default should be ignored based on environment variables
   if (ignore_default_via_env(param)) {
-    return {ConfigSource::ENVIRONMENT, ""};
+    return {ConfigSource::NONE, ""};
   }
 
   // [2. env variables]
