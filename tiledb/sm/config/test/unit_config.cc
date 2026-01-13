@@ -200,27 +200,22 @@ TEST_CASE("Config::set_profile - found", "[config]") {
 
 TEST_CASE("Config::get_with_source - various sources", "[config]") {
   Config c{};
-  std::string value;
-  bool found;
 
   // Test default value
-  tiledb::sm::ConfigSource source =
-      c.get_with_source("rest.retry_count", &value, &found);
-  REQUIRE(found);
-  CHECK(value == "25");
+  auto [source, value] = c.get_with_source("rest.retry_count");
   CHECK(source == tiledb::sm::ConfigSource::DEFAULT);
+  CHECK(value == "25");
 
   // Test user-set value
   CHECK(c.set("rest.retry_count", "50").ok());
-  source = c.get_with_source("rest.retry_count", &value, &found);
-  REQUIRE(found);
-  CHECK(value == "50");
-  CHECK(source == tiledb::sm::ConfigSource::USER_SET);
+  auto [source2, value2] = c.get_with_source("rest.retry_count");
+  CHECK(source2 == tiledb::sm::ConfigSource::USER_SET);
+  CHECK(value2 == "50");
 
   // Test non-existent parameter
-  source = c.get_with_source("nonexistent.param", &value, &found);
-  CHECK(!found);
-  CHECK(value == "");
+  auto [source3, value3] = c.get_with_source("nonexistent.param");
+  CHECK(source3 == tiledb::sm::ConfigSource::NONE);
+  CHECK(value3 == "");
 }
 
 TEST_CASE(
@@ -230,7 +225,7 @@ TEST_CASE(
 
   SECTION("No authentication configured") {
     auto method = c.get_effective_rest_auth_method();
-    CHECK(method == tiledb::sm::RestAuthMethod::INVALID);
+    CHECK(method == tiledb::sm::RestAuthMethod::NONE);
   }
 
   SECTION("With user-set token") {

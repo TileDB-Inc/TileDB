@@ -72,7 +72,8 @@ enum class ConfigSource {
   USER_SET = 0,     // Explicitly set by user
   ENVIRONMENT = 1,  // Environment variables
   PROFILE = 2,      // Loaded from a profile
-  DEFAULT = 3       // Default value
+  DEFAULT = 3,      // Default value
+  NONE = 4          // Parameter not found
 };
 
 /**
@@ -81,7 +82,8 @@ enum class ConfigSource {
 enum class RestAuthMethod {
   TOKEN,              // Using token authentication
   USERNAME_PASSWORD,  // Using username/password authentication
-  INVALID             // Authentication not properly configured or unavailable
+  NONE,               // No authentication configured
+  INVALID  // Authentication not properly configured (incomplete or conflicting)
 };
 
 /**
@@ -781,12 +783,11 @@ class Config {
    * Get a configuration parameter value along with its source.
    *
    * @param param The parameter name to retrieve
-   * @param value Output parameter for the value (empty string if not found)
-   * @param found Output parameter indicating if the parameter was found
-   * @return ConfigSource indicating where the value came from
+   * @return Pair of (ConfigSource, value as string_view). If parameter not
+   * found, returns (ConfigSource::NONE, "")
    */
-  ConfigSource get_with_source(
-      const std::string& param, std::string* value, bool* found) const;
+  std::pair<ConfigSource, std::string_view> get_with_source(
+      const std::string& param) const;
 
   /**
    * Get the effective REST authentication method.
@@ -797,13 +798,13 @@ class Config {
    * - Profile values have third priority
    * - If both token and username/password have same priority, prefer token
    *
-   * Returns INVALID if:
-   * - No authentication is configured
-   * - Username and password are at different priority levels
-   * - Only username or only password is configured (incomplete)
-   *
-   * @return RestAuthMethod indicating the authentication method (TOKEN,
-   * USERNAME_PASSWORD) or INVALID
+   * @return RestAuthMethod indicating:
+   *   - TOKEN: Token authentication will be used
+   *   - USERNAME_PASSWORD: Username/password authentication will be used
+   *   - NONE: No authentication is configured
+   *   - INVALID: Authentication is incorrectly configured (username and
+   * password at different priority levels, or only one of username/password
+   * provided)
    */
   RestAuthMethod get_effective_rest_auth_method() const;
 
@@ -864,12 +865,11 @@ class Config {
    * following priority order: user-set > environment > profile > default.
    *
    * @param param The parameter name to lookup
-   * @param value Output parameter for the config value
-   * @param found Output parameter indicating if the parameter was found
-   * @return The source from which the value was obtained
+   * @return Pair of (ConfigSource, value as string_view). If parameter not
+   * found, returns (ConfigSource::NONE, "")
    */
-  ConfigSource lookup_param(
-      const std::string& param, const char** value, bool* found) const;
+  std::pair<ConfigSource, std::string_view> get_param(
+      const std::string& param) const;
 
   /**
    * If `param` is one of the system configuration parameters, it checks

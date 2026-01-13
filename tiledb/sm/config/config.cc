@@ -1003,53 +1003,41 @@ std::optional<std::string_view> Config::get_from_profile(
   return std::nullopt;
 }
 
-ConfigSource Config::lookup_param(
-    const std::string& param, const char** value, bool* found) const {
+std::pair<ConfigSource, std::string_view> Config::get_param(
+    const std::string& param) const {
   // First check if the user has set the parameter
   bool user_set = set_params_.find(param) != set_params_.end();
 
   // [1. user-set config parameters]
   auto maybe_value_config = get_from_config(param);
   if (maybe_value_config.has_value() && user_set) {
-    *value = maybe_value_config.value().data();
-    *found = true;
-    return ConfigSource::USER_SET;
+    return {ConfigSource::USER_SET, maybe_value_config.value()};
   }
 
   // Check if param default should be ignored based on environment variables
   if (ignore_default_via_env(param)) {
-    *value = "";
-    *found = true;
-    return ConfigSource::ENVIRONMENT;
+    return {ConfigSource::ENVIRONMENT, ""};
   }
 
   // [2. env variables]
   auto maybe_value_env = get_from_env(param);
   if (maybe_value_env.has_value()) {
-    *value = maybe_value_env.value().data();
-    *found = true;
-    return ConfigSource::ENVIRONMENT;
+    return {ConfigSource::ENVIRONMENT, maybe_value_env.value()};
   }
 
   // [3. profiles]
   auto maybe_value_profile = get_from_profile(param);
   if (maybe_value_profile.has_value()) {
-    *value = maybe_value_profile.value().data();
-    *found = true;
-    return ConfigSource::PROFILE;
+    return {ConfigSource::PROFILE, maybe_value_profile.value()};
   }
 
   // [4. default config value]
   if (maybe_value_config.has_value()) {
-    *value = maybe_value_config.value().data();
-    *found = true;
-    return ConfigSource::DEFAULT;
+    return {ConfigSource::DEFAULT, maybe_value_config.value()};
   }
 
   // Parameter not found anywhere
-  *value = "";
-  *found = false;
-  return ConfigSource::DEFAULT;
+  return {ConfigSource::NONE, ""};
 }
 
 std::optional<std::string_view> Config::get_from_config_or_fallback(
@@ -1084,39 +1072,27 @@ std::optional<std::string_view> Config::get_from_config_or_fallback(
   return maybe_value_config;
 }
 
-ConfigSource Config::get_with_source(
-    const std::string& param, std::string* value, bool* found) const {
-  const char* value_cstr;
-  ConfigSource source = lookup_param(param, &value_cstr, found);
-  *value = *found ? value_cstr : "";
-  return source;
+std::pair<ConfigSource, std::string_view> Config::get_with_source(
+    const std::string& param) const {
+  return get_param(param);
 }
 
 RestAuthMethod Config::get_effective_rest_auth_method() const {
   // Get token with source
-  std::string token;
-  bool found_token;
-  ConfigSource token_source =
-      get_with_source("rest.token", &token, &found_token);
-  bool has_token = found_token && !token.empty();
+  auto [token_source, token] = get_with_source("rest.token");
+  bool has_token = !token.empty();
 
   // Get username and password with sources
-  std::string username;
-  bool found_username;
-  ConfigSource username_source =
-      get_with_source("rest.username", &username, &found_username);
-
-  std::string password;
-  bool found_password;
-  ConfigSource password_source =
-      get_with_source("rest.password", &password, &found_password);
+  auto [username_source, username] = get_with_source("rest.username");
+  auto [password_source, password] = get_with_source("rest.password");
 
   // Check for valid username/password combination
-  bool has_username = found_username && !username.empty();
-  bool has_password = found_password && !password.empty();
+  bool has_username = !username.empty();
+  bool has_password = !password.empty();
+  bool has_user_pass = has_username && has_password;
 
-  // Username and password must both be present
-  if (has_username && has_password) {
+  // Validate username/password configuration
+  if (has_user_pass) {
     // Check if they are at the same priority level
     if (username_source != password_source) {
       // Username and password at different priority levels - invalid
@@ -1127,29 +1103,21 @@ RestAuthMethod Config::get_effective_rest_auth_method() const {
     return RestAuthMethod::INVALID;
   }
 
-  bool has_user_pass = has_username && has_password;
-
-  // Neither authentication method is configured - invalid
+  // No authentication method is configured
   if (!has_token && !has_user_pass) {
-    return RestAuthMethod::INVALID;
+    return RestAuthMethod::NONE;
   }
 
   // Determine which authentication method to use based on priority
   // Priority hierarchy: USER_SET (0) > ENVIRONMENT (1) > PROFILE (2) > DEFAULT
   // (3) If both methods have the same priority, prefer token
   if (has_token && has_user_pass) {
-    if (token_source <= username_source) {
-      return RestAuthMethod::TOKEN;
-    } else {
-      return RestAuthMethod::USERNAME_PASSWORD;
-    }
-  } else if (has_token) {
-    // Only token is configured
-    return RestAuthMethod::TOKEN;
-  } else {
-    // Only username/password is configured
-    return RestAuthMethod::USERNAME_PASSWORD;
+    return (token_source <= username_source) ?
+               RestAuthMethod::TOKEN :
+               RestAuthMethod::USERNAME_PASSWORD;
   }
+
+  return has_token ? RestAuthMethod::TOKEN : RestAuthMethod::USERNAME_PASSWORD;
 }
 
 const std::map<std::string, std::string>
