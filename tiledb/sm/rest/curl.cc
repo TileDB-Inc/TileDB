@@ -379,10 +379,10 @@ Status Curl::set_headers(struct curl_slist** headers) const {
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
   } else {
-    // auth_method == RestAuthMethod::INVALID
+    // auth_method == RestAuthMethod::NONE or RestAuthMethod::INVALID
     return LOG_STATUS(Status_RestError(
-        "Missing TileDB authentication: either token or username/password "
-        "must be set."));
+        "TileDB authentication not properly configured: either token or "
+        "username/password must be set."));
   }
 
   // Add any extra headers.
