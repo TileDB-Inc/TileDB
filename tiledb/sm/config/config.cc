@@ -1003,7 +1003,16 @@ std::optional<std::string_view> Config::get_from_profile(
   return std::nullopt;
 }
 
-std::pair<ConfigSource, std::string_view> Config::get_param(
+std::optional<std::string_view> Config::get_from_config_or_fallback(
+    const std::string& param) const {
+  auto [source, value] = get_with_source(param);
+  if (source == ConfigSource::NONE) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+std::pair<ConfigSource, std::string_view> Config::get_with_source(
     const std::string& param) const {
   // First check if the user has set the parameter
   bool user_set = set_params_.find(param) != set_params_.end();
@@ -1038,43 +1047,6 @@ std::pair<ConfigSource, std::string_view> Config::get_param(
 
   // Parameter not found anywhere
   return {ConfigSource::NONE, ""};
-}
-
-std::optional<std::string_view> Config::get_from_config_or_fallback(
-    const std::string& param) const {
-  // First check if the user has set the parameter
-  bool user_set = set_params_.find(param) != set_params_.end();
-
-  // [1. user-set config parameters]
-  auto maybe_value_config = get_from_config(param);
-  if (maybe_value_config.has_value() && user_set) {
-    return maybe_value_config;
-  }
-
-  // Check if param default should be ignored based on environment variables
-  if (ignore_default_via_env(param)) {
-    return std::nullopt;
-  }
-
-  // [2. env variables]
-  auto maybe_value_env = get_from_env(param);
-  if (maybe_value_env.has_value()) {
-    return maybe_value_env;
-  }
-
-  // [3. profiles]
-  auto maybe_value_profile = get_from_profile(param);
-  if (maybe_value_profile.has_value()) {
-    return maybe_value_profile;
-  }
-
-  // [4. default config value]
-  return maybe_value_config;
-}
-
-std::pair<ConfigSource, std::string_view> Config::get_with_source(
-    const std::string& param) const {
-  return get_param(param);
 }
 
 RestAuthMethod Config::get_effective_rest_auth_method() const {

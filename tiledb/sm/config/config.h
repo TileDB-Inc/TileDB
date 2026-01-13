@@ -861,17 +861,6 @@ class Config {
   /* ********************************* */
 
   /**
-   * Internal helper to lookup a configuration parameter from all sources
-   * following priority order: user-set > environment > profile > default.
-   *
-   * @param param The parameter name to lookup
-   * @return Pair of (ConfigSource, value as string_view). If parameter not
-   * found, returns (ConfigSource::NONE, "")
-   */
-  std::pair<ConfigSource, std::string_view> get_param(
-      const std::string& param) const;
-
-  /**
    * If `param` is one of the system configuration parameters, it checks
    * whether its `value` can be parsed in the correct datatype. If
    * `param` is not a system configuration parameter, the function is a noop.
