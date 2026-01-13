@@ -1052,15 +1052,19 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
 RestAuthMethod Config::get_effective_rest_auth_method() const {
   // Get token with source
   auto [token_source, token] = get_with_source("rest.token");
-  bool has_token = !token.empty();
+  // Token exists if found (not NONE) and non-empty
+  bool has_token = (token_source != ConfigSource::NONE) && !token.empty();
 
   // Get username and password with sources
   auto [username_source, username] = get_with_source("rest.username");
   auto [password_source, password] = get_with_source("rest.password");
 
   // Check for valid username/password combination
-  bool has_username = !username.empty();
-  bool has_password = !password.empty();
+  // Credentials exist if found (not NONE) and non-empty
+  bool has_username =
+      (username_source != ConfigSource::NONE) && !username.empty();
+  bool has_password =
+      (password_source != ConfigSource::NONE) && !password.empty();
   bool has_user_pass = has_username && has_password;
 
   // Validate username/password configuration
