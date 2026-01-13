@@ -1020,7 +1020,7 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
   // [1. user-set config parameters]
   auto maybe_value_config = get_from_config(param);
   if (maybe_value_config.has_value() && user_set) {
-    return {ConfigSource::USER_SET, maybe_value_config.value()};
+    return {ConfigSource::USER_SET, *maybe_value_config};
   }
 
   // Check if param default should be ignored based on environment variables
@@ -1031,18 +1031,18 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
   // [2. env variables]
   auto maybe_value_env = get_from_env(param);
   if (maybe_value_env.has_value()) {
-    return {ConfigSource::ENVIRONMENT, maybe_value_env.value()};
+    return {ConfigSource::ENVIRONMENT, *maybe_value_env};
   }
 
   // [3. profiles]
   auto maybe_value_profile = get_from_profile(param);
   if (maybe_value_profile.has_value()) {
-    return {ConfigSource::PROFILE, maybe_value_profile.value()};
+    return {ConfigSource::PROFILE, *maybe_value_profile};
   }
 
   // [4. default config value]
   if (maybe_value_config.has_value()) {
-    return {ConfigSource::DEFAULT, maybe_value_config.value()};
+    return {ConfigSource::DEFAULT, *maybe_value_config};
   }
 
   // Parameter not found anywhere
