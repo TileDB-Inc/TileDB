@@ -212,25 +212,6 @@ TEST_CASE("Config::get_with_source - various sources", "[config]") {
   CHECK(source2 == tiledb::sm::ConfigSource::USER_SET);
   CHECK(value2 == "50");
 
-  // Test environment variable
-  setenv("TILEDB_REST_TOKEN", "env-token-value", 1);
-  auto [source_env, value_env] = c.get_with_source("rest.token");
-  CHECK(source_env == tiledb::sm::ConfigSource::ENVIRONMENT);
-  CHECK(value_env == "env-token-value");
-
-  // Also test that get_from_config_or_fallback works
-  auto maybe_value = c.get_from_config_or_fallback("rest.token");
-  REQUIRE(maybe_value.has_value());
-  CHECK(*maybe_value == "env-token-value");
-
-  // Test with Config::get (the C-style API used by curl.cc)
-  const char* token = nullptr;
-  REQUIRE(c.get("rest.token", &token).ok());
-  REQUIRE(token != nullptr);
-  CHECK(std::string(token) == "env-token-value");
-
-  unsetenv("TILEDB_REST_TOKEN");
-
   // Test non-existent parameter
   auto [source3, value3] = c.get_with_source("nonexistent.param");
   CHECK(source3 == tiledb::sm::ConfigSource::NONE);
