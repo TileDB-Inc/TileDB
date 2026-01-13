@@ -66,8 +66,8 @@ tdb_unique_ptr<FilesystemBase> make_tiledb_fs_failing(
 
 tdb_unique_ptr<FilesystemBase> make_tiledbfs(
     stats::Stats* parent_stats, ThreadPool* tp, const Config& config) {
-  auto rest_server =
-      config.get<std::string>("rest.server_address", Config::must_find);
+  auto rest_server = std::string(
+      config.get<std::string_view>("rest.server_address", Config::must_find));
   if (rest_server.ends_with('/')) {
     size_t pos = rest_server.find_last_not_of('/');
     rest_server.resize(pos + 1);
@@ -78,9 +78,10 @@ tdb_unique_ptr<FilesystemBase> make_tiledbfs(
   Config new_config{config};
   throw_if_not_ok(
       new_config.set("vfs.s3.endpoint_override", rest_server + "/v4/files"));
-  auto token = config.get<std::string>("rest.token");
-  if (token) {
-    throw_if_not_ok(new_config.set("vfs.s3.aws_access_key_id", *token));
+  auto token = config.get<std::string_view>("rest.token");
+  if (token.has_value()) {
+    throw_if_not_ok(
+        new_config.set("vfs.s3.aws_access_key_id", std::string(token.value())));
     throw_if_not_ok(new_config.set("vfs.s3.aws_secret_access_key", "unused"));
   }
   throw_if_not_ok(new_config.set("vfs.s3.use_virtual_addressing", "false"));
@@ -364,10 +365,21 @@ bool VFS::is_bucket(const URI& uri) const {
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
 
-  for (auto& fs : ls_with_sizes(parent)) {
-    uris->emplace_back(fs.path().native());
+  auto entries = parent.is_file() ? local_.ls_with_sizes(parent, false) :
+                                    ls_with_sizes(parent);
+  if (parent.is_file()) {
+    parallel_sort(
+        compute_tp_,
+        entries.begin(),
+        entries.end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
   }
 
+  for (const auto& fs : entries) {
+    uris->emplace_back(fs.path().native());
+  }
   return Status::Ok();
 }
 

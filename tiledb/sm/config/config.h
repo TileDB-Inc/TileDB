@@ -734,7 +734,7 @@ class Config {
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
   template <class T>
-  [[nodiscard]] inline optional<T> get(const std::string& key) const {
+  [[nodiscard]] inline std::optional<T> get(const std::string& key) const {
     return get_internal<T, false>(key);
   }
 
@@ -890,17 +890,17 @@ class Config {
    * Get an environment variable
    * @param param to fetch
    * @param found pointer to bool to set if env parameter was found or not
-   * @return parameter value if found or nullptr if not found
+   * @return parameter value if found or std::nullopt if not found
    */
-  const char* get_from_env(const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_env(const std::string& param) const;
 
   /**
    * Get an parameter from config variable
    * @param param to fetch
-   * @param found pointer to bool to set if parameter was found or not
-   * @return parameter value if found or nullptr if not found
+   * @return parameter value if found or std::nullopt if not found
    */
-  const char* get_from_config(const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_config(
+      const std::string& param) const;
 
   /**
    * Get a parameter from Profile.
@@ -913,7 +913,8 @@ class Config {
    * @param found pointer to bool to set if parameter was found or not
    * @return parameter value if found or nullptr if not found
    */
-  const char* get_from_profile(const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_profile(
+      const std::string& param) const;
 
   /**
    * Get a configuration parameter from config object or a fallback
@@ -933,40 +934,61 @@ class Config {
    * @param found pointer to bool to set if parameter was found or not
    * @return parameter value if found or empty string if not
    */
-  const char* get_from_config_or_fallback(
-      const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_config_or_fallback(
+      const std::string& param) const;
 
   template <class T, bool must_find_>
-  optional<T> get_internal(const std::string& key) const;
+  std::optional<T> get_internal(const std::string& key) const;
 
   template <bool must_find_>
-  optional<std::string> get_internal_string(const std::string& key) const;
+  std::optional<std::string_view> get_internal_string(
+      const std::string& key) const;
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;
 };
 
 /**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as `get_internal_string<false>`.
+ * An explicit specialization for `std::string_view`. It does not call a
+ * conversion function and it is thus the same as `get_internal_string<false>`.
  */
 template <>
-[[nodiscard]] inline optional<std::string> Config::get<std::string>(
-    const std::string& key) const {
-  return get_internal_string<false>(key);
+[[nodiscard]] inline std::optional<std::string_view>
+Config::get<std::string_view>(const std::string& key) const {
+  auto maybe_value = get_internal_string<false>(key);
+  if (maybe_value.has_value()) {
+    return maybe_value.value();
+  } else {
+    return std::nullopt;
+  }
 }
 
 /**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as `get_internal_string<true>`
+ * An explicit specialization for `std::string_view`. It does not call a
+ * conversion function and it is thus the same as `get_internal_string<true>`
  *
  * Will throw if value is not found for provided config key
  */
 template <>
-inline std::string Config::get<std::string>(
+inline std::string_view Config::get<std::string_view>(
     const std::string& key, const Config::MustFindMarker&) const {
   return get_internal_string<true>(key).value();
 }
+
+/**
+ * Disable specializations for `std::string` to avoid making unnecessary copies.
+ */
+template <>
+[[nodiscard]] inline std::optional<std::string> Config::get<std::string>(
+    const std::string& key) const = delete;
+
+/**
+ * Disable specializations for `std::string` to avoid making unnecessary copies.
+ */
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const = delete;
+
 }  // namespace tiledb::sm
 
 #ifdef TILEDB_DEPRECATE_CONFIG

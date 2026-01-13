@@ -1635,7 +1635,7 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of invalid fragment writes",
     "[cppapi][deletes][fragments][invalid]") {
-  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete fragments
+  // Note: An array must be open in WRITE mode to delete fragments
   remove_sparse_array();
 
   // Write fragments at timestamps 1, 3
@@ -1935,15 +1935,14 @@ TEST_CASE_METHOD(
     "[cppapi][deletes][group][invalid]") {
   create_dir(group_name_);
 
-  // Create and open group in write mode
+  // Create and open group in read mode
   tiledb::Group::create(ctx_, group_name_);
-  tiledb::Group group(ctx_, group_name_, TILEDB_WRITE);
+  tiledb::Group group(ctx_, group_name_, TILEDB_READ);
 
   // Try to delete group
   REQUIRE_THROWS_WITH(
       group.delete_group(group_name_),
-      Catch::Matchers::ContainsSubstring(
-          "Query type must be MODIFY_EXCLUSIVE"));
+      Catch::Matchers::ContainsSubstring("Query type must be WRITE"));
   group.close();
 
   // Try to delete group after close
@@ -2029,9 +2028,9 @@ TEST_CASE_METHOD(
     }
   }
 
-  // Delete group in modify exclusive mode
+  // Delete group
   // Note: delete_group will close the group, no need to do so here.
-  group.open(TILEDB_MODIFY_EXCLUSIVE);
+  group.open(TILEDB_WRITE);
   group.delete_group(group_name_.c_str());
 
   // Validate group data
@@ -2119,8 +2118,8 @@ TEST_CASE_METHOD(
   auto array2_schema = list_schemas(array2_path);
   CHECK(array2_schema.size() == 1);
 
-  // Recursively delete group in modify exclusive mode
-  group.open(TILEDB_MODIFY_EXCLUSIVE);
+  // Recursively delete group
+  group.open(TILEDB_WRITE);
   group.delete_group(group_name_.c_str(), true);
 
   // Validate group data

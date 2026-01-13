@@ -66,7 +66,7 @@ conclude(object_library)
 # `array` object library
 #
 commence(object_library array)
-    this_target_sources(array.cc consistency.cc)
+    this_target_sources(array.cc)
     this_target_object_libraries(
         array_directory
         array_schema_operations

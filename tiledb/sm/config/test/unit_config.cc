@@ -44,8 +44,15 @@ using tiledb::sm::utils::parse::convert;
 /*
  * These are the types for which `Config::get` is explicitly specialized.
  */
-using config_types = std::
-    tuple<bool, int, uint32_t, int64_t, uint64_t, float, double, std::string>;
+using config_types = std::tuple<
+    bool,
+    int,
+    uint32_t,
+    int64_t,
+    uint64_t,
+    float,
+    double,
+    std::string_view>;
 using config_types_integral = std::tuple<int, uint32_t, int64_t, uint64_t>;
 using config_types_floating = std::tuple<float, double>;
 
@@ -107,12 +114,12 @@ TEMPLATE_LIST_TEST_CASE(
   TestConfig<TestType>::check_expected(expected_value, c, key);
 }
 
-TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
+TEST_CASE("Config::get<std::string_view> - found and matched", "[config]") {
   Config c{};
   std::string key{"the_key"};
   std::string expected_value = GENERATE("test", "true", "0", "1.5");
   CHECK(c.set(key, expected_value).ok());
-  TestConfig<std::string>::check_expected(expected_value, c, key);
+  TestConfig<std::string_view>::check_expected(expected_value, c, key);
 }
 
 TEST_CASE("Config::set_profile - failures", "[config]") {

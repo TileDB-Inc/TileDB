@@ -95,7 +95,7 @@ RestClientRemote::RestClientRemote(
   // to an array.
   memory_tracker_->set_type(MemoryTrackerType::REST_CLIENT);
 
-  auto ssf = config.get<std::string>(
+  auto ssf = config.get<std::string_view>(
       "rest.server_serialization_format", Config::must_find);
   throw_if_not_ok(serialization_type_enum(ssf, &serialization_type_));
 
@@ -294,7 +294,7 @@ Status RestClientRemote::post_array_schema_to_rest(
       array_schema, serialization_type_, buff, false));
 
   const auto creation_access_credentials_name{
-      config_->get<std::string>("rest.creation_access_credentials_name")};
+      config_->get<std::string_view>("rest.creation_access_credentials_name")};
   if (creation_access_credentials_name.has_value()) {
     add_header(
         "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
@@ -342,7 +342,7 @@ void RestClientRemote::post_array_create_to_rest(
       array_schema, serialization_type_, buff, rest_uri.asset_storage);
 
   const auto creation_access_credentials_name{
-      config_->get<std::string>("rest.creation_access_credentials_name")};
+      config_->get<std::string_view>("rest.creation_access_credentials_name")};
   if (creation_access_credentials_name.has_value()) {
     add_header(
         "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
@@ -1450,7 +1450,7 @@ Status RestClientRemote::post_group_create_to_rest(
 
   // Credential used for creating a group as a child of an existing REST group.
   const auto creation_access_credentials_name{
-      config_->get<std::string>("rest.creation_access_credentials_name")};
+      config_->get<std::string_view>("rest.creation_access_credentials_name")};
   if (creation_access_credentials_name.has_value()) {
     add_header(
         "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
@@ -1537,7 +1537,7 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
 
   // Credential name for adding group members that are not registered on REST.
   const auto creation_access_credentials_name{
-      config_->get<std::string>("rest.creation_access_credentials_name")};
+      config_->get<std::string_view>("rest.creation_access_credentials_name")};
   if (creation_access_credentials_name.has_value()) {
     add_header(
         "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",

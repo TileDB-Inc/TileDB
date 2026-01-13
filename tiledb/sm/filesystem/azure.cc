@@ -220,7 +220,7 @@ AzureParameters::AzureParameters(const Config& config)
           config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
     , blob_endpoint_(get_blob_endpoint(config, account_name_))
     , is_data_lake_endpoint_(tiledb::sm::utils::parse::convert_optional<bool>(
-          config.get<std::string>(
+          config.get<std::string_view>(
               "vfs.azure.is_data_lake_endpoint", Config::must_find)))
     , ssl_cfg_(config)
     , has_sas_token_(
@@ -240,7 +240,8 @@ Azure::~Azure() {
 
 std::string get_config_with_env_fallback(
     const Config& config, const std::string& key, const char* env_name) {
-  std::string result = config.get<std::string>(key, Config::must_find);
+  std::string result =
+      std::string(config.get<std::string_view>(key, Config::must_find));
   if (result.empty()) {
     char* env = getenv(env_name);
     if (env) {
