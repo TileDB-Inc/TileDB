@@ -162,18 +162,18 @@ void Consolidator::array_consolidate(
         resources.rest_client()->post_consolidation_to_rest(array_uri, config));
   } else {
     // Get encryption key from config
-    std::string encryption_key_from_cfg;
+    std::string_view encryption_key_from_cfg;
     if (!encryption_key) {
       encryption_key_from_cfg =
-          config.get<std::string>("sm.encryption_key", Config::must_find);
+          config.get<std::string_view>("sm.encryption_key", Config::must_find);
     }
 
     if (!encryption_key_from_cfg.empty()) {
-      encryption_key = encryption_key_from_cfg.c_str();
+      encryption_key = encryption_key_from_cfg.data();
       key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      std::string encryption_type_from_cfg;
+      std::string_view encryption_type_from_cfg;
       encryption_type_from_cfg =
-          config.get<std::string>("sm.encryption_type", Config::must_find);
+          config.get<std::string_view>("sm.encryption_type", Config::must_find);
       auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
       throw_if_not_ok(st);
       encryption_type = et.value();
@@ -217,18 +217,18 @@ void Consolidator::fragments_consolidate(
   }
 
   // Get encryption key from config
-  std::string encryption_key_from_cfg;
+  std::string_view encryption_key_from_cfg;
   if (!encryption_key) {
     encryption_key_from_cfg =
-        config.get<std::string>("sm.encryption_key", Config::must_find);
+        config.get<std::string_view>("sm.encryption_key", Config::must_find);
   }
 
   if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
+    encryption_key = encryption_key_from_cfg.data();
     key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    std::string encryption_type_from_cfg;
+    std::string_view encryption_type_from_cfg;
     encryption_type_from_cfg =
-        config.get<std::string>("sm.encryption_type", Config::must_find);
+        config.get<std::string_view>("sm.encryption_type", Config::must_find);
     auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
     throw_if_not_ok(st);
     encryption_type = et.value();

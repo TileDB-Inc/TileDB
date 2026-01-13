@@ -93,10 +93,10 @@ capi_return_t tiledb_profile_get_param(
     throw CAPIException("[tiledb_profile_get_param] Parameter cannot be null.");
   }
 
-  const std::string* param_value = profile->profile()->get_param(param);
+  auto maybe_param_value = profile->profile()->get_param(param);
 
-  *value = param_value != nullptr ?
-               tiledb_string_handle_t::make_handle(*param_value) :
+  *value = maybe_param_value.has_value() ?
+               tiledb_string_handle_t::make_handle(maybe_param_value.value()) :
                nullptr;
 
   return TILEDB_OK;

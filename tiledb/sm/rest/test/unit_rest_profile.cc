@@ -168,8 +168,8 @@ TEST_CASE_METHOD(
   RestProfile p(create_profile());
 
   // Try to get a parameter with an empty name.
-  const std::string* value = p.get_param("");
-  REQUIRE(value == nullptr);
+  auto maybe_value = p.get_param("");
+  REQUIRE(!maybe_value.has_value());
 
   // Try to set a parameter with an empty name.
   REQUIRE_THROWS_WITH(
