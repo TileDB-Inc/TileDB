@@ -1067,20 +1067,34 @@ RestAuthMethod Config::get_effective_rest_auth_method() const {
       (password_source != ConfigSource::NONE) && !password.empty();
   bool has_user_pass = has_username && has_password;
 
-  // Validate username/password configuration
+  // Validate username/password configuration if both are set
   if (has_user_pass) {
     // Check if they are at the same priority level
     if (username_source != password_source) {
-      // Username and password at different priority levels - invalid
-      return RestAuthMethod::INVALID;
+      // Username and password at different priority levels - throw error
+      throw StatusException(Status_RestError(
+          "Invalid REST authentication configuration: rest.username and "
+          "rest.password are set at different priority levels. Both must be "
+          "configured at the same level (e.g., both via environment variables, "
+          "or both via profile)."));
     }
-  } else if (has_username || has_password) {
-    // Only one of username/password is configured - invalid
-    return RestAuthMethod::INVALID;
   }
 
   // No authentication method is configured
   if (!has_token && !has_user_pass) {
+    // Check if username or password is partially configured
+    if (has_username && !has_password) {
+      throw StatusException(Status_RestError(
+          "Invalid REST authentication configuration: rest.username is set but "
+          "rest.password is missing. Either configure both rest.username and "
+          "rest.password, or use rest.token for authentication."));
+    }
+    if (has_password && !has_username) {
+      throw StatusException(Status_RestError(
+          "Invalid REST authentication configuration: rest.password is set but "
+          "rest.username is missing. Either configure both rest.username and "
+          "rest.password, or use rest.token for authentication."));
+    }
     return RestAuthMethod::NONE;
   }
 

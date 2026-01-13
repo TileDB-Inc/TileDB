@@ -358,7 +358,12 @@ Status Curl::set_headers(struct curl_slist** headers) const {
         Status_RestError("Cannot set auth; curl instance is null."));
 
   // Determine which authentication method to use based on priorities
-  auto auth_method = config_->get_effective_rest_auth_method();
+  RestAuthMethod auth_method;
+  try {
+    auth_method = config_->get_effective_rest_auth_method();
+  } catch (const StatusException& e) {
+    return LOG_STATUS(e.status());
+  }
 
   if (auth_method == RestAuthMethod::TOKEN) {
     const char* token = nullptr;
@@ -379,10 +384,10 @@ Status Curl::set_headers(struct curl_slist** headers) const {
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
   } else {
-    // auth_method == RestAuthMethod::NONE or RestAuthMethod::INVALID
+    // auth_method == RestAuthMethod::NONE
     return LOG_STATUS(Status_RestError(
-        "TileDB authentication not properly configured: either token or "
-        "username/password must be set."));
+        "Missing TileDB authentication: either token or username/password "
+        "must be set using the appropriate configuration parameters."));
   }
 
   // Add any extra headers.

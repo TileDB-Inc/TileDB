@@ -82,8 +82,7 @@ enum class ConfigSource {
 enum class RestAuthMethod {
   TOKEN,              // Using token authentication
   USERNAME_PASSWORD,  // Using username/password authentication
-  NONE,               // No authentication configured
-  INVALID  // Authentication not properly configured (incomplete or conflicting)
+  NONE                // No authentication configured
 };
 
 /**
