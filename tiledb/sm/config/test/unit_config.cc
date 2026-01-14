@@ -390,4 +390,43 @@ TEST_CASE(
     auto method = c.get_effective_rest_auth_method();
     CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
   }
+
+  SECTION(
+      "Token from environment with partial username from config - prefer "
+      "token") {
+    auto env_token = setenv_local("TILEDB_REST_TOKEN", "env-token");
+    CHECK(c.set("rest.username", "user").ok());
+    // Password not set, but token is available with higher priority
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION(
+      "Token from config with partial username from environment - prefer "
+      "token") {
+    // Token has higher priority (USER_SET) than partial username (ENVIRONMENT)
+    CHECK(c.set("rest.token", "my-token").ok());
+    auto env_username = setenv_local("TILEDB_REST_USERNAME", "env-user");
+    // Password not set, but token is available with higher priority
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION(
+      "Partial username from config with token from profile - prefer token") {
+    // Create a profile with token
+    tiledb::sm::TemporaryLocalDirectory tempdir_;
+    std::string profile_dir(tempdir_.path());
+    std::string profile_name = "test_profile";
+    auto profile = tiledb::sm::RestProfile(profile_name, profile_dir);
+    profile.set_param("rest.token", "profile-token");
+    profile.save_to_file();
+
+    CHECK(c.set("profile_name", profile_name).ok());
+    CHECK(c.set("profile_dir", profile_dir).ok());
+    CHECK(c.set("rest.username", "user").ok());
+    // Password not set, token from profile (lower priority) should still work
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
 }
