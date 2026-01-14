@@ -36,6 +36,7 @@
 #include "../config.h"
 #include "tiledb/sm/rest/rest_profile.h"
 
+#include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
 
 using tiledb::sm::Config;
@@ -213,26 +214,29 @@ TEST_CASE("Config::get_with_source - various sources", "[config]") {
   CHECK(value2 == "50");
 
   // Test environment variable (ENVIRONMENT source)
-  setenv("TILEDB_REST_TOKEN", "env-test-token", 1);
-  Config c2{};  // Create new config to pick up environment variable
-  auto [source_env, value_env] = c2.get_with_source("rest.token");
-  CHECK(source_env == tiledb::sm::ConfigSource::ENVIRONMENT);
-  CHECK(value_env == "env-test-token");
-  unsetenv("TILEDB_REST_TOKEN");
+  {
+    auto env_token = setenv_local("TILEDB_REST_TOKEN", "env-test-token");
+    Config c2{};  // Create new config to pick up environment variable
+    auto [source_env, value_env] = c2.get_with_source("rest.token");
+    CHECK(source_env == tiledb::sm::ConfigSource::ENVIRONMENT);
+    CHECK(value_env == "env-test-token");
+  }  // env_token goes out of scope, automatically restores old value
 
   // Test user-set overrides environment variable
-  setenv("TILEDB_REST_USERNAME", "env-username", 1);
-  Config c3{};
-  // First check environment variable is picked up
-  auto [source_env2, value_env2] = c3.get_with_source("rest.username");
-  CHECK(source_env2 == tiledb::sm::ConfigSource::ENVIRONMENT);
-  CHECK(value_env2 == "env-username");
-  // Now override with user-set value
-  CHECK(c3.set("rest.username", "user-set-username").ok());
-  auto [source_override, value_override] = c3.get_with_source("rest.username");
-  CHECK(source_override == tiledb::sm::ConfigSource::USER_SET);
-  CHECK(value_override == "user-set-username");
-  unsetenv("TILEDB_REST_USERNAME");
+  {
+    auto env_username = setenv_local("TILEDB_REST_USERNAME", "env-username");
+    Config c3{};
+    // First check environment variable is picked up
+    auto [source_env2, value_env2] = c3.get_with_source("rest.username");
+    CHECK(source_env2 == tiledb::sm::ConfigSource::ENVIRONMENT);
+    CHECK(value_env2 == "env-username");
+    // Now override with user-set value
+    CHECK(c3.set("rest.username", "user-set-username").ok());
+    auto [source_override, value_override] =
+        c3.get_with_source("rest.username");
+    CHECK(source_override == tiledb::sm::ConfigSource::USER_SET);
+    CHECK(value_override == "user-set-username");
+  }
 
   // Test profile source
   tiledb::sm::TemporaryLocalDirectory tempdir_;
@@ -250,27 +254,28 @@ TEST_CASE("Config::get_with_source - various sources", "[config]") {
   CHECK(value_profile == "profile-token");
 
   // Test priority: user-set > environment > profile
-  // Start with profile value
-  Config c5{};
-  CHECK(c5.set("profile_name", profile_name).ok());
-  CHECK(c5.set("profile_dir", profile_dir).ok());
-  auto [src1, val1] = c5.get_with_source("rest.token");
-  CHECK(src1 == tiledb::sm::ConfigSource::PROFILE);
-  CHECK(val1 == "profile-token");
-  // Environment variable overrides profile
-  setenv("TILEDB_REST_TOKEN", "env-token-2", 1);
-  Config c6{};
-  CHECK(c6.set("profile_name", profile_name).ok());
-  CHECK(c6.set("profile_dir", profile_dir).ok());
-  auto [src2, val2] = c6.get_with_source("rest.token");
-  CHECK(src2 == tiledb::sm::ConfigSource::ENVIRONMENT);
-  CHECK(val2 == "env-token-2");
-  // User-set overrides environment
-  CHECK(c6.set("rest.token", "user-token").ok());
-  auto [src3, val3] = c6.get_with_source("rest.token");
-  CHECK(src3 == tiledb::sm::ConfigSource::USER_SET);
-  CHECK(val3 == "user-token");
-  unsetenv("TILEDB_REST_TOKEN");
+  {
+    // Start with profile value
+    Config c5{};
+    CHECK(c5.set("profile_name", profile_name).ok());
+    CHECK(c5.set("profile_dir", profile_dir).ok());
+    auto [src1, val1] = c5.get_with_source("rest.token");
+    CHECK(src1 == tiledb::sm::ConfigSource::PROFILE);
+    CHECK(val1 == "profile-token");
+    // Environment variable overrides profile
+    auto env_token2 = setenv_local("TILEDB_REST_TOKEN", "env-token-2");
+    Config c6{};
+    CHECK(c6.set("profile_name", profile_name).ok());
+    CHECK(c6.set("profile_dir", profile_dir).ok());
+    auto [src2, val2] = c6.get_with_source("rest.token");
+    CHECK(src2 == tiledb::sm::ConfigSource::ENVIRONMENT);
+    CHECK(val2 == "env-token-2");
+    // User-set overrides environment
+    CHECK(c6.set("rest.token", "user-token").ok());
+    auto [src3, val3] = c6.get_with_source("rest.token");
+    CHECK(src3 == tiledb::sm::ConfigSource::USER_SET);
+    CHECK(val3 == "user-token");
+  }
 
   // Test non-existent parameter
   auto [source_none, value_none] = c.get_with_source("nonexistent.param");
@@ -295,10 +300,9 @@ TEST_CASE(
   }
 
   SECTION("With environment variable token") {
-    setenv("TILEDB_REST_TOKEN", "env-token", 1);
+    auto env_token = setenv_local("TILEDB_REST_TOKEN", "env-token");
     auto method = c.get_effective_rest_auth_method();
     CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
-    unsetenv("TILEDB_REST_TOKEN");
   }
 
   SECTION("With user-set username/password") {
@@ -328,11 +332,10 @@ TEST_CASE(
     // Set username via config (USER_SET priority)
     CHECK(c.set("rest.username", "user").ok());
     // Set password via environment variable (ENVIRONMENT priority)
-    setenv("TILEDB_REST_PASSWORD", "env-pass", 1);
+    auto env_pass = setenv_local("TILEDB_REST_PASSWORD", "env-pass");
     CHECK_THROWS_WITH(
         c.get_effective_rest_auth_method(),
         Catch::Matchers::ContainsSubstring("set at different priority levels"));
-    unsetenv("TILEDB_REST_PASSWORD");
   }
 
   SECTION(
