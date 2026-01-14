@@ -1050,64 +1050,54 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
 }
 
 RestAuthMethod Config::get_effective_rest_auth_method() const {
-  // Get token with source
   auto [token_source, token] = get_with_source("rest.token");
-  // Token exists if found (not NONE) and non-empty
-  bool has_token = (token_source != ConfigSource::NONE) && !token.empty();
-
-  // Get username and password with sources
   auto [username_source, username] = get_with_source("rest.username");
   auto [password_source, password] = get_with_source("rest.password");
 
-  // Check for valid username/password combination
-  // Credentials exist if found (not NONE) and non-empty
+  bool has_token = (token_source != ConfigSource::NONE) && !token.empty();
   bool has_username =
       (username_source != ConfigSource::NONE) && !username.empty();
   bool has_password =
       (password_source != ConfigSource::NONE) && !password.empty();
-  bool has_user_pass = has_username && has_password;
 
-  // Validate username/password configuration if both are set
-  if (has_user_pass) {
-    // Check if they are at the same priority level
-    if (username_source != password_source) {
-      // Username and password at different priority levels - throw error
-      throw StatusException(Status_RestError(
-          "Invalid REST authentication configuration: rest.username and "
-          "rest.password are set at different priority levels. Both must be "
-          "configured at the same level (e.g., both via environment variables, "
-          "or both via profile)."));
-    }
-  }
-
-  // No authentication method is configured
-  if (!has_token && !has_user_pass) {
-    // Check if username or password is partially configured
-    if (has_username && !has_password) {
-      throw StatusException(Status_RestError(
-          "Invalid REST authentication configuration: rest.username is set but "
-          "rest.password is missing. Either configure both rest.username and "
-          "rest.password, or use rest.token for authentication."));
-    }
-    if (has_password && !has_username) {
-      throw StatusException(Status_RestError(
-          "Invalid REST authentication configuration: rest.password is set but "
-          "rest.username is missing. Either configure both rest.username and "
-          "rest.password, or use rest.token for authentication."));
-    }
+  // Nothing configured
+  if (!has_token && !has_username && !has_password) {
     return RestAuthMethod::NONE;
   }
 
-  // Determine which authentication method to use based on priority
-  // Priority hierarchy: USER_SET (0) > ENVIRONMENT (1) > PROFILE (2) > DEFAULT
-  // (3) If both methods have the same priority, prefer token
-  if (has_token && has_user_pass) {
-    return (token_source <= username_source) ?
-               RestAuthMethod::TOKEN :
-               RestAuthMethod::USERNAME_PASSWORD;
+  // Username/password authentication is valid iff both are present and at same
+  // level
+  bool userpass_valid =
+      has_username && has_password && username_source == password_source;
+
+  // If username/password is misconfigured
+  if ((has_username || has_password) && !userpass_valid) {
+    // If token exists, use it
+    if (has_token) {
+      return RestAuthMethod::TOKEN;
+    }
+    // No token to fall back on - error
+    if (has_username != has_password) {
+      // Only one of username or password is set
+      std::string missing_field =
+          has_username ? "rest.password" : "rest.username";
+      throw StatusException(Status_RestError(
+          "Invalid REST authentication configuration: " + missing_field +
+          " is "
+          "missing. Either configure both rest.username and rest.password, "
+          "or use rest.token for authentication."));
+    }
+    // Both are set but at different priority levels
+    throw StatusException(Status_RestError(
+        "Invalid REST authentication configuration: rest.username and "
+        "rest.password are set at different priority levels. Both must be "
+        "configured at the same level (e.g., both via environment variables, "
+        "or both via config file)."));
   }
 
-  return has_token ? RestAuthMethod::TOKEN : RestAuthMethod::USERNAME_PASSWORD;
+  // Select between valid auth methods by priority
+  return (token_source <= username_source) ? RestAuthMethod::TOKEN :
+                                             RestAuthMethod::USERNAME_PASSWORD;
 }
 
 const std::map<std::string, std::string>

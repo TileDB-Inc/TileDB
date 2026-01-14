@@ -316,16 +316,14 @@ TEST_CASE(
     CHECK(c.set("rest.username", "user").ok());
     CHECK_THROWS_WITH(
         c.get_effective_rest_auth_method(),
-        Catch::Matchers::ContainsSubstring(
-            "rest.username is set but rest.password is missing"));
+        Catch::Matchers::ContainsSubstring("rest.password is missing"));
   }
 
   SECTION("Only password configured - throws exception") {
     CHECK(c.set("rest.password", "pass").ok());
     CHECK_THROWS_WITH(
         c.get_effective_rest_auth_method(),
-        Catch::Matchers::ContainsSubstring(
-            "rest.password is set but rest.username is missing"));
+        Catch::Matchers::ContainsSubstring("rest.username is missing"));
   }
 
   SECTION("Username and password at different priority levels - throws") {
@@ -373,7 +371,7 @@ TEST_CASE(
     CHECK(method == tiledb::sm::RestAuthMethod::USERNAME_PASSWORD);
   }
 
-  SECTION("Token available with partial username - prefer token") {
+  SECTION("Token with partial username at same level - prefer token") {
     // This scenario occurs in REST tests where TILEDB_REST_USERNAME is set
     // for logging/display purposes, but authentication uses TILEDB_REST_TOKEN
     CHECK(c.set("rest.token", "my-token").ok());
@@ -383,38 +381,31 @@ TEST_CASE(
     CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
   }
 
-  SECTION("Token available with partial password - prefer token") {
-    CHECK(c.set("rest.token", "my-token").ok());
-    CHECK(c.set("rest.password", "pass").ok());
-    // Username is not set, but token is available so it should be used
-    auto method = c.get_effective_rest_auth_method();
-    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
-  }
-
-  SECTION(
-      "Token from environment with partial username from config - prefer "
-      "token") {
-    auto env_token = setenv_local("TILEDB_REST_TOKEN", "env-token");
-    CHECK(c.set("rest.username", "user").ok());
-    // Password not set, but token is available with higher priority
-    auto method = c.get_effective_rest_auth_method();
-    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
-  }
-
-  SECTION(
-      "Token from config with partial username from environment - prefer "
-      "token") {
-    // Token has higher priority (USER_SET) than partial username (ENVIRONMENT)
+  SECTION("Token at higher priority than partial username - use token") {
+    // Token at USER_SET, partial username at ENVIRONMENT
     CHECK(c.set("rest.token", "my-token").ok());
     auto env_username = setenv_local("TILEDB_REST_USERNAME", "env-user");
-    // Password not set, but token is available with higher priority
+    // Password not set, token has higher priority so should be used
     auto method = c.get_effective_rest_auth_method();
     CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
   }
 
   SECTION(
-      "Partial username from config with token from profile - prefer token") {
-    // Create a profile with token
+      "Username and password at different levels with higher priority token - "
+      "use token") {
+    // Token has highest priority, so username/password at different levels
+    // shouldn't cause an error
+    CHECK(c.set("rest.token", "my-token").ok());
+    CHECK(c.set("rest.username", "user").ok());
+    auto env_pass = setenv_local("TILEDB_REST_PASSWORD", "env-pass");
+    // Username at USER_SET, password at ENVIRONMENT, token at USER_SET
+    // Should use token without error
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION("Username from config with token from profile - use token") {
+    // Even if partial username has higher priority, token should be used
     tiledb::sm::TemporaryLocalDirectory tempdir_;
     std::string profile_dir(tempdir_.path());
     std::string profile_name = "test_profile";
@@ -425,7 +416,7 @@ TEST_CASE(
     CHECK(c.set("profile_name", profile_name).ok());
     CHECK(c.set("profile_dir", profile_dir).ok());
     CHECK(c.set("rest.username", "user").ok());
-    // Password not set, token from profile (lower priority) should still work
+    // Username at USER_SET, token at PROFILE - should use token
     auto method = c.get_effective_rest_auth_method();
     CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
   }
