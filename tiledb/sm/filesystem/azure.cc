@@ -333,8 +333,17 @@ void Azure::AzureClientSingleton::ensure_initialized(
   auto is_datalake = params.is_data_lake_endpoint_;
 
   if (!is_datalake.has_value()) {
-    auto accountInfo = client_->GetAccountInfo();
-    is_datalake = accountInfo.Value.IsHierarchicalNamespaceEnabled;
+    try {
+      auto accountInfo = client_->GetAccountInfo();
+      is_datalake = accountInfo.Value.IsHierarchicalNamespaceEnabled;
+    } catch (const ::Azure::Storage::StorageException& e) {
+      std::throw_with_nested(AzureException(
+          "Failed to determine if the Azure Storage Account supports "
+          "hierarchical namespace. Make sure that you have permissions to "
+          "call "
+          "the \"Get Account Information\" API, or set the "
+          "\"vfs.azure.is_data_lake_endpoint\" config option."));
+    }
   }
 
   if (is_datalake.value()) {
