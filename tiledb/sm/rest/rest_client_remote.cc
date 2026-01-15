@@ -789,7 +789,12 @@ Status RestClientRemote::post_query_submit(
     bool skip;
     query_post_call_back(
         false, nullptr, 0, &skip, rest_scratch, query, copy_state, &cb_status);
-    RETURN_NOT_OK(cb_status);
+    if (!cb_status.ok()) {
+      return LOG_STATUS(Status_RestError(
+          "Error submitting query to REST; "
+          "Failure within query post call back: " +
+          cb_status.message()));
+    }
   }
 
   // Serialize query to send
