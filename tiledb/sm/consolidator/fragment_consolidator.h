@@ -318,14 +318,16 @@ class FragmentConsolidator : public Consolidator {
    * @param reader_array_schema_latest The reader's latest array schema.
    * @param avg_var_cell_sizes A map of the reader's computed average cell size
    * for var size attrs / dims.
-   * @param buffers_budget Memory budget allocated for consolidation buffers.
+   * @param initial_buffer_size Initial size of consolidation buffers.
+   * @param max_buffer_size Maximum-allowed size of consolidation buffers.
    */
   void copy_array(
       Query* query_r,
       Query* query_w,
       const ArraySchema& reader_array_schema_latest,
       std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
-      uint64_t buffers_budget);
+      uint64_t initial_buffer_size,
+      uint64_t max_buffer_size);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves

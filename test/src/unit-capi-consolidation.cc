@@ -7616,8 +7616,8 @@ void ConsolidationFx::write_and_consolidate_fragments(
 
   // Create array
   tiledb_dimension_t* dim;
-  uint64_t tile_extent = std::max(num_small_cells + 1, long_string_length);
-  uint64_t dim_domain[] = {0, tile_extent};
+  uint64_t tile_extent = 20000;
+  uint64_t dim_domain[] = {0, std::max(num_small_cells, long_string_length)};
   rc = tiledb_dimension_alloc(
       ctx_, "dim", TILEDB_UINT64, &dim_domain, &tile_extent, &dim);
   CHECK(rc == TILEDB_OK);
@@ -7678,7 +7678,7 @@ void ConsolidationFx::write_and_consolidate_fragments(
   coords.reserve(num_small_cells);
   offsets.push_back(0);
   for (uint64_t i = 0; i < num_small_cells; i++) {
-    std::string word = words[i % 8 - 1];
+    std::string word = words[i % 8];
     test_str += word;
     coords.push_back(i + 1);
     if (i != num_small_cells - 1) {
@@ -7742,7 +7742,7 @@ void ConsolidationFx::write_and_consolidate_fragments(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx_, query, "attr", &long_string, &str_size);
+      ctx_, query, "attr", long_string.data(), &str_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
       ctx_, query, "attr", &offset, &offset_size);
@@ -7782,7 +7782,7 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   uint64_t num_small_cells = 2;
-  uint64_t long_string_length = 40000;
+  uint64_t long_string_length = 60000;
   SECTION(
       "- num small cells == 2,"
       "long string length == 40000") {

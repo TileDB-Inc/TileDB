@@ -620,6 +620,7 @@ Status FragmentConsolidator::consolidate_internal(
   uint64_t total_weights =
       config_.buffers_weight_ + config_.reader_weight_ + config_.writer_weight_;
   uint64_t single_unit_budget = config_.total_budget_ / total_weights;
+  uint64_t buffer_budget = config_.buffers_weight_ * single_unit_budget;
   uint64_t reader_budget = config_.reader_weight_ * single_unit_budget;
   uint64_t writer_budget = config_.writer_weight_ * single_unit_budget;
 
@@ -654,7 +655,8 @@ Status FragmentConsolidator::consolidate_internal(
         query_w.get(),
         array_schema,
         array_for_reads->get_average_var_cell_sizes(),
-        single_unit_budget);
+        buffer_budget,
+        std::min(reader_budget, writer_budget));  // Conserve usage
     // Write vacuum file
     throw_if_not_ok(write_vacuum_file(
         array_for_reads->array_schema_latest().write_version(),
@@ -676,30 +678,28 @@ void FragmentConsolidator::copy_array(
     Query* query_w,
     const ArraySchema& reader_array_schema_latest,
     std::unordered_map<std::string, uint64_t> average_var_cell_sizes,
-    uint64_t buffers_budget) {
+    uint64_t initial_buffer_size,
+    uint64_t max_buffer_size) {
   // The size of the buffers.
-  // `buffers_budget_ by default, unless total budget is smaller, or
-  // buffer_size_ is set.
-  buffers_budget = std::min(buffers_budget, config_.total_budget_);
+  // `initial_buffer_size` by default, unless `config_.buffer_size_` is set.
   uint64_t buffer_size =
-      config_.buffer_size_ != 0 ? config_.buffer_size_ : buffers_budget;
-
-  if (buffer_size > buffers_budget) {
+      config_.buffer_size_ != 0 ? config_.buffer_size_ : initial_buffer_size;
+  if (buffer_size > max_buffer_size) {
     throw FragmentConsolidatorException(
         "Consolidation cannot proceed without disrespecting the memory "
         "budget.");
   }
 
   // Deque which stores the buffers passed between the reader and writer.
-  // Cannot exceed `buffers_budget`.
+  // Cannot exceed `max_buffer_size`.
   ProducerConsumerQueue<std::variant<
       tdb_shared_ptr<FragmentConsolidationWorkspace>,
       std::exception_ptr>>
       buffer_queue;
 
-  // Atomic counter of the queue buffers allocated by the reader.
-  // May not exceed `buffers_budget`.
-  std::atomic<uint64_t> allocated_buffer_size = 0;
+  // Atomic size of the buffers enqueued into the PCQ by the reader.
+  // May not exceed `max_buffer_size`.
+  std::atomic<uint64_t> enqueued_buffer_size = 0;
 
   // Flag indicating an ongoing read. The reader will stop once set to `false`.
   std::atomic<bool> reading = true;
@@ -720,8 +720,7 @@ void FragmentConsolidator::copy_array(
             config_,
             reader_array_schema_latest,
             average_var_cell_sizes,
-            std::min(buffer_size, buffers_budget));
-        set_query_buffers(query_r, *cw.get());
+            std::min(buffer_size, max_buffer_size));
         throw_if_not_ok(query_r->submit());
 
         // Only continue if Consolidation can make progress. The first buffer
@@ -729,17 +728,27 @@ void FragmentConsolidator::copy_array(
         // var size attribute/dimension or the actual fixed size data so we can
         // use its size to know if any cells were written or not.
         if (cw->sizes().at(0) == 0) {
+          uint64_t size_to_grow_buffer = std::min(buffer_size, max_buffer_size);
           // Grow the buffer and try again.
-          buffer_size += buffer_size;
-          if (buffer_size > buffers_budget) {
+          buffer_size += size_to_grow_buffer;
+          if (enqueued_buffer_size + buffer_size > max_buffer_size) {
             throw FragmentConsolidatorException(
-                "Consolidation cannot proceed without disrespecting the memory "
-                "budget.");
+                "Consolidation read 0 cells; no progress can be made without "
+                "disrespecting the memory budget.");
           }
+          if (enqueued_buffer_size != 0) {
+            // Only wait for the writer to release if there's something in PCQ
+            io_tp.wait_until([&]() {
+              return enqueued_buffer_size <
+                     max_buffer_size - size_to_grow_buffer;
+            });
+          }
+          continue;
         } else {
           buffer_queue.push(cw);
           // Track the actual allocated buffer size.
-          allocated_buffer_size += cw->total_buffer_size();
+          buffer_size = cw->total_buffer_size();
+          enqueued_buffer_size += buffer_size;
         }
 
         // Once the read is complete, drain the queue and exit the reader.
@@ -754,13 +763,12 @@ void FragmentConsolidator::copy_array(
         // Enqueue caught-exceptions to be handled by the writer.
         buffer_queue.push(std::current_exception());
         // Use a minimal size for exception tracking to maintain queue logic.
-        allocated_buffer_size += 1;
+        enqueued_buffer_size += 1;
         reading = false;
         break;
       }
-
       io_tp.wait_until(
-          [&]() { return allocated_buffer_size < buffers_budget; });
+          [&]() { return enqueued_buffer_size < max_buffer_size; });
     }
     return Status::Ok();
   });
@@ -787,8 +795,8 @@ void FragmentConsolidator::copy_array(
       // been altered by the read query.
       set_query_buffers(query_w, *writebuf.get());
       throw_if_not_ok(query_w->submit());
-      // Track the actual allocated buffer size that was freed.
-      allocated_buffer_size -= writebuf->total_buffer_size();
+      // Track the actual buffer size that was freed.
+      enqueued_buffer_size -= writebuf->total_buffer_size();
     } catch (...) {
       // Stop the reader.
       reading = false;
