@@ -36,6 +36,7 @@
 #include "../config.h"
 #include "tiledb/sm/rest/rest_profile.h"
 
+#include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
 
 using tiledb::sm::Config;
@@ -196,4 +197,227 @@ TEST_CASE("Config::set_profile - found", "[config]") {
   auto restored_username = c.get("rest.username", &found);
   REQUIRE(found);
   CHECK(restored_username == "test_user");
+}
+
+TEST_CASE("Config::get_with_source - various sources", "[config]") {
+  Config c{};
+
+  // Test default value
+  auto [source, value] = c.get_with_source("rest.retry_count");
+  CHECK(source == tiledb::sm::ConfigSource::DEFAULT);
+  CHECK(value == "25");
+
+  // Test user-set value
+  CHECK(c.set("rest.retry_count", "50").ok());
+  auto [source2, value2] = c.get_with_source("rest.retry_count");
+  CHECK(source2 == tiledb::sm::ConfigSource::USER_SET);
+  CHECK(value2 == "50");
+
+  // Test environment variable (ENVIRONMENT source)
+  {
+    auto env_token = setenv_local("TILEDB_REST_TOKEN", "env-test-token");
+    Config c2{};  // Create new config to pick up environment variable
+    auto [source_env, value_env] = c2.get_with_source("rest.token");
+    CHECK(source_env == tiledb::sm::ConfigSource::ENVIRONMENT);
+    CHECK(value_env == "env-test-token");
+  }  // env_token goes out of scope, automatically restores old value
+
+  // Test user-set overrides environment variable
+  {
+    auto env_username = setenv_local("TILEDB_REST_USERNAME", "env-username");
+    Config c3{};
+    // First check environment variable is picked up
+    auto [source_env2, value_env2] = c3.get_with_source("rest.username");
+    CHECK(source_env2 == tiledb::sm::ConfigSource::ENVIRONMENT);
+    CHECK(value_env2 == "env-username");
+    // Now override with user-set value
+    CHECK(c3.set("rest.username", "user-set-username").ok());
+    auto [source_override, value_override] =
+        c3.get_with_source("rest.username");
+    CHECK(source_override == tiledb::sm::ConfigSource::USER_SET);
+    CHECK(value_override == "user-set-username");
+  }
+
+  // Test profile source
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  std::string profile_dir(tempdir_.path());
+  std::string profile_name = "test_profile";
+  auto profile = tiledb::sm::RestProfile(profile_name, profile_dir);
+  profile.set_param("rest.token", "profile-token");
+  profile.save_to_file();
+
+  Config c4{};
+  CHECK(c4.set("profile_name", profile_name).ok());
+  CHECK(c4.set("profile_dir", profile_dir).ok());
+  auto [source_profile, value_profile] = c4.get_with_source("rest.token");
+  CHECK(source_profile == tiledb::sm::ConfigSource::PROFILE);
+  CHECK(value_profile == "profile-token");
+
+  // Test priority: user-set > environment > profile
+  {
+    // Start with profile value
+    Config c5{};
+    CHECK(c5.set("profile_name", profile_name).ok());
+    CHECK(c5.set("profile_dir", profile_dir).ok());
+    auto [src1, val1] = c5.get_with_source("rest.token");
+    CHECK(src1 == tiledb::sm::ConfigSource::PROFILE);
+    CHECK(val1 == "profile-token");
+    // Environment variable overrides profile
+    auto env_token2 = setenv_local("TILEDB_REST_TOKEN", "env-token-2");
+    Config c6{};
+    CHECK(c6.set("profile_name", profile_name).ok());
+    CHECK(c6.set("profile_dir", profile_dir).ok());
+    auto [src2, val2] = c6.get_with_source("rest.token");
+    CHECK(src2 == tiledb::sm::ConfigSource::ENVIRONMENT);
+    CHECK(val2 == "env-token-2");
+    // User-set overrides environment
+    CHECK(c6.set("rest.token", "user-token").ok());
+    auto [src3, val3] = c6.get_with_source("rest.token");
+    CHECK(src3 == tiledb::sm::ConfigSource::USER_SET);
+    CHECK(val3 == "user-token");
+  }
+
+  // Test non-existent parameter
+  auto [source_none, value_none] = c.get_with_source("nonexistent.param");
+  CHECK(source_none == tiledb::sm::ConfigSource::NONE);
+  CHECK(value_none == "");
+}
+
+TEST_CASE(
+    "Config::get_effective_rest_auth_method - REST authentication",
+    "[config]") {
+  Config c{};
+
+  SECTION("No authentication configured") {
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::NONE);
+  }
+
+  SECTION("With user-set token") {
+    CHECK(c.set("rest.token", "my-token").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION("With environment variable token") {
+    auto env_token = setenv_local("TILEDB_REST_TOKEN", "env-token");
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION("With user-set username/password") {
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK(c.set("rest.password", "pass").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::USERNAME_PASSWORD);
+  }
+
+  SECTION("Only username configured - throws exception") {
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK_THROWS_WITH(
+        c.get_effective_rest_auth_method(),
+        Catch::Matchers::ContainsSubstring("rest.password is missing"));
+  }
+
+  SECTION("Only password configured - throws exception") {
+    CHECK(c.set("rest.password", "pass").ok());
+    CHECK_THROWS_WITH(
+        c.get_effective_rest_auth_method(),
+        Catch::Matchers::ContainsSubstring("rest.username is missing"));
+  }
+
+  SECTION("Username and password at different priority levels - throws") {
+    // Set username via config (USER_SET priority)
+    CHECK(c.set("rest.username", "user").ok());
+    // Set password via environment variable (ENVIRONMENT priority)
+    auto env_pass = setenv_local("TILEDB_REST_PASSWORD", "env-pass");
+    CHECK_THROWS_WITH(
+        c.get_effective_rest_auth_method(),
+        Catch::Matchers::ContainsSubstring("set at different priority levels"));
+  }
+
+  SECTION(
+      "Priority: Both token and username/password with same priority - prefer "
+      "token") {
+    CHECK(c.set("rest.token", "my-token").ok());
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK(c.set("rest.password", "pass").ok());
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION(
+      "Priority: Profile with token, user-set username/password - prefer "
+      "user-set") {
+    // Create a profile with token configured
+    tiledb::sm::TemporaryLocalDirectory tempdir_;
+    std::string profile_dir(tempdir_.path());
+    std::string profile_name = "test_profile";
+    auto profile = tiledb::sm::RestProfile(profile_name, profile_dir);
+    profile.set_param("rest.token", "profile-token");
+    profile.save_to_file();
+
+    // Set profile in config
+    CHECK(c.set("profile_name", profile_name).ok());
+    CHECK(c.set("profile_dir", profile_dir).ok());
+
+    // User explicitly sets username/password in config
+    CHECK(c.set("rest.username", "user").ok());
+    CHECK(c.set("rest.password", "pass").ok());
+
+    // Should return USERNAME_PASSWORD because user-set has higher priority than
+    // profile
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::USERNAME_PASSWORD);
+  }
+
+  SECTION("Token with partial username at same level - prefer token") {
+    // This scenario occurs in REST tests where TILEDB_REST_USERNAME is set
+    // for logging/display purposes, but authentication uses TILEDB_REST_TOKEN
+    CHECK(c.set("rest.token", "my-token").ok());
+    CHECK(c.set("rest.username", "user").ok());
+    // Password is not set, but token is available so it should be used
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION("Token at higher priority than partial username - use token") {
+    // Token at USER_SET, partial username at ENVIRONMENT
+    CHECK(c.set("rest.token", "my-token").ok());
+    auto env_username = setenv_local("TILEDB_REST_USERNAME", "env-user");
+    // Password not set, token has higher priority so should be used
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION(
+      "Username and password at different levels with higher priority token - "
+      "use token") {
+    // Token has highest priority, so username/password at different levels
+    // shouldn't cause an error
+    CHECK(c.set("rest.token", "my-token").ok());
+    CHECK(c.set("rest.username", "user").ok());
+    auto env_pass = setenv_local("TILEDB_REST_PASSWORD", "env-pass");
+    // Username at USER_SET, password at ENVIRONMENT, token at USER_SET
+    // Should use token without error
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
+
+  SECTION("Username from config with token from profile - use token") {
+    // Even if partial username has higher priority, token should be used
+    tiledb::sm::TemporaryLocalDirectory tempdir_;
+    std::string profile_dir(tempdir_.path());
+    std::string profile_name = "test_profile";
+    auto profile = tiledb::sm::RestProfile(profile_name, profile_dir);
+    profile.set_param("rest.token", "profile-token");
+    profile.save_to_file();
+
+    CHECK(c.set("profile_name", profile_name).ok());
+    CHECK(c.set("profile_dir", profile_dir).ok());
+    CHECK(c.set("rest.username", "user").ok());
+    // Username at USER_SET, token at PROFILE - should use token
+    auto method = c.get_effective_rest_auth_method();
+    CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
+  }
 }

@@ -357,31 +357,37 @@ Status Curl::set_headers(struct curl_slist** headers) const {
     return LOG_STATUS(
         Status_RestError("Cannot set auth; curl instance is null."));
 
-  const char* token = nullptr;
-  RETURN_NOT_OK(config_->get("rest.token", &token));
+  // Determine which authentication method to use based on priorities
+  RestAuthMethod auth_method;
+  try {
+    auth_method = config_->get_effective_rest_auth_method();
+  } catch (const StatusException& e) {
+    return LOG_STATUS(e.extract_status());
+  }
 
-  if (token != nullptr) {
+  if (auth_method == RestAuthMethod::TOKEN) {
+    const char* token = nullptr;
+    RETURN_NOT_OK(config_->get("rest.token", &token));
+
     *headers = curl_slist_append(
         *headers, (std::string("X-TILEDB-REST-API-Key: ") + token).c_str());
     if (*headers == nullptr)
       return LOG_STATUS(Status_RestError(
           "Cannot set curl auth; curl_slist_append returned null."));
-  } else {
-    // Try username+password instead of token
+  } else if (auth_method == RestAuthMethod::USERNAME_PASSWORD) {
     const char* username = nullptr;
     const char* password = nullptr;
     RETURN_NOT_OK(config_->get("rest.username", &username));
     RETURN_NOT_OK(config_->get("rest.password", &password));
 
-    // Check for no auth.
-    if (username == nullptr || password == nullptr)
-      return LOG_STATUS(Status_RestError(
-          "Missing TileDB authentication: either token or username/password "
-          "must be set using the appropriate configuration parameters."));
-
     std::string basic_auth = username + std::string(":") + password;
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+  } else {
+    // auth_method == RestAuthMethod::NONE
+    return LOG_STATUS(Status_RestError(
+        "Missing TileDB authentication: either token or username/password "
+        "must be set using the appropriate configuration parameters."));
   }
 
   // Add any extra headers.

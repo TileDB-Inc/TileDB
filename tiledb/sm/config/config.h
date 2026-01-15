@@ -65,6 +65,27 @@ namespace tiledb::sm {
 class WhiteboxConfig;
 
 /**
+ * Enumeration representing the source of a configuration parameter value.
+ * Lower numeric values indicate higher priority.
+ */
+enum class ConfigSource {
+  USER_SET = 0,     // Explicitly set by user
+  ENVIRONMENT = 1,  // Environment variables
+  PROFILE = 2,      // Loaded from a profile
+  DEFAULT = 3,      // Default value
+  NONE = 4          // Parameter not found
+};
+
+/**
+ * Enumeration of REST authentication methods.
+ */
+enum class RestAuthMethod {
+  TOKEN,              // Using token authentication
+  USERNAME_PASSWORD,  // Using username/password authentication
+  NONE                // No authentication configured
+};
+
+/**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
  * Parsing to appropriate types happens on demand.
@@ -756,6 +777,35 @@ class Config {
   template <class T>
   Status get_vector(
       const std::string& param, std::vector<T>* value, bool* found) const;
+
+  /**
+   * Get a configuration parameter value along with its source.
+   *
+   * @param param The parameter name to retrieve
+   * @return Pair of (ConfigSource, value as string_view). If parameter not
+   * found, returns (ConfigSource::NONE, "")
+   */
+  std::pair<ConfigSource, std::string_view> get_with_source(
+      const std::string& param) const;
+
+  /**
+   * Get the effective REST authentication method.
+   *
+   * Determines which authentication method will be used based on priority:
+   * - User-set values have highest priority
+   * - Environment variables have second priority
+   * - Profile values have third priority
+   * - If both token and username/password have same priority, prefer token
+   *
+   * @return RestAuthMethod indicating:
+   *   - TOKEN: Token authentication will be used
+   *   - USERNAME_PASSWORD: Username/password authentication will be used
+   *   - NONE: No authentication is configured
+   *   - INVALID: Authentication is incorrectly configured (username and
+   * password at different priority levels, or only one of username/password
+   * provided)
+   */
+  RestAuthMethod get_effective_rest_auth_method() const;
 
   /** Gets the set parameters. */
   const std::set<std::string>& set_params() const;

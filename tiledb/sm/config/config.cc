@@ -1005,35 +1005,99 @@ std::optional<std::string_view> Config::get_from_profile(
 
 std::optional<std::string_view> Config::get_from_config_or_fallback(
     const std::string& param) const {
+  auto [source, value] = get_with_source(param);
+  if (source == ConfigSource::NONE) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+std::pair<ConfigSource, std::string_view> Config::get_with_source(
+    const std::string& param) const {
   // First check if the user has set the parameter
-  // If not, it may be a default value (if found in the config)
-  bool user_set_parameter = set_params_.find(param) != set_params_.end();
+  bool user_set = set_params_.find(param) != set_params_.end();
 
   // [1. user-set config parameters]
   auto maybe_value_config = get_from_config(param);
-  if (maybe_value_config.has_value() && user_set_parameter) {
-    return maybe_value_config;
+  if (maybe_value_config.has_value() && user_set) {
+    return {ConfigSource::USER_SET, *maybe_value_config};
   }
 
   // Check if param default should be ignored based on environment variables
   if (ignore_default_via_env(param)) {
-    return std::nullopt;
+    return {ConfigSource::NONE, ""};
   }
 
   // [2. env variables]
   auto maybe_value_env = get_from_env(param);
   if (maybe_value_env.has_value()) {
-    return maybe_value_env;
+    return {ConfigSource::ENVIRONMENT, *maybe_value_env};
   }
 
   // [3. profiles]
   auto maybe_value_profile = get_from_profile(param);
   if (maybe_value_profile.has_value()) {
-    return maybe_value_profile;
+    return {ConfigSource::PROFILE, *maybe_value_profile};
   }
 
   // [4. default config value]
-  return maybe_value_config;
+  if (maybe_value_config.has_value()) {
+    return {ConfigSource::DEFAULT, *maybe_value_config};
+  }
+
+  // Parameter not found anywhere
+  return {ConfigSource::NONE, ""};
+}
+
+RestAuthMethod Config::get_effective_rest_auth_method() const {
+  auto [token_source, token] = get_with_source("rest.token");
+  auto [username_source, username] = get_with_source("rest.username");
+  auto [password_source, password] = get_with_source("rest.password");
+
+  bool has_token = (token_source != ConfigSource::NONE) && !token.empty();
+  bool has_username =
+      (username_source != ConfigSource::NONE) && !username.empty();
+  bool has_password =
+      (password_source != ConfigSource::NONE) && !password.empty();
+
+  // Nothing configured
+  if (!has_token && !has_username && !has_password) {
+    return RestAuthMethod::NONE;
+  }
+
+  // Username/password authentication is valid iff both are present and at same
+  // level
+  bool userpass_valid =
+      has_username && has_password && username_source == password_source;
+
+  // If username/password is misconfigured
+  if ((has_username || has_password) && !userpass_valid) {
+    // If token exists, use it
+    if (has_token) {
+      return RestAuthMethod::TOKEN;
+    }
+    // No token to fall back on - error
+    if (has_username != has_password) {
+      // Only one of username or password is set
+      std::string missing_field =
+          has_username ? "rest.password" : "rest.username";
+      throw StatusException(Status_RestError(
+          "Invalid REST authentication configuration: " + missing_field +
+          " is "
+          "missing. Either configure both rest.username and rest.password, "
+          "or use rest.token for authentication."));
+    }
+    // Both are set but at different priority levels
+    throw StatusException(Status_RestError(
+        "Invalid REST authentication configuration: rest.username and "
+        "rest.password are set at different priority levels. Both must be "
+        "configured at the same level (e.g., both via environment variables, "
+        "or both via config file)."));
+  }
+
+  // Select between valid auth methods by priority
+  return (token_source <= username_source) ? RestAuthMethod::TOKEN :
+                                             RestAuthMethod::USERNAME_PASSWORD;
 }
 
 const std::map<std::string, std::string>
