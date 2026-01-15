@@ -58,7 +58,7 @@
   do {                                                    \
     auto rc = (thing);                                    \
     auto maybe_err = tiledb::test::error_if_any(ctx, rc); \
-    ASSERTER(!maybe_err.has_value());                     \
+    ASSERTER(maybe_err == std::optional<std::string>{});  \
   } while (0)
 
 namespace tiledb::test {
