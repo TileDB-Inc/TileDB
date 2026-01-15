@@ -30,7 +30,9 @@
  * Tests the C API consolidation.
  */
 
+#include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/stdx_string.h"
@@ -7763,8 +7765,8 @@ void ConsolidationFx::write_and_consolidate_fragments(
   rc = tiledb_config_set(cfg, "sm.consolidation.step_min_frags", "2", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_array_consolidate(ctx_, array_name, cfg);
-  CHECK(rc == TILEDB_OK);
+  using Asserter = AsserterCatch;
+  TRY(ctx_, tiledb_array_consolidate(ctx_, array_name, cfg));
   tiledb_config_free(&cfg);
 }
 
