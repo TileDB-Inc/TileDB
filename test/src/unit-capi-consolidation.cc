@@ -30,9 +30,7 @@
  * Tests the C API consolidation.
  */
 
-#include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
-#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/stdx_string.h"
@@ -150,7 +148,8 @@ struct ConsolidationFx {
   void write_and_consolidate_fragments(
       const char* array_name,
       uint64_t num_small_cells,
-      uint64_t long_string_length);
+      uint64_t long_string_length,
+      uint64_t consolidation_budget);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -7602,11 +7601,13 @@ TEST_CASE_METHOD(
  * @param array_name The name of the array.
  * @param num_small_cells The number of small cells to consolidate.
  * @param long_string_length The length of the long string to write.
+ * @param consolidation_budget The total budget to set for consolidation.
  */
 void ConsolidationFx::write_and_consolidate_fragments(
     const char* array_name,
     uint64_t num_small_cells,
-    uint64_t long_string_length) {
+    uint64_t long_string_length,
+    uint64_t consolidation_budget) {
   std::string words[8] = {
       "foo", "bar", "apple", "orange", "banana", "red", "yellow", "blue"};
 
@@ -7618,8 +7619,8 @@ void ConsolidationFx::write_and_consolidate_fragments(
 
   // Create array
   tiledb_dimension_t* dim;
-  uint64_t tile_extent = 20000;
-  uint64_t dim_domain[] = {0, std::max(num_small_cells, long_string_length)};
+  uint64_t tile_extent = std::max(num_small_cells, long_string_length);
+  uint64_t dim_domain[] = {0, tile_extent};
   rc = tiledb_dimension_alloc(
       ctx_, "dim", TILEDB_UINT64, &dim_domain, &tile_extent, &dim);
   CHECK(rc == TILEDB_OK);
@@ -7759,14 +7760,17 @@ void ConsolidationFx::write_and_consolidate_fragments(
   tiledb_query_free(&query);
 
   // Consolidate
-  rc = tiledb_config_set(cfg, "sm.mem.total_budget", "100000", &err);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.mem.total_budget",
+      std::to_string(consolidation_budget).c_str(),
+      &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(cfg, "sm.consolidation.step_min_frags", "2", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
-  using Asserter = AsserterCatch;
-  TRY(ctx_, tiledb_array_consolidate(ctx_, array_name, cfg));
+  tiledb_array_consolidate(ctx_, array_name, cfg);
   tiledb_config_free(&cfg);
 }
 
@@ -7777,22 +7781,95 @@ TEST_CASE_METHOD(
   const char* array_name = "fragment_consolidation_array";
   remove_array(array_name);
 
-  tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-  int rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
+  uint64_t num_small_cells = 10000;
+  uint64_t long_string_length = 10000;
+  uint64_t consolidation_budget = 10000000;
+  std::string expected_error_msg = "";
 
-  uint64_t num_small_cells = 2;
-  uint64_t long_string_length = 60000;
   SECTION(
-      "- num small cells == 2,"
-      "long string length == 40000") {
+      "Success: "
+      "num small cells = 10000, "
+      "long string length = 10000, "
+      "consolidation_budget = 10000000 ") {
+    num_small_cells = 10000;
+    long_string_length = 10000;
+    consolidation_budget = 10000000;
     write_and_consolidate_fragments(
-        array_name, num_small_cells, long_string_length);
+        array_name, num_small_cells, long_string_length, consolidation_budget);
   }
 
-  tiledb_config_free(&cfg);
+  // Err: SparseGlobalOrderReader: Unable to copy one slab with current
+  // budget/buffers
+  SECTION(
+      "Error after buffer growth: "
+      "num small cells = 10000, "
+      "long string length = 5000000, "
+      "consolidation_budget = 10000000 ") {
+    expected_error_msg = " Unable to copy one slab with current budget/buffers";
+    num_small_cells = 10000;
+    long_string_length = 5000000;
+    consolidation_budget = 10000000;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length, consolidation_budget);
+  }
+
+  // Error: FragmentMetadata: Cannot load R-tree; Insufficient memory budget;
+  // Needed 888952 but only had 98395 from budget 499999
+  SECTION(
+      "Error attempting to load R-tree: "
+      "num small cells = 10000, "
+      "long string length = 5000000, "
+      "consolidation_budget = 10000000 ") {
+    expected_error_msg = "Cannot load R-tree; Insufficient memory budget";
+    num_small_cells = 100000;
+    long_string_length = 100000;
+    consolidation_budget = 10000000;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length, consolidation_budget);
+  }
+
+  // SparseGlobalOrderReader: Cannot load tile offsets, computed size (16800) is
+  // larger than available memory (10459), increase memory budget.
+  // Total budget for array data (24999).
+  SECTION(
+      "Error loading tile offsets: "
+      "num small cells = 10000, "
+      "long string length = 5000000, "
+      "consolidation_budget = 10000000 ") {
+    expected_error_msg = "Cannot load tile offsets";
+
+    num_small_cells = 1000;
+    long_string_length = 1000;
+    consolidation_budget = 500000;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length, consolidation_budget);
+  }
+
+  // FragmentConsolidator: Consolidation read 0 cells; no progress can be made
+  // without disrespecting the memory budget.
+  // -> get above error if num_small_cells is too large
+  SECTION(
+      "Error after buffer growth: "
+      "num small cells = 2, "
+      "long string length = 20000, "
+      "consolidation_budget = 50000 ") {
+    expected_error_msg = "Consolidation read 0 cells";
+
+    num_small_cells = 2;
+    long_string_length = 20000;
+    consolidation_budget = 50000;
+    write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length, consolidation_budget);
+  }
+
+  if (expected_error_msg != "") {
+    tiledb_error_t* err = nullptr;
+    tiledb_ctx_get_last_error(ctx_, &err);
+    const char* actual_error_msg = nullptr;
+    tiledb_error_message(err, &actual_error_msg);
+    CHECK(strstr(actual_error_msg, expected_error_msg.c_str()) != NULL);
+  }
+
   remove_array(array_name);
 }
 

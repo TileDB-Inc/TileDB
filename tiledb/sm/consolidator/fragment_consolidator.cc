@@ -721,6 +721,7 @@ void FragmentConsolidator::copy_array(
             reader_array_schema_latest,
             average_var_cell_sizes,
             std::min(buffer_size, max_buffer_size));
+        set_query_buffers(query_r, *cw.get());
         throw_if_not_ok(query_r->submit());
 
         // Only continue if Consolidation can make progress. The first buffer
@@ -737,7 +738,7 @@ void FragmentConsolidator::copy_array(
                 "disrespecting the memory budget.");
           }
           if (enqueued_buffer_size != 0) {
-            // Only wait for the writer to release if there's something in PCQ
+            // Wait for the writer to release iff there's something in the PCQ
             io_tp.wait_until([&]() {
               return enqueued_buffer_size <
                      max_buffer_size - size_to_grow_buffer;
@@ -785,6 +786,9 @@ void FragmentConsolidator::copy_array(
     auto& buffer = buffer_queue_element.value();
     // Rethrow read-enqueued exceptions.
     if (std::holds_alternative<std::exception_ptr>(buffer)) {
+      // Stop the reader, draining the queue.
+      reading = false;
+      throw_if_not_ok(read_task.wait());
       std::rethrow_exception(std::get<std::exception_ptr>(buffer));
     }
 
@@ -798,7 +802,7 @@ void FragmentConsolidator::copy_array(
       // Track the actual buffer size that was freed.
       enqueued_buffer_size -= writebuf->total_buffer_size();
     } catch (...) {
-      // Stop the reader.
+      // Stop the reader, draining the queue.
       reading = false;
       throw_if_not_ok(read_task.wait());
       throw;
