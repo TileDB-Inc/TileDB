@@ -1023,9 +1023,11 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
     return {ConfigSource::USER_SET, *maybe_value_config};
   }
 
-  // Check if param default should be ignored based on environment variables
+  // Check if param default should be ignored based on environment variables.
+  // If AWS_REGION or AWS_DEFAULT_REGION is set, we want to defer
+  // to the SDK to interpret them rather than using the default value.
   if (ignore_default_via_env(param)) {
-    return {ConfigSource::NONE, ""};
+    return {ConfigSource::ENVIRONMENT, ""};
   }
 
   // [2. env variables]
