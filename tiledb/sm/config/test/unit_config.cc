@@ -457,6 +457,10 @@ TEST_CASE(
     CHECK(value == "");
   }
 
+// Skip on Windows: setting an environment variable to empty string is
+// equivalent to unsetting it on Windows (both in the shell and CRT).
+// This test case only applies to Unix where empty string is a distinct state.
+#ifndef _WIN32
   SECTION("Empty string when AWS_DEFAULT_REGION is set to empty") {
     // Even an empty AWS_DEFAULT_REGION should trigger deferral to the SDK
     auto env_region = setenv_local("AWS_DEFAULT_REGION", "");
@@ -465,6 +469,7 @@ TEST_CASE(
     CHECK(source == tiledb::sm::ConfigSource::ENVIRONMENT);
     CHECK(value == "");
   }
+#endif
 
   SECTION("User-set value takes precedence over AWS env vars") {
     auto env_region = setenv_local("AWS_REGION", "eu-west-1");
