@@ -1,11 +1,11 @@
 /**
- * @file compile_array_main.cc
+ * @file stdx_optional.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,30 @@
  * THE SOFTWARE.
  */
 
-#include "../array.h"
+#ifndef TILEDB_COMMON_STDX_OPTIONAL_H
+#define TILEDB_COMMON_STDX_OPTIONAL_H
 
-#include "tiledb/common/logger.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
+namespace stdx::optional {
 
-using namespace tiledb::sm;
-
-int main() {
-  Config config;
-  auto logger = make_shared<Logger>(HERE(), "foo");
-  ContextResources resources(config, logger, 1, 1, "");
-
-  Array array(resources, URI{});
-
-  (void)array.is_empty();
-
-  return 0;
+/**
+ * Maps an optional value to a different optional value by applying a function
+ * to the contained value, if present.
+ *
+ * C++23: Replace with `std::optional::<T>::transform`.
+ *
+ * @param maybe_value The base optional value
+ * @param f The transforming function
+ */
+template <typename T, std::invocable<T> F>
+std::optional<decltype(std::declval<F>()(std::declval<T>()))> transform(
+    std::optional<T> maybe_value, const F& f) {
+  if (maybe_value.has_value()) {
+    return std::optional(f(maybe_value.value()));
+  } else {
+    return std::nullopt;
+  }
 }
+
+}  // namespace stdx::optional
+
+#endif

@@ -69,6 +69,9 @@ enum class FragmentNameVersion { ONE, TWO, THREE };
  * Correct number of fields, incorrect order.
  * Trailing "_".
  * Otherwise potentially-malformed names, which may not begin with "__".
+ *
+ * @see URI::is_timestamped_name as a possible helper to cover the failure cases
+ * outlined above.
  */
 class FragmentID {
  private:
