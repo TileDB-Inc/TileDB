@@ -90,7 +90,7 @@ class InterceptionPoint {
 
   CallbackRegistration and_also(std::function<void(T&&...)>&& callback) {
     callbacks_.push_back(std::move(callback));
-    return CallbackRegistration(*this, std::next(callbacks_.end(), -1));
+    return CallbackRegistration(*this, std::prev(callbacks_.end()));
   }
 
  private:
@@ -119,9 +119,14 @@ class InterceptionPoint {
 
 #else  // not defined(TILEDB_INTERCEPTS)
 
+/**
+ * Similar to `assert`, expand to nothing if TILEDB_INTERCEPTS is not enabled,
+ * so that we can leave the intercepts in the code and have them optimized
+ * out for production builds.
+ */
 #define DECLARE_INTERCEPT(...)
 #define DEFINE_INTERCEPT(...)
-#define INTEREPT(...)
+#define INTERCEPT(...)
 
 #endif
 
