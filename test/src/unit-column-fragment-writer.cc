@@ -277,7 +277,7 @@ TEST_CASE_METHOD(
       array_schema,
       fragment_uri,
       non_empty_domain,
-      0);  // tile_count
+      1);  // tile_count
 
   SECTION("Error: write_tile without open_field") {
     auto memory_tracker = tiledb::test::get_test_memory_tracker();
@@ -380,7 +380,7 @@ TEST_CASE_METHOD(
       array_schema,
       fragment_uri,
       non_empty_domain,
-      0);  // tile_count
+      1);  // tile_count
 
   // Test accessors
   CHECK(writer.fragment_uri() == fragment_uri);
@@ -447,7 +447,7 @@ TEST_CASE_METHOD(
     auto fragment_uri = generate_fragment_uri();
 
     int32_t domain_start = 0;
-    int32_t domain_end = 0;
+    int32_t domain_end = 99;
     NDRange non_empty_domain;
     non_empty_domain.emplace_back(
         Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
@@ -457,13 +457,7 @@ TEST_CASE_METHOD(
         array_schema,
         fragment_uri,
         non_empty_domain,
-        0);  // tile_count
-
-    writer.open_field("d");
-    writer.close_field();
-    writer.open_field("a");
-    writer.close_field();
-
+        1);  // tile_count
     EncryptionKey enc_key;
     REQUIRE_THROWS_WITH(
         writer.finalize(enc_key),
