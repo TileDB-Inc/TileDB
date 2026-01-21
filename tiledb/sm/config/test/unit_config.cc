@@ -421,4 +421,3 @@ TEST_CASE(
     CHECK(method == tiledb::sm::RestAuthMethod::TOKEN);
   }
 }
-
