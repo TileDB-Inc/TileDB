@@ -88,7 +88,9 @@ class ColumnFragmentWriter {
    * @param array_schema The schema of the array the fragment belongs to.
    * @param fragment_uri The fragment URI (must contain valid timestamps).
    * @param non_empty_domain The non-empty domain for this fragment.
-   * @param tile_count Number of tiles (required for sparse, ignored for dense).
+   * @param tile_count Number of tiles for sparse arrays. If 0, tile count is
+   *        determined dynamically by the first field written (for streaming).
+   *        Ignored for dense arrays (computed from domain).
    */
   ColumnFragmentWriter(
       ContextResources* resources,
@@ -204,6 +206,10 @@ class ColumnFragmentWriter {
 
   /** Number of tiles to be written. */
   uint64_t tile_num_;
+
+  /** Whether the first field has been closed (for sparse dynamic tile count).
+   */
+  bool first_field_closed_;
 };
 
 }  // namespace tiledb::sm

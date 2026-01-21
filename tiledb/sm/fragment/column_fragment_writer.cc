@@ -61,8 +61,10 @@ ColumnFragmentWriter::ColumnFragmentWriter(
     , fragment_uri_(fragment_uri)
     , dense_(array_schema->dense())
     , current_tile_idx_(0)
-    , tile_num_(0) {
-  // For dense arrays, compute tile count from domain
+    , tile_num_(0)
+    , first_field_closed_(false) {
+  // For dense arrays, compute tile count from domain.
+  // For sparse arrays, use provided tile_count (0 means dynamic growth).
   if (dense_) {
     tile_num_ = array_schema->domain().tile_num(non_empty_domain);
   } else {
@@ -91,9 +93,13 @@ ColumnFragmentWriter::ColumnFragmentWriter(
       false,   // has_timestamps
       false);  // has_delete_meta
 
-  // Initialize metadata with domain and tile count
+  // Initialize metadata with domain
   frag_meta_->init(non_empty_domain);
-  frag_meta_->set_num_tiles(tile_num_);
+
+  // For dense or sparse with known tile count, pre-allocate metadata
+  if (tile_num_ > 0) {
+    frag_meta_->set_num_tiles(tile_num_);
+  }
 }
 
 /* ********************************* */
@@ -127,7 +133,13 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
         "Cannot write tile: tile is not filtered");
   }
 
-  if (current_tile_idx_ >= tile_num_) {
+  // For sparse arrays with dynamic growth (tile_num_=0 initially, first field),
+  // grow metadata using doubling strategy.
+  // After first field closes, tile_num_ is fixed.
+  if (!dense_ && !first_field_closed_ && current_tile_idx_ >= tile_num_) {
+    tile_num_ = (tile_num_ == 0) ? 1 : tile_num_ * 2;
+    frag_meta_->set_num_tiles(tile_num_);
+  } else if (current_tile_idx_ >= tile_num_) {
     throw ColumnFragmentWriterException(
         "Cannot write tile: tile count limit (" + std::to_string(tile_num_) +
         ") reached");
@@ -237,8 +249,13 @@ void ColumnFragmentWriter::close_field() {
     throw_if_not_ok(resources_->vfs().close_file(validity_uri));
   }
 
-  // Verify correct number of tiles were written
-  if (current_tile_idx_ != tile_num_) {
+  // For sparse with dynamic growth, first closed field determines tile count.
+  // Resize to actual count (doubling may have over-allocated).
+  if (!dense_ && !first_field_closed_) {
+    tile_num_ = current_tile_idx_;
+    frag_meta_->set_num_tiles(tile_num_);
+    first_field_closed_ = true;
+  } else if (current_tile_idx_ != tile_num_) {
     throw ColumnFragmentWriterException(
         "Field '" + name + "' has " + std::to_string(current_tile_idx_) +
         " tiles but expected " + std::to_string(tile_num_));
