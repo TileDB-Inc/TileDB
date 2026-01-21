@@ -43,22 +43,6 @@
 
 using namespace tiledb::common;
 
-namespace {
-bool ignore_default_via_env(const std::string& param) {
-  if (param == "vfs.s3.region") {
-    // We should not use the default value for `vfs.s3.region` if the user
-    // has set either AWS_REGION or AWS_DEFAULT_REGION in their environment.
-    // We defer to the SDK to interpret these values.
-
-    if ((std::getenv("AWS_REGION") != nullptr) ||
-        (std::getenv("AWS_DEFAULT_REGION") != nullptr)) {
-      return true;
-    }
-  }
-  return false;
-}
-}  // namespace
-
 namespace tiledb::sm {
 
 class ConfigException : public StatusException {
@@ -1021,13 +1005,6 @@ std::pair<ConfigSource, std::string_view> Config::get_with_source(
   auto maybe_value_config = get_from_config(param);
   if (maybe_value_config.has_value() && user_set) {
     return {ConfigSource::USER_SET, *maybe_value_config};
-  }
-
-  // Check if param default should be ignored based on environment variables.
-  // If AWS_REGION or AWS_DEFAULT_REGION is set, we want to defer
-  // to the SDK to interpret them rather than using the default value.
-  if (ignore_default_via_env(param)) {
-    return {ConfigSource::ENVIRONMENT, ""};
   }
 
   // [2. env variables]
