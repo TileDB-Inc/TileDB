@@ -270,7 +270,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(),
@@ -337,7 +337,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(),
@@ -373,7 +373,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(),
@@ -400,7 +400,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 99;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
@@ -426,7 +426,7 @@ TEST_CASE_METHOD(
     int32_t domain_end = 9;
     NDRange non_empty_domain;
     non_empty_domain.emplace_back(
-        Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+        Range(&domain_start, &domain_end, sizeof(int32_t)));
 
     ColumnFragmentWriter writer(
         &get_resources(), array_schema, fragment_uri, non_empty_domain);
@@ -450,7 +450,7 @@ TEST_CASE_METHOD(
     int32_t domain_end = 99;
     NDRange non_empty_domain;
     non_empty_domain.emplace_back(
-        Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+        Range(&domain_start, &domain_end, sizeof(int32_t)));
 
     ColumnFragmentWriter writer(
         &get_resources(),
@@ -526,7 +526,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   // Create writer
   ColumnFragmentWriter writer(
@@ -622,7 +622,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 100;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   // Create writer for sparse array
   ColumnFragmentWriter writer(
@@ -635,8 +635,7 @@ TEST_CASE_METHOD(
   // Prepare MBRs for the tile
   std::vector<NDRange> mbrs;
   NDRange mbr;
-  mbr.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+  mbr.emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
   mbrs.push_back(mbr);
 
   EncryptionKey enc_key;
@@ -755,7 +754,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
@@ -839,8 +838,7 @@ TEST_CASE_METHOD(
   }
 
   std::vector<NDRange> mbrs(1);
-  mbrs[0].emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
   writer.finalize(enc_key, mbrs);
 
   // Read back and verify
@@ -885,7 +883,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
@@ -952,8 +950,7 @@ TEST_CASE_METHOD(
   }
 
   std::vector<NDRange> mbrs(1);
-  mbrs[0].emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
   writer.finalize(enc_key, mbrs);
 
   // Read back and verify
@@ -1000,7 +997,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 29;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(),
@@ -1085,7 +1082,7 @@ TEST_CASE_METHOD(
   int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
-      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
       &get_resources(),
