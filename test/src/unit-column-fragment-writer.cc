@@ -389,42 +389,27 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: finalize with zero tiles (sparse)",
+    "ColumnFragmentWriter: sparse array requires MBRs",
     "[column-fragment-writer]") {
-  // Use sparse array - dense arrays require data for the entire domain
   create_sparse_array();
 
   auto array_schema = get_array_schema();
   auto fragment_uri = generate_fragment_uri();
 
   int32_t domain_start = 0;
-  int32_t domain_end = 0;
+  int32_t domain_end = 99;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
       Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
-      &get_resources(),
-      array_schema,
-      fragment_uri,
-      non_empty_domain,
-      0);  // tile_count
+      &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
 
-  // Open and close fields without writing any tiles
-  writer.open_field("d");
-  writer.close_field();
-  writer.open_field("a");
-  writer.close_field();
-
-  // Finalize sparse array with empty MBRs
   EncryptionKey enc_key;
-  std::vector<NDRange> empty_mbrs;
-  writer.finalize(enc_key, empty_mbrs);
-
-  // Check that the commit file exists
-  URI array_uri(ARRAY_NAME);
-  URI commits_dir = array_uri.join_path(constants::array_commits_dir_name);
-  CHECK(vfs_.is_dir(commits_dir.to_string()));
+  REQUIRE_THROWS_WITH(
+      writer.finalize(enc_key),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot finalize sparse array without MBRs"));
 }
 
 TEST_CASE_METHOD(
@@ -762,90 +747,249 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: variable-size attribute write",
+    "ColumnFragmentWriter: var-size attribute roundtrip",
     "[column-fragment-writer]") {
-  // This test verifies that var-size attributes can be written successfully.
-  // Full roundtrip with read is complex due to tile setup requirements,
-  // but we verify the write path works without errors.
   create_varsize_array();
 
   auto array_schema = get_array_schema();
   auto fragment_uri = generate_fragment_uri(300);
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
 
-  // Verify var-size detection
   CHECK(array_schema->var_size("a") == true);
 
-  // Initialize with empty fragment (0 tiles) for simplicity
   int32_t domain_start = 0;
-  int32_t domain_end = 0;
+  int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
       Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
-      &get_resources(),
-      array_schema,
-      fragment_uri,
-      non_empty_domain,
-      0);  // tile_count
+      &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
 
-  // Open and close fields without writing
-  writer.open_field("d");
-  writer.close_field();
-  writer.open_field("a");
-  writer.close_field();
-
-  // Finalize with empty MBRs
   EncryptionKey enc_key;
-  std::vector<NDRange> empty_mbrs;
-  writer.finalize(enc_key, empty_mbrs);
+  const uint64_t cell_num = 10;  // matches sparse capacity
 
-  // Verify fragment was created
-  CHECK(writer.fragment_metadata() != nullptr);
+  // Write dimension
+  {
+    writer.open_field("d");
+
+    auto tile = WriterTileTuple(
+        *array_schema,
+        cell_num,
+        false,
+        false,
+        sizeof(int32_t),
+        Datatype::INT32,
+        memory_tracker);
+
+    std::vector<int32_t> dim_data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    tile.fixed_tile().write(
+        dim_data.data(), 0, dim_data.size() * sizeof(int32_t));
+    tile.set_final_size(cell_num);
+
+    TileMetadataGenerator md_gen(
+        Datatype::INT32, true, false, sizeof(int32_t), 1);
+    md_gen.process_full_tile(tile);
+    md_gen.set_tile_metadata(tile);
+
+    filter_tile_for_test("d", tile, *array_schema, get_resources());
+    writer.write_tile(tile);
+    writer.close_field();
+  }
+
+  // Write var-size attribute
+  {
+    writer.open_field("a");
+
+    auto tile = WriterTileTuple(
+        *array_schema,
+        cell_num,
+        true,
+        false,
+        1,
+        Datatype::CHAR,
+        memory_tracker);
+
+    std::vector<std::string> strings = {
+        "hello",
+        "world",
+        "foo",
+        "bar",
+        "test",
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "epsilon"};
+    std::string var_data;
+    std::vector<uint64_t> offsets;
+    for (const auto& s : strings) {
+      offsets.push_back(var_data.size());
+      var_data += s;
+    }
+
+    tile.offset_tile().write(
+        offsets.data(), 0, offsets.size() * sizeof(uint64_t));
+    tile.var_tile().write_var(var_data.c_str(), 0, var_data.size());
+    tile.var_tile().set_size(var_data.size());
+    tile.set_final_size(cell_num);
+
+    TileMetadataGenerator md_gen(
+        Datatype::STRING_ASCII, false, true, constants::var_num, 1);
+    md_gen.process_full_tile(tile);
+    md_gen.set_tile_metadata(tile);
+
+    filter_tile_for_test("a", tile, *array_schema, get_resources());
+    writer.write_tile(tile);
+    writer.close_field();
+  }
+
+  std::vector<NDRange> mbrs(1);
+  mbrs[0].emplace_back(
+      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+  writer.finalize(enc_key, mbrs);
+
+  // Read back and verify
+  {
+    tiledb::Array read_array(ctx_, ARRAY_NAME, TILEDB_READ);
+    tiledb::Query read_query(ctx_, read_array, TILEDB_READ);
+    read_query.set_layout(TILEDB_UNORDERED);
+
+    std::vector<int32_t> dim_result(cell_num);
+    std::vector<uint64_t> offsets_result(cell_num);
+    std::string data_result;
+    data_result.resize(200);
+
+    read_query.set_data_buffer("d", dim_result);
+    read_query.set_data_buffer("a", data_result);
+    read_query.set_offsets_buffer("a", offsets_result);
+    read_query.submit();
+    read_array.close();
+
+    auto result_num = read_query.result_buffer_elements()["a"];
+    CHECK(result_num.first == cell_num);
+    CHECK(dim_result[0] == 0);
+    CHECK(dim_result[9] == 9);
+    CHECK(data_result.substr(offsets_result[0], 5) == "hello");
+    CHECK(data_result.substr(offsets_result[9], 7) == "epsilon");
+  }
 }
 
 TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: nullable attribute write",
+    "ColumnFragmentWriter: nullable attribute roundtrip",
     "[column-fragment-writer]") {
-  // This test verifies that nullable attributes can be written successfully.
-  // Full roundtrip with read is complex due to tile setup requirements,
-  // but we verify the write path works without errors.
   create_nullable_array();
 
   auto array_schema = get_array_schema();
   auto fragment_uri = generate_fragment_uri(400);
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
 
-  // Verify nullable detection
   CHECK(array_schema->is_nullable("a") == true);
 
-  // Initialize with empty fragment (0 tiles) for simplicity
   int32_t domain_start = 0;
-  int32_t domain_end = 0;
+  int32_t domain_end = 9;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
       Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
-      &get_resources(),
-      array_schema,
-      fragment_uri,
-      non_empty_domain,
-      0);  // tile_count
+      &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
 
-  // Open and close fields without writing
-  writer.open_field("d");
-  writer.close_field();
-  writer.open_field("a");
-  writer.close_field();
-
-  // Finalize with empty MBRs
   EncryptionKey enc_key;
-  std::vector<NDRange> empty_mbrs;
-  writer.finalize(enc_key, empty_mbrs);
+  const uint64_t cell_num = 10;  // matches sparse capacity
 
-  // Verify fragment was created
-  CHECK(writer.fragment_metadata() != nullptr);
+  // Write dimension
+  {
+    writer.open_field("d");
+
+    auto tile = WriterTileTuple(
+        *array_schema,
+        cell_num,
+        false,
+        false,
+        sizeof(int32_t),
+        Datatype::INT32,
+        memory_tracker);
+
+    std::vector<int32_t> dim_data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    tile.fixed_tile().write(
+        dim_data.data(), 0, dim_data.size() * sizeof(int32_t));
+    tile.set_final_size(cell_num);
+
+    TileMetadataGenerator md_gen(
+        Datatype::INT32, true, false, sizeof(int32_t), 1);
+    md_gen.process_full_tile(tile);
+    md_gen.set_tile_metadata(tile);
+
+    filter_tile_for_test("d", tile, *array_schema, get_resources());
+    writer.write_tile(tile);
+    writer.close_field();
+  }
+
+  // Write nullable attribute (values at odd indices are null)
+  {
+    writer.open_field("a");
+
+    auto tile = WriterTileTuple(
+        *array_schema,
+        cell_num,
+        false,
+        true,
+        sizeof(int32_t),
+        Datatype::INT32,
+        memory_tracker);
+
+    std::vector<int32_t> data = {100, 0, 300, 0, 500, 600, 0, 800, 0, 1000};
+    std::vector<uint8_t> validity = {1, 0, 1, 0, 1, 1, 0, 1, 0, 1};
+
+    tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
+    tile.validity_tile().write(validity.data(), 0, validity.size());
+    tile.set_final_size(cell_num);
+
+    TileMetadataGenerator md_gen(
+        Datatype::INT32, false, false, sizeof(int32_t), 1);
+    md_gen.process_full_tile(tile);
+    md_gen.set_tile_metadata(tile);
+
+    filter_tile_for_test("a", tile, *array_schema, get_resources());
+    writer.write_tile(tile);
+    writer.close_field();
+  }
+
+  std::vector<NDRange> mbrs(1);
+  mbrs[0].emplace_back(
+      Range(&domain_start, sizeof(int32_t), &domain_end, sizeof(int32_t)));
+  writer.finalize(enc_key, mbrs);
+
+  // Read back and verify
+  {
+    tiledb::Array read_array(ctx_, ARRAY_NAME, TILEDB_READ);
+    tiledb::Query read_query(ctx_, read_array, TILEDB_READ);
+    read_query.set_layout(TILEDB_UNORDERED);
+
+    std::vector<int32_t> dim_result(cell_num);
+    std::vector<int32_t> data_result(cell_num);
+    std::vector<uint8_t> validity_result(cell_num);
+
+    read_query.set_data_buffer("d", dim_result);
+    read_query.set_data_buffer("a", data_result);
+    read_query.set_validity_buffer("a", validity_result);
+    read_query.submit();
+    read_array.close();
+
+    CHECK(dim_result[0] == 0);
+    CHECK(dim_result[9] == 9);
+
+    // Check validity and values
+    CHECK(validity_result[0] == 1);
+    CHECK(validity_result[1] == 0);
+    CHECK(validity_result[5] == 1);
+    CHECK(validity_result[6] == 0);
+    CHECK(data_result[0] == 100);
+    CHECK(data_result[5] == 600);
+    CHECK(data_result[9] == 1000);
+  }
 }
 
 TEST_CASE_METHOD(
