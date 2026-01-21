@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,21 +61,15 @@ class FragmentConsolidatorException : public StatusException {
 };
 
 FragmentConsolidationWorkspace::FragmentConsolidationWorkspace(
-    shared_ptr<MemoryTracker> memory_tracker)
+    shared_ptr<MemoryTracker> memory_tracker,
+    const FragmentConsolidationConfig& config,
+    const ArraySchema& array_schema,
+    std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+    uint64_t total_buffers_budget)
     : backing_buffer_(
           memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS))
     , buffers_(memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS))
     , sizes_(memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS)) {
-}
-
-void FragmentConsolidationWorkspace::resize_buffers(
-    stats::Stats* stats,
-    const FragmentConsolidationConfig& config,
-    const ArraySchema& array_schema,
-    std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
-    uint64_t total_buffers_budget) {
-  auto timer_se = stats->start_timer("resize_buffers");
-
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
   auto& domain{array_schema.domain()};
@@ -649,14 +643,23 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Consolidate fragments
   try {
+    // Graciously attempt to consolidate by default
+    // Allow use of deprecated param `config_.buffer_size_`
+    // Allow the buffer to grow 3 times
+    uint64_t initial_buffer_size = config_.buffer_size_ != 0 ?
+                                       buffer_budget :
+                                       config_.initial_buffer_size_;
+    initial_buffer_size = std::min(initial_buffer_size, buffer_budget / 8);
+
     // Read from one array and write to the other
     copy_array(
         query_r.get(),
         query_w.get(),
         array_schema,
         array_for_reads->get_average_var_cell_sizes(),
-        buffer_budget,
-        std::min(reader_budget, writer_budget));  // Conserve usage
+        initial_buffer_size,
+        buffer_budget);
+
     // Write vacuum file
     throw_if_not_ok(write_vacuum_file(
         array_for_reads->array_schema_latest().write_version(),
@@ -681,13 +684,11 @@ void FragmentConsolidator::copy_array(
     uint64_t initial_buffer_size,
     uint64_t max_buffer_size) {
   // The size of the buffers.
-  // `initial_buffer_size` by default, unless `config_.buffer_size_` is set.
-  uint64_t buffer_size =
-      config_.buffer_size_ != 0 ? config_.buffer_size_ : initial_buffer_size;
+  uint64_t buffer_size = initial_buffer_size;
   if (buffer_size > max_buffer_size) {
     throw FragmentConsolidatorException(
-        "Consolidation cannot proceed without disrespecting the memory "
-        "budget.");
+        "Consolidation read 0 cells; no progress can be made without "
+        "disrespecting the memory budget.");
   }
 
   // Deque which stores the buffers passed between the reader and writer.
@@ -708,19 +709,19 @@ void FragmentConsolidator::copy_array(
   auto& io_tp = resources_.io_tp();
   ThreadPool::Task read_task = io_tp.execute([&] {
     while (reading) {
-      tdb_shared_ptr<FragmentConsolidationWorkspace> cw =
-          tdb::make_shared<FragmentConsolidationWorkspace>(
-              HERE(), consolidator_memory_tracker_);
       // READ
       try {
-        // Set the read query buffers, ensuring we never exceed the
+        // Create the read query buffers, ensuring we never exceed the
         // memory tracker's budget, even if buffer_size has grown.
-        cw->resize_buffers(
-            stats_,
-            config_,
-            reader_array_schema_latest,
-            average_var_cell_sizes,
-            std::min(buffer_size, max_buffer_size));
+        tdb_shared_ptr<FragmentConsolidationWorkspace> cw =
+            tdb::make_shared<FragmentConsolidationWorkspace>(
+                HERE(),
+                consolidator_memory_tracker_,
+                config_,
+                reader_array_schema_latest,
+                average_var_cell_sizes,
+                std::min(buffer_size, max_buffer_size));
+
         set_query_buffers(query_r, *cw.get());
         throw_if_not_ok(query_r->submit());
 
@@ -729,27 +730,25 @@ void FragmentConsolidator::copy_array(
         // var size attribute/dimension or the actual fixed size data so we can
         // use its size to know if any cells were written or not.
         if (cw->sizes().at(0) == 0) {
-          uint64_t size_to_grow_buffer = std::min(buffer_size, max_buffer_size);
-          // Grow the buffer and try again.
-          buffer_size += size_to_grow_buffer;
-          if (enqueued_buffer_size + buffer_size > max_buffer_size) {
+          if (buffer_size >= max_buffer_size) {
             throw FragmentConsolidatorException(
                 "Consolidation read 0 cells; no progress can be made without "
                 "disrespecting the memory budget.");
           }
+          // Grow the buffer and try again.
+          uint64_t next_buffer_size =
+              std::min(2 * buffer_size, max_buffer_size);
+          buffer_size = next_buffer_size;
           if (enqueued_buffer_size != 0) {
             // Wait for the writer to release iff there's something in the PCQ
             io_tp.wait_until([&]() {
-              return enqueued_buffer_size <
-                     max_buffer_size - size_to_grow_buffer;
+              return enqueued_buffer_size + next_buffer_size <= max_buffer_size;
             });
           }
           continue;
         } else {
           buffer_queue.push(cw);
-          // Track the actual allocated buffer size.
-          buffer_size = cw->total_buffer_size();
-          enqueued_buffer_size += buffer_size;
+          enqueued_buffer_size += cw->total_buffer_size();
         }
 
         // Once the read is complete, drain the queue and exit the reader.
@@ -768,8 +767,9 @@ void FragmentConsolidator::copy_array(
         reading = false;
         break;
       }
-      io_tp.wait_until(
-          [&]() { return enqueued_buffer_size < max_buffer_size; });
+      io_tp.wait_until([&]() {
+        return enqueued_buffer_size + buffer_size < max_buffer_size;
+      });
     }
     return Status::Ok();
   });
@@ -1122,6 +1122,8 @@ Status FragmentConsolidator::set_config(const Config& config) {
   }
   config_.total_budget_ =
       merged_config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+  config_.initial_buffer_size_ = merged_config.get<uint64_t>(
+      "sm.mem.consolidation.initial_buffer_size", Config::must_find);
   config_.buffers_weight_ = merged_config.get<uint64_t>(
       "sm.mem.consolidation.buffers_weight", Config::must_find);
   config_.reader_weight_ = merged_config.get<uint64_t>(

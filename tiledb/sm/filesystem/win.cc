@@ -482,8 +482,7 @@ uint64_t Win::read(
       }
 
       throw WindowsException(fmt::format(
-          "Cannot read from file '{}'; File read error '{}' offset {} "
-          "nbytes "
+          "Cannot read from file '{}'; File read error '{}' offset {} nbytes "
           "{}",
           path,
           err_msg,

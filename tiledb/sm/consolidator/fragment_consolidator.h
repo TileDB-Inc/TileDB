@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,6 +82,8 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
   uint64_t buffer_size_;
   /** Total memory budget for consolidation operation. */
   uint64_t total_budget_;
+  /** Initial size of the consolidation buffers before growth. */
+  uint64_t initial_buffer_size_;
   /** Consolidation buffers weight used to partition total budget. */
   uint64_t buffers_weight_;
   /** Reader weight used to partition total budget. */
@@ -115,31 +117,26 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
  */
 class FragmentConsolidationWorkspace {
  public:
-  FragmentConsolidationWorkspace(shared_ptr<MemoryTracker> memory_tracker);
+  /**
+   * Constructor.
+   *
+   * @param memory_tracker The workspace's MemoryTracker.
+   * @param config The consolidation config.
+   * @param array_schema The array schema.
+   * @param avg_cell_sizes The average cell sizes.
+   * @param total_buffers_budget Total budget for the consolidation buffers.
+   */
+  FragmentConsolidationWorkspace(
+      shared_ptr<MemoryTracker> memory_tracker,
+      const FragmentConsolidationConfig& config,
+      const ArraySchema& array_schema,
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+      uint64_t total_buffers_budget);
 
   // Disable copy and move construction/assignment so we don't have
   // to think about it.
   DISABLE_COPY_AND_COPY_ASSIGN(FragmentConsolidationWorkspace);
   DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentConsolidationWorkspace);
-
-  /**
-   * Resize the buffers that will be used upon reading the input fragments and
-   * writing into the new fragment. It also retrieves the number of buffers
-   * created.
-   *
-   * @param stats The stats.
-   * @param config The consolidation config.
-   * @param array_schema The array schema.
-   * @param avg_cell_sizes The average cell sizes.
-   * @param total_buffers_budget Total budget for the consolidation buffers.
-   * @return a consolidation workspace containing the buffers
-   */
-  void resize_buffers(
-      stats::Stats* stats,
-      const FragmentConsolidationConfig& config,
-      const ArraySchema& array_schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
-      uint64_t total_buffers_budget);
 
   /** Accessor for buffers. */
   tdb::pmr::vector<span<std::byte>>& buffers() {

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -157,7 +157,6 @@ shared_ptr<ArraySchema> make_schema(
 TEST_CASE(
     "Fragment consolidator: test buffer creation",
     "[fragment_consolidator][create_buffers]") {
-  stats::Stats statistics("default");
   shared_ptr<ArraySchema> schema = nullptr;
   std::vector<uint64_t> expected_sizes;
   std::unordered_map<std::string, uint64_t> avg_cell_sizes;
@@ -222,8 +221,8 @@ TEST_CASE(
   cfg.with_delete_meta_ = with_delete_meta;
   cfg.buffer_size_ = 1000;
 
-  FragmentConsolidationWorkspace cw(tiledb::test::get_test_memory_tracker());
-  cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes, 1);
+  FragmentConsolidationWorkspace cw(
+      tiledb::test::get_test_memory_tracker(), cfg, *schema, avg_cell_sizes, 1);
   auto& buffers = cw.buffers();
   auto& buffer_sizes = cw.sizes();
 
