@@ -624,13 +624,13 @@ TEST_CASE_METHOD(
   non_empty_domain.emplace_back(
       Range(&domain_start, &domain_end, sizeof(int32_t)));
 
-  // Create writer for sparse array
+  // Create writer for sparse array (tile_count=0 for dynamic growth)
   ColumnFragmentWriter writer(
       &get_resources(),
       array_schema,
       fragment_uri,
       non_empty_domain,
-      1);  // 1 tile
+      0);  // dynamic tile count
 
   // Prepare MBRs for the tile
   std::vector<NDRange> mbrs;
