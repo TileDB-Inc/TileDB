@@ -45,8 +45,15 @@
 
 #include <functional>
 #include <list>
+#include <type_traits>
 
 namespace tiledb::intercept {
+
+/**
+ * Describes a type which can be passed to the INTERCEPT macro.
+ */
+template <typename T>
+concept interceptible = std::copyable<T> || std::is_reference_v<T>;
 
 /**
  * A set of actions to perform at a logical interception point.
@@ -58,7 +65,7 @@ namespace tiledb::intercept {
  * `DEFINE_INTERCEPT`, and `INTERCEPT` to create functions which
  * respectively create and invoke callbacks of `InterceptionPoint`.
  */
-template <std::copyable... T>
+template <interceptible... T>
 class InterceptionPoint {
   using Self = InterceptionPoint<T...>;
 
@@ -82,13 +89,13 @@ class InterceptionPoint {
     DISABLE_COPY_AND_COPY_ASSIGN(CallbackRegistration);
   };
 
-  void event(T&&... args) {
+  void event(T... args) {
     for (auto& callback : callbacks_) {
       callback(std::forward<T>(args)...);
     }
   }
 
-  CallbackRegistration and_also(std::function<void(T&&...)>&& callback) {
+  CallbackRegistration and_also(std::function<void(T...)>&& callback) {
     callbacks_.push_back(std::move(callback));
     return CallbackRegistration(*this, std::prev(callbacks_.end()));
   }
@@ -98,6 +105,11 @@ class InterceptionPoint {
 
   std::list<std::function<void(T&&...)>> callbacks_;
 };
+
+template <typename... Args>
+void forward(auto& intercept, Args&&... args) {
+  intercept.event(std::forward<Args>(args)...);
+}
 
 }  // namespace tiledb::intercept
 
@@ -110,12 +122,8 @@ class InterceptionPoint {
     return impl;                                                   \
   }
 
-#define INTERCEPT(name, ...)                               \
-  do {                                                     \
-    ([](auto... args) {                                    \
-      name().event(std::forward<decltype(args)>(args)...); \
-    })(__VA_ARGS__);                                       \
-  } while (0)
+#define INTERCEPT(name, ...) \
+  tiledb::intercept::forward(name() __VA_OPT__(, ) __VA_ARGS__)
 
 #else  // not defined(TILEDB_INTERCEPTS)
 

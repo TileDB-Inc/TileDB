@@ -50,7 +50,7 @@ DEFINE_INTERCEPT(my_library_function_entry);
 // file. The DECLARE also need not be in a header, the linker will resolve it
 // correctly if the DECLARE is written in the unit test file and the DEFINE
 // in the source file.
-DEFINE_INTERCEPT(my_library_function_exit, int, std::string_view, int);
+DEFINE_INTERCEPT(my_library_function_exit, int&, std::string_view, int);
 
 }  // namespace intercept
 
@@ -160,4 +160,18 @@ TEST_CASE("Intercept synchronize", "[intercept]") {
   // because we synchronized the two threads we should always
   // see exactly the same values
   CHECK(tt_values == std::vector<int>{0, 1, 100, 101});
+}
+
+/**
+ * Demonstrates using intercepts to modify intercepted
+ * values. This is more unusual but might be useful if you
+ * wanted to simulate a particular result.
+ */
+TEST_CASE("Intercept modify", "[intercept]") {
+  auto cb = intercept::my_library_function_exit().and_also(
+      [](int& ref_global, std::string_view, int) { ref_global = 7; });
+
+  global = 0;
+  my_library_function("foo");
+  CHECK(global == 7);
 }
