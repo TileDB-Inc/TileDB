@@ -1,0 +1,15 @@
+name: "CI ASAN Ubuntu"
+on:
+  workflow_dispatch:
+
+jobs:
+  asan:
+    uses: ./.github/workflows/ci-linux_mac.yml
+    with:
+      ci_option: ASAN
+      matrix_image: ubuntu-24.04
+      matrix_compiler_cc: 'gcc-13'
+      matrix_compiler_cxx: 'g++-13'
+      timeout: 120
+      bootstrap_args: '--enable-serialization'
+      asan: true
