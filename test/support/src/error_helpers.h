@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@
   do {                                                    \
     auto rc = (thing);                                    \
     auto maybe_err = tiledb::test::error_if_any(ctx, rc); \
-    ASSERTER(!maybe_err.has_value());                     \
+    ASSERTER(maybe_err == std::optional<std::string>{});  \
   } while (0)
 
 namespace tiledb::test {

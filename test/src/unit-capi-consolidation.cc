@@ -30,7 +30,9 @@
  * Tests the C API consolidation.
  */
 
+#include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/stdx_string.h"
@@ -45,6 +47,7 @@
 #include <iostream>
 
 using namespace tiledb::test;
+using Asserter = AsserterCatch;
 
 /** Tests for C API consolidation. */
 struct ConsolidationFx {
@@ -145,6 +148,11 @@ struct ConsolidationFx {
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
   void get_vac_files(std::vector<std::string>& files, bool dense = true);
+  void write_and_consolidate_fragments(
+      const char* array_name,
+      uint64_t num_small_cells,
+      uint64_t long_string_length,
+      uint64_t consolidation_budget);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -8031,4 +8039,206 @@ TEST_CASE_METHOD(
     rc = tiledb_array_vacuum(ctx_, dense_array_uri_.c_str(), config);
     CHECK(rc == TILEDB_OK);
   }
+}
+
+/**
+ * Helper method which attempts to validate fragment consolidation by writing
+ * `num_small_cells` small cells before writing one large cell of length
+ * `long_string_length`. Consolidation will succeed up to some value of
+ * `long_string_length`, and fail after by disrespecting the memory budget.
+ *
+ * @param array_name The name of the array.
+ * @param num_small_cells The number of small cells to consolidate.
+ * @param long_string_length The length of the long string to write.
+ * @param consolidation_budget The total budget to set for consolidation.
+ */
+void ConsolidationFx::write_and_consolidate_fragments(
+    const char* array_name,
+    uint64_t num_small_cells,
+    uint64_t long_string_length,
+    uint64_t consolidation_budget) {
+  std::string words[8] = {
+      "foo", "bar", "apple", "orange", "banana", "red", "yellow", "blue"};
+
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  TRY(ctx_, tiledb_config_alloc(&cfg, &err));
+  REQUIRE(err == nullptr);
+
+  // Create array
+  tiledb_dimension_t* dim;
+  uint64_t tile_extent = std::max(num_small_cells, long_string_length);
+  uint64_t dim_domain[] = {0, tile_extent};
+  TRY(ctx_,
+      tiledb_dimension_alloc(
+          ctx_, "dim", TILEDB_UINT64, &dim_domain, &tile_extent, &dim));
+  tiledb_domain_t* domain;
+  TRY(ctx_, tiledb_domain_alloc(ctx_, &domain));
+  TRY(ctx_, tiledb_domain_add_dimension(ctx_, domain, dim));
+  tiledb_attribute_t* attr;
+  TRY(ctx_, tiledb_attribute_alloc(ctx_, "attr", TILEDB_CHAR, &attr));
+  TRY(ctx_,
+      set_attribute_compression_filter(ctx_, attr, TILEDB_FILTER_GZIP, -1));
+  TRY(ctx_, tiledb_attribute_set_cell_val_num(ctx_, attr, TILEDB_VAR_NUM));
+  tiledb_array_schema_t* array_schema;
+  TRY(ctx_, tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema));
+  TRY(ctx_,
+      tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR));
+  TRY(ctx_,
+      tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR));
+  TRY(ctx_, tiledb_array_schema_set_capacity(ctx_, array_schema, 2));
+  TRY(ctx_, tiledb_array_schema_set_domain(ctx_, array_schema, domain));
+  TRY(ctx_, tiledb_array_schema_add_attribute(ctx_, array_schema, attr));
+  TRY(ctx_, tiledb_array_schema_check(ctx_, array_schema));
+
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    TRY(ctx_,
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err));
+    REQUIRE(err == nullptr);
+    TRY(ctx_,
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err));
+    REQUIRE(err == nullptr);
+    // Do not remove the array when recreating context to set the new config
+    vfs_test_setup_.update_config(cfg);
+    ctx_ = vfs_test_setup_.ctx_c;
+    vfs_ = vfs_test_setup_.vfs_c;
+  }
+  TRY(ctx_, tiledb_array_create(ctx_, array_name, array_schema));
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Prepare to write small cells to the array
+  std::string test_str = "";
+  std::vector<uint64_t> offsets;
+  offsets.reserve(num_small_cells);
+  std::vector<uint64_t> coords;
+  coords.reserve(num_small_cells);
+  offsets.push_back(0);
+  for (uint64_t i = 0; i < num_small_cells; i++) {
+    std::string word = words[i % 8];
+    test_str += word;
+    coords.push_back(i + 1);
+    if (i != num_small_cells - 1) {
+      offsets.push_back(offsets[i] + word.length());
+    }
+  }
+  std::vector<char> test_vec(test_str.begin(), test_str.end());
+  uint64_t values_size = test_vec.size();
+  uint64_t offsets_size = sizeof(uint64_t) * offsets.size();
+  uint64_t coords_size = sizeof(uint64_t) * coords.size();
+
+  // Write small cells to the array
+  tiledb_array_t* array;
+  TRY(ctx_, tiledb_array_alloc(ctx_, array_name, &array));
+  TRY(ctx_, tiledb_array_open(ctx_, array, TILEDB_WRITE));
+  tiledb_query_t* query;
+  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query));
+  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "attr", test_str.data(), &values_size));
+  TRY(ctx_,
+      tiledb_query_set_offsets_buffer(
+          ctx_, query, "attr", offsets.data(), &offsets_size));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "dim", coords.data(), &coords_size));
+  TRY(ctx_, tiledb_query_submit_and_finalize(ctx_, query));
+  TRY(ctx_, tiledb_array_close(ctx_, array));
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Prepare to write long string to the array
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::vector<char> long_string;
+  for (uint64_t i = 0; i < long_string_length; i++) {
+    long_string.emplace_back(test_chars[i % 26]);
+  }
+  uint64_t str_size = long_string.size();
+  uint64_t offset = 0;
+  uint64_t offset_size = sizeof(uint64_t);
+  uint64_t coord = coords.back();
+  uint64_t coord_size = sizeof(uint64_t);
+
+  // Write long string to the array
+  TRY(ctx_, tiledb_array_alloc(ctx_, array_name, &array));
+  TRY(ctx_, tiledb_array_open(ctx_, array, TILEDB_WRITE));
+  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query));
+  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "attr", long_string.data(), &str_size));
+  TRY(ctx_,
+      tiledb_query_set_offsets_buffer(
+          ctx_, query, "attr", &offset, &offset_size));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(ctx_, query, "dim", &coord, &coord_size));
+  TRY(ctx_, tiledb_query_submit_and_finalize(ctx_, query));
+  TRY(ctx_, tiledb_array_close(ctx_, array));
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Consolidate
+  TRY(ctx_,
+      tiledb_config_set(
+          cfg,
+          "sm.mem.total_budget",
+          std::to_string(consolidation_budget).c_str(),
+          &err));
+  REQUIRE(err == nullptr);
+  TRY(ctx_,
+      tiledb_config_set(cfg, "sm.consolidation.step_min_frags", "2", &err));
+  REQUIRE(err == nullptr);
+
+  throw_if_error(ctx_, tiledb_array_consolidate(ctx_, array_name, cfg));
+  tiledb_config_free(&cfg);
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test sparse fragment consolidation",
+    "[capi][consolidation][fragment][sparse][non-rest]") {
+  const char* array_name = "fragment_consolidation_array";
+  remove_array(array_name);
+
+  uint64_t num_small_cells = 10000;
+  uint64_t long_string_length = 10000;
+  uint64_t consolidation_budget = 10000000;
+  std::string expected_error_msg = "";
+
+  SECTION(
+      "Error after buffer growth: "
+      "num small cells = 2, "
+      "long string length = 20000, "
+      "consolidation_budget = 50000 ") {
+    expected_error_msg = "Consolidation read 0 cells";
+
+    consolidation_budget = 50000;
+    num_small_cells = 2;
+
+    // <reader_budget> - 4068 > long_string_length - 24 {- 46?}
+    // Not sure if this is different on my branch vs. main
+    // -> my branch seems to have the extra 46 bit tile to consider
+    long_string_length = 20906;
+    // On main:
+    // 20907 hangs
+    // 20908 passes
+    // 20861 passes
+    // 21031 fails with "Unable to copy one slab"
+
+    CHECK_THROWS_WITH(
+        write_and_consolidate_fragments(
+            array_name,
+            num_small_cells,
+            long_string_length,
+            consolidation_budget),
+        Catch::Matchers::ContainsSubstring(expected_error_msg));
+  }
+
+  remove_array(array_name);
 }
