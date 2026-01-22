@@ -89,12 +89,19 @@ std::optional<std::string> error_if_any(tiledb_ctx_t* ctx, auto apirc) {
  */
 template <typename Asserter>
 void capi_try(tiledb_ctx_t* ctx, int rc) {
+  // suppress the std::optional false positive from gcc 13
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   const std::optional<std::string> maybe_err =
       tiledb::test::error_if_any(ctx, rc);
   ASSERTER(maybe_err == std::optional<std::string>{});
 #pragma GCC diagnostic pop
+#else
+  const std::optional<std::string> maybe_err =
+      tiledb::test::error_if_any(ctx, rc);
+  ASSERTER(maybe_err == std::optional<std::string>{});
+#endif
 }
 
 /**
