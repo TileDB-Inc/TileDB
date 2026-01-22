@@ -122,8 +122,10 @@ void forward(auto& intercept, Args&&... args) {
     return impl;                                                   \
   }
 
-#define INTERCEPT(name, ...) \
-  tiledb::intercept::forward(name() __VA_OPT__(, ) __VA_ARGS__)
+#define INTERCEPT(name, ...)   \
+  do {                         \
+    name().event(__VA_ARGS__); \
+  } while (0)
 
 #else  // not defined(TILEDB_INTERCEPTS)
 
