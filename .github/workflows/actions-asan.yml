@@ -8,7 +8,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_option: ASAN
-      matrix_image: ubuntu-24.04
+      matrix_image: macos-latest
       matrix_compiler_cc: 'gcc-13'
       matrix_compiler_cxx: 'g++-13'
       timeout: 120
