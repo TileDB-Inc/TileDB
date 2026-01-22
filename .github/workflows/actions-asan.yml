@@ -1,6 +1,7 @@
 name: "CI ASAN Ubuntu"
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   asan:
