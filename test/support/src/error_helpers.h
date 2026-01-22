@@ -51,16 +51,6 @@
     }                        \
   } while (0)
 
-/**
- * Asserts that a C API call does not return error.
- */
-#define TRY(ctx, thing)                                   \
-  do {                                                    \
-    auto rc = (thing);                                    \
-    auto maybe_err = tiledb::test::error_if_any(ctx, rc); \
-    ASSERTER(maybe_err == std::optional<std::string>{});  \
-  } while (0)
-
 namespace tiledb::test {
 
 /**
@@ -95,11 +85,26 @@ std::optional<std::string> error_if_any(tiledb_ctx_t* ctx, auto apirc) {
 }
 
 /**
+ * Asserts that a C API call does not return error.
+ */
+template <typename Asserter>
+void capi_try(tiledb_ctx_t* ctx, int rc) {
+  const std::optional<std::string> maybe_err =
+      tiledb::test::error_if_any(ctx, rc);
+  ASSERTER(maybe_err == std::optional<std::string>{});
+}
+
+/**
  * Throws a `std::runtime_error` if the operation returning `thing`
  * did not return `TILEDB_OK`.
  */
 void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing);
 
 }  // namespace tiledb::test
+
+/**
+ * Asserts that a C API call does not return error.
+ */
+#define TRY(ctx, thing) tiledb::test::capi_try<Asserter>(ctx, thing)
 
 #endif
