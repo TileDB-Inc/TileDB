@@ -191,7 +191,7 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
           name, current_tile_idx_, tile.max().size());
     }
   } else {
-    if (has_min_max_md && null_count != cell_num) {
+    if (has_min_max_md && null_count != cell_num && !tile.min().empty()) {
       frag_meta_->set_tile_min(name, current_tile_idx_, tile.min());
       frag_meta_->set_tile_max(name, current_tile_idx_, tile.max());
     }
