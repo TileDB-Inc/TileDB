@@ -960,8 +960,9 @@ Status S3::is_object(
     }
     return LOG_STATUS(Status_S3Error(
         "Failed to check for existence of object s3://" +
-        std::string(bucket_name) + "/" + std::string(object_key) +
-        outcome_error_message(head_object_outcome) + additional_context));
+        std::string(remove_trailing_slash(bucket_name)) + "/" +
+        std::string(object_key) + outcome_error_message(head_object_outcome) +
+        additional_context));
   }
 
   *exists = true;
