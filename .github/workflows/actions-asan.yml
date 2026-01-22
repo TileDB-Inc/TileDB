@@ -9,8 +9,7 @@ jobs:
     with:
       ci_option: ASAN
       matrix_image: macos-latest
-      matrix_compiler_cc: 'gcc-13'
-      matrix_compiler_cxx: 'g++-13'
+      cmake_generator: 'Ninja' # Use Ninja due to performance issues.
       timeout: 120
       bootstrap_args: '--enable-serialization'
       asan: true
