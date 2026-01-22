@@ -40,7 +40,6 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/group/group_details_v2.h"
 #include "tiledb/sm/group/group_member_v1.h"

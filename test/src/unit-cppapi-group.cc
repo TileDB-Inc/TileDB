@@ -44,7 +44,6 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <iostream>
 #include <sstream>

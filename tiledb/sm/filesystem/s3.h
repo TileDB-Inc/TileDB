@@ -42,6 +42,7 @@
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/common/util/intercept.h"
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
@@ -98,6 +99,10 @@ class S3Exception : public StatusException {
       : StatusException("S3", msg) {
   }
 };
+
+namespace intercept {
+DECLARE_INTERCEPT(s3_get_make_upload_part_req, unsigned int, bool&, bool&);
+}
 
 namespace {
 
