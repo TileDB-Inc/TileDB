@@ -14,3 +14,4 @@ jobs:
       timeout: 120
       bootstrap_args: '--enable-serialization'
       asan: true
+      rust: false
