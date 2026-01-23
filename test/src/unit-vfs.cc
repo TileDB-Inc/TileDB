@@ -47,7 +47,6 @@
 #endif
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #endif
