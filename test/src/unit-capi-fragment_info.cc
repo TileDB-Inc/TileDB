@@ -33,7 +33,6 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
