@@ -357,31 +357,37 @@ Status Curl::set_headers(struct curl_slist** headers) const {
     return LOG_STATUS(
         Status_RestError("Cannot set auth; curl instance is null."));
 
-  const char* token = nullptr;
-  RETURN_NOT_OK(config_->get("rest.token", &token));
+  // Determine which authentication method to use based on priorities
+  RestAuthMethod auth_method;
+  try {
+    auth_method = config_->get_effective_rest_auth_method();
+  } catch (const StatusException& e) {
+    return LOG_STATUS(e.extract_status());
+  }
 
-  if (token != nullptr) {
+  if (auth_method == RestAuthMethod::TOKEN) {
+    const char* token = nullptr;
+    RETURN_NOT_OK(config_->get("rest.token", &token));
+
     *headers = curl_slist_append(
         *headers, (std::string("X-TILEDB-REST-API-Key: ") + token).c_str());
     if (*headers == nullptr)
       return LOG_STATUS(Status_RestError(
           "Cannot set curl auth; curl_slist_append returned null."));
-  } else {
-    // Try username+password instead of token
+  } else if (auth_method == RestAuthMethod::USERNAME_PASSWORD) {
     const char* username = nullptr;
     const char* password = nullptr;
     RETURN_NOT_OK(config_->get("rest.username", &username));
     RETURN_NOT_OK(config_->get("rest.password", &password));
 
-    // Check for no auth.
-    if (username == nullptr || password == nullptr)
-      return LOG_STATUS(Status_RestError(
-          "Missing TileDB authentication: either token or username/password "
-          "must be set using the appropriate configuration parameters."));
-
     std::string basic_auth = username + std::string(":") + password;
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+  } else {
+    // auth_method == RestAuthMethod::NONE
+    return LOG_STATUS(Status_RestError(
+        "Missing TileDB authentication: either token or username/password "
+        "must be set using the appropriate configuration parameters."));
   }
 
   // Add any extra headers.
@@ -622,10 +628,10 @@ Status Curl::make_curl_request_common(
     set_curl_request_options(url, write_cb, write_cb_state);
 
     /* perform the blocking network transfer */
-    CURLcode curl_code = curl_easy_perform_instrumented(url, i);
+    *curl_code = curl_easy_perform_instrumented(url, i);
 
     long http_code = 0;
-    if (curl_code == CURLE_OK) {
+    if (*curl_code == CURLE_OK) {
       if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
           CURLE_OK) {
         return LOG_STATUS(Status_RestError(
@@ -635,7 +641,7 @@ Status Curl::make_curl_request_common(
 
     // Exit if the request failed and we don't want to retry based on curl or
     // HTTP code, or if the write callback has elected to skip retries
-    if (!should_retry_request(curl_code, http_code) ||
+    if (!should_retry_request(*curl_code, http_code) ||
         write_cb_state.skip_retries) {
       break;
     }
@@ -643,13 +649,13 @@ Status Curl::make_curl_request_common(
     // Set up the actual retry logic
     // Only sleep if this isn't the last failed request allowed
     if (i < retry_count_ - 1) {
-      if (curl_code != CURLE_OK) {
+      if (*curl_code != CURLE_OK) {
         global_logger().debug(
             "Request to {} failed with Curl error message \"{}\", will sleep "
             "{}ms, "
             "retry count {}",
             url,
-            get_curl_errstr(curl_code),
+            get_curl_errstr(*curl_code),
             retry_delay,
             i);
       } else {
@@ -693,6 +699,7 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
   switch (curl_code) {
     // Curl status of okay or non transient errors shouldn't be retried
     case CURLE_OK:
+    case CURLE_UNSUPPORTED_PROTOCOL: /* 1 */
     case CURLE_URL_MALFORMAT:        /* 3 */
     case CURLE_SSL_ENGINE_NOTFOUND:  /* 53 - SSL crypto engine not found */
     case CURLE_SSL_ENGINE_SETFAILED: /* 54 - can not set SSL crypto engine as
@@ -717,7 +724,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
                                  error */
     case CURLE_SSL_CLIENTCERT: /* 98 - client-side certificate required */
       return false;
-    case CURLE_UNSUPPORTED_PROTOCOL:  /* 1 */
     case CURLE_FAILED_INIT:           /* 2 */
     case CURLE_NOT_BUILT_IN:          /* 4 - [was obsoleted in August 2007 for
                                         7.17.0, reused in April 2011 for 7.21.5] */

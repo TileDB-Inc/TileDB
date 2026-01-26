@@ -836,7 +836,7 @@ Status Query::process() {
 
     // experimental feature - maybe evaluate using datafusion
     const std::string evaluator_param_name = "sm.query.condition_evaluator";
-    const auto evaluator = config_.get<std::string>(evaluator_param_name);
+    const auto evaluator = config_.get<std::string_view>(evaluator_param_name);
     if (evaluator == "datafusion") {
 #ifdef HAVE_RUST
       auto timer_se =
@@ -1710,8 +1710,8 @@ bool Query::use_refactored_dense_reader(
     return false;
   }
 
-  const std::string& val =
-      config_.get<std::string>("sm.query.dense.reader", Config::must_find);
+  auto val =
+      config_.get<std::string_view>("sm.query.dense.reader", Config::must_find);
   use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && array_schema.dense() && all_dense;
@@ -1726,7 +1726,7 @@ bool Query::use_refactored_sparse_global_order_reader(
     return false;
   }
 
-  const std::string& val = config_.get<std::string>(
+  auto val = config_.get<std::string_view>(
       "sm.query.sparse_global_order.reader", Config::must_find);
   use_refactored_reader = val == "refactored";
   return use_refactored_reader && !array_schema.dense() &&
@@ -1742,7 +1742,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
     return false;
   }
 
-  const std::string& val = config_.get<std::string>(
+  auto val = config_.get<std::string_view>(
       "sm.query.sparse_unordered_with_dups.reader", Config::must_find);
   use_refactored_reader = val == "refactored";
 

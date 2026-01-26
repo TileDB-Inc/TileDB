@@ -79,8 +79,8 @@ class RestProfile {
    * `std::nullopt`, the home directory is used.
    */
   RestProfile(
-      const std::optional<std::string>& name = std::nullopt,
-      const std::optional<std::string>& dir = std::nullopt);
+      std::optional<std::string_view> name = std::nullopt,
+      std::optional<std::string_view> dir = std::nullopt);
 
   /** Destructor. */
   ~RestProfile() = default;
@@ -119,10 +119,10 @@ class RestProfile {
    * Retrieves a pointer to the value of the given parameter.
    *
    * @param param The parameter to fetch.
-   * @return A pointer to the value of the parameter, or nullptr if the
-   * parameter is not set.
+   * @return The value of the parameter, or std::nullopt if the parameter is not
+   * set
    */
-  const std::string* get_param(const std::string& param) const;
+  std::optional<std::string_view> get_param(const std::string& param) const;
 
   inline const std::map<std::string, std::string>& param_values() const {
     return param_values_;

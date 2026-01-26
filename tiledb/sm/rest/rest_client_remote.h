@@ -596,16 +596,19 @@ class RestClientRemote : public RestClient {
    * @param copy_state Map of copy state per attribute. As attribute data is
    *    copied into user buffers on reads, the state of each attribute in this
    *    map is updated accordingly.
+   * @param status Status used to communicate callback failures within tiledb
+   *    library code.
    * @return Number of acknowledged bytes
    */
   size_t query_post_call_back(
       const bool reset,
-      void* constcontents,
+      void* const contents,
       const size_t content_nbytes,
-      bool* constskip_retries,
+      bool* const skip_retries,
       shared_ptr<Buffer> scratch,
       Query* query,
-      serialization::CopyState* copy_state);
+      serialization::CopyState* copy_state,
+      Status* status);
 
   /**
    * Returns a string representation of the given subarray. The format is:

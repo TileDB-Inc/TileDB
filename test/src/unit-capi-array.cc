@@ -58,7 +58,6 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/fragments.h"
 

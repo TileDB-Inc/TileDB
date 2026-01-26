@@ -53,7 +53,6 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/serialization/array.h"
