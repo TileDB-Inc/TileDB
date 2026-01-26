@@ -83,7 +83,6 @@ class vector_sso {
       static_assert(std::is_move_constructible_v<T>);
       for (uint64_t i = 0; i < n; i++) {
         new (&dst[i]) T(std::move(src[i]));
-        src[i].~T();
       }
     }
   }
@@ -454,7 +453,7 @@ class vector_sso {
 
   self_type& operator=(self_type&& movefrom) {
     clear();
-    if (movefrom.size() <= N) {
+    if (movefrom.is_inline()) {
       move_all(
           reinterpret_cast<T*>(sso_.data()),
           reinterpret_cast<T*>(movefrom.sso_.data()),
