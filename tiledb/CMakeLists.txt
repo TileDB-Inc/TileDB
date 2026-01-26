@@ -631,13 +631,20 @@ if(TILEDB_SERIALIZATION)
 
   # This target generates the source files for serialization support. It is re-run whenever `tiledb-rest.capnp` is updated.
 
-  # We only need to override the include path and PATH env for EP builds
-  # note: We run the compiler under `cmake -E env ...` because we need to run capnp executable
-  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++).
-  #       For system installed capnp binaries we rely on the user to have their PATH
-  #       include the directory with CapNProto plugin binaries.
-  set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
-  list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
+  # Mimic add_custom_command's logic for when cross-compiling.
+  # We can't run the capnp_tool target, because it was built for the target platform.
+  if(CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
+    find_program(CAPNP_TOOL_PATH capnp REQUIRED HINTS ENV PATH NO_DEFAULT_PATH)
+    cmake_path(GET CAPNP_TOOL_PATH PARENT_PATH CAPNP_PLUGIN_DIR)
+  else()
+    set(CAPNP_TOOL_PATH $<TARGET_FILE:CapnProto::capnp_tool>)
+    if (CMAKE_CROSSCOMPILING AND CMAKE_CROSSCOMPILING_EMULATOR)
+      set(CAPNP_TOOL_PATH "${CMAKE_CROSSCOMPILING_EMULATOR}" "${CAPNP_TOOL_PATH}")
+    endif()
+    set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
+  endif()
+
+  list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_TOOL_PATH}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
 
   # Add the rest of the capnp compile command
   list(APPEND CAPNP_COMPILE_COMMAND -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
@@ -650,10 +657,11 @@ if(TILEDB_SERIALIZATION)
       ${CMAKE_COMMAND} -E make_directory ${TILEDB_SERIALIZATION_GENERATED_DIR}
     COMMAND
       ${CAPNP_COMPILE_COMMAND}
-    DEPENDS
+    MAIN_DEPENDENCY
       ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp
+    # TODO: Add CODEGEN flag after we move to CMake 3.31+
     COMMENT
-      "Generate tiledb-rest.capnp.{h,c++} files for serialization support"
+      "Generate Cap'n Proto serialization source files"
   )
 
   add_custom_target(
