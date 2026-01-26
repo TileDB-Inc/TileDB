@@ -65,6 +65,27 @@ namespace tiledb::sm {
 class WhiteboxConfig;
 
 /**
+ * Enumeration representing the source of a configuration parameter value.
+ * Lower numeric values indicate higher priority.
+ */
+enum class ConfigSource {
+  USER_SET = 0,     // Explicitly set by user
+  ENVIRONMENT = 1,  // Environment variables
+  PROFILE = 2,      // Loaded from a profile
+  DEFAULT = 3,      // Default value
+  NONE = 4          // Parameter not found
+};
+
+/**
+ * Enumeration of REST authentication methods.
+ */
+enum class RestAuthMethod {
+  TOKEN,              // Using token authentication
+  USERNAME_PASSWORD,  // Using username/password authentication
+  NONE                // No authentication configured
+};
+
+/**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
  * Parsing to appropriate types happens on demand.
@@ -149,6 +170,12 @@ class Config {
 
   /** The namespace that should be charged for the request. */
   static const std::string REST_PAYER_NAMESPACE;
+
+  /**
+   * If incomplete queries received from the server should be automatically
+   * resubmitted or not.
+   */
+  static const std::string REST_RESUBMIT_INCOMPLETE;
 
   /** The prefix to use for checking for parameter environment variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
@@ -708,7 +735,7 @@ class Config {
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
   template <class T>
-  [[nodiscard]] inline optional<T> get(const std::string& key) const {
+  [[nodiscard]] inline std::optional<T> get(const std::string& key) const {
     return get_internal<T, false>(key);
   }
 
@@ -750,6 +777,35 @@ class Config {
   template <class T>
   Status get_vector(
       const std::string& param, std::vector<T>* value, bool* found) const;
+
+  /**
+   * Get a configuration parameter value along with its source.
+   *
+   * @param param The parameter name to retrieve
+   * @return Pair of (ConfigSource, value as string_view). If parameter not
+   * found, returns (ConfigSource::NONE, "")
+   */
+  std::pair<ConfigSource, std::string_view> get_with_source(
+      const std::string& param) const;
+
+  /**
+   * Get the effective REST authentication method.
+   *
+   * Determines which authentication method will be used based on priority:
+   * - User-set values have highest priority
+   * - Environment variables have second priority
+   * - Profile values have third priority
+   * - If both token and username/password have same priority, prefer token
+   *
+   * @return RestAuthMethod indicating:
+   *   - TOKEN: Token authentication will be used
+   *   - USERNAME_PASSWORD: Username/password authentication will be used
+   *   - NONE: No authentication is configured
+   *   - INVALID: Authentication is incorrectly configured (username and
+   * password at different priority levels, or only one of username/password
+   * provided)
+   */
+  RestAuthMethod get_effective_rest_auth_method() const;
 
   /** Gets the set parameters. */
   const std::set<std::string>& set_params() const;
@@ -822,17 +878,17 @@ class Config {
    * Get an environment variable
    * @param param to fetch
    * @param found pointer to bool to set if env parameter was found or not
-   * @return parameter value if found or nullptr if not found
+   * @return parameter value if found or std::nullopt if not found
    */
-  const char* get_from_env(const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_env(const std::string& param) const;
 
   /**
    * Get an parameter from config variable
    * @param param to fetch
-   * @param found pointer to bool to set if parameter was found or not
-   * @return parameter value if found or nullptr if not found
+   * @return parameter value if found or std::nullopt if not found
    */
-  const char* get_from_config(const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_config(
+      const std::string& param) const;
 
   /**
    * Get a parameter from Profile.
@@ -845,7 +901,8 @@ class Config {
    * @param found pointer to bool to set if parameter was found or not
    * @return parameter value if found or nullptr if not found
    */
-  const char* get_from_profile(const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_profile(
+      const std::string& param) const;
 
   /**
    * Get a configuration parameter from config object or a fallback
@@ -865,40 +922,61 @@ class Config {
    * @param found pointer to bool to set if parameter was found or not
    * @return parameter value if found or empty string if not
    */
-  const char* get_from_config_or_fallback(
-      const std::string& param, bool* found) const;
+  std::optional<std::string_view> get_from_config_or_fallback(
+      const std::string& param) const;
 
   template <class T, bool must_find_>
-  optional<T> get_internal(const std::string& key) const;
+  std::optional<T> get_internal(const std::string& key) const;
 
   template <bool must_find_>
-  optional<std::string> get_internal_string(const std::string& key) const;
+  std::optional<std::string_view> get_internal_string(
+      const std::string& key) const;
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;
 };
 
 /**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as `get_internal_string<false>`.
+ * An explicit specialization for `std::string_view`. It does not call a
+ * conversion function and it is thus the same as `get_internal_string<false>`.
  */
 template <>
-[[nodiscard]] inline optional<std::string> Config::get<std::string>(
-    const std::string& key) const {
-  return get_internal_string<false>(key);
+[[nodiscard]] inline std::optional<std::string_view>
+Config::get<std::string_view>(const std::string& key) const {
+  auto maybe_value = get_internal_string<false>(key);
+  if (maybe_value.has_value()) {
+    return maybe_value.value();
+  } else {
+    return std::nullopt;
+  }
 }
 
 /**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as `get_internal_string<true>`
+ * An explicit specialization for `std::string_view`. It does not call a
+ * conversion function and it is thus the same as `get_internal_string<true>`
  *
  * Will throw if value is not found for provided config key
  */
 template <>
-inline std::string Config::get<std::string>(
+inline std::string_view Config::get<std::string_view>(
     const std::string& key, const Config::MustFindMarker&) const {
   return get_internal_string<true>(key).value();
 }
+
+/**
+ * Disable specializations for `std::string` to avoid making unnecessary copies.
+ */
+template <>
+[[nodiscard]] inline std::optional<std::string> Config::get<std::string>(
+    const std::string& key) const = delete;
+
+/**
+ * Disable specializations for `std::string` to avoid making unnecessary copies.
+ */
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const = delete;
+
 }  // namespace tiledb::sm
 
 #ifdef TILEDB_DEPRECATE_CONFIG

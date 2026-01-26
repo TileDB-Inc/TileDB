@@ -38,6 +38,6 @@
   TILEDB_QUERY_TYPE_ENUM_CONCAT_ID(DEL,ETE) = 2,
   /** Update query */
   TILEDB_QUERY_TYPE_ENUM(UPDATE) = 3,
-  /** Exclusive Modification query */
+  /** Alias to WRITE. Deprecated, use WRITE instead. */
   TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) = 4,
 #endif

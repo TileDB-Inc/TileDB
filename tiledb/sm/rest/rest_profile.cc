@@ -121,15 +121,14 @@ const std::string RestProfile::DEFAULT_PROFILE_NAME{"default"};
  */
 
 RestProfile::RestProfile(
-    const std::optional<std::string>& name,
-    const std::optional<std::string>& dir)
+    std::optional<std::string_view> name, std::optional<std::string_view> dir)
     : version_(constants::rest_profile_version)
     , name_(
           name.has_value() && !name.value().empty() ?
-              name.value() :
+              std::string(name.value()) :
               RestProfile::DEFAULT_PROFILE_NAME) {
   if (dir.has_value() && !dir.value().empty()) {
-    dir_ = ensure_trailing_slash(dir.value());
+    dir_ = ensure_trailing_slash(std::string(dir.value()));
   } else if (getenv("TILEDB_PROFILE_DIR") != nullptr) {
     // If the user has set the TILEDB_PROFILE_DIR environment variable,
     // use that as the directory to store the profiles file.
@@ -164,12 +163,14 @@ void RestProfile::set_param(
   param_values_[param] = value;
 }
 
-const std::string* RestProfile::get_param(const std::string& param) const {
+std::optional<std::string_view> RestProfile::get_param(
+    const std::string& param) const {
   auto it = param_values_.find(param);
-  if (it != param_values_.end()) {
-    return &it->second;
+  if (it == param_values_.end()) {
+    return std::nullopt;
+  } else {
+    return it->second;
   }
-  return nullptr;
 }
 
 /**
@@ -196,29 +197,35 @@ void RestProfile::save_to_file(const bool overwrite) {
   // If the file already exists, load it into a json object.
   json data;
   if (std::filesystem::exists(filepath_)) {
-    // Read the file into the json object.
-    data = read_file(filepath_);
-
-    // If the file is outdated, throw an error. This behavior will evolve.
-    if (data["version"] < version_) {
+    try {
+      // If the file is empty, treat it as a new json object.
+      if (std::filesystem::file_size(filepath_) == 0) {
+        data = json::object();
+      } else {
+        data = read_file(filepath_);
+      }
+    } catch (const std::filesystem::filesystem_error& e) {
       throw RestProfileException(
-          "The version of your local profile.json file is out of date.");
+          "Failed to access profile file: " + std::string(e.what()));
     }
 
-    // Check that this profile hasn't already been saved.
-    if (data.contains(name_)) {
-      if (overwrite) {
-        // If a profile of the given name exists, remove it.
-        auto it = data.find(name_);
-        if (it != data.end()) {
-          data.erase(it);
-        }
-      } else {
-        // If the user doesn't want to overwrite, throw an error.
+    if (data.empty()) {
+      data["version"] = version_;
+    } else {
+      if (data["version"] < version_) {
+        throw RestProfileException(
+            "The version of your local profile.json file is out of date.");
+      }
+
+      if (data.contains(name_) && !overwrite) {
         throw RestProfileException(
             "Failed to save '" + name_ +
-            "'; This profile has already been saved "
-            "and must be explicitly removed in order to be replaced.");
+            "'; This profile already exists. "
+            "Use the overwrite parameter to replace it.");
+      }
+
+      if (overwrite) {
+        data.erase(name_);
       }
     }
   } else {

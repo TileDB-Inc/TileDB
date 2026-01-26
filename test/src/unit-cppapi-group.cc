@@ -44,7 +44,6 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <iostream>
 #include <sstream>
@@ -144,6 +143,25 @@ void GroupCPPFx::create_array(const std::string& path) const {
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Test creating group with bad body",
+    "[cppapi][group][rest]") {
+  if (!vfs_test_setup_.is_rest()) {
+    SKIP("This test is only valid for remote REST groups.");
+  }
+  std::string group_uri = vfs_test_setup_.array_uri("group");
+
+  REQUIRE_NOTHROW(tiledb::Group::create(ctx_, group_uri));
+  tiledb::Group group(ctx_, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group.close());
+
+  if (!vfs_test_setup_.is_legacy_rest()) {
+    std::string bad_uri = group_uri + "/s3://bucket";
+    REQUIRE_THROWS(tiledb::Group::create(ctx_, bad_uri));
+  }
 }
 
 TEST_CASE_METHOD(
@@ -1081,7 +1099,7 @@ TEST_CASE(
 
   // Recursively delete the group.
   {
-    tiledb::Group g{ctx, "my_group", TILEDB_MODIFY_EXCLUSIVE};
+    tiledb::Group g{ctx, "my_group", TILEDB_WRITE};
     g.delete_group("my_group", true);
   }
 
@@ -1130,31 +1148,38 @@ TEST_CASE(
   auto created_group_uri = vfs.ls(vfs_test_setup.default_storage()).back();
   // Creates a new group at a relative backend storage location using S3 URI.
   REQUIRE_NOTHROW(
-      tiledb::create_group(ctx, created_group_uri + "/groups/relative_group"));
+      tiledb::create_group(ctx, created_group_uri + "/relative_group2"));
 
-  auto group = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  auto group_w1 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  // Add the relative member we created on S3 to the parent group after
+  // creation
+  CHECK_NOTHROW(
+      group_w1.add_member("relative_group2", true, "relative_group2"));
+  REQUIRE_NOTHROW(group_w1.close());
+
   // Attempts to add the same array as a member with the same name.
-  CHECK_NOTHROW(group.add_member("relative_array", true, "relative_array"));
-  CHECK_NOTHROW(
-      group.add_member("relative_array", true, "relative_array_rename"));
-  CHECK_NOTHROW(group.add_member("relative_group", true, "relative_group"));
-  // Add the relative member we created on S3 to the parent group after creation
-  CHECK_NOTHROW(
-      group.add_member("groups/relative_group", true, "relative_group_nested"));
-  CHECK_NOTHROW(
-      group.add_member("relative_group", true, "relative_group_rename"));
-  REQUIRE_NOTHROW(group.close());
+  auto group_w2 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group_w2.add_member("relative_array", true, "relative_array"));
+  REQUIRE_THROWS(group_w2.close());
 
-  REQUIRE_NOTHROW(group.open(TILEDB_READ));
+  // Attempts to add the same array as a member with a different name.
+  auto group_w3 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(
+      group_w3.add_member("relative_array", true, "relative_array_rename"));
+  REQUIRE_THROWS(group_w3.close());
+
+  // Attempts to add the same group as a member with the same name.
+  auto group_w4 = tiledb::Group(ctx, group_uri, TILEDB_WRITE);
+  CHECK_NOTHROW(group_w4.add_member("relative_group", true, "relative_group"));
+  REQUIRE_THROWS(group_w4.close());
+
+  auto group_r = tiledb::Group(ctx, group_uri, TILEDB_READ);
   tiledb::sm::URI member_uri(array_member_uri);
-  CHECK(group.member_count() == 5);
-  for (const std::string name :
-       {"relative_array",
-        "relative_array_rename",
-        "relative_group",
-        "relative_group_nested",
-        "relative_group_rename"}) {
-    auto member = group.member(name);
+  std::vector<std::string> expected_members = {
+      "relative_array", "relative_group", "relative_group2"};
+  CHECK(group_r.member_count() == expected_members.size());
+  for (const std::string& name : expected_members) {
+    auto member = group_r.member(name);
     auto object_type = tiledb::Object::Type::Group;
     if (name.find("array") != std::string::npos) {
       object_type = tiledb::Object::Type::Array;
@@ -1162,6 +1187,50 @@ TEST_CASE(
     CHECK(member.type() == object_type);
     CHECK(member.name() == name);
     CHECK(member.uri() == group_uri + "/" + name);
-    CHECK(group.is_relative(name));
+    CHECK(group_r.is_relative(name));
   }
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Group with cycle, dump and is_relative",
+    "[cppapi][group][cycle][non-rest]") {
+  // Create groups that form a cycle
+  std::string group_a_uri = vfs_test_setup_.array_uri("group_a");
+  std::string group_b_uri = vfs_test_setup_.array_uri("group_b");
+  tiledb::Group::create(ctx_, group_a_uri);
+  tiledb::Group::create(ctx_, group_b_uri);
+
+  // Open group A and add group B as a member
+  {
+    tiledb::Group group_a(ctx_, group_a_uri, TILEDB_WRITE);
+    group_a.add_member(group_b_uri, false, "group_b");
+    group_a.close();
+  }
+
+  // Open group B and add group A as a member, creating a cycle
+  {
+    tiledb::Group group_b(ctx_, group_b_uri, TILEDB_WRITE);
+    group_b.add_member(group_a_uri, false, "group_a");
+    group_b.close();
+  }
+
+  // Open group A for reading and test cycle handling
+  tiledb::Group group_a(ctx_, group_a_uri, TILEDB_READ);
+
+  // Test is_relative - this should not hang even with cycles
+  CHECK_NOTHROW(group_a.is_relative("group_b"));
+
+  // Test dump with recursive=false - this should not hang
+  std::string dump_non_recursive;
+  CHECK_NOTHROW(dump_non_recursive = group_a.dump(false));
+  CHECK(dump_non_recursive.find("group_b") != std::string::npos);
+
+  // Test dump with recursive=true - this should not hang even with cycles
+  std::string dump_recursive;
+  CHECK_NOTHROW(dump_recursive = group_a.dump(true));
+  CHECK(dump_recursive.find("group_b") != std::string::npos);
+  CHECK(dump_recursive.find("group_a") != std::string::npos);
+
+  group_a.close();
 }

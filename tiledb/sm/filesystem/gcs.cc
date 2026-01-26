@@ -67,15 +67,16 @@ namespace tiledb::sm {
 /* ********************************* */
 
 GCSParameters::GCSParameters(const Config& config)
-    : endpoint_(config.get<std::string>("vfs.gcs.endpoint", Config::must_find))
-    , project_id_(
-          config.get<std::string>("vfs.gcs.project_id", Config::must_find))
-    , service_account_key_(config.get<std::string>(
-          "vfs.gcs.service_account_key", Config::must_find))
-    , workload_identity_configuration_(config.get<std::string>(
-          "vfs.gcs.workload_identity_configuration", Config::must_find))
-    , impersonate_service_account_(config.get<std::string>(
-          "vfs.gcs.impersonate_service_account", Config::must_find))
+    : endpoint_(std::string(
+          config.get<std::string_view>("vfs.gcs.endpoint", Config::must_find)))
+    , project_id_(std::string(config.get<std::string_view>(
+          "vfs.gcs.project_id", Config::must_find)))
+    , service_account_key_(std::string(config.get<std::string_view>(
+          "vfs.gcs.service_account_key", Config::must_find)))
+    , workload_identity_configuration_(std::string(config.get<std::string_view>(
+          "vfs.gcs.workload_identity_configuration", Config::must_find)))
+    , impersonate_service_account_(std::string(config.get<std::string_view>(
+          "vfs.gcs.impersonate_service_account", Config::must_find)))
     , multi_part_size_(
           config.get<uint64_t>("vfs.gcs.multi_part_size", Config::must_find))
     , max_parallel_ops_(
@@ -394,8 +395,6 @@ void GCS::remove_file(const URI& uri) const {
         "Delete object failed on: " + uri.to_string() + " (" +
         status.message() + ")");
   }
-
-  throw_if_not_ok(wait_for_object_to_be_deleted(bucket_name, object_path));
 }
 
 void GCS::remove_dir(const URI& uri) const {
@@ -487,8 +486,7 @@ std::vector<directory_entry> GCS::ls_with_sizes(
     }
 
     auto& results = object_metadata.value();
-    const std::string gcs_prefix =
-        uri_dir.backend_name() == "gcs" ? "gcs://" : "gs://";
+    const std::string gcs_prefix = uri_dir.backend_name() + "://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
@@ -744,43 +742,7 @@ Status GCS::copy_object(const URI& old_uri, const URI& new_uri) const {
         status.message() + ")");
   }
 
-  return wait_for_object_to_propagate(new_bucket_name, new_object_path);
-}
-
-Status GCS::wait_for_object_to_propagate(
-    const std::string& bucket_name, const std::string& object_path) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    if (this->is_object(bucket_name, object_path)) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  throw GCSException(
-      "Timed out waiting on object to propogate: " + object_path);
-}
-
-Status GCS::wait_for_object_to_be_deleted(
-    const std::string& bucket_name, const std::string& object_path) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    if (!this->is_object(bucket_name, object_path)) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  throw GCSException(
-      "Timed out waiting on object to be deleted: " + object_path);
+  return Status::Ok();
 }
 
 Status GCS::wait_for_bucket_to_propagate(const std::string& bucket_name) const {
@@ -1195,22 +1157,7 @@ void GCS::flush(const URI& uri, bool) {
   std::string object_path;
   throw_if_not_ok(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  // Wait for the last written part to propogate to ensure all parts
-  // are available for composition into a single object.
-  std::string last_part_path = part_paths.back();
-  const Status st = wait_for_object_to_propagate(bucket_name, last_part_path);
-  state->update_st(st);
   state_lck.unlock();
-
-  if (!st.ok()) {
-    // Delete all outstanding part objects.
-    delete_parts(bucket_name, part_paths);
-
-    // Release all instance state associated with this part list
-    // transactions.
-    finish_multi_part_upload(uri);
-    return;
-  }
 
   // Build a list of objects to compose.
   std::vector<google::cloud::storage::ComposeSourceObject> source_objects;
@@ -1252,8 +1199,6 @@ void GCS::flush(const URI& uri, bool) {
         "Compse object failed on: " + uri.to_string() + " (" +
         status.message() + ")");
   }
-
-  throw_if_not_ok(wait_for_object_to_propagate(bucket_name, object_path));
 }
 
 void GCS::delete_parts(
@@ -1334,7 +1279,7 @@ Status GCS::flush_object_direct(const URI& uri) {
         ")");
   }
 
-  return wait_for_object_to_propagate(bucket_name, object_path);
+  return Status::Ok();
 }
 
 uint64_t GCS::read(

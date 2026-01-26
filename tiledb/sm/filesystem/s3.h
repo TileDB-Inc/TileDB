@@ -42,6 +42,7 @@
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/common/util/intercept.h"
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
@@ -98,6 +99,10 @@ class S3Exception : public StatusException {
       : StatusException("S3", msg) {
   }
 };
+
+namespace intercept {
+DECLARE_INTERCEPT(s3_get_make_upload_part_req, unsigned int, bool&, bool&);
+}
 
 namespace {
 
@@ -167,24 +172,26 @@ struct S3Parameters {
   S3Parameters() = delete;
 
   S3Parameters(const Config& config)
-      : region_(config.get<std::string>("vfs.s3.region").value_or(""))
-      , aws_access_key_id_(config.get<std::string>(
-            "vfs.s3.aws_access_key_id", Config::must_find))
-      , aws_secret_access_key_(config.get<std::string>(
-            "vfs.s3.aws_secret_access_key", Config::must_find))
-      , aws_session_token_(config.get<std::string>(
-            "vfs.s3.aws_session_token", Config::must_find))
-      , aws_role_arn_(
-            config.get<std::string>("vfs.s3.aws_role_arn", Config::must_find))
-      , aws_external_id_(config.get<std::string>(
-            "vfs.s3.aws_external_id", Config::must_find))
-      , aws_load_frequency_(config.get<std::string>(
-            "vfs.s3.aws_load_frequency", Config::must_find))
-      , aws_session_name_(
-            config.get<std::string>("vfs.s3.aws_session_name").value())
-      , scheme_(config.get<std::string>("vfs.s3.scheme", Config::must_find))
-      , endpoint_override_(config.get<std::string>(
-            "vfs.s3.endpoint_override", Config::must_find))
+      : region_(std::string(
+            config.get<std::string_view>("vfs.s3.region").value_or("")))
+      , aws_access_key_id_(std::string(config.get<std::string_view>(
+            "vfs.s3.aws_access_key_id", Config::must_find)))
+      , aws_secret_access_key_(std::string(config.get<std::string_view>(
+            "vfs.s3.aws_secret_access_key", Config::must_find)))
+      , aws_session_token_(std::string(config.get<std::string_view>(
+            "vfs.s3.aws_session_token", Config::must_find)))
+      , aws_role_arn_(std::string(config.get<std::string_view>(
+            "vfs.s3.aws_role_arn", Config::must_find)))
+      , aws_external_id_(std::string(config.get<std::string_view>(
+            "vfs.s3.aws_external_id", Config::must_find)))
+      , aws_load_frequency_(std::string(config.get<std::string_view>(
+            "vfs.s3.aws_load_frequency", Config::must_find)))
+      , aws_session_name_(std::string(
+            config.get<std::string_view>("vfs.s3.aws_session_name").value()))
+      , scheme_(std::string(
+            config.get<std::string_view>("vfs.s3.scheme", Config::must_find)))
+      , endpoint_override_(std::string(config.get<std::string_view>(
+            "vfs.s3.endpoint_override", Config::must_find)))
       , use_virtual_addressing_(config.get<bool>(
             "vfs.s3.use_virtual_addressing", Config::must_find))
       , skip_init_(config.get<bool>("vfs.s3.skip_init", Config::must_find))
@@ -201,37 +208,40 @@ struct S3Parameters {
       , connect_scale_factor_(config.get<int64_t>(
             "vfs.s3.connect_scale_factor", Config::must_find))
       , custom_headers_(load_headers(config))
-      , logging_level_(
-            config.get<std::string>("vfs.s3.logging_level", Config::must_find))
+      , logging_level_(std::string(config.get<std::string_view>(
+            "vfs.s3.logging_level", Config::must_find)))
       , request_timeout_ms_(
             config.get<int64_t>("vfs.s3.request_timeout_ms", Config::must_find))
       , requester_pays_(
             config.get<bool>("vfs.s3.requester_pays", Config::must_find))
-      , proxy_host_(
-            config.get<std::string>("vfs.s3.proxy_host", Config::must_find))
+      , proxy_host_(std::string(config.get<std::string_view>(
+            "vfs.s3.proxy_host", Config::must_find)))
       , proxy_port_(
             config.get<uint32_t>("vfs.s3.proxy_port", Config::must_find))
-      , proxy_scheme_(
-            config.get<std::string>("vfs.s3.proxy_scheme", Config::must_find))
-      , proxy_username_(
-            config.get<std::string>("vfs.s3.proxy_username", Config::must_find))
-      , proxy_password_(
-            config.get<std::string>("vfs.s3.proxy_password", Config::must_find))
+      , proxy_scheme_(std::string(config.get<std::string_view>(
+            "vfs.s3.proxy_scheme", Config::must_find)))
+      , proxy_username_(std::string(config.get<std::string_view>(
+            "vfs.s3.proxy_username", Config::must_find)))
+      , proxy_password_(std::string(config.get<std::string_view>(
+            "vfs.s3.proxy_password", Config::must_find)))
       , no_sign_request_(
             config.get<bool>("vfs.s3.no_sign_request", Config::must_find))
-      , sse_algorithm_(config.get<std::string>("vfs.s3.sse", Config::must_find))
+      , sse_algorithm_(std::string(
+            config.get<std::string_view>("vfs.s3.sse", Config::must_find)))
       , sse_kms_key_id_(
             sse_algorithm_ == "kms" ?
-                config.get<std::string>("vfs.s3.sse_kms_key_id").value() :
+                std::string(
+                    config.get<std::string_view>("vfs.s3.sse_kms_key_id")
+                        .value()) :
                 "")
-      , storage_class_(
-            config.get<std::string>("vfs.s3.storage_class", Config::must_find))
-      , bucket_acl_str_(config.get<std::string>(
-            "vfs.s3.bucket_canned_acl", Config::must_find))
-      , object_acl_str_(config.get<std::string>(
-            "vfs.s3.object_canned_acl", Config::must_find))
-      , config_source_(config.get<std::string>(
-            "vfs.s3.config_source", Config::must_find)) {};
+      , storage_class_(std::string(config.get<std::string_view>(
+            "vfs.s3.storage_class", Config::must_find)))
+      , bucket_acl_str_(std::string(config.get<std::string_view>(
+            "vfs.s3.bucket_canned_acl", Config::must_find)))
+      , object_acl_str_(std::string(config.get<std::string_view>(
+            "vfs.s3.object_canned_acl", Config::must_find)))
+      , config_source_(std::string(config.get<std::string_view>(
+            "vfs.s3.config_source", Config::must_find))) {};
 
   ~S3Parameters() = default;
 
@@ -520,6 +530,9 @@ class S3Scanner : public LsScanner {
   shared_ptr<TileDBS3Client> client_;
   /** Iterators for the current objects fetched from S3. */
   typename Iterator::pointer begin_, end_;
+
+  /** The input URI's prococol (might be s3:// or tiledb://). */
+  const std::string protocol_;
 
   /** The current request being scanned. */
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
@@ -1435,14 +1448,6 @@ class S3 : public FilesystemBase {
    */
   Status initiate_multipart_request(
       Aws::Http::URI aws_uri, MultiPartUploadState* state);
-
-  /** Waits for the input object to be propagated. */
-  Status wait_for_object_to_propagate(
-      const Aws::String& bucketName, const Aws::String& objectKey) const;
-
-  /** Waits for the input object to be deleted. */
-  Status wait_for_object_to_be_deleted(
-      const Aws::String& bucketName, const Aws::String& objectKey) const;
 
   /** Waits for the bucket to be created. */
   Status wait_for_bucket_to_be_created(const URI& bucket_uri) const;

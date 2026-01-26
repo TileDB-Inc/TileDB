@@ -420,20 +420,6 @@ capi_return_t tiledb_group_get_query_type(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_group_dump_str(
-    tiledb_group_handle_t* group, char** dump_ascii, const uint8_t recursive) {
-  ensure_group_is_valid(group);
-  ensure_output_pointer_is_valid(dump_ascii);
-
-  const std::string str = group->group().dump(2, 0, recursive);
-  *dump_ascii = copy_string(str);
-  if (*dump_ascii == nullptr) {
-    return TILEDB_ERR;
-  }
-
-  return TILEDB_OK;
-}
-
 capi_return_t tiledb_group_dump_str_v2(
     tiledb_group_handle_t* group,
     tiledb_string_handle_t** dump_ascii,
@@ -788,16 +774,6 @@ CAPI_INTERFACE(
     tiledb_query_type_t* query_type) {
   return api_entry_context<tiledb::api::tiledb_group_get_query_type>(
       ctx, group, query_type);
-}
-
-CAPI_INTERFACE(
-    group_dump_str,
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    char** dump_ascii,
-    const uint8_t recursive) {
-  return api_entry_context<tiledb::api::tiledb_group_dump_str>(
-      ctx, group, dump_ascii, recursive);
 }
 
 CAPI_INTERFACE(

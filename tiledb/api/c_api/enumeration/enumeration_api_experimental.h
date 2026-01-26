@@ -324,30 +324,6 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_get_value_index(
     int* exist,
     uint64_t* index) TILEDB_NOEXCEPT;
 
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-/**
- * Dumps the contents of an Enumeration in ASCII form to some output (e.g.,
- * file or stdout).
- *
- * **Example:**
- *
- * The following prints the enumeration dump to standard output.
- *
- * @code{.c}
- * tiledb_enumeration_dump(ctx, enmr, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param enumeration The enumeration.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
- */
-TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_enumeration_dump(
-    tiledb_ctx_t* ctx,
-    tiledb_enumeration_t* enumeration,
-    FILE* out) TILEDB_NOEXCEPT;
-#endif
-
 /**
  * Dumps the contents of an Enumeration in ASCII form to the selected string
  * output.

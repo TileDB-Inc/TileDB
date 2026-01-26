@@ -24,7 +24,7 @@ endif()
 # Properly set system name and architecture
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(CPACK_SYSTEM_NAME "MacOS")
-    if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+    if(CMAKE_OSX_ARCHITECTURES)
         set(CPACK_SYSTEM_PROCESSOR ${CMAKE_OSX_ARCHITECTURES})
     else()
         set(CPACK_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})

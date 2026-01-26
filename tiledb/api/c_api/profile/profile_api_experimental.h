@@ -183,12 +183,15 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_param(
  * Saves the given profile to the local file.
  *
  * @param[in] profile The profile.
+ * @param[in] overwrite If non-zero, overwrite the existing profile.
  * @param[out] error Error object returned upon error (`NULL` if there is no
  * error).
  * @return TILEDB_EXPORT
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_save(
-    tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
+    tiledb_profile_t* profile,
+    uint8_t overwrite,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Loads a profile from the local file.

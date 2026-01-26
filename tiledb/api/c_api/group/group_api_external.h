@@ -230,7 +230,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_put_metadata(
  * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
  *
  * @param ctx The TileDB context.
- * @param group An group opened in MODIFY_EXCLUSIVE mode.
+ * @param group An group opened in WRITE mode.
  * @param uri The address of the group item to be deleted.
  * @param recursive True if all data inside the group is to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -619,24 +619,6 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_query_type(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
-
-/**
- * Dump a string representation of a group.
- *
- * Deprecated, use tiledb_group_dump_str_v2 instead.
- *
- * @param ctx The TileDB context.
- * @param group The group.
- * @param dump_ascii The output string. The caller takes ownership
- *   of the c-string.
- * @param recursive True if the dump should recurse into subgroups.
- * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_dump_str(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    char** dump_ascii,
-    const uint8_t recursive) TILEDB_NOEXCEPT;
 
 /**
  * Dump a string representation of a group.

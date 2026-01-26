@@ -172,7 +172,8 @@ struct VFSParameters {
       , log_operations_(
             config.get<bool>("vfs.log_operations", Config::must_find))
       , read_logging_mode_(ReadLoggingMode::DISABLED) {
-    auto log_mode = config.get<std::string>("vfs.read_logging_mode").value();
+    auto log_mode =
+        config.get<std::string_view>("vfs.read_logging_mode").value();
     if (log_mode == "") {
       read_logging_mode_ = ReadLoggingMode::DISABLED;
     } else if (log_mode == "fragments") {
@@ -1011,6 +1012,10 @@ class VFS : FilesystemBase,
 #endif
 
   LocalFS local_;
+
+#if HAVE_S3
+  tdb_unique_ptr<FilesystemBase> tiledbfs_;
+#endif
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;

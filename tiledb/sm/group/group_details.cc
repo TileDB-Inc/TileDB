@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/group/group_details_v2.h"
 #include "tiledb/sm/group/group_member_v1.h"
@@ -258,6 +258,11 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
 
 const URI& GroupDetails::group_uri() const {
   return group_uri_;
+}
+
+void GroupDetails::set_group_uri(const URI& uri) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  group_uri_ = uri;
 }
 
 uint64_t GroupDetails::member_count() const {

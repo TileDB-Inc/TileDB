@@ -221,6 +221,35 @@ class Context {
     handle_error(tiledb_ctx_set_tag(ctx_.get(), key.c_str(), value.c_str()));
   }
 
+  /**
+   * Data protocol version enum.
+   */
+  enum class DataProtocol : uint8_t {
+    /** Data protocol v2 (legacy) */
+    v2 = TILEDB_DATA_PROTOCOL_v2,
+    /** Data protocol v3 (TileDB 3.0+) */
+    v3 = TILEDB_DATA_PROTOCOL_v3
+  };
+
+  /**
+   * Returns the data protocol version for the given URI.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto data_protocol = ctx.data_protocol("tiledb://namespace/array");
+   * @endcode
+   *
+   * @param uri The URI to check.
+   * @return The data protocol version.
+   */
+  DataProtocol data_protocol(const std::string& uri) const {
+    tiledb_data_protocol_t protocol;
+    handle_error(
+        tiledb_ctx_get_data_protocol(ctx_.get(), uri.c_str(), &protocol));
+    return static_cast<DataProtocol>(protocol);
+  }
+
   /** Returns a JSON-formatted string of the stats. */
   std::string stats() {
     char* c_str;

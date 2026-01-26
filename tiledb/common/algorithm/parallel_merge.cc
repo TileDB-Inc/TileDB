@@ -43,6 +43,7 @@ ParallelMergeFuture::ParallelMergeFuture(
     : memory_(memory)
     , merge_bounds_(&memory.control)
     , merge_cursor_(0) {
+  spawn_tasks_.reserve(parallel_factor);
   merge_bounds_.reserve(parallel_factor);
   for (size_t p = 0; p < parallel_factor; p++) {
     merge_bounds_.push_back(MergeUnit(memory.control));
@@ -81,6 +82,12 @@ ParallelMergeFuture::~ParallelMergeFuture() {
     // however we definitely do want to avoid an infinite loop here,
     // so we had better have made progress.
     iassert(merge_cursor_ > m, "merge_cursor = {}, m = {}", merge_cursor_, m);
+  }
+
+  // wait for merge tasks to complete which also frees all resources
+  // associated with the parallel merge
+  for (auto& task : spawn_tasks_) {
+    const auto st = task.wait();
   }
 }
 

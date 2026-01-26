@@ -168,8 +168,8 @@ TEST_CASE_METHOD(
   RestProfile p(create_profile());
 
   // Try to get a parameter with an empty name.
-  const std::string* value = p.get_param("");
-  REQUIRE(value == nullptr);
+  auto maybe_value = p.get_param("");
+  REQUIRE(!maybe_value.has_value());
 
   // Try to set a parameter with an empty name.
   REQUIRE_THROWS_WITH(
@@ -196,8 +196,8 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       p2.save_to_file(),
       Catch::Matchers::Equals("RestProfile: Failed to save 'default'; This "
-                              "profile has already been saved and must be "
-                              "explicitly removed in order to be replaced."));
+                              "profile already exists. "
+                              "Use the overwrite parameter to replace it."));
   RestProfile::remove_profile(std::nullopt, dir_);
   p2.save_to_file();
 
@@ -229,4 +229,75 @@ TEST_CASE_METHOD(
   RestProfile p2_check(create_profile("named_profile2"));
   p2_check.load_from_file();
   CHECK(*p2_check.get_param("rest.token") == "token2");
+}
+
+TEST_CASE_METHOD(
+    RestProfileFx, "REST Profile: Empty file", "[rest_profile][empty_file]") {
+  SECTION("Save to empty file succeeds") {
+    // Create an empty profiles.json file.
+    {
+      std::ofstream file(filepath_);
+      file.close();
+    }
+    CHECK(std::filesystem::exists(filepath_));
+
+    // Create a profile and save it to the empty file.
+    RestProfile p(create_profile("test_profile"));
+    p.set_param("rest.token", "test_token");
+    p.set_param("rest.server_address", "https://test.server");
+
+    // This should succeed and treat the empty file as a new file.
+    REQUIRE_NOTHROW(p.save_to_file());
+
+    // Verify we can load the profile back.
+    RestProfile loaded(create_profile("test_profile"));
+    REQUIRE_NOTHROW(loaded.load_from_file());
+    CHECK(*loaded.get_param("rest.token") == "test_token");
+    CHECK(*loaded.get_param("rest.server_address") == "https://test.server");
+  }
+
+  SECTION("Load from empty file fails") {
+    // Create an empty profiles.json file.
+    {
+      std::ofstream file(filepath_);
+      file.close();
+    }
+    CHECK(std::filesystem::exists(filepath_));
+
+    // Try to load from an empty file - should fail with parsing error.
+    RestProfile p(create_profile("test_profile"));
+    REQUIRE_THROWS_WITH(
+        p.load_from_file(),
+        Catch::Matchers::ContainsSubstring("Error parsing file"));
+  }
+}
+
+TEST_CASE_METHOD(
+    RestProfileFx,
+    "REST Profile: save_to_file with overwrite",
+    "[rest_profile][save][overwrite]") {
+  RestProfile p1(create_profile());
+  p1.set_param("rest.token", "token1");
+  p1.save_to_file();
+
+  // Attempt to save again without overwrite should fail
+  RestProfile p2(create_profile());
+  p2.set_param("rest.token", "token2");
+  REQUIRE_THROWS_WITH(
+      p2.save_to_file(false),
+      Catch::Matchers::ContainsSubstring(
+          "This profile already exists. Use the overwrite parameter"));
+
+  // Verify that the original profile is unchanged
+  RestProfile loaded1(create_profile());
+  loaded1.load_from_file();
+  CHECK(*loaded1.get_param("rest.token") == "token1");
+
+  // Save with overwrite=true should succeed
+  REQUIRE_NOTHROW(p2.save_to_file(true));
+
+  // Verify that the profile is updated
+  RestProfile loaded2(create_profile());
+  loaded2.load_from_file();
+  CHECK(*loaded2.get_param("rest.token") == "token2");
 }

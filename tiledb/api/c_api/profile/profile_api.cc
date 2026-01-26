@@ -93,18 +93,19 @@ capi_return_t tiledb_profile_get_param(
     throw CAPIException("[tiledb_profile_get_param] Parameter cannot be null.");
   }
 
-  const std::string* param_value = profile->profile()->get_param(param);
+  auto maybe_param_value = profile->profile()->get_param(param);
 
-  *value = param_value != nullptr ?
-               tiledb_string_handle_t::make_handle(*param_value) :
+  *value = maybe_param_value.has_value() ?
+               tiledb_string_handle_t::make_handle(maybe_param_value.value()) :
                nullptr;
 
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_profile_save(tiledb_profile_t* profile) {
+capi_return_t tiledb_profile_save(
+    tiledb_profile_t* profile, uint8_t overwrite) {
   ensure_profile_is_valid(profile);
-  profile->profile()->save_to_file();
+  profile->profile()->save_to_file(overwrite != 0);
   return TILEDB_OK;
 }
 
@@ -189,8 +190,12 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    profile_save, tiledb_profile_t* profile, tiledb_error_t** error) {
-  return api_entry_error<tiledb::api::tiledb_profile_save>(error, profile);
+    profile_save,
+    tiledb_profile_t* profile,
+    uint8_t overwrite,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_save>(
+      error, profile, overwrite);
 }
 
 CAPI_INTERFACE(

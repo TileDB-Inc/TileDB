@@ -141,20 +141,6 @@ int32_t tiledb_domain_has_dimension(
   return TILEDB_OK;
 }
 
-int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
-  ensure_domain_is_valid(domain);
-  ensure_cstream_handle_is_valid(out);
-
-  std::stringstream ss;
-  ss << *domain;
-  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  if (r != ss.str().size()) {
-    throw CAPIException("Error writing domain to output stream");
-  }
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_domain_dump_str(
     const tiledb_domain_t* domain, tiledb_string_handle_t** out) {
   ensure_domain_is_valid(domain);
@@ -240,11 +226,6 @@ CAPI_INTERFACE(
     int32_t* has_dim) {
   return api_entry_context<tiledb::api::tiledb_domain_has_dimension>(
       ctx, domain, name, has_dim);
-}
-
-CAPI_INTERFACE(
-    domain_dump, tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) {
-  return api_entry_context<tiledb::api::tiledb_domain_dump>(ctx, domain, out);
 }
 
 CAPI_INTERFACE(

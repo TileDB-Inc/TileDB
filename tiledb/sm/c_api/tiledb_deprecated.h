@@ -36,8 +36,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

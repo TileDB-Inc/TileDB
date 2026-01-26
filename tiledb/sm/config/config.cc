@@ -43,22 +43,6 @@
 
 using namespace tiledb::common;
 
-namespace {
-bool ignore_default_via_env(const std::string& param) {
-  if (param == "vfs.s3.region") {
-    // We should not use the default value for `vfs.s3.region` if the user
-    // has set either AWS_REGION or AWS_DEFAULT_REGION in their environment.
-    // We defer to the SDK to interpret these values.
-
-    if ((std::getenv("AWS_REGION") != nullptr) ||
-        (std::getenv("AWS_DEFAULT_REGION") != nullptr)) {
-      return true;
-    }
-  }
-  return false;
-}
-}  // namespace
-
 namespace tiledb::sm {
 
 class ConfigException : public StatusException {
@@ -102,6 +86,7 @@ const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "true";
 const std::string Config::REST_PAYER_NAMESPACE = "";
+const std::string Config::REST_RESUBMIT_INCOMPLETE = "true";
 const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
@@ -286,6 +271,8 @@ const std::map<std::string, std::string> default_config_values = {
         "rest.use_refactored_array_open_and_query_submit",
         Config::REST_USE_REFACTORED_QUERY_SUBMIT),
     std::make_pair("rest.payer_namespace", Config::REST_PAYER_NAMESPACE),
+    std::make_pair(
+        "rest.resubmit_incomplete", Config::REST_RESUBMIT_INCOMPLETE),
     std::make_pair(
         "config.env_var_prefix", Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX),
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
@@ -658,14 +645,23 @@ Status Config::set(const std::string& param, const std::string& value) {
 }
 
 std::string Config::get(const std::string& param, bool* found) const {
-  const char* val = get_from_config_or_fallback(param, found);
-  return *found ? val : "";
+  auto maybe_value = get_from_config_or_fallback(param);
+  if (maybe_value.has_value()) {
+    *found = true;
+    return std::string(maybe_value.value());
+  } else {
+    *found = false;
+    return "";
+  }
 }
 
 Status Config::get(const std::string& param, const char** value) const {
-  bool found;
-  const char* val = get_from_config_or_fallback(param, &found);
-  *value = found ? val : nullptr;
+  auto maybe_value = get_from_config_or_fallback(param);
+  if (maybe_value.has_value()) {
+    *value = maybe_value.value().data();
+  } else {
+    *value = nullptr;
+  }
 
   return Status::Ok();
 }
@@ -673,17 +669,21 @@ Status Config::get(const std::string& param, const char** value) const {
 template <class T>
 Status Config::get(const std::string& param, T* value, bool* found) const {
   // Check if parameter exists
-  const char* val = get_from_config_or_fallback(param, found);
-  if (!*found)
+  auto maybe_value = get_from_config_or_fallback(param);
+  if (!maybe_value.has_value()) {
+    *found = false;
     return Status::Ok();
+  }
 
   // Parameter found, retrieve value
+  std::string_view val = maybe_value.value();
   auto status = utils::parse::convert(val, value);
   if (!status.ok()) {
     throw ConfigException(
         "Failed to parse config value '" + std::string(val) + "' for key '" +
         param + "' due to: " + status.to_string());
   }
+  *found = true;
   return Status::Ok();
 }
 
@@ -695,12 +695,14 @@ template <class T>
 Status Config::get_vector(
     const std::string& param, std::vector<T>* value, bool* found) const {
   // Check if parameter exists
-  const char* val = get_from_config_or_fallback(param, found);
-  if (!*found)
+  auto maybe_value = get_from_config_or_fallback(param);
+  if (maybe_value.has_value()) {
+    *found = true;
+    return utils::parse::convert<T>(maybe_value.value(), value);
+  } else {
+    *found = false;
     return Status::Ok();
-
-  // Parameter found, retrieve value
-  return utils::parse::convert<T>(val, value);
+  }
 }
 
 const std::map<std::string, std::string>& Config::param_values() const {
@@ -905,56 +907,51 @@ std::string Config::convert_to_env_param(const std::string& param) const {
   return ss.str();
 }
 
-const char* Config::get_from_env(const std::string& param, bool* found) const {
+std::optional<std::string_view> Config::get_from_env(
+    const std::string& param) const {
   std::string env_param = convert_to_env_param(param);
 
   // Get env variable prefix
-  bool found_prefix;
-  std::string env_prefix =
-      get_from_config("config.env_var_prefix", &found_prefix);
+  auto maybe_env_prefix = get_from_config("config.env_var_prefix");
 
-  if (found_prefix)
-    env_param = env_prefix + env_param;
+  if (maybe_env_prefix.has_value()) {
+    env_param = std::string(maybe_env_prefix.value()) + env_param;
+  }
 
   char* value = std::getenv(env_param.c_str());
-
-  // getenv returns nullptr if variable is not found
-  *found = value != nullptr;
+  if (value == nullptr) {
+    return std::nullopt;
+  } else {
+    return std::string_view(value);
+  }
 
   return value;
 }
 
-const char* Config::get_from_config(
-    const std::string& param, bool* found) const {
+std::optional<std::string_view> Config::get_from_config(
+    const std::string& param) const {
   // First check config
   auto it = param_values_.find(param);
-  *found = it != param_values_.end();
-  return *found ? it->second.c_str() : "";
+  if (it == param_values_.end()) {
+    return std::nullopt;
+  } else {
+    return it->second;
+  }
 }
 
-const char* Config::get_from_profile(
-    const std::string& param, bool* found) const {
+std::optional<std::string_view> Config::get_from_profile(
+    const std::string& param) const {
   if (param == "profile_name" || param == "profile_dir") {
     // If the parameter is profile_name or profile_dir, we do not
     // want to have an infinite recursion. So, we return early.
-    *found = false;
-    return "";
+    return std::nullopt;
   }
 
   // If there is no profile loaded yet and we have not attempted to load it,
   // we try to load the configure specified profile.
   if (!rest_profile_.has_value() && !rest_profile_load_attempted_) {
-    bool found_name = false;
-    const char* profile_name_cstr =
-        get_from_config_or_fallback("profile_name", &found_name);
-    std::optional<std::string> profile_name =
-        found_name ? std::make_optional(profile_name_cstr) : std::nullopt;
-
-    bool found_dir = false;
-    const char* profile_dir_cstr =
-        get_from_config_or_fallback("profile_dir", &found_dir);
-    std::optional<std::string> profile_dir =
-        found_dir ? std::make_optional(profile_dir_cstr) : std::nullopt;
+    auto profile_name = get_from_config_or_fallback("profile_name");
+    auto profile_dir = get_from_config_or_fallback("profile_dir");
 
     const bool isNonDefaultProfile =
         ((profile_name.has_value() && !profile_name.value().empty()) ||
@@ -981,61 +978,113 @@ const char* Config::get_from_profile(
   }
   // If the profile was loaded successfully, try to get the parameter from it.
   if (rest_profile_.has_value()) {
-    const std::string* value = rest_profile_.value().get_param(param);
-    if (value) {
-      *found = true;
-      return value->c_str();
+    auto maybe_value = rest_profile_.value().get_param(param);
+    if (maybe_value.has_value()) {
+      return maybe_value;
     }
   }
 
-  *found = false;
-  return "";
+  return std::nullopt;
 }
 
-const char* Config::get_from_config_or_fallback(
-    const std::string& param, bool* found) const {
+std::optional<std::string_view> Config::get_from_config_or_fallback(
+    const std::string& param) const {
+  auto [source, value] = get_with_source(param);
+  if (source == ConfigSource::NONE) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+std::pair<ConfigSource, std::string_view> Config::get_with_source(
+    const std::string& param) const {
   // First check if the user has set the parameter
-  // If not, it may be a default value (if found in the config)
-  bool user_set_parameter = set_params_.find(param) != set_params_.end();
+  bool user_set = set_params_.find(param) != set_params_.end();
 
   // [1. user-set config parameters]
-  bool found_config;
-  const char* value_config = get_from_config(param, &found_config);
-  if (found_config && user_set_parameter) {
-    *found = found_config;
-    return value_config;
-  }
-
-  // Check if param default should be ignored based on environment variables
-  if (ignore_default_via_env(param)) {
-    *found = true;
-    return "";
+  auto maybe_value_config = get_from_config(param);
+  if (maybe_value_config.has_value() && user_set) {
+    return {ConfigSource::USER_SET, *maybe_value_config};
   }
 
   // [2. env variables]
-  const char* value_env = get_from_env(param, found);
-  if (*found)
-    return value_env;
+  auto maybe_value_env = get_from_env(param);
+  if (maybe_value_env.has_value()) {
+    return {ConfigSource::ENVIRONMENT, *maybe_value_env};
+  }
 
   // [3. profiles]
-  const char* value_profile = get_from_profile(param, found);
-  if (*found)
-    return value_profile;
+  auto maybe_value_profile = get_from_profile(param);
+  if (maybe_value_profile.has_value()) {
+    return {ConfigSource::PROFILE, *maybe_value_profile};
+  }
 
   // [4. default config value]
-  *found = found_config;
+  if (maybe_value_config.has_value()) {
+    return {ConfigSource::DEFAULT, *maybe_value_config};
+  }
 
-  // Final case: parameter value was not found.
-  return *found ? value_config : "";
+  // Parameter not found anywhere
+  return {ConfigSource::NONE, ""};
+}
+
+RestAuthMethod Config::get_effective_rest_auth_method() const {
+  auto [token_source, token] = get_with_source("rest.token");
+  auto [username_source, username] = get_with_source("rest.username");
+  auto [password_source, password] = get_with_source("rest.password");
+
+  bool has_token = (token_source != ConfigSource::NONE) && !token.empty();
+  bool has_username =
+      (username_source != ConfigSource::NONE) && !username.empty();
+  bool has_password =
+      (password_source != ConfigSource::NONE) && !password.empty();
+
+  // Nothing configured
+  if (!has_token && !has_username && !has_password) {
+    return RestAuthMethod::NONE;
+  }
+
+  // Username/password authentication is valid iff both are present and at same
+  // level
+  bool userpass_valid =
+      has_username && has_password && username_source == password_source;
+
+  // If username/password is misconfigured
+  if ((has_username || has_password) && !userpass_valid) {
+    // If token exists, use it
+    if (has_token) {
+      return RestAuthMethod::TOKEN;
+    }
+    // No token to fall back on - error
+    if (has_username != has_password) {
+      // Only one of username or password is set
+      std::string missing_field =
+          has_username ? "rest.password" : "rest.username";
+      throw StatusException(Status_RestError(
+          "Invalid REST authentication configuration: " + missing_field +
+          " is "
+          "missing. Either configure both rest.username and rest.password, "
+          "or use rest.token for authentication."));
+    }
+    // Both are set but at different priority levels
+    throw StatusException(Status_RestError(
+        "Invalid REST authentication configuration: rest.username and "
+        "rest.password are set at different priority levels. Both must be "
+        "configured at the same level (e.g., both via environment variables, "
+        "or both via config file)."));
+  }
+
+  // Select between valid auth methods by priority
+  return (token_source <= username_source) ? RestAuthMethod::TOKEN :
+                                             RestAuthMethod::USERNAME_PASSWORD;
 }
 
 const std::map<std::string, std::string>
 Config::get_all_params_from_config_or_env() const {
   std::map<std::string, std::string> values;
-  bool found = false;
   for (const auto& [key, value] : param_values_) {
-    std::string val = get_from_config_or_fallback(key, &found);
-    values.emplace(key, val);
+    std::optional<std::string_view> val = get_from_config_or_fallback(key);
+    values.emplace(key, std::string(val.value_or(std::string_view())));
   }
   return values;
 }
@@ -1058,12 +1107,11 @@ optional<T> Config::get_internal(const std::string& key) const {
 }
 
 template <bool must_find_>
-optional<std::string> Config::get_internal_string(
+optional<std::string_view> Config::get_internal_string(
     const std::string& key) const {
-  bool found;
-  const char* value = get_from_config_or_fallback(key, &found);
-  if (found) {
-    return {value};
+  auto maybe_value = get_from_config_or_fallback(key);
+  if (maybe_value.has_value()) {
+    return maybe_value;
   }
 
   if constexpr (must_find_) {
@@ -1144,9 +1192,9 @@ template optional<double> Config::get_internal<double, false>(
 template optional<double> Config::get_internal<double, true>(
     const std::string& key) const;
 
-template optional<std::string> Config::get_internal_string<true>(
+template std::optional<std::string_view> Config::get_internal_string<true>(
     const std::string& key) const;
-template optional<std::string> Config::get_internal_string<false>(
+template std::optional<std::string_view> Config::get_internal_string<false>(
     const std::string& key) const;
 
 }  // namespace tiledb::sm

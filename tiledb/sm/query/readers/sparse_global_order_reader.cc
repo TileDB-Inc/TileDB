@@ -193,7 +193,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     : SparseIndexReaderBase(
           "sparse_global_order",
           stats,
-          logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
+          logger->clone("SparseGlobalOrderReader", ++logger_id_),
           params,
           true)
     , result_tiles_leftover_(array_->fragment_metadata().size())

@@ -34,7 +34,6 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -1614,38 +1613,49 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       ctx, fragment_info, 2, &frag3_array_schema);
   CHECK(rc == TILEDB_OK);
 
-  FILE* frag1_schema_file = fopen("frag1_schema.txt", "w");
-  FILE* frag2_schema_file = fopen("frag2_schema.txt", "w");
-  FILE* frag3_schema_file = fopen("frag3_schema.txt", "w");
+  tiledb_string_t* frag1_schema_str = nullptr;
+  tiledb_string_t* frag2_schema_str = nullptr;
+  tiledb_string_t* frag3_schema_str = nullptr;
 
-  rc = tiledb_array_schema_dump(ctx, frag1_array_schema, frag1_schema_file);
+  rc = tiledb_array_schema_dump_str(ctx, frag1_array_schema, &frag1_schema_str);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_schema_dump(ctx, frag2_array_schema, frag2_schema_file);
+  rc = tiledb_array_schema_dump_str(ctx, frag2_array_schema, &frag2_schema_str);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_schema_dump(ctx, frag3_array_schema, frag3_schema_file);
+  rc = tiledb_array_schema_dump_str(ctx, frag3_array_schema, &frag3_schema_str);
   CHECK(rc == TILEDB_OK);
 
-  fclose(frag1_schema_file);
-  fclose(frag2_schema_file);
-  fclose(frag3_schema_file);
+  const char* frag1_schema_ptr;
+  size_t frag1_schema_len;
+  rc = tiledb_string_view(
+      frag1_schema_str, &frag1_schema_ptr, &frag1_schema_len);
+  CHECK(rc == TILEDB_OK);
 
-#ifdef _WIN32
-  CHECK(!system("FC frag1_schema.txt frag2_schema.txt > nul"));
-  CHECK(!system("FC frag1_schema.txt frag3_schema.txt > nul"));
-#else
-  CHECK(!system("diff frag1_schema.txt frag2_schema.txt"));
-  CHECK(!system("diff frag1_schema.txt frag3_schema.txt"));
-#endif
+  const char* frag2_schema_ptr;
+  size_t frag2_schema_len;
+  rc = tiledb_string_view(
+      frag2_schema_str, &frag2_schema_ptr, &frag2_schema_len);
+  CHECK(rc == TILEDB_OK);
 
-  // Clean up fragement array schemas
+  const char* frag3_schema_ptr;
+  size_t frag3_schema_len;
+  rc = tiledb_string_view(
+      frag3_schema_str, &frag3_schema_ptr, &frag3_schema_len);
+  CHECK(rc == TILEDB_OK);
+
+  CHECK(
+      std::string(frag1_schema_ptr, frag1_schema_len) ==
+      std::string(frag2_schema_ptr, frag2_schema_len));
+  CHECK(
+      std::string(frag1_schema_ptr, frag1_schema_len) ==
+      std::string(frag3_schema_ptr, frag3_schema_len));
+
+  // Clean up fragment array schemas and schema strings
   tiledb_array_schema_free(&frag1_array_schema);
   tiledb_array_schema_free(&frag2_array_schema);
   tiledb_array_schema_free(&frag3_array_schema);
-
-  // Remove fragment schema files
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag1_schema.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag2_schema.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag3_schema.txt") == TILEDB_OK);
+  tiledb_string_free(&frag1_schema_str);
+  tiledb_string_free(&frag2_schema_str);
+  tiledb_string_free(&frag3_schema_str);
 
   // Check dump
   const auto ver = std::to_string(tiledb::sm::constants::format_version);

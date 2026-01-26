@@ -594,7 +594,7 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
   std::vector<URI> uris;
   uris.reserve(dir_entries.size());
 
-  for (auto entry : dir_entries) {
+  for (const auto& entry : dir_entries) {
     auto entry_uri = URI(entry.path().native());
 
     // Always list directories
@@ -837,8 +837,19 @@ void ArrayDirectory::load_array_meta_uris() {
   std::vector<URI> array_meta_dir_uris;
   {
     auto timer_se = stats_->start_timer("list_array_meta_uris");
-    array_meta_dir_uris =
-        ls(uri_.join_path(constants::array_metadata_dir_name));
+    std::vector<URI> unfiltered_uris;
+    throw_if_not_ok(resources_.get().vfs().ls(
+        uri_.join_path(constants::array_metadata_dir_name), &unfiltered_uris));
+    for (const auto& unfiltered_uri : unfiltered_uris) {
+      const auto& uri = unfiltered_uri.to_string();
+      if (unfiltered_uri.is_timestamped_name() &&
+          unfiltered_uri.to_string().ends_with(".tmp")) {
+        resources_.get().logger()->debug(
+            "Skipping partial array metadata file: '{}'", uri);
+        continue;
+      }
+      array_meta_dir_uris.emplace_back(uri);
+    }
   }
 
   // Compute array metadata URIs and vacuum URIs to vacuum. */

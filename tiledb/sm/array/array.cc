@@ -51,7 +51,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
@@ -78,19 +77,11 @@ class ArrayException : public StatusException {
 
 void ensure_supported_schema_version_for_read(format_version_t version);
 
-ConsistencyController& controller() {
-  static ConsistencyController controller;
-  return controller;
-}
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Array::Array(
-    ContextResources& resources,
-    const URI& array_uri,
-    ConsistencyController& cc)
+Array::Array(ContextResources& resources, const URI& array_uri)
     : resources_(resources)
     , array_uri_(array_uri)
     , array_uri_serialized_(array_uri)
@@ -102,9 +93,7 @@ Array::Array(
     , new_component_timestamp_(nullopt)
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
-    , memory_tracker_(resources_.create_memory_tracker())
-    , consistency_controller_(cc)
-    , consistency_sentry_(nullopt) {
+    , memory_tracker_(resources_.create_memory_tracker()) {
 }
 
 /* ********************************* */
@@ -207,7 +196,7 @@ void Array::create(
   std::lock_guard<std::mutex> lock{object_mtx};
   array_schema->set_array_uri(array_uri);
   array_schema->generate_uri(array_schema->timestamp_range());
-  array_schema->check(resources.config());
+  array_schema->check(resources.config(), true);
 
   // Check current domain is specified correctly if set
   if (!array_schema->get_current_domain()->empty()) {
@@ -317,15 +306,13 @@ Status Array::open_without_fragments(
       timestamp_end_opened_at(),
       is_remote());
 
-  /* Note: query_type_ MUST be set before calling set_array_open()
-    because it will be examined by the ConsistencyController. */
   query_type_ = QueryType::READ;
   memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
 
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
   try {
-    set_array_open(query_type_);
+    set_array_open();
 
     if (remote_) {
       auto rest_client = resources_.rest_client();
@@ -413,6 +400,13 @@ Status Array::open(
         Status_ArrayError("Cannot open array; Array already open."));
   }
 
+  if (query_type == QueryType::MODIFY_EXCLUSIVE) {
+    resources_.logger()->warn(
+        "Opening array in MODIFY_EXCLUSIVE mode is deprecated and has no "
+        "additional behavior over WRITE. Use WRITE mode instead.");
+    query_type = QueryType::WRITE;
+  }
+
   query_type_ = query_type;
   if (query_type_ == QueryType::READ) {
     memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
@@ -426,7 +420,7 @@ Status Array::open(
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
   try {
-    set_array_open(query_type);
+    set_array_open();
 
     if (query_type == QueryType::UPDATE) {
       bool found = false;
@@ -530,9 +524,7 @@ Status Array::open(
       set_array_schema_latest(array_schema_latest);
       set_array_schemas_all(std::move(array_schemas_all));
       set_fragment_metadata(std::move(fragment_metadata));
-    } else if (
-        query_type == QueryType::WRITE ||
-        query_type == QueryType::MODIFY_EXCLUSIVE) {
+    } else if (query_type == QueryType::WRITE) {
       {
         auto timer_se =
             resources_.stats().start_timer("array_open_write_load_directory");
@@ -618,8 +610,7 @@ Status Array::close() {
     if (remote_) {
       // Update array metadata for write queries if metadata was written by the
       // user
-      if ((query_type_ == QueryType::WRITE ||
-           query_type_ == QueryType::MODIFY_EXCLUSIVE) &&
+      if ((query_type_ == QueryType::WRITE) &&
           opened_array_->metadata().num() > 0) {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
@@ -636,8 +627,7 @@ Status Array::close() {
             this));
       }
     } else {
-      if (query_type_ == QueryType::WRITE ||
-          query_type_ == QueryType::MODIFY_EXCLUSIVE) {
+      if (query_type_ == QueryType::WRITE) {
         opened_array_->metadata().store(
             resources_, array_uri_, *encryption_key());
       } else if (
@@ -693,7 +683,7 @@ void Array::delete_fragments(
 void Array::delete_fragments(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Check that data deletion is allowed
-  ensure_array_is_valid_for_delete(uri);
+  ensure_array_is_valid_for_delete();
 
   // Delete fragments
   if (remote_) {
@@ -738,7 +728,7 @@ void Array::delete_array(ContextResources& resources, const URI& uri) {
 
 void Array::delete_array(const URI& uri) {
   // Check that data deletion is allowed
-  ensure_array_is_valid_for_delete(uri);
+  ensure_array_is_valid_for_delete();
 
   // Delete array data
   if (uri.is_tiledb()) {
@@ -757,7 +747,7 @@ void Array::delete_array(const URI& uri) {
 
 void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
   // Check that data deletion is allowed
-  ensure_array_is_valid_for_delete(array_uri_);
+  ensure_array_is_valid_for_delete();
 
   // Delete fragments_list
   if (remote_) {
@@ -1141,11 +1131,9 @@ void Array::delete_metadata(const char* key) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type_ != QueryType::WRITE) {
     throw ArrayException(
-        "Cannot delete metadata. Array was not opened in write or "
-        "modify_exclusive mode");
+        "Cannot delete metadata. Array was not opened in write mode");
   }
 
   // Check if key is null
@@ -1167,11 +1155,9 @@ void Array::put_metadata(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+  if (query_type_ != QueryType::WRITE) {
     throw ArrayException(
-        "Cannot put metadata; Array was not opened in write or "
-        "modify_exclusive mode");
+        "Cannot put metadata; Array was not opened in write mode");
   }
 
   // Check if key is null
@@ -1879,8 +1865,7 @@ const ArrayDirectory& Array::load_array_directory() {
         "Loading array directory for remote arrays is not supported");
   }
 
-  auto mode = (query_type_ == QueryType::WRITE ||
-               query_type_ == QueryType::MODIFY_EXCLUSIVE) ?
+  auto mode = query_type_ == QueryType::WRITE ?
                   ArrayDirectoryMode::SCHEMA_ONLY :
                   ArrayDirectoryMode::READ;
 
@@ -2006,7 +1991,7 @@ Status Array::compute_non_empty_domain() {
   return Status::Ok();
 }
 
-void Array::set_array_open(const QueryType& query_type) {
+void Array::set_array_open() {
   std::lock_guard<std::mutex> lock(mtx_);
   if (is_opening_or_closing_) {
     is_opening_or_closing_ = false;
@@ -2015,12 +2000,6 @@ void Array::set_array_open(const QueryType& query_type) {
         "May not perform simultaneous open or close operations.");
   }
   is_opening_or_closing_ = true;
-  /**
-   * Note: there is no danger in passing *this here;
-   * only the pointer value is used and nothing is called on the Array objects.
-   */
-  consistency_sentry_.emplace(
-      consistency_controller_.make_sentry(array_uri_, *this, query_type));
   is_open_ = true;
 }
 
@@ -2064,21 +2043,19 @@ void Array::set_array_closed() {
     is_opening_or_closing_ = true;
   }
 
-  /* Note: the Sentry object will also be released upon Array destruction. */
-  consistency_sentry_.reset();
   is_open_ = false;
 }
 
-void Array::ensure_array_is_valid_for_delete(const URI& uri) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+void Array::ensure_array_is_valid_for_delete() {
+  // Check that query type is WRITE
+  if (query_type_ != QueryType::WRITE) {
     throw ArrayException(
         "[ensure_array_is_valid_for_delete] "
-        "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
+        "Query type must be WRITE to perform a delete.");
   }
 
   // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
+  if (!is_open()) {
     throw ArrayException("[ensure_array_is_valid_for_delete] Array is closed");
   }
 

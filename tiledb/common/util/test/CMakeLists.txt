@@ -85,3 +85,10 @@ this_target_sources(
         unit_view_combo.cc
 )
 conclude(unit_test)
+
+commence(unit_test intercept)
+    this_target_sources(
+        unit_intercept.cc
+        unit_no_intercept.cc
+    )
+conclude(unit_test)

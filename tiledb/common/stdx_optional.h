@@ -1,11 +1,11 @@
 /**
- * @file tiledb/api/c_api/array_schema/array_schema_api_deprecated.h
+ * @file stdx_optional.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,45 +24,32 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares the deprecated array schema section of the TileDB C API.
  */
 
-#ifndef TILEDB_CAPI_ARRAY_SCHEMA_DEPRECATED_H
-#define TILEDB_CAPI_ARRAY_SCHEMA_DEPRECATED_H
+#ifndef TILEDB_COMMON_STDX_OPTIONAL_H
+#define TILEDB_COMMON_STDX_OPTIONAL_H
 
-#include "../api_external_common.h"
-#include "array_schema_api_external.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace stdx::optional {
 
 /**
- * Dumps the array schema in ASCII format in the selected file output.
+ * Maps an optional value to a different optional value by applying a function
+ * to the contained value, if present.
  *
- * **Example:**
+ * C++23: Replace with `std::optional::<T>::transform`.
  *
- * The following prints the array schema dump in standard output.
- *
- * @code{.c}
- * tiledb_array_schema_dump(ctx, array_schema, stdout);
- * @endcode
- *
- * @param[in] ctx The TileDB context.
- * @param[in] array_schema The array schema.
- * @param[out] out The output handle.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @param maybe_value The base optional value
+ * @param f The transforming function
  */
-TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_array_schema_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    FILE* out) TILEDB_NOEXCEPT;
-
-#ifdef __cplusplus
+template <typename T, std::invocable<T> F>
+std::optional<decltype(std::declval<F>()(std::declval<T>()))> transform(
+    std::optional<T> maybe_value, const F& f) {
+  if (maybe_value.has_value()) {
+    return std::optional(f(maybe_value.value()));
+  } else {
+    return std::nullopt;
+  }
 }
-#endif
 
-#endif  // TILEDB_CAPI_ARRAY_SCHEMA_DEPRECATED_H
+}  // namespace stdx::optional
+
+#endif

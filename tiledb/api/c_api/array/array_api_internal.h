@@ -51,11 +51,8 @@ struct tiledb_array_handle_t
 
  public:
   explicit tiledb_array_handle_t(
-      tiledb::sm::ContextResources& resources,
-      const tiledb::sm::URI& array_uri,
-      tiledb::sm::ConsistencyController& cc = tiledb::sm::controller())
-      : array_{
-            make_shared<tiledb::sm::Array>(HERE(), resources, array_uri, cc)} {
+      tiledb::sm::ContextResources& resources, const tiledb::sm::URI& array_uri)
+      : array_{make_shared<tiledb::sm::Array>(HERE(), resources, array_uri)} {
   }
 
   /**

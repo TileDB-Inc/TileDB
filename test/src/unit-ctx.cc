@@ -33,6 +33,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -101,5 +102,60 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
       REQUIRE(rest_client.extra_headers().size() == 4);
       REQUIRE(rest_client.extra_headers().at("tag1") == "value3");
     }
+  }
+}
+
+TEST_CASE(
+    "C API: Test context data protocol", "[capi][ctx][data-protocol][rest]") {
+  tiledb::test::VFSTestSetup vfs_test_setup{};
+  tiledb_ctx_t* ctx = vfs_test_setup.ctx_c;
+
+  tiledb_data_protocol_t data_protocol;
+
+  SECTION("tiledb:// URI") {
+    if (vfs_test_setup.is_rest()) {
+      auto rc = tiledb_ctx_get_data_protocol(
+          ctx, "tiledb://workspace/teamspace/array", &data_protocol);
+      REQUIRE(rc == TILEDB_OK);
+      if (vfs_test_setup.is_legacy_rest()) {
+        REQUIRE(data_protocol == TILEDB_DATA_PROTOCOL_v2);
+      } else {
+        REQUIRE(data_protocol == TILEDB_DATA_PROTOCOL_v3);
+      }
+    }
+  }
+
+  SECTION("non-tiledb:// URI") {
+    auto rc = tiledb_ctx_get_data_protocol(
+        ctx, "azure://bucket/array", &data_protocol);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(data_protocol == TILEDB_DATA_PROTOCOL_v2);
+  }
+}
+
+TEST_CASE(
+    "C++ API: Test context data protocol",
+    "[cppapi][ctx][data-protocol][rest]") {
+  tiledb::test::VFSTestSetup vfs_test_setup{};
+  tiledb::Context ctx{vfs_test_setup.ctx()};
+
+  SECTION("tiledb:// URI") {
+    if (vfs_test_setup.is_rest()) {
+      if (vfs_test_setup.is_legacy_rest()) {
+        REQUIRE(
+            ctx.data_protocol("tiledb://workspace/teamspace/array") ==
+            tiledb::Context::DataProtocol::v2);
+      } else {
+        REQUIRE(
+            ctx.data_protocol("tiledb://workspace/teamspace/array") ==
+            tiledb::Context::DataProtocol::v3);
+      }
+    }
+  }
+
+  SECTION("non-tiledb:// URI") {
+    REQUIRE(
+        ctx.data_protocol("s3://bucket/array") ==
+        tiledb::Context::DataProtocol::v2);
   }
 }

@@ -39,6 +39,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -57,7 +58,6 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/fragments.h"
 
@@ -84,6 +84,9 @@ using namespace tiledb::sm;
 struct ArrayFx {
   // The memory tracker
   shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
+
+  // TODO: Update ArrayFx to use VFSTestSetup.
+  VFSTestSetup vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -883,7 +886,7 @@ TEST_CASE_METHOD(
     "[capi][array][open-at][reads][rest]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_path = temp_dir + "array-open-at-reads";
+  std::string array_path = "array-open-at-reads";
   std::string array_name = vfs_array_uri(fs_vec_[0], array_path, ctx_);
 
   SECTION("- without encryption") {
@@ -901,6 +904,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
+  array_path = vfs_test_setup_.get_backend_uri(array_name);
 
   // ---- FIRST WRITE ----
   // Prepare cell buffers
@@ -1510,7 +1514,7 @@ TEST_CASE_METHOD(
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "array-open-at-writes", ctx_);
+      vfs_array_uri(fs_vec_[0], "array-open-at-writes", ctx_);
 
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -1728,7 +1732,7 @@ TEST_CASE_METHOD(
     "[capi][array][array-write-coords-oob][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "array-write-coords-oob", ctx_);
+      vfs_array_uri(fs_vec_[0], "array-write-coords-oob", ctx_);
   create_temp_dir(temp_dir);
 
   int dimension = 0;
@@ -1876,8 +1880,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test empty array", "[capi][array][array-empty][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "array_empty", ctx_);
+  std::string array_name = vfs_array_uri(fs_vec_[0], "array_empty", ctx_);
 
   create_temp_dir(temp_dir);
 
@@ -1928,12 +1931,13 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test deletion of array", "[capi][array][delete][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_path = temp_dir + "array_delete";
+  std::string array_path = "array_delete";
   std::string array_name = vfs_array_uri(fs_vec_[0], array_path, ctx_);
 
   create_temp_dir(temp_dir);
 
   create_dense_vector(array_name);
+  array_path = vfs_test_setup_.get_backend_uri(array_name);
 
   // Conditionally consolidate
   // Note: there's no need to vacuum; delete_array will delete all fragments
@@ -2005,7 +2009,7 @@ TEST_CASE_METHOD(
     "[capi][subarray][error][sparse][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_sparse", ctx_);
+      vfs_array_uri(fs_vec_[0], "query_error_sparse", ctx_);
   create_temp_dir(temp_dir);
 
   create_sparse_vector(array_name);
@@ -2066,8 +2070,7 @@ TEST_CASE_METHOD(
     "C API: Test query errors, dense writes",
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense", ctx_);
+  std::string array_name = vfs_array_uri(fs_vec_[0], "query_error_dense", ctx_);
   create_temp_dir(temp_dir);
 
   create_dense_array(array_name);
@@ -2146,8 +2149,7 @@ TEST_CASE_METHOD(
     "C API: Test query errors, dense unordered writes",
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense", ctx_);
+  std::string array_name = vfs_array_uri(fs_vec_[0], "query_error_dense", ctx_);
 
   create_temp_dir(temp_dir);
 
@@ -2184,8 +2186,7 @@ TEST_CASE_METHOD(
     "C API: Test query errors, dense reads in global order",
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense", ctx_);
+  std::string array_name = vfs_array_uri(fs_vec_[0], "query_error_dense", ctx_);
 
   create_temp_dir(temp_dir);
 
@@ -2701,12 +2702,8 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
-  // Reopen for modify exclusive.
-  tiledb_array_free(&array);
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  REQUIRE(rc == TILEDB_OK);
-
-  rc = tiledb_array_open(ctx_, array, TILEDB_MODIFY_EXCLUSIVE);
+  // Open the array for delete.
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // ALlocate buffer

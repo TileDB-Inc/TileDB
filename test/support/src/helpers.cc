@@ -53,7 +53,6 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/serialization/array.h"
@@ -208,6 +207,10 @@ void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing) {
   if (err.has_value()) {
     throw std::runtime_error(err.value());
   }
+}
+
+bool is_g_vfs_enabled(const std::string& vfs) {
+  return vfs == "memfs" || vfs == g_vfs;
 }
 
 int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
