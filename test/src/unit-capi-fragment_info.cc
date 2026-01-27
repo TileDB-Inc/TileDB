@@ -875,6 +875,53 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
     CHECK(rc == TILEDB_ERR);
   }
 
+  // Error checks for global order bounds
+  {
+    std::vector<uint64_t> upper_bound(2);
+    void* dimensions[] = {&upper_bound[0], &upper_bound[1]};
+    // Fragment out of bounds global order lower bound
+    {
+      rc = tiledb_fragment_info_get_global_order_lower_bound(
+          ctx, fragment_info, 3, 0, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid fragment "
+          "index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+
+    // Fragment out of bounds global order upper bound
+    {
+      rc = tiledb_fragment_info_get_global_order_upper_bound(
+          ctx, fragment_info, 3, 0, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid fragment "
+          "index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+
+    // Tile out of bounds global order lower bound
+    {
+      rc = tiledb_fragment_info_get_global_order_lower_bound(
+          ctx, fragment_info, 0, 2, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid mbr index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+
+    // Tile out of bounds global order upper bound
+    {
+      rc = tiledb_fragment_info_get_global_order_upper_bound(
+          ctx, fragment_info, 0, 2, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid mbr index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+  }
+
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);

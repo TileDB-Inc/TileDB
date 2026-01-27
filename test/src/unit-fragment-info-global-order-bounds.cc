@@ -130,6 +130,9 @@ template <templates::FragmentType F>
 using DimensionTuple =
     stdx::decay_tuple<decltype(std::declval<F>().dimensions())>;
 
+/**
+ * @return something equivalent to `value` which owns all of its own memory.
+ */
 template <stdx::is_fundamental T>
 T to_owned(T value) {
   return value;
@@ -140,6 +143,10 @@ std::vector<T> to_owned(std::span<const T> value) {
   return std::vector<T>(value.begin(), value.end());
 }
 
+/**
+ * @return a tuple containing the `idx`th value of each field of the argument
+ * tuple
+ */
 template <typename T>
 auto tuple_index(const T& tuple, uint64_t idx) {
   return std::apply(
@@ -149,6 +156,10 @@ auto tuple_index(const T& tuple, uint64_t idx) {
       tuple);
 }
 
+/**
+ * A `std::tuple` whose fields are the coordinate types of each dimension of
+ * `F`.
+ */
 template <templates::FragmentType F>
 using CoordsTuple = decltype(tuple_index(
     std::declval<F>().dimensions(), std::declval<uint64_t>()));
@@ -181,6 +192,7 @@ static Bounds<F> global_order_bounds(
         qb.resize(1);
         qb[0] = *reinterpret_cast<T*>(bounds[d].data());
       } else {
+        static_assert(std::is_same_v<T, std::vector<char>>);
         qb.values_.resize(bounds[d].size());
         memcpy(qb.values_.data(), bounds[d].data(), bounds[d].size());
         qb.offsets_ = {0};
@@ -225,7 +237,7 @@ std::vector<std::vector<Bounds<F>>> get_all_bounds(
       this_fragment_bounds.push_back(global_order_bounds<F>(finfo, f, t));
     }
 
-    bounds.push_back(this_fragment_bounds);
+    bounds.emplace_back(std::move(this_fragment_bounds));
   }
 
   return bounds;
@@ -236,9 +248,11 @@ std::vector<std::vector<Bounds<F>>> get_all_bounds(
  * accurately reflects the expected global order bounds of the input.
  *
  * "Accurately reflects" means that:
- * 1) the lower bound is indeed the first coordinate in global order in the
- * fragment 2) the upper bound is indeed the last coordinate in global order in
- * the fragment
+ * 1) there is data for each tile in the fragment;
+ * 2) the lower bound for tile `(f, t)` is indeed the first coordinate in
+ *    global order of the `t`th tile of the `f`th fragment
+ * 3) the upper bound for tile `(f, t)` is indeed the last coordinate in
+ *    global order of the `t`th tile of the `f`th fragment
  *
  * @return the global order bounds for each tile per fragment
  */

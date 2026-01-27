@@ -42,26 +42,6 @@
 
 namespace rc::detail {
 
-template <DimensionType D>
-void showDomain(const templates::Domain<D>& domain, std::ostream& os) {
-  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
-}
-
-void showValue(const templates::Domain<int>& domain, std::ostream& os) {
-  showDomain(domain, os);
-}
-void showValue(const templates::Domain<int64_t>& domain, std::ostream& os) {
-  showDomain(domain, os);
-}
-void showValue(const templates::Domain<uint64_t>& domain, std::ostream& os) {
-  showDomain(domain, os);
-}
-
-template <stdx::is_fundamental T>
-void showQueryBuffers(const templates::query_buffers<T>& qb, std::ostream& os) {
-  show(qb.values_, os);
-}
-
 void showValue(const tiledb::sm::ASTNode& node, std::ostream& os) {
   const tiledb::sm::ASTNodeVal* valnode =
       static_cast<const tiledb::sm::ASTNodeVal*>(&node);
@@ -100,11 +80,3 @@ void showValue(const tiledb::sm::ASTNode& node, std::ostream& os) {
 }
 
 }  // namespace rc::detail
-
-namespace rc {
-
-void showValue(const templates::query_buffers<uint64_t>& qb, std::ostream& os) {
-  detail::showQueryBuffers(qb, os);
-}
-
-}  // namespace rc
