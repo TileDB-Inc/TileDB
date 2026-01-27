@@ -301,7 +301,7 @@ TEST_CASE(
 
     // Get fragment size
     auto size = fragment_info.fragment_size(1);
-    CHECK(size == 3202);
+    CHECK(size == 3206);
 
     // Get dense / sparse
     auto dense = fragment_info.dense(0);
@@ -1102,19 +1102,19 @@ TEST_CASE(
         "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
         "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
         "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [1, 6]\n" + "  > Size: 3202\n" +
+        "  > Non-empty domain: [1, 6]\n" + "  > Size: 3206\n" +
         "  > Cell num: 10\n" + "  > Timestamp range: [1, 1]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
         "  > URI: " + written_frag_uri_2 + "\n" +
         "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [1, 4]\n" + "  > Size: 3151\n" +
+        "  > Non-empty domain: [1, 4]\n" + "  > Size: 3155\n" +
         "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
         "  > URI: " + written_frag_uri_3 + "\n" +
         "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [5, 6]\n" + "  > Size: 3202\n" +
+        "  > Non-empty domain: [5, 6]\n" + "  > Size: 3206\n" +
         "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n";
