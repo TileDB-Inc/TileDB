@@ -76,6 +76,13 @@ class vector_sso {
 
   Allocator alloc_;
 
+  /**
+   * Moves values to `dst` from `src`, copying if possible
+   * and invoking the move constructor of each value if not.
+   *
+   * Values in `dst` are not destructed. The caller is responsible
+   * for destructing them, if necessary.
+   */
   static void move_all(T* dst, T* src, uint64_t n) {
     if constexpr (std::is_trivially_copyable_v<T>) {
       std::memcpy(dst, src, sizeof(T) * n);
@@ -88,23 +95,39 @@ class vector_sso {
   }
 
   /**
+   * Destructs the elements in `buf` in reverse order.
+   */
+  static void destruct(T* buf, uint64_t n) {
+    for (T* elt = buf; elt != buf + n; elt++) {
+      elt->~T();
+    }
+  }
+
+  /**
    * Copies or moves contents from the internal buffer to the heap.
    */
-  void transfer() {
+  void transfer_to_heap() {
     const uint64_t capacity = capacity_hint_;
     T* buf = alloc_.allocate(capacity);
 
     move_all(buf, reinterpret_cast<T*>(sso_.data()), size_);
+    if (!std::is_trivially_copyable_v<T>) {
+      destruct(data(), size_);
+    }
 
     capacity_ = capacity;
     buf_ = buf;
   }
 
+  /**
+   * Reallocates the heap buffer into a larger one.
+   */
   void grow() {
     const uint64_t new_capacity = capacity_ * 2;
     T* new_buf = alloc_.allocate(new_capacity);
 
     move_all(new_buf, buf_, size_);
+    destruct(buf_, size_);
 
     alloc_.deallocate(buf_, capacity_);
 
@@ -120,7 +143,7 @@ class vector_sso {
     if (size_ < N) {
       return &data()[size_++];
     } else if (size_ == N) {
-      transfer();
+      transfer_to_heap();
       return &buf_[size_++];
     } else if (size_ < capacity_) {
       return &buf_[size_++];
@@ -308,6 +331,7 @@ class vector_sso {
     } else {
       T* newbuf = alloc_.allocate(newcapacity);
       move_all(newbuf, buf_, size_);
+      destruct(buf_, size_);
       alloc_.deallocate(buf_, capacity_);
 
       capacity_ = newcapacity;
@@ -329,6 +353,7 @@ class vector_sso {
     if (N < size_ && size_ < capacity_) {
       T* newbuf = alloc_.allocate(size_);
       move_all(newbuf, buf_, size_);
+      destruct(buf_, size_);
       alloc_.deallocate(buf_, capacity_);
 
       capacity_ = size_;
@@ -337,10 +362,7 @@ class vector_sso {
   }
 
   void clear() {
-    // destruct elements in reverse order
-    for (auto it = rbegin(); it != rend(); ++it) {
-      it->~T();
-    }
+    destruct(data(), size());
 
     // then free storage if needed
     if (size_ > N) {
@@ -378,6 +400,7 @@ class vector_sso {
 
       // move to sso buffer
       move_all(reinterpret_cast<T*>(sso_.data()), buf, N);
+      destruct(buf, N);
 
       alloc_.deallocate(buf, capacity);
 
@@ -413,15 +436,16 @@ class vector_sso {
    */
   void swap(self_type& rhs) {
     auto& lhs = *this;
-    if (lhs.size() <= N && rhs.size() <= N) {
+    if (lhs.is_inline() && rhs.is_inline()) {
       std::swap(lhs.capacity_hint_, rhs.capacity_hint_);
       std::swap(lhs.sso_, rhs.sso_);
-    } else if (lhs.size() <= N) {
+    } else if (lhs.is_inline()) {
       T* rbuf = rhs.buf_;
       move_all(
           reinterpret_cast<T*>(rhs.sso_.data()),
           reinterpret_cast<T*>(lhs.sso_.data()),
           lhs.size());
+      destruct(lhs.data(), lhs.size());
       if (lhs.alloc_ == rhs.alloc_) {
         lhs.buf_ = rbuf;
       } else {
@@ -429,7 +453,7 @@ class vector_sso {
         throw std::logic_error(
             "vector_sso::swap: not implemented with un-equal allocators");
       }
-    } else if (rhs.size() <= N) {
+    } else if (rhs.is_inline()) {
       rhs.swap(*this);
       return;
     } else {
