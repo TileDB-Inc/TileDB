@@ -633,8 +633,8 @@ if(TILEDB_SERIALIZATION)
 
   # Mimic add_custom_command's logic for when cross-compiling.
   # We can't run the capnp_tool target, because it was built for the target platform.
-  if(CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
-    find_program(CAPNP_TOOL_PATH capnp REQUIRED HINTS ENV PATH NO_DEFAULT_PATH)
+  if(VCPKG_USE_HOST_TOOLS OR (CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR))
+    find_program(CAPNP_TOOL_PATH capnp REQUIRED)
     cmake_path(GET CAPNP_TOOL_PATH PARENT_PATH CAPNP_PLUGIN_DIR)
   else()
     set(CAPNP_TOOL_PATH $<TARGET_FILE:CapnProto::capnp_tool>)
