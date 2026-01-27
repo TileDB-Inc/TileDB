@@ -997,18 +997,22 @@ TEST_CASE(
     "Fragment metadata global order bounds: 3D vcf",
     "[fragment_info][global-order]") {
   VFSTestSetup vfs_test_setup;
-  const auto array_uri = vfs_test_setup.array_uri(
-      "fragment_metadata_global_order_bounds_3d_vcf_rapidcheck");
+  const auto array_uri =
+      vfs_test_setup.array_uri("fragment_metadata_global_order_bounds_3d_vcf");
 
   const templates::Domain<uint32_t> domain_sample(0, 10000);
 
   const templates::Dimension<Datatype::STRING_ASCII> d_chromosome;
-  const templates::Dimension<Datatype::UINT32> d_position(domain_sample, 32);
+  const templates::Dimension<Datatype::UINT32> d_position(domain_sample, 100);
   const templates::Dimension<Datatype::STRING_ASCII> d_sample;
 
   Context ctx = vfs_test_setup.ctx();
 
-  Context ctx = vfs_test_setup.ctx();
+  constexpr uint64_t num_chromosomes = 40;
+  constexpr uint64_t num_positions = 1000;
+  constexpr uint64_t num_samples = 20;
+
+  constexpr uint64_t tile_capacity = num_positions * num_samples / 4;
 
   templates::ddl::create_array<
       Datatype::STRING_ASCII,
@@ -1020,20 +1024,101 @@ TEST_CASE(
       std::vector<std::tuple<Datatype, uint32_t, bool>>{},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      8,
-      allow_dups);
+      tile_capacity,
+      false);
 
-  DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
+  auto arrayguard = DeleteArrayGuard(ctx.ptr().get(), array_uri.c_str());
 
   using F = FragmentVcf2025;
 
-  for (uint64_t c = 0; c < chromosomes.size(); c++) {
-    for (uint64_t pos = 0; pos < positions.size(); pos++) {
-      for (uint64_t sample = 0; sample < samples.size(); sample++) {
-        // TODO
+  F input;
+  for (uint64_t c = 0; c < num_chromosomes; c++) {
+    std::stringstream cell_chromosome_ss;
+    cell_chromosome_ss << "chr" << std::setfill('0') << std::setw(2) << c;
+    const std::string cell_chromosome = cell_chromosome_ss.str();
+    for (uint64_t sample = 0; sample < num_samples; sample++) {
+      std::stringstream cell_sample_ss;
+      cell_sample_ss << "HG" << std::setfill('0') << std::setw(5) << sample;
+      const std::string cell_sample = cell_sample_ss.str();
+      for (uint64_t pos = 0; pos < num_positions; pos++) {
+        input.d1().push_back(cell_chromosome);
+        input.d2().push_back(pos);
+        input.d3().push_back(cell_sample);
       }
     }
   }
+
+  using Asserter = AsserterCatch;
+  const auto all_fragment_bounds = assert_written_bounds<Asserter, F>(
+      ctx, array_uri, {input}, sm::Layout::UNORDERED);
+  REQUIRE(all_fragment_bounds.size() == 1);
+
+  const auto& tile_bounds = all_fragment_bounds[0];
+
+  // the global order tile order skips variable-length dimensions.
+  // this means that the tile order is effectively determined by the
+  // position dimension, and then the cells within the tile are ordered
+  // in the expected way.
+  // arithmetically this happens to work out where we have cycles
+  // which are 2 chromosomes long.
+
+  auto to_bound_tuple = [](std::string_view chr,
+                           uint64_t p,
+                           std::string_view sample) -> CoordsTuple<F> {
+    return std::make_tuple(
+        std::vector<char>(chr.begin(), chr.end()),
+        p,
+        std::vector<char>(sample.begin(), sample.end()));
+  };
+  // (c00, [0, 99], [0, 19]), (c01, [0, 99], [0, 19]), (c02, [0, 49], [0, 19])]
+  const CoordsTuple<F> cycle_0_lower = to_bound_tuple("chr00", 0, "HG00000");
+  const CoordsTuple<F> cycle_0_upper = to_bound_tuple("chr02", 49, "HG00019");
+  // (c02, [49, 99], ..), (c03, [0, 99], ..), (c04, [0, 99], ..)
+  const CoordsTuple<F> cycle_1_lower = to_bound_tuple("chr02", 50, "HG00000");
+  const CoordsTuple<F> cycle_1_upper = to_bound_tuple("chr04", 99, "HG00019");
+  // (c05, [0, 99], ..), (c06, [0, 99], ..), (c07, [0, 49], ..)
+  const CoordsTuple<F> cycle_2_lower = to_bound_tuple("chr05", 0, "HG00000");
+  const CoordsTuple<F> cycle_2_upper = to_bound_tuple("chr07", 49, "HG00019");
+  // (c07, [49, 99], ..), (c08, [0, 99], ..), (c09, [0, 99], ..)
+  const CoordsTuple<F> cycle_3_lower = to_bound_tuple("chr07", 50, "HG00000");
+  const CoordsTuple<F> cycle_3_upper = to_bound_tuple("chr09", 99, "HG00019");
+
+  const CoordsTuple<F> cycle_lower[] = {
+      cycle_0_lower, cycle_1_lower, cycle_2_lower, cycle_3_lower};
+  const CoordsTuple<F> cycle_upper[] = {
+      cycle_0_upper, cycle_1_upper, cycle_2_upper, cycle_3_upper};
+
+  auto update_chr = [](std::vector<char>& chr, uint64_t offset) {
+    std::string_view chrview(chr.begin(), chr.end());
+    REQUIRE(chrview.starts_with("chr"));
+
+    std::string i(&chrview.data()[3], 2);
+
+    std::stringstream ss;
+    ss << "chr" << std::setfill('0') << std::setw(2)
+       << (std::stoll(i) + offset);
+    i = ss.str();
+    chr = std::vector<char>(i.begin(), i.end());
+  };
+
+  for (uint64_t t = 0; t < tile_bounds.size(); t++) {
+    const uint64_t chr_offset = (10 * (t / 4)) % num_chromosomes;
+    const uint64_t position_offset =
+        100 *
+        ((t * tile_capacity) / (tile_capacity * 4 * (num_chromosomes / 10)));
+
+    CoordsTuple<F> expect_lower = cycle_lower[t % 4];
+    update_chr(std::get<0>(expect_lower), chr_offset);
+    std::get<1>(expect_lower) += position_offset;
+
+    CoordsTuple<F> expect_upper = cycle_upper[t % 4];
+    update_chr(std::get<0>(expect_upper), chr_offset);
+    std::get<1>(expect_upper) += position_offset;
+
+    CHECK(tile_bounds[t].first == expect_lower);
+    CHECK(tile_bounds[t].second == expect_upper);
+  }
+  CHECK(tile_bounds.size() == num_chromosomes * 4);
 }
 
 /**
