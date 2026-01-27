@@ -155,7 +155,7 @@ void Reader::compute_result_space_tiles(
   // For all tile coordinates
   for (const auto& tc : tile_coords) {
     coords = (T*)(&(tc[0]));
-    std::span<const T> start_coords = array_tile_domain.start_coords(coords);
+    const auto start_coords = array_tile_domain.start_coords(coords);
 
     // Create result space tile and insert into the map
     auto r =
