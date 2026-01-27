@@ -1645,11 +1645,11 @@ void write_fragment(
       [](unsigned d) { return "d" + std::to_string(d + 1); },
       [](unsigned a) { return "a" + std::to_string(a + 1); });
 
-  const auto status = query.submit();
-  ASSERTER(status == Query::Status::COMPLETE);
-
   if (layout == TILEDB_GLOBAL_ORDER) {
-    query.finalize();
+    query.submit_and_finalize();
+  } else {
+    const auto status = query.submit();
+    ASSERTER(status == Query::Status::COMPLETE);
   }
 
   // check that sizes match what we expect
