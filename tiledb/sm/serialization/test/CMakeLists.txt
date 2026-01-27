@@ -49,6 +49,7 @@ commence(unit_test capnp_nonempty_domain)
 
   # Enable serialization
   target_compile_definitions(unit_capnp_nonempty_domain PRIVATE -DTILEDB_SERIALIZATION)
+  target_include_directories(unit_capnp_nonempty_domain PUBLIC ${TILEDB_GENERATED_INCLUDE_DIR})
 conclude(unit_test)
 
 commence(unit_test capnp_group)

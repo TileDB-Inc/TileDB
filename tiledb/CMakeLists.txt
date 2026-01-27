@@ -330,6 +330,8 @@ else()
 endif()
 
 if (TILEDB_SERIALIZATION)
+  set(TILEDB_SERIALIZATION_GENERATED_DIR ${TILEDB_GENERATED_INCLUDE_DIR}/tiledb/sm/serialization)
+
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client_remote.cc
@@ -354,7 +356,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_plan.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
-      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+      ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.c++
       PROPERTIES
         COMPILE_FLAGS "-Wno-unused-parameter"
     )
@@ -378,7 +380,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_plan.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
-      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+      ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.c++
       PROPERTIES
         #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
         #   C4100 '<some-name>' unreferenced format parameter
@@ -424,8 +426,6 @@ target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
     "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api"
-	# to pickup <build_dir>/tiledb for capnp gen'd files
-    "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
 
 if (TILEDB_CPP_API)
@@ -616,49 +616,60 @@ target_include_directories(TILEDB_CORE_OBJECTS
 
 # Serialization
 if(TILEDB_SERIALIZATION)
-  find_package(CapnProto REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-          INTERFACE
-          CapnProto::capnp
-          CapnProto::capnp-json
-          CapnProto::kj
-          )
+  add_dependencies(TILEDB_CORE_OBJECTS tiledb_rest_capnp_gen)
+  target_sources(TILEDB_CORE_OBJECTS PRIVATE ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.c++)
 
-  target_sources(TILEDB_CORE_OBJECTS PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
-  )
+  find_package(CapnProto REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CapnProto::capnp CapnProto::capnp-json CapnProto::kj)
+
+  target_include_directories(TILEDB_CORE_OBJECTS PUBLIC ${TILEDB_GENERATED_INCLUDE_DIR})
+
 
   ###################################
   # capnproto file generation target
   ###################################
 
-  # This target regenerates the checked-in generated source files for serialization
-  # support. It must be re-run whenever `tiledb-rest.capnp` is updated.
+  # This target generates the source files for serialization support. It is re-run whenever `tiledb-rest.capnp` is updated.
 
-  set(TILEDB_SERIALIZATION_GENERATED_DIR
-      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization)
+  # Mimic add_custom_command's logic for when cross-compiling.
+  # We can't run the capnp_tool target, because it was built for the target platform.
+  if(CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
+    find_program(CAPNP_TOOL_PATH capnp REQUIRED HINTS ENV PATH NO_DEFAULT_PATH)
+    cmake_path(GET CAPNP_TOOL_PATH PARENT_PATH CAPNP_PLUGIN_DIR)
+  else()
+    set(CAPNP_TOOL_PATH $<TARGET_FILE:CapnProto::capnp_tool>)
+    if (CMAKE_CROSSCOMPILING AND CMAKE_CROSSCOMPILING_EMULATOR)
+      set(CAPNP_TOOL_PATH "${CMAKE_CROSSCOMPILING_EMULATOR}" "${CAPNP_TOOL_PATH}")
+    endif()
+    set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
+  endif()
 
-  # We only need to override the include path and PATH env for EP builds
-  # note: We run the compiler under `cmake -E env ...` because we need to run capnp executable
-  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++).
-  #       For system installed capnp binaries we rely on the user to have their PATH
-  #       include the directory with CapNProto plugin binaries.
-  set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
-  list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
+  list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_TOOL_PATH}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
 
   # Add the rest of the capnp compile command
   list(APPEND CAPNP_COMPILE_COMMAND -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
 
-  add_custom_target(
-    update-serialization
-      ${CMAKE_COMMAND} -E echo "CAPNP_COMPILE_COMMAND: '${CAPNP_COMPILE_COMMAND}'"
+  add_custom_command(
+    OUTPUT
+      ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.c++
+      ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.h
     COMMAND
-      "${CAPNP_COMPILE_COMMAND}"
-    DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-    COMMAND_EXPAND_LISTS
-    COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
-    )
+      ${CMAKE_COMMAND} -E make_directory ${TILEDB_SERIALIZATION_GENERATED_DIR}
+    COMMAND
+      ${CAPNP_COMPILE_COMMAND}
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp
+    # TODO: Add CODEGEN flag after we move to CMake 3.31+
+    COMMENT
+      "Generate Cap'n Proto serialization source files"
+  )
 
+  add_custom_target(
+    tiledb_rest_capnp_gen
+    DEPENDS
+      ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.c++
+      ${TILEDB_SERIALIZATION_GENERATED_DIR}/tiledb-rest.capnp.h
+  )
 endif()
 
 

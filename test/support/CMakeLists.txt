@@ -64,6 +64,7 @@ add_library(tiledb_test_support_lib STATIC EXCLUDE_FROM_ALL
 
 target_include_directories(tiledb_test_support_lib
   PRIVATE
+    ${TILEDB_GENERATED_INCLUDE_DIR}
     $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
