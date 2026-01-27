@@ -284,10 +284,10 @@ class FragmentInfo {
    * rectangle in a fragment. The returned value contains one element per
    * dimension.
    *
-   * @throws if the fragment index `fid` is invalid; if the bounding rectangle
-   * index `mid` is invalid; if the fragment is not a sparse fragment; or if the
-   * fragment was written in a format version which does not contain the
-   * bounding rectangle global order bounds.
+   * @throws TileDBError if the fragment index `fid` is invalid; if the bounding
+   * rectangle index `mid` is invalid; if the fragment is not a sparse fragment;
+   * or if the fragment was written in a format version which does not contain
+   * the bounding rectangle global order bounds.
    */
   std::vector<std::vector<uint8_t>> global_order_lower_bound(
       uint32_t fid, uint32_t mid) const {
@@ -330,10 +330,10 @@ class FragmentInfo {
    * rectangle in a fragment. The returned value contains one element per
    * dimension.
    *
-   * @throws if the fragment index `fid` is invalid; if the bounding rectangle
-   * index `mid` is invalid; if the fragment is not a sparse fragment; or if the
-   * fragment was written in a format version which does not contain the
-   * bounding rectangle global order bounds.
+   * @throws TileDBError if the fragment index `fid` is invalid; if the bounding
+   * rectangle index `mid` is invalid; if the fragment is not a sparse fragment;
+   * or if the fragment was written in a format version which does not contain
+   * the bounding rectangle global order bounds.
    */
   std::vector<std::vector<uint8_t>> global_order_upper_bound(
       uint32_t fid, uint32_t mid) const {

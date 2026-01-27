@@ -505,6 +505,87 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
     // Test get MBR from name API
     fragment_info.get_mbr(1, 1, "d1", &mbr[0]);
     CHECK(mbr == std::vector<uint64_t>{7, 8});
+
+    // Get global order lower bounds
+    {
+      using Coords = std::pair<uint64_t, uint64_t>;
+      std::vector<std::vector<uint8_t>> lb;
+      auto interpret = [&lb]() -> Coords {
+        REQUIRE(lb.size() == 2);
+        REQUIRE(lb[0].size() == sizeof(uint64_t));
+        REQUIRE(lb[1].size() == sizeof(uint64_t));
+        return std::make_pair(
+            *reinterpret_cast<const uint64_t*>(lb[0].data()),
+            *reinterpret_cast<const uint64_t*>(lb[1].data()));
+      };
+
+      lb = fragment_info.global_order_lower_bound(0, 0);
+      CHECK(Coords(1LL, 1LL) == interpret());
+
+      lb = fragment_info.global_order_lower_bound(1, 0);
+      CHECK(Coords(1LL, 1LL) == interpret());
+      lb = fragment_info.global_order_lower_bound(1, 1);
+      CHECK(Coords(7LL, 7LL) == interpret());
+
+      lb = fragment_info.global_order_lower_bound(2, 0);
+      CHECK(Coords(1LL, 1LL) == interpret());
+      lb = fragment_info.global_order_lower_bound(2, 1);
+      CHECK(Coords(1LL, 8LL) == interpret());
+    }
+
+    // Get global order upper bounds
+    {
+      using Coords = std::pair<uint64_t, uint64_t>;
+      std::vector<std::vector<uint8_t>> ub;
+      auto interpret = [&ub]() -> Coords {
+        REQUIRE(ub.size() == 2);
+        REQUIRE(ub[0].size() == sizeof(uint64_t));
+        REQUIRE(ub[1].size() == sizeof(uint64_t));
+        return std::make_pair(
+            *reinterpret_cast<const uint64_t*>(ub[0].data()),
+            *reinterpret_cast<const uint64_t*>(ub[1].data()));
+      };
+
+      ub = fragment_info.global_order_upper_bound(0, 0);
+      CHECK(Coords(2LL, 2LL) == interpret());
+
+      ub = fragment_info.global_order_upper_bound(1, 0);
+      CHECK(Coords(2LL, 2LL) == interpret());
+      ub = fragment_info.global_order_upper_bound(1, 1);
+      CHECK(Coords(8LL, 8LL) == interpret());
+
+      ub = fragment_info.global_order_upper_bound(2, 0);
+      CHECK(Coords(2LL, 2LL) == interpret());
+      ub = fragment_info.global_order_upper_bound(2, 1);
+      CHECK(Coords(7LL, 7LL) == interpret());
+    }
+
+    // Error checks for global order bounds
+    {
+      CHECK_THROWS_MATCHES(
+          fragment_info.global_order_lower_bound(3, 0),
+          TileDBError,
+          Catch::Matchers::MessageMatches(
+              Catch::Matchers::ContainsSubstring("Invalid fragment index")));
+      CHECK_THROWS_MATCHES(
+          fragment_info.global_order_upper_bound(3, 0),
+          TileDBError,
+          Catch::Matchers::MessageMatches(
+              Catch::Matchers::ContainsSubstring("Invalid fragment index")));
+
+      CHECK_THROWS_MATCHES(
+          fragment_info.global_order_lower_bound(0, 2),
+          TileDBError,
+          Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring(
+              "FragmentInfo: Cannot get MBR global order bound: Invalid mbr "
+              "index")));
+      CHECK_THROWS_MATCHES(
+          fragment_info.global_order_upper_bound(0, 2),
+          TileDBError,
+          Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring(
+              "FragmentInfo: Cannot get MBR global order bound: Invalid mbr "
+              "index")));
+    }
   }
 
   // Clean up
