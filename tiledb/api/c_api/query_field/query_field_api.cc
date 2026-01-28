@@ -195,9 +195,9 @@ CAPI_INTERFACE(
       ctx, query, field_name, field);
 }
 
-CAPI_INTERFACE(
-    query_field_free, tiledb_ctx_t* ctx, tiledb_query_field_t** field) {
-  return api_entry_context<tiledb::api::tiledb_query_field_free>(ctx, field);
+CAPI_INTERFACE(query_field_free, tiledb_ctx_t*, tiledb_query_field_t** field) {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_query_field_free>(
+      field);
 }
 
 CAPI_INTERFACE(

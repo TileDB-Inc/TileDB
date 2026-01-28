@@ -55,7 +55,7 @@ class QueryChannel {
    */
   QueryChannel(const Context& ctx, tiledb_query_channel_t* ch)
       : ctx_(ctx)
-      , deleter_(&ctx) {
+      , deleter_() {
     channel_ = std::shared_ptr<tiledb_query_channel_t>(ch, deleter_);
   }
 

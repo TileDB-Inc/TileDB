@@ -250,14 +250,14 @@ TILEDB_EXPORT int32_t tiledb_channel_apply_aggregate(
  *
  * @code{.c}
  * tiledb_channel_operation *(..., &op);
- * tiledb_aggregate_free(ctx, &op);
+ * tiledb_aggregate_free(NULL, &op);
  * @endcode
  *
- * @param ctx A TileDB context
+ * @param unused Unused; should be NULL
  * @param op A TileDB channel operation handle
  */
 TILEDB_EXPORT capi_return_t tiledb_aggregate_free(
-    tiledb_ctx_t* ctx, tiledb_channel_operation_t** op) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* unused, tiledb_channel_operation_t** op) TILEDB_NOEXCEPT;
 
 /**
  * Frees the resources associated with a TileDB query channel object.
@@ -267,14 +267,14 @@ TILEDB_EXPORT capi_return_t tiledb_aggregate_free(
  * @code{.c}
  * tiledb_query_channel_t* default_channel;
  * tiledb_query_get_default_channel(ctx, query, &default_channel);
- * tiledb_query_channel_free(ctx, &default_channel);
+ * tiledb_query_channel_free(NULL, &default_channel);
  * @endcode
  *
- * @param ctx A TileDB context
+ * @param unused Unused; should be NULL
  * @param channel A TileDB query channel handle
  */
 TILEDB_EXPORT capi_return_t tiledb_query_channel_free(
-    tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* unused, tiledb_query_channel_t** channel) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

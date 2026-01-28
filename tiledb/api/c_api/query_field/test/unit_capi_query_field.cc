@@ -229,8 +229,8 @@ TEST_CASE_METHOD(
 
   SECTION("nullptr output field") {
     CHECK(tiledb_query_get_field(ctx, query, "", nullptr) == TILEDB_ERR);
-    CHECK(tiledb_query_field_free(ctx, nullptr) == TILEDB_ERR);
-    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_ERR);
+    CHECK(tiledb_query_field_free(nullptr, nullptr) == TILEDB_ERR);
+    CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_ERR);
   }
 
   // Clean up
@@ -286,7 +286,7 @@ TEST_CASE_METHOD(
   }
 
   // Clean up
-  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
   (void)tiledb_query_free(&query);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   (void)tiledb_array_free(&array);
@@ -332,7 +332,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(cell_val_num == 1);
     REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
     CHECK(is_nullable == false);
-    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
   }
 
   SECTION("Timestamp field") {
@@ -348,7 +348,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(cell_val_num == 1);
     REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
     CHECK(is_nullable == false);
-    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
   }
 
   SECTION("\"coords\" field") {
@@ -363,7 +363,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(cell_val_num == 1);
     REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
     CHECK(is_nullable == false);
-    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
   }
 
   SECTION("Non-nullable attribute field") {
@@ -377,7 +377,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(cell_val_num == TILEDB_VAR_NUM);
     REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
     CHECK(is_nullable == false);
-    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
   }
 
   SECTION("Nullablle attribute field") {
@@ -391,7 +391,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(cell_val_num == TILEDB_VAR_NUM);
     REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
     CHECK(static_cast<bool>(is_nullable) == true);
-    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
   }
 
   SECTION("Aggregate field which might be nullable") {
@@ -422,7 +422,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
       CHECK(cell_val_num == 1);
       REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
       CHECK(static_cast<bool>(is_nullable) == expect_nullable);
-      CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+      CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
     }
     SECTION("run query") {
       uint64_t sum = 0;
@@ -440,7 +440,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
       REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
       CHECK(sum == 45);
     }
-    CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
+    CHECK(tiledb_query_channel_free(nullptr, &channel) == TILEDB_OK);
   }
 
   SECTION("Non-nullable Aggregate field") {
@@ -462,7 +462,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
       CHECK(cell_val_num == 1);
       REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
       CHECK(is_nullable == false);
-      CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+      CHECK(tiledb_query_field_free(nullptr, &field) == TILEDB_OK);
     }
     SECTION("run query") {
       uint64_t count = 0;
@@ -473,7 +473,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
       REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
       CHECK(count == 9);
     }
-    CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
+    CHECK(tiledb_query_channel_free(nullptr, &channel) == TILEDB_OK);
   }
 
   // Clean up
