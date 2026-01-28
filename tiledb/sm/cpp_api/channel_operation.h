@@ -57,7 +57,7 @@ class ChannelOperation {
    * @param operation The tiledb_channel_operation_t allocated by the C API.
    */
   ChannelOperation(const Context& ctx, tiledb_channel_operation_t* operation)
-      : deleter_(&ctx) {
+      : deleter_() {
     operation_ =
         std::shared_ptr<tiledb_channel_operation_t>(operation, deleter_);
   }
