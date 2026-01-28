@@ -37,6 +37,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/util/intercept.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
@@ -48,6 +49,15 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+namespace intercept {
+DECLARE_INTERCEPT(
+    fragment_consolidator_copy_array,
+    const uint64_t&,
+    uint64_t&,
+    uint64_t&,
+    bool);
+}
 
 class ArraySchema;
 class Config;

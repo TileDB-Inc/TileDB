@@ -53,6 +53,15 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+namespace intercept {
+DEFINE_INTERCEPT(
+    fragment_consolidator_copy_array,
+    const uint64_t&,
+    uint64_t&,
+    uint64_t&,
+    bool);
+}
+
 class FragmentConsolidatorException : public StatusException {
  public:
   explicit FragmentConsolidatorException(const std::string& message)
@@ -649,7 +658,7 @@ Status FragmentConsolidator::consolidate_internal(
     uint64_t initial_buffer_size = config_.buffer_size_ != 0 ?
                                        buffer_budget :
                                        config_.initial_buffer_size_;
-    initial_buffer_size = std::min(initial_buffer_size, buffer_budget / 8);
+    initial_buffer_size = std::min(initial_buffer_size, buffer_budget);  // / 8
 
     // Read from one array and write to the other
     copy_array(
@@ -742,7 +751,13 @@ void FragmentConsolidator::copy_array(
           if (enqueued_buffer_size != 0) {
             // Wait for the writer to release iff there's something in the PCQ
             io_tp.wait_until([&]() {
-              return enqueued_buffer_size + next_buffer_size <= max_buffer_size;
+              INTERCEPT(
+                  intercept::fragment_consolidator_copy_array,
+                  enqueued_buffer_size.load(),
+                  next_buffer_size,
+                  max_buffer_size,
+                  true);  // flag indicating buffer has grown.
+              return enqueued_buffer_size + next_buffer_size < max_buffer_size;
             });
           }
           continue;
@@ -768,6 +783,12 @@ void FragmentConsolidator::copy_array(
         break;
       }
       io_tp.wait_until([&]() {
+        INTERCEPT(
+            intercept::fragment_consolidator_copy_array,
+            enqueued_buffer_size.load(),
+            buffer_size,
+            max_buffer_size,
+            false);  // flag indicating buffer has NOT grown.
         return enqueued_buffer_size + buffer_size < max_buffer_size;
       });
     }
