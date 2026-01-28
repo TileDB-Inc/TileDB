@@ -58,7 +58,9 @@ std::tuple<std::vector<Ts>...> transpose(std::vector<std::tuple<Ts...>> rows) {
   for (size_t i = 0; i < rows.size(); i++) {
     std::apply(
         [&](std::vector<Ts>&... col) {
-          std::apply([&](Ts... cell) { (col.push_back(cell), ...); }, rows[i]);
+          std::apply(
+              [&](const Ts&... cell) { (col.emplace_back(cell), ...); },
+              rows[i]);
         },
         cols);
   }

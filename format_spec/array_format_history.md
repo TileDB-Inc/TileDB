@@ -4,6 +4,12 @@ title: Array format version history
 
 # Array Format Version History
 
+## Version 23
+
+Introduced in TileDB 2.30
+
+* Fragment metadata footers can contain [optional sections](./fragment.md#optional-section).
+
 ## Version 22
 
 Introduced in TileDB 2.25

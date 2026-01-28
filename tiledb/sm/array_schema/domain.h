@@ -394,8 +394,15 @@ class Domain {
    *
    * @param name Name of dimension to check for
    * @return Dimension index
+   * @throws if the name is not a dimension
    */
   unsigned get_dimension_index(const std::string& name) const;
+
+  /**
+   * @return the index in the domain of the requested dimension, or
+   * `std::nullopt` if not found
+   */
+  std::optional<unsigned> dimension_index(const std::string& name) const;
 
   /** Returns true if at least one dimension has null tile extent. */
   bool null_tile_extents() const;

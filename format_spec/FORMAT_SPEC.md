@@ -4,7 +4,7 @@ title: Format Specification
 
 **Notes:**
 
-* The current TileDB array format version number is **22** (`uint32_t`).
+* The current TileDB array format version number is **23** (`uint32_t`).
   * Other structures might be versioned separately.
   * While listing directories, readers should ignore files that do not follow
     the expected format for each respective case.
