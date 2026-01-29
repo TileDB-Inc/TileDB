@@ -679,7 +679,7 @@ Status fragment_metadata_to_capnp(
       });
   tile_bounds_to_capnp(
       lm.tile_global_order_max_buffer(),
-      lm.tile_global_order_min_var_buffer(),
+      lm.tile_global_order_max_var_buffer(),
       [&frag_meta_builder](auto size) {
         return frag_meta_builder->initTileGlobalOrderMaxBuffer(size);
       },
