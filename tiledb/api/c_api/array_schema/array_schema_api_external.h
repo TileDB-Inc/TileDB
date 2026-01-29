@@ -460,7 +460,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_cell_order(
  * @code{.c}
  * tiledb_filter_list_t* filter_list;
  * tiledb_array_schema_get_coords_filter_list(ctx, array_schema, &filter_list);
- * tiledb_filter_list_free(ctx, &filter_list);
+ * tiledb_filter_list_free(NULL, &filter_list);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -481,7 +481,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_coords_filter_list(
  * @code{.c}
  * tiledb_filter_list_t* filter_list;
  * tiledb_array_schema_get_offsets_filter_list(ctx, array_schema, &filter_list);
- * tiledb_filter_list_free(ctx, &filter_list);
+ * tiledb_filter_list_free(NULL, &filter_list);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -503,7 +503,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_offsets_filter_list(
  * tiledb_filter_list_t* filter_list;
  * tiledb_array_schema_get_validity_filter_list(
  *  ctx, array_schema, &filter_list);
- * tiledb_filter_list_free(ctx, &filter_list);
+ * tiledb_filter_list_free(NULL, &filter_list);
  * @endcode
  *
  * @param[in] ctx The TileDB context.

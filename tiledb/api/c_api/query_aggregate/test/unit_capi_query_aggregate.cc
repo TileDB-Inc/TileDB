@@ -288,9 +288,9 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_channel_apply_aggregate(ctx, nullptr, "Count", operation) ==
       TILEDB_ERR);
-  CHECK(tiledb_query_channel_free(ctx, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_query_channel_free(nullptr, nullptr) == TILEDB_ERR);
   tiledb_query_channel_t* nullchannel = NULL;
-  CHECK(tiledb_query_channel_free(ctx, &nullchannel) == TILEDB_ERR);
+  CHECK(tiledb_query_channel_free(nullptr, &nullchannel) == TILEDB_ERR);
 
   // nullptr output field
   CHECK(
@@ -301,9 +301,9 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_channel_apply_aggregate(ctx, default_channel, "Count", nullptr) ==
       TILEDB_ERR);
-  CHECK(tiledb_aggregate_free(ctx, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_aggregate_free(nullptr, nullptr) == TILEDB_ERR);
   tiledb_channel_operation_t* nullop = NULL;
-  CHECK(tiledb_aggregate_free(ctx, &nullop) == TILEDB_ERR);
+  CHECK(tiledb_aggregate_free(nullptr, &nullop) == TILEDB_ERR);
   CHECK(tiledb_aggregate_count_get(ctx, nullptr) == TILEDB_ERR);
 
   // duplicate output field
@@ -323,7 +323,7 @@ TEST_CASE_METHOD(
       TILEDB_ERR);
 
   // Clean up
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -374,7 +374,7 @@ TEST_CASE_METHOD(
   CHECK(count == 9);
 
   // Clean up
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -429,8 +429,8 @@ TEST_CASE_METHOD(
   CHECK(sum == 55);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &sum_op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &sum_op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -487,8 +487,8 @@ TEST_CASE_METHOD(
   CHECK(mean == 5.5);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &mean_op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &mean_op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -544,8 +544,8 @@ TEST_CASE_METHOD(
   CHECK(min == 1);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &min_op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &min_op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -601,8 +601,8 @@ TEST_CASE_METHOD(
   CHECK(max == 10);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &max_op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &max_op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -659,8 +659,8 @@ TEST_CASE_METHOD(
   CHECK(nullcount == 8);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &nullcount_op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &nullcount_op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -716,14 +716,14 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_min, "c", &op) == TILEDB_OK);
-  CHECK(tiledb_aggregate_free(ctx, &op) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &op) == TILEDB_OK);
   REQUIRE(
       tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_max, "c", &op) == TILEDB_OK);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -776,7 +776,7 @@ TEST_CASE_METHOD(
           ctx, query, tiledb_channel_operator_min, "_", &op) == TILEDB_ERR);
 
   // Clean up
-  REQUIRE(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  REQUIRE(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -839,8 +839,8 @@ TEST_CASE_METHOD(
   REQUIRE(status == TILEDB_INCOMPLETE);
 
   // Clean up
-  CHECK(tiledb_aggregate_free(ctx, &sum_op) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
+  CHECK(tiledb_aggregate_free(nullptr, &sum_op) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(nullptr, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
