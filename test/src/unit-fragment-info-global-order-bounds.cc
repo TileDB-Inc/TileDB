@@ -304,7 +304,7 @@ std::vector<std::vector<Bounds<F>>> assert_written_bounds(
 
 TEST_CASE(
     "Fragment metadata global order bounds: 1D fixed",
-    "[fragment_info][global-order]") {
+    "[fragment_info][global-order][rest]") {
   VFSTestSetup vfs_test_setup;
   const auto array_uri = vfs_test_setup.array_uri(
       "fragment_metadata_global_order_bounds_1d_fixed");
@@ -501,7 +501,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Fragment metadata global order bounds: 2D fixed",
-    "[fragment_info][global-order]") {
+    "[fragment_info][global-order][rest]") {
   VFSTestSetup vfs_test_setup;
   const auto array_uri = vfs_test_setup.array_uri(
       "fragment_metadata_global_order_bounds_2d_fixed");
@@ -793,7 +793,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Fragment metadata global order bounds: 1D var",
-    "[fragment_info][global-order]") {
+    "[fragment_info][global-order][rest]") {
   VFSTestSetup vfs_test_setup;
   const auto array_uri =
       vfs_test_setup.array_uri("fragment_metadata_global_order_bounds_1d_var");
