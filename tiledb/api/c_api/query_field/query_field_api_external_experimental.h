@@ -60,7 +60,7 @@ typedef enum {
  * @code{.c}
  * tiledb_query_field_t *field;
  * tiledb_query_get_field(ctx, query, "dimX", &field);
- * tiledb_query_field_free(ctx, &field);
+ * tiledb_query_field_free(NULL, &field);
  *
  * @endcode
  *
@@ -83,15 +83,15 @@ TILEDB_EXPORT capi_return_t tiledb_query_get_field(
  * @code{.c}
  * tiledb_query_field_t *field;
  * tiledb_query_get_field(ctx, query, "dimX", &field);
- * tiledb_query_field_free(ctx, &field);
+ * tiledb_query_field_free(NULL, &field);
  * @endcode
  *
- * @param ctx The TileDB context
+ * @param unused Unused; should be NULL
  * @param field The address of the query field handle pointer
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_query_field_free(
-    tiledb_ctx_t* ctx, tiledb_query_field_t** field) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* unused, tiledb_query_field_t** field) TILEDB_NOEXCEPT;
 
 /**
  * Get the TileDB datatype for a query field
@@ -102,7 +102,7 @@ TILEDB_EXPORT capi_return_t tiledb_query_field_free(
  * tiledb_query_get_field(ctx, query, "dimX", &field);
  * tiledb_datatype_t t;
  * tiledb_field_datatype(ctx, field, &t);
- * tiledb_query_field_free(ctx, &field);
+ * tiledb_query_field_free(NULL, &field);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -124,7 +124,7 @@ TILEDB_EXPORT capi_return_t tiledb_field_datatype(
  * tiledb_query_get_field(ctx, query, "dimX", &field);
  * uint32_t cell_val_num = 0;
  * tiledb_field_cell_val_num(ctx, field, &cell_val_num);
- * tiledb_query_field_free(ctx, &field);
+ * tiledb_query_field_free(NULL, &field);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -167,7 +167,7 @@ TILEDB_EXPORT capi_return_t tiledb_field_get_nullable(
  * tiledb_field_origin_t origin;
  * tiledb_field_origin(ctx, field, &origin);
  * check_true(origin == TILEDB_DIMENSION_FIELD);
- * tiledb_query_field_free(ctx, &field);
+ * tiledb_query_field_free(NULL, &field);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -195,8 +195,8 @@ TILEDB_EXPORT capi_return_t tiledb_field_origin(
  * tiledb_query_get_field(ctx, query, "SumX", &field);
  * tiledb_query_channel_t *channel;
  * tiledb_field_channel(ctx, field, &channel);
- * tiledb_query_channel_free(ctx, &channel);
- * tiledb_query_field_free(ctx, &field);
+ * tiledb_query_channel_free(NULL, &channel);
+ * tiledb_query_field_free(NULL, &field);
  * @endcode
  *
  * @param ctx The TileDB context

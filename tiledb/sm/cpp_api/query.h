@@ -1149,7 +1149,7 @@ class Query {
     ctx.handle_error(tiledb_field_datatype(ctx.ptr().get(), field, &type));
 
     // Free the field.
-    ctx.handle_error(tiledb_query_field_free(ctx.ptr().get(), &field));
+    ctx.handle_error(tiledb_query_field_free(nullptr, &field));
     return type;
   }
 
@@ -1176,7 +1176,7 @@ class Query {
         tiledb_field_cell_val_num(ctx.ptr().get(), field, &cell_val_num));
 
     // Free the field.
-    ctx.handle_error(tiledb_query_field_free(ctx.ptr().get(), &field));
+    ctx.handle_error(tiledb_query_field_free(nullptr, &field));
     return cell_val_num == TILEDB_VAR_NUM;
   }
 

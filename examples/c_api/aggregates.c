@@ -207,8 +207,8 @@ void read_array() {
   free((void*)count);
   free((void*)sum);
   tiledb_subarray_free(&subarray);
-  tiledb_aggregate_free(ctx, &sum_a);
-  tiledb_query_channel_free(ctx, &default_channel);
+  tiledb_aggregate_free(NULL, &sum_a);
+  tiledb_query_channel_free(NULL, &default_channel);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
