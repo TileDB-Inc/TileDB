@@ -866,20 +866,27 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
     throw FragmentInfoException(
         "Cannot get array schema; Invalid fragment index");
   }
-  URI schema_uri;
-  uint32_t version = single_fragment_info_vec_[fid].format_version();
-  if (version >= 10) {
-    schema_uri =
-        array_uri_.join_path(constants::array_schema_dir_name)
-            .join_path(single_fragment_info_vec_[fid].array_schema_name());
-  } else {
-    schema_uri = array_uri_.join_path(constants::array_schema_filename);
-  }
 
-  EncryptionKey encryption_key;
-  auto tracker = resources_->ephemeral_memory_tracker();
-  return ArrayDirectory::load_array_schema_from_uri(
-      *resources_, schema_uri, encryption_key, tracker);
+  const uint32_t version = single_fragment_info_vec_[fid].format_version();
+  const std::string& schema_name =
+      (version >= 10 ? single_fragment_info_vec_[fid].array_schema_name() :
+                       constants::array_schema_filename);
+
+  auto maybe = array_schemas_all().find(schema_name);
+  if (maybe != array_schemas_all().end()) {
+    return maybe->second;
+  } else {
+    const URI schema_uri = array_uri_.join_path(schema_name);
+    if (schema_uri.is_tiledb()) {
+      throw FragmentInfoException(
+          "Cannot get array schema: unsupported remote array");
+    } else {
+      EncryptionKey encryption_key;
+      auto tracker = resources_->ephemeral_memory_tracker();
+      return ArrayDirectory::load_array_schema_from_uri(
+          *resources_, schema_uri, encryption_key, tracker);
+    }
+  }
 }
 
 Status FragmentInfo::get_array_schema_name(
