@@ -310,7 +310,7 @@ Status fragment_metadata_from_capnp(
     auto reader = frag_meta_reader.getTileGlobalOrderMinBuffer();
     tile_bounds_from_capnp(
         reader, frag_meta->loaded_metadata()->tile_global_order_min_buffer());
-    loaded_metadata.tile_global_order_min_.resize(reader.size(), false);
+    loaded_metadata.tile_global_order_min_.resize(reader.size(), true);
   }
   if (frag_meta_reader.hasTileGlobalOrderMinVarBuffer()) {
     tile_bounds_from_capnp(
@@ -321,7 +321,7 @@ Status fragment_metadata_from_capnp(
     auto reader = frag_meta_reader.getTileGlobalOrderMaxBuffer();
     tile_bounds_from_capnp(
         reader, frag_meta->loaded_metadata()->tile_global_order_max_buffer());
-    loaded_metadata.tile_global_order_max_.resize(reader.size(), false);
+    loaded_metadata.tile_global_order_max_.resize(reader.size(), true);
   }
   if (frag_meta_reader.hasTileGlobalOrderMaxVarBuffer()) {
     tile_bounds_from_capnp(
