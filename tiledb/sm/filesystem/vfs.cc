@@ -84,6 +84,9 @@ tdb_unique_ptr<FilesystemBase> make_tiledbfs(
     throw_if_not_ok(new_config.set("vfs.s3.aws_secret_access_key", "unused"));
   }
   throw_if_not_ok(new_config.set("vfs.s3.use_virtual_addressing", "false"));
+  // Unset irrelevant options that might be set for regular S3 VFS.
+  throw_if_not_ok(new_config.set("vfs.s3.aws_role_arn", ""));
+  throw_if_not_ok(new_config.set("vfs.s3.config_source", "auto"));
   return tdb_unique_ptr<FilesystemBase>(
       tdb_new(S3, parent_stats, tp, new_config));
 }
