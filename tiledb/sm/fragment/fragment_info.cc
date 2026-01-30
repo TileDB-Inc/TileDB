@@ -722,6 +722,127 @@ Status FragmentInfo::get_mbr_var(
   return get_mbr_var(fid, mid, did, start, end);
 }
 
+static Status read_global_order_bound_to_user_buffers(
+    const ArraySchema& schema,
+    const auto& fixedPart,
+    const auto& varPart,
+    uint32_t which_tile,
+    size_t* dimension_sizes,
+    void** dimensions) {
+  const auto ds = schema.domain().dimensions();
+  for (uint64_t d = 0; d < ds.size(); d++) {
+    if (ds[d]->var_size()) {
+      if (dimension_sizes == nullptr) {
+        throw FragmentInfoException(
+            "Cannot get MBR global order bound: Variable-length dimension "
+            "requires non-NULL dimension_sizes argument");
+      }
+
+      std::span<const uint64_t> offsets(
+          reinterpret_cast<const uint64_t*>(fixedPart[d].data()),
+          fixedPart[d].size() / sizeof(uint64_t));
+      if (which_tile >= offsets.size()) {
+        throw FragmentInfoException(
+            "Cannot get MBR global order bound: Invalid mbr index");
+      } else if (which_tile + 1 == offsets.size()) {
+        dimension_sizes[d] = varPart[d].size() - offsets[which_tile];
+      } else {
+        dimension_sizes[d] = offsets[which_tile + 1] - offsets[which_tile];
+      }
+
+      if (dimensions[d]) {
+        const void* coord = &varPart[d][offsets[which_tile]];
+        memcpy(dimensions[d], coord, dimension_sizes[d]);
+      }
+    } else {
+      const uint64_t dimFixedSize = ds[d]->cell_size();
+      if (dimFixedSize * which_tile >= fixedPart[d].size()) {
+        throw FragmentInfoException(
+            "Cannot get MBR global order bound: Invalid mbr index");
+      }
+
+      if (dimension_sizes) {
+        dimension_sizes[d] = dimFixedSize;
+      }
+
+      if (dimensions[d]) {
+        const void* coord = &fixedPart[d].data()[which_tile * dimFixedSize];
+        memcpy(dimensions[d], coord, dimFixedSize);
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_global_order_lower_bound(
+    uint32_t fid, uint32_t mid, size_t* dimension_sizes, void** dimensions) {
+  ensure_loaded();
+  if (fid >= fragment_num()) {
+    throw FragmentInfoException(
+        "Cannot get MBR global order bound: Invalid fragment index");
+  }
+
+  if (!single_fragment_info_vec_[fid].sparse()) {
+    throw FragmentInfoException("Cannot get MBR; Fragment is not sparse");
+  }
+
+  auto& meta = single_fragment_info_vec_[fid].meta();
+  meta->loaded_metadata()->load_fragment_tile_global_order_bounds(enc_key_);
+
+  const auto& fixedPart =
+      meta->loaded_metadata()->tile_global_order_min_buffer();
+  if (fixedPart.empty()) {
+    throw FragmentInfoException(
+        "Cannot get MBR global order bound: Unavailable");
+  }
+
+  const auto& varPart =
+      meta->loaded_metadata()->tile_global_order_min_var_buffer();
+
+  return read_global_order_bound_to_user_buffers(
+      *meta->array_schema(),
+      fixedPart,
+      varPart,
+      mid,
+      dimension_sizes,
+      dimensions);
+}
+
+Status FragmentInfo::get_global_order_upper_bound(
+    uint32_t fid, uint32_t mid, size_t* dimension_sizes, void** dimensions) {
+  ensure_loaded();
+  if (fid >= fragment_num()) {
+    throw FragmentInfoException(
+        "Cannot get MBR global order bound: Invalid fragment index");
+  }
+
+  if (!single_fragment_info_vec_[fid].sparse()) {
+    throw FragmentInfoException("Cannot get MBR; Fragment is not sparse");
+  }
+
+  auto& meta = single_fragment_info_vec_[fid].meta();
+  meta->loaded_metadata()->load_fragment_tile_global_order_bounds(enc_key_);
+
+  const auto& fixedPart =
+      meta->loaded_metadata()->tile_global_order_max_buffer();
+  if (fixedPart.empty()) {
+    throw FragmentInfoException(
+        "Cannot get MBR global order bound: Unavailable");
+  }
+
+  const auto& varPart =
+      meta->loaded_metadata()->tile_global_order_max_var_buffer();
+
+  return read_global_order_bound_to_user_buffers(
+      *meta->array_schema(),
+      fixedPart,
+      varPart,
+      mid,
+      dimension_sizes,
+      dimensions);
+}
+
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   ensure_loaded();
   if (version == nullptr) {
@@ -744,20 +865,27 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
     throw FragmentInfoException(
         "Cannot get array schema; Invalid fragment index");
   }
-  URI schema_uri;
-  uint32_t version = single_fragment_info_vec_[fid].format_version();
-  if (version >= 10) {
-    schema_uri =
-        array_uri_.join_path(constants::array_schema_dir_name)
-            .join_path(single_fragment_info_vec_[fid].array_schema_name());
-  } else {
-    schema_uri = array_uri_.join_path(constants::array_schema_filename);
-  }
 
-  EncryptionKey encryption_key;
-  auto tracker = resources_->ephemeral_memory_tracker();
-  return ArrayDirectory::load_array_schema_from_uri(
-      *resources_, schema_uri, encryption_key, tracker);
+  const uint32_t version = single_fragment_info_vec_[fid].format_version();
+  const std::string& schema_name =
+      (version >= 10 ? single_fragment_info_vec_[fid].array_schema_name() :
+                       constants::array_schema_filename);
+
+  auto maybe = array_schemas_all().find(schema_name);
+  if (maybe != array_schemas_all().end()) {
+    return maybe->second;
+  } else {
+    const URI schema_uri = array_uri_.join_path(schema_name);
+    if (schema_uri.is_tiledb()) {
+      throw FragmentInfoException(
+          "Cannot get array schema: unsupported remote array");
+    } else {
+      EncryptionKey encryption_key;
+      auto tracker = resources_->ephemeral_memory_tracker();
+      return ArrayDirectory::load_array_schema_from_uri(
+          *resources_, schema_uri, encryption_key, tracker);
+    }
+  }
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -890,6 +1018,8 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
         if (preload_rtrees & !meta->dense()) {
           meta->loaded_metadata()->load_rtree(enc_key_);
+          meta->loaded_metadata()->load_fragment_tile_global_order_bounds(
+              enc_key_);
         }
 
         return Status::Ok();
