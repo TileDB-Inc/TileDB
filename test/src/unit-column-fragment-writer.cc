@@ -357,7 +357,9 @@ TEST_CASE_METHOD(
       memory_tracker);
 
   writer.open_field("a");
-  REQUIRE_THROWS(writer.write_tile(tile));
+  REQUIRE_THROWS_WITH(
+      writer.write_tile(tile),
+      Catch::Matchers::ContainsSubstring("tile is not filtered"));
 }
 
 TEST_CASE_METHOD(
@@ -408,8 +410,7 @@ TEST_CASE_METHOD(
   EncryptionKey enc_key;
   REQUIRE_THROWS_WITH(
       writer.finalize(enc_key),
-      Catch::Matchers::ContainsSubstring(
-          "Cannot finalize sparse array without MBRs"));
+      Catch::Matchers::ContainsSubstring("Call set_mbrs() first"));
 }
 
 TEST_CASE_METHOD(
@@ -431,16 +432,15 @@ TEST_CASE_METHOD(
     ColumnFragmentWriter writer(
         &get_resources(), array_schema, fragment_uri, non_empty_domain);
 
-    // No need to write tiles - just test that finalize with MBRs throws
-    EncryptionKey enc_key;
+    // No need to write tiles - just test that set_mbrs throws for dense
     std::vector<NDRange> mbrs;
     REQUIRE_THROWS_WITH(
-        writer.finalize(enc_key, mbrs),
+        writer.set_mbrs(std::move(mbrs)),
         Catch::Matchers::ContainsSubstring(
             "Dense arrays should not provide MBRs"));
   }
 
-  SECTION("Sparse array must use finalize with MBRs") {
+  SECTION("Sparse array must call set_mbrs before finalize") {
     create_sparse_array();
 
     auto array_schema = get_array_schema();
@@ -461,8 +461,7 @@ TEST_CASE_METHOD(
     EncryptionKey enc_key;
     REQUIRE_THROWS_WITH(
         writer.finalize(enc_key),
-        Catch::Matchers::ContainsSubstring(
-            "Cannot finalize sparse array without MBRs"));
+        Catch::Matchers::ContainsSubstring("Call set_mbrs() first"));
   }
 }
 
@@ -513,7 +512,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: write and read roundtrip",
+    "ColumnFragmentWriter: write and read roundtrip dense array one tile",
     "[column-fragment-writer]") {
   create_dense_array();
 
@@ -668,6 +667,9 @@ TEST_CASE_METHOD(
     writer.close_field();
   }
 
+  // Set MBRs after processing dimensions (allows freeing intermediate memory)
+  writer.set_mbrs(std::move(mbrs));
+
   // Write attribute "a"
   {
     writer.open_field("a");
@@ -696,8 +698,8 @@ TEST_CASE_METHOD(
     writer.close_field();
   }
 
-  // Finalize sparse fragment with MBRs
-  writer.finalize(enc_key, mbrs);
+  // Finalize sparse fragment
+  writer.finalize(enc_key);
 
   // Read back and verify using standard API
   {
@@ -790,6 +792,11 @@ TEST_CASE_METHOD(
     writer.close_field();
   }
 
+  // Set MBRs after processing dimensions
+  std::vector<NDRange> mbrs(1);
+  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
+  writer.set_mbrs(std::move(mbrs));
+
   // Write var-size attribute
   {
     writer.open_field("a");
@@ -837,9 +844,7 @@ TEST_CASE_METHOD(
     writer.close_field();
   }
 
-  std::vector<NDRange> mbrs(1);
-  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
-  writer.finalize(enc_key, mbrs);
+  writer.finalize(enc_key);
 
   // Read back and verify
   {
@@ -919,6 +924,11 @@ TEST_CASE_METHOD(
     writer.close_field();
   }
 
+  // Set MBRs after processing dimensions
+  std::vector<NDRange> mbrs(1);
+  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
+  writer.set_mbrs(std::move(mbrs));
+
   // Write nullable attribute (values at odd indices are null)
   {
     writer.open_field("a");
@@ -949,9 +959,7 @@ TEST_CASE_METHOD(
     writer.close_field();
   }
 
-  std::vector<NDRange> mbrs(1);
-  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
-  writer.finalize(enc_key, mbrs);
+  writer.finalize(enc_key);
 
   // Read back and verify
   {

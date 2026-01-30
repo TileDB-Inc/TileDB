@@ -62,7 +62,8 @@ ColumnFragmentWriter::ColumnFragmentWriter(
     , dense_(array_schema->dense())
     , current_tile_idx_(0)
     , tile_num_(0)
-    , first_field_closed_(false) {
+    , first_field_closed_(false)
+    , mbrs_set_(false) {
   // For dense arrays, compute tile count from domain.
   // For sparse arrays, use provided tile_count (0 means dynamic growth).
   if (dense_) {
@@ -265,31 +266,7 @@ void ColumnFragmentWriter::close_field() {
   current_tile_idx_ = 0;
 }
 
-/* ********************************* */
-/*       FRAGMENT-LEVEL OPERATIONS   */
-/* ********************************* */
-
-void ColumnFragmentWriter::finalize(const EncryptionKey& encryption_key) {
-  if (!current_field_.empty()) {
-    throw ColumnFragmentWriterException(
-        "Cannot finalize: field '" + current_field_ + "' is still open");
-  }
-
-  if (!dense_) {
-    throw ColumnFragmentWriterException(
-        "Cannot finalize sparse array without MBRs");
-  }
-
-  finalize_internal(encryption_key);
-}
-
-void ColumnFragmentWriter::finalize(
-    const EncryptionKey& encryption_key, const std::vector<NDRange>& mbrs) {
-  if (!current_field_.empty()) {
-    throw ColumnFragmentWriterException(
-        "Cannot finalize: field '" + current_field_ + "' is still open");
-  }
-
+void ColumnFragmentWriter::set_mbrs(std::vector<NDRange>&& mbrs) {
   if (dense_) {
     throw ColumnFragmentWriterException("Dense arrays should not provide MBRs");
   }
@@ -300,8 +277,32 @@ void ColumnFragmentWriter::finalize(
         " MBRs but got " + std::to_string(mbrs.size()));
   }
 
-  for (uint64_t i = 0; i < mbrs.size(); ++i) {
-    frag_meta_->set_mbr(i, mbrs[i]);
+  mbrs_ = std::move(mbrs);
+  mbrs_set_ = true;
+
+  // Set MBRs in fragment metadata immediately so memory can be managed
+  for (uint64_t i = 0; i < mbrs_.size(); ++i) {
+    frag_meta_->set_mbr(i, mbrs_[i]);
+  }
+
+  // Clear local storage since metadata now owns the MBRs
+  mbrs_.clear();
+  mbrs_.shrink_to_fit();
+}
+
+/* ********************************* */
+/*       FRAGMENT-LEVEL OPERATIONS   */
+/* ********************************* */
+
+void ColumnFragmentWriter::finalize(const EncryptionKey& encryption_key) {
+  if (!current_field_.empty()) {
+    throw ColumnFragmentWriterException(
+        "Cannot finalize: field '" + current_field_ + "' is still open");
+  }
+
+  if (!dense_ && !mbrs_set_) {
+    throw ColumnFragmentWriterException(
+        "Cannot finalize sparse array without MBRs. Call set_mbrs() first.");
   }
 
   finalize_internal(encryption_key);

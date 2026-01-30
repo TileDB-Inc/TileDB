@@ -67,7 +67,8 @@ class ColumnFragmentWriterException : public StatusException {
  *      a. Call open_field(name)
  *      b. Call write_tile() for each pre-filtered tile
  *      c. Call close_field()
- *   3. Call finalize(key) for dense or finalize(key, mbrs) for sparse
+ *   3. For sparse arrays, call set_mbrs() after processing dimensions
+ *   4. Call finalize(key)
  */
 class ColumnFragmentWriter {
  public:
@@ -134,29 +135,32 @@ class ColumnFragmentWriter {
    */
   void close_field();
 
+  /**
+   * Sets the MBRs for a sparse fragment. Should be called after processing
+   * dimensions and before finalize(). This allows freeing intermediate MBR
+   * computation memory before processing attributes.
+   *
+   * @param mbrs MBRs for sparse arrays (one per tile). Ownership is
+   * transferred.
+   * @throws ColumnFragmentWriterException if this is a dense array,
+   *         or if MBR count doesn't match tile count.
+   */
+  void set_mbrs(std::vector<NDRange>&& mbrs);
+
   /* ********************************* */
   /*       FRAGMENT-LEVEL OPERATIONS   */
   /* ********************************* */
 
   /**
-   * Finalizes a dense fragment. Stores metadata and creates commit file.
+   * Finalizes the fragment. Stores metadata and creates commit file.
+   *
+   * For sparse arrays, set_mbrs() must be called before finalize().
    *
    * @param encryption_key The encryption key for storing metadata.
    * @throws ColumnFragmentWriterException if a field is still open,
-   *         or if this is a sparse array.
+   *         or if this is a sparse array without MBRs set.
    */
   void finalize(const EncryptionKey& encryption_key);
-
-  /**
-   * Finalizes a sparse fragment. Stores metadata and creates commit file.
-   *
-   * @param encryption_key The encryption key for storing metadata.
-   * @param mbrs MBRs for sparse arrays (one per tile).
-   * @throws ColumnFragmentWriterException if a field is still open,
-   *         if this is a dense array, or if MBR count doesn't match tile count.
-   */
-  void finalize(
-      const EncryptionKey& encryption_key, const std::vector<NDRange>& mbrs);
 
   /* ********************************* */
   /*             ACCESSORS             */
@@ -210,6 +214,12 @@ class ColumnFragmentWriter {
   /** Whether the first field has been closed (for sparse dynamic tile count).
    */
   bool first_field_closed_;
+
+  /** MBRs for sparse arrays (set via set_mbrs()). */
+  std::vector<NDRange> mbrs_;
+
+  /** Whether MBRs have been set. */
+  bool mbrs_set_;
 };
 
 }  // namespace tiledb::sm
