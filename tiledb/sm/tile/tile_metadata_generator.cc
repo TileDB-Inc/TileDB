@@ -539,22 +539,7 @@ void TileMetadataGenerator::process_cell_range(
       }
     }
 
-    if (is_dim_) {
-      /*
-    uint64_t* max_sizes = reinterpret_cast<uint64_t*>(
-        loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
-
-    const uint64_t fixed_offset = tile / sizeof(uint64_t);
-    max_sizes[fixed_offset] =
-        data.var_tile().size() - source_offsets[data.cell_num() - 1];
-    if (data.cell_num() == 1) {
-      min_sizes[fixed_offset] = max_sizes[fixed_offset];
-    } else {
-      min_sizes[fixed_offset] = source_offsets[1] - source_offsets[0];
-    }
-    */
-      throw std::logic_error("TODO");
-    }
+    iassert(!is_dim_);  // dimensions are not nullable
 
     if (has_sum_) {
       Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum_nullable(
