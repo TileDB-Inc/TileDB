@@ -510,7 +510,7 @@ void generic_tile_offsets_to_capnp(
       gt_offsets.tile_global_order_max_offsets_;
   if (!gt_tile_global_order_max_offsets.empty()) {
     auto builder = gt_offsets_builder.initTileGlobalOrderMaxOffsets(
-        gt_tile_max_offsets.size());
+        gt_tile_global_order_max_offsets_.size());
     for (uint64_t i = 0; i < gt_tile_global_order_max_offsets.size(); ++i) {
       builder.set(i, gt_tile_global_order_max_offsets[i]);
     }
