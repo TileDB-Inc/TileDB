@@ -1,5 +1,5 @@
 /**
- * @file unit-sparse-global-order-reader.cc
+ * @file unit-fragment-info-global-order-bounds.cc
  *
  * @section LICENSE
  *
