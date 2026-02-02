@@ -501,7 +501,7 @@ void generic_tile_offsets_to_capnp(
       gt_offsets.tile_global_order_min_offsets_;
   if (!gt_tile_global_order_min_offsets.empty()) {
     auto builder = gt_offsets_builder.initTileGlobalOrderMinOffsets(
-        gt_tile_min_offsets.size());
+        gt_tile_global_order_min_offsets.size());
     for (uint64_t i = 0; i < gt_tile_global_order_min_offsets.size(); ++i) {
       builder.set(i, gt_tile_global_order_min_offsets[i]);
     }
