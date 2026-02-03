@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -355,8 +355,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.consolidation.amplification",
         Config::SM_CONSOLIDATION_AMPLIFICATION),
-    std::make_pair(
-        "sm.consolidation.buffer_size", Config::SM_CONSOLIDATION_BUFFER_SIZE),
     std::make_pair(
         "sm.consolidation.max_fragment_size",
         Config::SM_CONSOLIDATION_MAX_FRAGMENT_SIZE),
@@ -797,8 +795,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
-  } else if (param == "sm.consolidation.buffer_size") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.max_fragment_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.purge_deleted_cells") {

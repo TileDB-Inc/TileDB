@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -254,7 +254,6 @@ void check_save_to_file() {
   ss << "sm.compute_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.consolidation.amplification 1.0\n";
-  ss << "sm.consolidation.buffer_size 50000000\n";
   ss << "sm.consolidation.max_fragment_size " << std::to_string(UINT64_MAX)
      << "\n";
   ss << "sm.consolidation.mode fragments\n";
@@ -686,7 +685,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.purge_deleted_cells"] = "false";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
-  all_param_values["sm.consolidation.buffer_size"] = "50000000";
   all_param_values["sm.consolidation.max_fragment_size"] =
       std::to_string(UINT64_MAX);
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
