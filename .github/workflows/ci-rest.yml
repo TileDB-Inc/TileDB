@@ -22,7 +22,7 @@ jobs:
         with:
           repo: TileDB-Inc/TileDB-Internal
           # Trigger workflow on TileDB-Internal checked out at this ref.
-          ref: "main"
+          ref: "rr/build-tiledb-TILEDB_BUILD"
           workflow: rest-ci.yml
           token: ${{ secrets.TILEDB_REST_CI_PAT }}
           # The references set here will be passed to REST CI to checkout for testing.
