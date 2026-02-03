@@ -151,16 +151,16 @@ void Consolidator::array_consolidate(
     throw ConsolidatorException("Cannot consolidate array; Invalid URI");
   }
 
-  // Check if array exists
-  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
-    throw ConsolidatorException(
-        "Cannot consolidate array; Array does not exist");
-  }
-
   if (array_uri.is_tiledb()) {
-    throw_if_not_ok(
-        resources.rest_client()->post_consolidation_to_rest(array_uri, config));
+    throw_if_not_ok(resources.rest_client()->post_array_consolidation_to_rest(
+        array_uri, config));
   } else {
+    // Check if array exists
+    if (object_type(resources, array_uri) != ObjectType::ARRAY) {
+      throw ConsolidatorException(
+          "Cannot consolidate array; Array does not exist");
+    }
+
     // Get encryption key from config
     std::string_view encryption_key_from_cfg;
     if (!encryption_key) {
@@ -315,7 +315,7 @@ void Consolidator::array_vacuum(
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
-        resources.rest_client()->post_vacuum_to_rest(array_uri, config));
+        resources.rest_client()->post_array_vacuum_to_rest(array_uri, config));
     return;
   }
 
@@ -323,13 +323,6 @@ void Consolidator::array_vacuum(
   auto consolidator =
       Consolidator::create(resources, mode, config, storage_manager);
   consolidator->vacuum(array_name);
-}
-
-void Consolidator::check_array_uri(const char* array_name) {
-  if (URI(array_name).is_tiledb()) {
-    throw ConsolidatorException(
-        "Consolidation is not supported for remote arrays.");
-  }
 }
 
 }  // namespace tiledb::sm

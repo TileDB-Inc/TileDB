@@ -573,19 +573,25 @@ void Group::consolidate_metadata(
   if (group_uri.is_invalid()) {
     throw GroupException("Cannot consolidate group metadata; Invalid URI");
   }
-  // Check if group exists
-  if (object_type(resources, group_uri) != ObjectType::GROUP) {
-    throw GroupException(
-        "Cannot consolidate group metadata; Group does not exist");
-  }
 
-  // Consolidate
-  // Encryption credentials are loaded by Group from config
-  StorageManager sm(resources, resources.logger(), config);
-  auto consolidator = Consolidator::create(
-      resources, ConsolidationMode::GROUP_META, config, &sm);
-  throw_if_not_ok(consolidator->consolidate(
-      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  if (group_uri.is_tiledb()) {
+    throw_if_not_ok(resources.rest_client()->post_group_consolidation_to_rest(
+        group_uri, config));
+  } else {
+    // Check if group exists
+    if (object_type(resources, group_uri) != ObjectType::GROUP) {
+      throw GroupException(
+          "Cannot consolidate group metadata; Group does not exist");
+    }
+
+    // Consolidate
+    // Encryption credentials are loaded by Group from config
+    StorageManager sm(resources, resources.logger(), config);
+    auto consolidator = Consolidator::create(
+        resources, ConsolidationMode::GROUP_META, config, &sm);
+    throw_if_not_ok(consolidator->consolidate(
+        group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  }
 }
 
 void Group::vacuum_metadata(
@@ -594,6 +600,12 @@ void Group::vacuum_metadata(
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
     throw GroupException("Cannot vacuum group metadata; Invalid URI");
+  }
+
+  if (group_uri.is_tiledb()) {
+    throw_if_not_ok(
+        resources.rest_client()->post_group_vacuum_to_rest(group_uri, config));
+    return;
   }
 
   // Check if group exists
