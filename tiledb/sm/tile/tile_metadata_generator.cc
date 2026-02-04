@@ -275,12 +275,17 @@ TileMetadataGenerator::TileMetadataGenerator(
     const bool var_size,
     const uint64_t cell_size,
     const uint64_t cell_val_num)
-    : var_size_(var_size)
+    : is_dim_(is_dim)
+    , var_size_(var_size)
     , type_(type)
     , min_(nullptr)
     , min_size_(0)
     , max_(nullptr)
     , max_size_(0)
+    , global_order_min_(nullptr)
+    , global_order_min_size_(0)
+    , global_order_max_(nullptr)
+    , global_order_max_size_(0)
     , sum_(sizeof(uint64_t))
     , null_count_(0)
     , cell_size_(cell_size)
@@ -375,7 +380,17 @@ void TileMetadataGenerator::process_cell_slab(
 }
 
 void TileMetadataGenerator::set_tile_metadata(WriterTileTuple& tile) {
-  tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
+  tile.set_metadata(
+      min_,
+      min_size_,
+      max_,
+      max_size_,
+      global_order_min_,
+      global_order_min_size_,
+      global_order_max_,
+      global_order_max_size_,
+      sum_,
+      null_count_);
 }
 
 /* ****************************** */
@@ -499,6 +514,13 @@ void TileMetadataGenerator::process_cell_range(
       min_max<T>(fixed_tile, start, end);
     }
 
+    if (is_dim_) {
+      iassert(end > start);
+      global_order_min_ = &tile.fixed_tile().data_as<T>()[start];
+      global_order_max_ = &tile.fixed_tile().data_as<T>()[end - 1];
+      global_order_min_size_ = global_order_max_size_ = sizeof(T);
+    }
+
     if (has_sum_) {
       Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum(
           fixed_tile, start, end, sum_);
@@ -517,6 +539,8 @@ void TileMetadataGenerator::process_cell_range(
       }
     }
 
+    iassert(!is_dim_);  // dimensions are not nullable
+
     if (has_sum_) {
       Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum_nullable(
           fixed_tile, validity_tile, start, end, sum_);
@@ -531,15 +555,29 @@ void TileMetadataGenerator::process_cell_range_var(
   const auto& offset_tile = tile.offset_tile();
   const auto& var_tile = tile.var_tile();
 
-  // Handle empty tile.
-  if (!has_min_max_ || offset_tile.size() == 0) {
-    return;
-  }
-
   // Get pointers to the data and cell num.
   auto offset_value = offset_tile.data_as<offsets_t>() + start;
   auto var_data = var_tile.data_as<char>();
   auto cell_num = tile.cell_num();
+
+  if (is_dim_) {
+    iassert(end > start);
+    global_order_min_ = var_tile.data();
+    global_order_min_size_ =
+        (start == cell_num - 1 ? (var_tile.size() - offset_value[0]) :
+                                 (offset_value[1] - offset_value[0]));
+
+    const uint64_t imax = end - start - 1;
+    global_order_max_ = var_tile.data_u8() + offset_value[imax];
+    global_order_max_size_ =
+        (end == cell_num ? (var_tile.size() - offset_value[imax]) :
+                           (offset_value[imax + 1] - offset_value[imax]));
+  }
+
+  // Handle empty tile.
+  if (!has_min_max_ || offset_tile.size() == 0) {
+    return;
+  }
 
   // Var size attribute, non nullable.
   if (!tile.nullable()) {

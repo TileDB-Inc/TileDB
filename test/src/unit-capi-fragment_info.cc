@@ -30,6 +30,7 @@
  * Tests the C API functions for manipulating fragment information.
  */
 
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -199,11 +200,11 @@ TEST_CASE(
   if (encrypt) {
     encryption_type = tiledb_encryption_type_t::TILEDB_AES_256_GCM;
     key = "12345678901234567890123456789012";
-    expected_fragment_size = 5585;
+    expected_fragment_size = 5589;
   } else {
     encryption_type = tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
     key = "";
-    expected_fragment_size = 3202;
+    expected_fragment_size = 3206;
   }
 
   // Create array
@@ -552,6 +553,22 @@ TEST_CASE(
       ctx, fragment_info, 1, 0, "d", &mbr[0]);
   CHECK(rc == TILEDB_ERR);
 
+  // Get global order lower bound - should fail since it's a dense array
+  {
+    void* dimensions[] = {&mbr[0], &mbr[1]};
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
+  // Get global order upper bound - should fail since it's a dense array
+  {
+    void* dimensions[] = {&mbr[0], &mbr[1]};
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
   // Get version
   uint32_t version;
   rc = tiledb_fragment_info_get_version(ctx, fragment_info, 0, &version);
@@ -702,12 +719,13 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
   if (serialized_load) {
     rc = tiledb_fragment_info_alloc(
         ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
     CHECK(rc == TILEDB_OK);
     tiledb_fragment_info_serialize(
         ctx,
@@ -718,6 +736,8 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
     tiledb_fragment_info_free(&fragment_info);
     fragment_info = deserialized_fragment_info;
   }
+
+  tiledb_config_free(&cfg);
 
   // Get fragment num
   uint32_t fragment_num;
@@ -730,6 +750,7 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr_num == 1);
+
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 1, &mbr_num);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr_num == 2);
@@ -751,6 +772,155 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       ctx, fragment_info, 1, 1, "d1", &mbr[0]);
   CHECK(rc == TILEDB_OK);
   CHECK(mbr == std::vector<uint64_t>{7, 8});
+
+  // Get global order lower bounds
+  {
+    std::vector<uint64_t> lower_bound(2);
+    void* dimensions[] = {&lower_bound[0], &lower_bound[1]};
+
+    // first fragment - one tile
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 1});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 0, 1, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // second fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 1, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 1});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 1, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{7, 7});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 1, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // third fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 2, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 1});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 2, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(lower_bound == std::vector<uint64_t>{1, 8});
+    }
+    rc = tiledb_fragment_info_get_global_order_lower_bound(
+        ctx, fragment_info, 2, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
+  // Get global order upper bounds
+  {
+    std::vector<uint64_t> upper_bound(2);
+    void* dimensions[] = {&upper_bound[0], &upper_bound[1]};
+
+    // first fragment - one tile
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 0, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{2, 2});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 0, 1, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // second fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 1, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{2, 2});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 1, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{8, 8});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 1, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+
+    // third fragment - two tiles
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 2, 0, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{2, 2});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 2, 1, nullptr, &dimensions[0]);
+    CHECK(error_if_any(ctx, rc) == std::nullopt);
+    if (rc == TILEDB_OK) {
+      CHECK(upper_bound == std::vector<uint64_t>{7, 7});
+    }
+    rc = tiledb_fragment_info_get_global_order_upper_bound(
+        ctx, fragment_info, 2, 2, nullptr, &dimensions[0]);
+    CHECK(rc == TILEDB_ERR);
+  }
+
+  // Error checks for global order bounds
+  {
+    std::vector<uint64_t> upper_bound(2);
+    void* dimensions[] = {&upper_bound[0], &upper_bound[1]};
+    // Fragment out of bounds global order lower bound
+    {
+      rc = tiledb_fragment_info_get_global_order_lower_bound(
+          ctx, fragment_info, 3, 0, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid fragment "
+          "index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+
+    // Fragment out of bounds global order upper bound
+    {
+      rc = tiledb_fragment_info_get_global_order_upper_bound(
+          ctx, fragment_info, 3, 0, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid fragment "
+          "index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+
+    // Tile out of bounds global order lower bound
+    {
+      rc = tiledb_fragment_info_get_global_order_lower_bound(
+          ctx, fragment_info, 0, 2, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid mbr index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+
+    // Tile out of bounds global order upper bound
+    {
+      rc = tiledb_fragment_info_get_global_order_upper_bound(
+          ctx, fragment_info, 0, 2, nullptr, &dimensions[0]);
+      const auto maybe_err = tiledb::test::error_if_any(ctx, rc);
+      const std::string expect_err(
+          "FragmentInfo: Cannot get MBR global order bound: Invalid mbr index");
+      CHECK(maybe_err == std::optional<std::string>{expect_err});
+    }
+  }
 
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
@@ -1545,19 +1715,19 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 6]\n" + "  > Size: 3202\n" +
+      "  > Non-empty domain: [1, 6]\n" + "  > Size: 3206\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 1]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" +
       "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3151\n" +
+      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3155\n" +
       "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
       "  > URI: " + written_frag_uri_3 + "\n" +
       "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3202\n" +
+      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3206\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
@@ -1739,7 +1909,7 @@ TEST_CASE(
       written_frag_uri_2 + "\n  > " + written_frag_uri_3 + "\n" +
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" +
       "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 6]\n" + "  > Size: 3208\n" +
+      "  > Non-empty domain: [1, 6]\n" + "  > Size: 3212\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
@@ -1852,7 +2022,7 @@ TEST_CASE(
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Schema name: " + schema_name + "\n" + "  > Type: sparse\n" +
-      "  > Non-empty domain: [a, ddd]\n" + "  > Size: 3439\n" +
+      "  > Non-empty domain: [a, ddd]\n" + "  > Size: 3690\n" +
       "  > Cell num: 4\n" + "  > Timestamp range: [1, 1]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";

@@ -149,6 +149,22 @@ class WriterTileTuple {
   }
 
   /**
+   * @return if this is a dimension tile, the value of this dimension for the
+   * global order minimum coordinate
+   */
+  inline const std::optional<ByteVec>& global_order_min() const {
+    return global_order_min_;
+  }
+
+  /**
+   * @return if this is a dimension tile, the value of this dimension for the
+   * global order maximum coordinate
+   */
+  inline const std::optional<ByteVec>& global_order_max() const {
+    return global_order_max_;
+  }
+
+  /**
    * Returns the tile null count.
    *
    * @return tile null count.
@@ -173,6 +189,12 @@ class WriterTileTuple {
    * @param min_size Minimum size.
    * @param max Maximum.
    * @param max_size Maxmum size.
+   * @param global_order_min The value of this dimension for the tile's global
+   * order minimum coordinate
+   * @param global_order_min_size The size of the above
+   * @param global_order_max The value of this dimension for the tile's global
+   * order maximum coordinate
+   * @param global_order_max_size The size of the above
    * @param sum Sum.
    * @param null_count Null count.
    */
@@ -181,6 +203,10 @@ class WriterTileTuple {
       const uint64_t min_size,
       const void* max,
       const uint64_t max_size,
+      const void* global_order_min,
+      const uint64_t global_order_min_size,
+      const void* global_order_max,
+      const uint64_t global_order_max_size,
       const ByteVec& sum,
       const uint64_t null_count);
 
@@ -255,6 +281,14 @@ class WriterTileTuple {
 
   /** Maximum value size for this tile. */
   uint64_t max_size_;
+
+  /** Value of this dimension in the global order minimum coordinate of this
+   * tile */
+  std::optional<ByteVec> global_order_min_;
+
+  /** Value of this dimension in the global order maximum coordinate of this
+   * tile */
+  std::optional<ByteVec> global_order_max_;
 
   /** Sum of values. */
   ByteVec sum_;

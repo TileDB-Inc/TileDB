@@ -232,7 +232,7 @@ jobs:
           # Run rapidcheck tests as their own process so we can see the random seed for each
           ./test/tiledb_unit --list-tests "[rapidcheck]" --verbosity quiet | while IFS= read -r testname; do
             echo "START $testname"
-            ./test/tiledb_unit "$testname"
+            ./test/tiledb_unit -d yes "$testname"
             echo "END $testname"
           done
 

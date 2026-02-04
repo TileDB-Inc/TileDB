@@ -158,6 +158,17 @@ struct Dimension {
   }
 };
 
+template <>
+struct Dimension<tiledb::sm::Datatype::STRING_ASCII> {
+  using value_type = StringDimensionCoordType;
+
+  static constexpr tiledb::sm::Datatype DATATYPE =
+      tiledb::sm::Datatype::STRING_ASCII;
+
+  Dimension() {
+  }
+};
+
 template <tiledb::sm::Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
 struct static_attribute {};
 

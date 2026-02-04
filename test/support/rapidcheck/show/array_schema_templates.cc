@@ -51,6 +51,12 @@ void show<tiledb::test::templates::Domain<int>>(
 }
 
 template <>
+void show<tiledb::test::templates::Domain<int64_t>>(
+    const templates::Domain<int64_t>& domain, std::ostream& os) {
+  showImpl(domain, os);
+}
+
+template <>
 void show<tiledb::test::templates::Domain<uint64_t>>(
     const tiledb::test::templates::Domain<uint64_t>& domain, std::ostream& os) {
   showImpl(domain, os);
