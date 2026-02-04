@@ -98,13 +98,6 @@
 #include <memory>
 #include <sstream>
 
-/*
- * The Definition for a "C" function can't be in a header.
- */
-capi_status_t tiledb_status_code(capi_return_t x) {
-  return tiledb_status(x);  // An inline C++ function
-}
-
 /* ****************************** */
 /*  IMPLEMENTATION FUNCTIONS      */
 /* ****************************** */
@@ -121,6 +114,13 @@ capi_status_t tiledb_status_code(capi_return_t x) {
  * the wrapped function.
  */
 namespace tiledb::api {
+
+/*
+ * The Definition for a "C" function can't be in a header.
+ */
+capi_status_t tiledb_status_code(capi_return_t x) {
+  return tiledb_status(x);  // An inline C++ function
+}
 
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
@@ -2446,65 +2446,9 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) {
   return TILEDB_OK;
 }
 
-}  // namespace tiledb::api
-
-/* ****************************** */
-/*  C API Interface Functions     */
-/* ****************************** */
-/*
- * Each C API interface function below forwards its arguments to a transformed
- * implementation function of the same name defined in the `tiledb::api`
- * namespace above.
- *
- * Note: `std::forward` is not used here because it's not necessary. The C API
- * uses C linkage, and none of the types used in the signatures of the C API
- * function change with `std::forward`.
- */
-
-using tiledb::api::api_entry_context;
-using tiledb::api::api_entry_plain;
-using tiledb::api::api_entry_void;
-template <auto f>
-constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
-
-/* ****************************** */
-/*       ENUMS TO/FROM STR        */
-/* ****************************** */
-
-CAPI_INTERFACE(
-    query_status_to_str, tiledb_query_status_t query_status, const char** str) {
-  return api_entry_plain<tiledb::api::tiledb_query_status_to_str>(
-      query_status, str);
-}
-
-CAPI_INTERFACE(
-    query_status_from_str,
-    const char* str,
-    tiledb_query_status_t* query_status) {
-  return api_entry_plain<tiledb::api::tiledb_query_status_from_str>(
-      str, query_status);
-}
-
-CAPI_INTERFACE(
-    serialization_type_to_str,
-    tiledb_serialization_type_t serialization_type,
-    const char** str) {
-  return api_entry_plain<tiledb::api::tiledb_serialization_type_to_str>(
-      serialization_type, str);
-}
-
-CAPI_INTERFACE(
-    serialization_type_from_str,
-    const char* str,
-    tiledb_serialization_type_t* serialization_type) {
-  return api_entry_plain<tiledb::api::tiledb_serialization_type_from_str>(
-      str, serialization_type);
-}
-
-/* ****************************** */
-/*            CONSTANTS           */
-/* ****************************** */
-
+/* ***************************** */
+/*         CONSTANTS APIs        */
+/* ***************************** */
 uint32_t tiledb_var_num() noexcept {
   return tiledb::sm::constants::var_num;
 }
@@ -2543,6 +2487,95 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
+}
+
+}  // namespace tiledb::api
+
+/* ****************************** */
+/*  C API Interface Functions     */
+/* ****************************** */
+/*
+ * Each C API interface function below forwards its arguments to a transformed
+ * implementation function of the same name defined in the `tiledb::api`
+ * namespace above.
+ *
+ * Note: `std::forward` is not used here because it's not necessary. The C API
+ * uses C linkage, and none of the types used in the signatures of the C API
+ * function change with `std::forward`.
+ */
+
+using tiledb::api::api_entry_context;
+using tiledb::api::api_entry_plain;
+using tiledb::api::api_entry_void;
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
+
+CAPI_INTERFACE_VALUE(capi_status_t, tiledb_status_code, capi_return_t x) {
+  return api_entry_plain<tiledb::api::tiledb_status_code>(x);
+}
+
+/* ****************************** */
+/*       ENUMS TO/FROM STR        */
+/* ****************************** */
+
+CAPI_INTERFACE(
+    query_status_to_str, tiledb_query_status_t query_status, const char** str) {
+  return api_entry_plain<tiledb::api::tiledb_query_status_to_str>(
+      query_status, str);
+}
+
+CAPI_INTERFACE(
+    query_status_from_str,
+    const char* str,
+    tiledb_query_status_t* query_status) {
+  return api_entry_plain<tiledb::api::tiledb_query_status_from_str>(
+      str, query_status);
+}
+
+CAPI_INTERFACE(
+    serialization_type_to_str,
+    tiledb_serialization_type_t serialization_type,
+    const char** str) {
+  return api_entry_plain<tiledb::api::tiledb_serialization_type_to_str>(
+      serialization_type, str);
+}
+
+CAPI_INTERFACE(
+    serialization_type_from_str,
+    const char* str,
+    tiledb_serialization_type_t* serialization_type) {
+  return api_entry_plain<tiledb::api::tiledb_serialization_type_from_str>(
+      str, serialization_type);
+}
+
+/* ****************************** */
+/*            CONSTANTS           */
+/* ****************************** */
+CAPI_INTERFACE_VALUE(uint32_t, var_num) {
+  return api_entry_plain<tiledb::api::tiledb_var_num>();
+}
+
+CAPI_INTERFACE_VALUE(uint32_t, max_path) {
+  return api_entry_plain<tiledb::api::tiledb_max_path>();
+}
+
+CAPI_INTERFACE_VALUE(uint64_t, offset_size) {
+  return api_entry_plain<tiledb::api::tiledb_offset_size>();
+}
+
+CAPI_INTERFACE_VALUE(uint64_t, timestamp_now_ms) {
+  return api_entry_plain<tiledb::api::tiledb_timestamp_now_ms>();
+}
+
+CAPI_INTERFACE_VALUE(const char*, timestamps) {
+  return api_entry_plain<tiledb::api::tiledb_timestamps>();
+}
+
+/* ****************************** */
+/*            VERSION             */
+/* ****************************** */
+CAPI_INTERFACE_VOID(version, int32_t* major, int32_t* minor, int32_t* rev) {
+  return api_entry_plain<tiledb::api::tiledb_version>(major, minor, rev);
 }
 
 /* ********************************* */

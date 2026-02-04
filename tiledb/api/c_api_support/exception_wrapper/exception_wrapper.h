@@ -642,38 +642,52 @@ class CAPIFunction<f, H, A> {
       }
     } catch (const std::bad_alloc& e) {
       h.action(e);
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_OOM;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     } catch (const detail::InvalidContextException& e) {
       h.action(e);
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_INVALID_CONTEXT;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     } catch (const BudgetUnavailable& e) {
       h.action(e);
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_BUDGET_UNAVAILABLE;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     } catch (const detail::InvalidErrorException& e) {
       h.action(e);
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_INVALID_ERROR;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     } catch (const StatusException& e) {
       h.action(e);
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_ERR;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     } catch (const std::exception& e) {
       h.action(e);
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_ERR;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     } catch (...) {
       h.action(CAPIException("unknown exception type; no further information"));
-      if constexpr (!std::same_as<R, void>) {
+      if constexpr (std::same_as<R, capi_return_t>) {
         return TILEDB_ERR;
+      } else if constexpr (!std::same_as<R, void>) {
+        throw;
       }
     }
   };
@@ -684,7 +698,7 @@ class CAPIFunction<f, H, A> {
    * @param args Arguments to an API implementation function
    * @return The return value of the call to the implementation function.
    */
-  inline static capi_return_t function_plain(Args... args) {
+  inline static auto function_plain(Args... args) {
     ExceptionAction action{};
     return function(action, args...);
   }
@@ -708,8 +722,7 @@ class CAPIFunction<f, H, A> {
    * @param args Arguments forwarded from API function
    * @return The return value of the call to the implementation function.
    */
-  inline static capi_return_t function_context(
-      tiledb_ctx_handle_t* ctx, Args... args) {
+  inline static auto function_context(tiledb_ctx_handle_t* ctx, Args... args) {
     tiledb::api::ExceptionActionCtx action{ctx};
     return CAPIFunction<f, ExceptionActionCtx>::function(action, args...);
   }
@@ -722,7 +735,7 @@ class CAPIFunction<f, H, A> {
    * @param args Arguments forwarded from API function
    * @return The return value of the call to the implementation function.
    */
-  inline static capi_return_t function_error(
+  inline static auto function_error(
       tiledb_error_handle_t** error, Args... args) {
     ExceptionActionErr action{error};
     return function(action, args...);
@@ -786,9 +799,9 @@ struct CAPIFunctionContext;
  * @tparam Args Arguments of the implementation following the initial context
  * @tparam f An API implementation function
  */
-template <class... Args, capi_return_t (*f)(tiledb_ctx_handle_t*, Args...)>
+template <class R, class... Args, R (*f)(tiledb_ctx_handle_t*, Args...)>
 struct CAPIFunctionContext<f> : CAPIFunction<f, ExceptionActionCtx> {
-  inline static capi_return_t function_with_context(
+  inline static R function_with_context(
       tiledb_ctx_handle_t* ctx, Args... args) {
     tiledb::api::ExceptionActionCtx action{ctx};
     return CAPIFunction<f, ExceptionActionCtx>::function(action, ctx, args...);

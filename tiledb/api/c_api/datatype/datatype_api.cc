@@ -66,6 +66,6 @@ CAPI_INTERFACE(
   return api_entry_plain<tiledb::api::tiledb_datatype_from_str>(str, datatype);
 }
 
-uint64_t tiledb_datatype_size(tiledb_datatype_t type) noexcept {
-  return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
+CAPI_INTERFACE_VALUE(uint64_t, datatype_size, tiledb_datatype_t type) {
+  return api_entry_plain<tiledb::api::tiledb_datatype_size>(type);
 }

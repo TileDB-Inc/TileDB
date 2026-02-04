@@ -63,6 +63,14 @@ void tiledb_##root(__VA_ARGS__) noexcept
 CAPI_PREFIX(root)                 \
 capi_return_t tiledb_##root(void) noexcept
 
+/*
+ * A variant of CAPI_INTERFACE for the handful of functions which return
+ * something other than `capi_return_t`.
+ */
+#define CAPI_INTERFACE_VALUE(R, root, ...) \
+CAPI_PREFIX(root) \
+R tiledb_##root(__VA_ARGS__) noexcept
+
 /* clang-format on */
 
 #endif  // TILEDB_CAPI_DEFINITION_H
