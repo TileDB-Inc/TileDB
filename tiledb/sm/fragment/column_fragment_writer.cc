@@ -197,10 +197,27 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
       var_min_values_.push_back(tile.min());
       var_max_values_.push_back(tile.max());
     }
+
+    // For var-size sparse dimensions, set global order bounds sizes and store
+    // values.
+    if (!dense_ && is_dim) {
+      frag_meta_->set_tile_global_order_bounds_fixed(
+          name, current_tile_idx_, tile);
+      global_order_min_values_.push_back(
+          tile.global_order_min().value_or(ByteVec{}));
+      global_order_max_values_.push_back(
+          tile.global_order_max().value_or(ByteVec{}));
+    }
   } else {
     if (has_min_max_md && null_count != cell_num && !tile.min().empty()) {
       frag_meta_->set_tile_min(name, current_tile_idx_, tile.min());
       frag_meta_->set_tile_max(name, current_tile_idx_, tile.max());
+    }
+
+    // For fixed-size sparse dimensions, set global order bounds.
+    if (!dense_ && is_dim) {
+      frag_meta_->set_tile_global_order_bounds_fixed(
+          name, current_tile_idx_, tile);
     }
 
     if (has_sum_md) {
@@ -256,6 +273,19 @@ void ColumnFragmentWriter::close_field() {
       }
       var_min_values_.clear();
       var_max_values_.clear();
+    }
+
+    // For var-size dimensions, convert global order bounds sizes to offsets
+    // and write the var data.
+    if (is_dim) {
+      frag_meta_->convert_tile_global_order_bounds_sizes_to_offsets(name);
+
+      for (uint64_t i = 0; i < global_order_min_values_.size(); i++) {
+        frag_meta_->set_tile_global_order_bounds_var(
+            name, i, global_order_min_values_[i], global_order_max_values_[i]);
+      }
+      global_order_min_values_.clear();
+      global_order_max_values_.clear();
     }
   }
 

@@ -630,6 +630,16 @@ class FragmentMetadata {
       const std::string& dim_name, uint64_t tile, const WriterTileTuple& data);
 
   /**
+   * Populate var parts of bounds for a dimension and tile using the provided
+   * min/max values directly.
+   */
+  void set_tile_global_order_bounds_var(
+      const std::string& dim_name,
+      uint64_t tile,
+      const ByteVec& min,
+      const ByteVec& max);
+
+  /**
    * Converts global order min/max sizes to offsets.
    */
   void convert_tile_global_order_bounds_sizes_to_offsets(
