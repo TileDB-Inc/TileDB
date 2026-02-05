@@ -1279,6 +1279,45 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 }
 
+void FragmentMetadata::reserve_num_tiles(uint64_t num_tiles) {
+  for (auto& it : idx_map_) {
+    auto i = it.second;
+
+    const auto is_dim = array_schema_->is_dim(it.first);
+    const auto var_size = array_schema_->var_size(it.first);
+    const auto cell_size = var_size ? constants::cell_var_offset_size :
+                                      array_schema_->cell_size(it.first);
+
+    loaded_metadata_ptr_->tile_offsets()[i].reserve(num_tiles);
+    loaded_metadata_ptr_->tile_var_offsets()[i].reserve(num_tiles);
+    loaded_metadata_ptr_->tile_var_sizes()[i].reserve(num_tiles);
+    loaded_metadata_ptr_->tile_validity_offsets()[i].reserve(num_tiles);
+
+    if (!array_schema_->dense() || !is_dim) {
+      const auto type = array_schema_->type(it.first);
+      const auto cell_val_num = array_schema_->cell_val_num(it.first);
+
+      if (TileMetadataGenerator::has_min_max_metadata(
+              type, is_dim, var_size, cell_val_num)) {
+        loaded_metadata_ptr_->tile_min_buffer()[i].reserve(
+            num_tiles * cell_size);
+        loaded_metadata_ptr_->tile_max_buffer()[i].reserve(
+            num_tiles * cell_size);
+      }
+
+      if (TileMetadataGenerator::has_sum_metadata(
+              type, var_size, cell_val_num)) {
+        if (!var_size)
+          loaded_metadata_ptr_->tile_sums()[i].reserve(
+              num_tiles * sizeof(uint64_t));
+      }
+
+      if (array_schema_->is_nullable(it.first))
+        loaded_metadata_ptr_->tile_null_counts()[i].reserve(num_tiles);
+    }
+  }
+}
+
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
 }

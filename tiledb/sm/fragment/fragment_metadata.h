@@ -468,6 +468,15 @@ class FragmentMetadata {
   void set_num_tiles(uint64_t num_tiles);
 
   /**
+   * Reserves capacity in the per-tile metadata vectors.
+   * This avoids reallocations when tiles are added incrementally via
+   * set_num_tiles.
+   *
+   * @param num_tiles Number of tiles to reserve capacity for.
+   */
+  void reserve_num_tiles(uint64_t num_tiles);
+
+  /**
    * Sets the tile "index base" which is added to the tile index in the set_*()
    * functions. Only used during global order writes/appends.
    *
