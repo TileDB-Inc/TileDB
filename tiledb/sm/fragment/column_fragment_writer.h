@@ -89,8 +89,10 @@ class ColumnFragmentWriter {
    * @param array_schema The schema of the array the fragment belongs to.
    * @param fragment_uri The fragment URI (must contain valid timestamps).
    * @param non_empty_domain The non-empty domain for this fragment.
-   * @param tile_count Number of tiles for sparse arrays. If 0, tile count is
-   *        determined dynamically by the first field written (for streaming).
+   * @param tile_count Capacity hint for sparse arrays (upper bound on tile
+   *        count). Reserves metadata capacity to avoid reallocations. The
+   *        actual tile count is determined dynamically by the first field
+   *        written. If 0, no capacity is reserved.
    *        Ignored for dense arrays (computed from domain).
    */
   ColumnFragmentWriter(

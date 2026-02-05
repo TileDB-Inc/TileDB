@@ -65,11 +65,10 @@ ColumnFragmentWriter::ColumnFragmentWriter(
     , first_field_closed_(false)
     , mbrs_set_(false) {
   // For dense arrays, compute tile count from domain.
-  // For sparse arrays, use provided tile_count (0 means dynamic growth).
+  // For sparse arrays, tile_count is a capacity hint (upper bound).
+  // The actual count is determined dynamically by the first field written.
   if (dense_) {
     tile_num_ = array_schema->domain().tile_num(non_empty_domain);
-  } else {
-    tile_num_ = tile_count;
   }
 
   // Create fragment directory structure
@@ -97,9 +96,12 @@ ColumnFragmentWriter::ColumnFragmentWriter(
   // Initialize metadata with domain
   frag_meta_->init(non_empty_domain);
 
-  // For dense or sparse with known tile count, pre-allocate metadata
-  if (tile_num_ > 0) {
+  if (dense_) {
     frag_meta_->set_num_tiles(tile_num_);
+  } else if (tile_count > 0) {
+    // Reserve capacity for the upper bound; actual count determined
+    // dynamically.
+    frag_meta_->reserve_num_tiles(tile_count);
   }
 }
 
