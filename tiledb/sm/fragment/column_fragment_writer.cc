@@ -277,17 +277,12 @@ void ColumnFragmentWriter::set_mbrs(std::vector<NDRange>&& mbrs) {
         " MBRs but got " + std::to_string(mbrs.size()));
   }
 
-  mbrs_ = std::move(mbrs);
   mbrs_set_ = true;
 
-  // Set MBRs in fragment metadata immediately so memory can be managed
-  for (uint64_t i = 0; i < mbrs_.size(); ++i) {
-    frag_meta_->set_mbr(i, mbrs_[i]);
+  // Set MBRs in fragment metadata immediately so caller can free memory
+  for (uint64_t i = 0; i < mbrs.size(); ++i) {
+    frag_meta_->set_mbr(i, mbrs[i]);
   }
-
-  // Clear local storage since metadata now owns the MBRs
-  mbrs_.clear();
-  mbrs_.shrink_to_fit();
 }
 
 /* ********************************* */

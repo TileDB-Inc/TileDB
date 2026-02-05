@@ -215,9 +215,6 @@ class ColumnFragmentWriter {
    */
   bool first_field_closed_;
 
-  /** MBRs for sparse arrays (set via set_mbrs()). */
-  std::vector<NDRange> mbrs_;
-
   /** Whether MBRs have been set. */
   bool mbrs_set_;
 };

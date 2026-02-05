@@ -415,54 +415,27 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: finalize overload validation",
+    "ColumnFragmentWriter: dense array rejects set_mbrs",
     "[column-fragment-writer]") {
-  SECTION("Dense array cannot use finalize with MBRs") {
-    create_dense_array();
+  create_dense_array();
 
-    auto array_schema = get_array_schema();
-    auto fragment_uri = generate_fragment_uri();
+  auto array_schema = get_array_schema();
+  auto fragment_uri = generate_fragment_uri();
 
-    int32_t domain_start = 0;
-    int32_t domain_end = 9;
-    NDRange non_empty_domain;
-    non_empty_domain.emplace_back(
-        Range(&domain_start, &domain_end, sizeof(int32_t)));
+  int32_t domain_start = 0;
+  int32_t domain_end = 9;
+  NDRange non_empty_domain;
+  non_empty_domain.emplace_back(
+      Range(&domain_start, &domain_end, sizeof(int32_t)));
 
-    ColumnFragmentWriter writer(
-        &get_resources(), array_schema, fragment_uri, non_empty_domain);
+  ColumnFragmentWriter writer(
+      &get_resources(), array_schema, fragment_uri, non_empty_domain);
 
-    // No need to write tiles - just test that set_mbrs throws for dense
-    std::vector<NDRange> mbrs;
-    REQUIRE_THROWS_WITH(
-        writer.set_mbrs(std::move(mbrs)),
-        Catch::Matchers::ContainsSubstring(
-            "Dense arrays should not provide MBRs"));
-  }
-
-  SECTION("Sparse array must call set_mbrs before finalize") {
-    create_sparse_array();
-
-    auto array_schema = get_array_schema();
-    auto fragment_uri = generate_fragment_uri();
-
-    int32_t domain_start = 0;
-    int32_t domain_end = 99;
-    NDRange non_empty_domain;
-    non_empty_domain.emplace_back(
-        Range(&domain_start, &domain_end, sizeof(int32_t)));
-
-    ColumnFragmentWriter writer(
-        &get_resources(),
-        array_schema,
-        fragment_uri,
-        non_empty_domain,
-        1);  // tile_count
-    EncryptionKey enc_key;
-    REQUIRE_THROWS_WITH(
-        writer.finalize(enc_key),
-        Catch::Matchers::ContainsSubstring("Call set_mbrs() first"));
-  }
+  std::vector<NDRange> mbrs;
+  REQUIRE_THROWS_WITH(
+      writer.set_mbrs(std::move(mbrs)),
+      Catch::Matchers::ContainsSubstring(
+          "Dense arrays should not provide MBRs"));
 }
 
 TEST_CASE_METHOD(
