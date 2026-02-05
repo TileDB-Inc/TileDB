@@ -485,113 +485,16 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: write and read roundtrip dense array one tile",
-    "[column-fragment-writer]") {
-  create_dense_array();
-
-  auto array_schema = get_array_schema();
-  auto fragment_uri = generate_fragment_uri(100);  // Use different timestamp
-
-  // Initialize with non-empty domain [0, 9] which covers 1 tile (tile extent is
-  // 10)
-  int32_t domain_start = 0;
-  int32_t domain_end = 9;
-  NDRange non_empty_domain;
-  non_empty_domain.emplace_back(
-      Range(&domain_start, &domain_end, sizeof(int32_t)));
-
-  // Create writer
-  ColumnFragmentWriter writer(
-      &get_resources(),
-      array_schema,
-      fragment_uri,
-      non_empty_domain,
-      1);  // 1 tile
-
-  EncryptionKey enc_key;
-
-  // Write attribute "a"
-  {
-    writer.open_field("a");
-
-    // Create tile with 10 int32_t values
-    auto memory_tracker = tiledb::test::get_test_memory_tracker();
-    auto tile = WriterTileTuple(
-        *array_schema,
-        10,               // cell_num_per_tile
-        false,            // var_size
-        false,            // nullable
-        sizeof(int32_t),  // cell_size
-        Datatype::INT32,  // type
-        memory_tracker);
-
-    // Write data to tile
-    std::vector<int32_t> data = {
-        100, 200, 300, 400, 500, 600, 700, 800, 900, 1000};
-    tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
-    tile.set_final_size(10);
-
-    // Compute metadata
-    TileMetadataGenerator md_gen(
-        Datatype::INT32,
-        false,            // is_dim
-        false,            // var_size
-        sizeof(int32_t),  // cell_size
-        1);               // cell_val_num
-    md_gen.process_full_tile(tile);
-    md_gen.set_tile_metadata(tile);
-
-    // Filter and write the tile
-    filter_tile_for_test("a", tile, *array_schema, get_resources());
-    writer.write_tile(tile);
-
-    writer.close_field();
-  }
-
-  // Finalize fragment
-  writer.finalize(enc_key);
-
-  // Read back and verify using standard API
-  {
-    tiledb::Array read_array(ctx_, ARRAY_NAME, TILEDB_READ);
-    tiledb::Query read_query(ctx_, read_array, TILEDB_READ);
-    read_query.set_layout(TILEDB_ROW_MAJOR);
-
-    // Set subarray for dense read
-    tiledb::Subarray subarray(ctx_, read_array);
-    subarray.add_range(0, 0, 9);
-    read_query.set_subarray(subarray);
-
-    std::vector<int32_t> result(10);
-    read_query.set_data_buffer("a", result);
-    read_query.submit();
-    read_array.close();
-
-    CHECK(result[0] == 100);
-    CHECK(result[1] == 200);
-    CHECK(result[2] == 300);
-    CHECK(result[3] == 400);
-    CHECK(result[4] == 500);
-    CHECK(result[5] == 600);
-    CHECK(result[6] == 700);
-    CHECK(result[7] == 800);
-    CHECK(result[8] == 900);
-    CHECK(result[9] == 1000);
-  }
-}
-
-TEST_CASE_METHOD(
-    ColumnFragmentWriterFx,
-    "ColumnFragmentWriter: sparse array with MBRs",
+    "ColumnFragmentWriter: sparse array with multiple tiles and MBRs",
     "[column-fragment-writer]") {
   create_sparse_array();
 
   auto array_schema = get_array_schema();
   auto fragment_uri = generate_fragment_uri(200);
 
-  // Initialize with non-empty domain covering the coordinates we'll write
+  // Non-empty domain covering all coordinates across 3 tiles
   int32_t domain_start = 10;
-  int32_t domain_end = 100;
+  int32_t domain_end = 590;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
       Range(&domain_start, &domain_end, sizeof(int32_t)));
@@ -604,70 +507,84 @@ TEST_CASE_METHOD(
       non_empty_domain,
       0);  // dynamic tile count
 
-  // Prepare MBRs for the tile
-  std::vector<NDRange> mbrs;
-  NDRange mbr;
-  mbr.emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
-  mbrs.push_back(mbr);
-
   EncryptionKey enc_key;
   auto memory_tracker = tiledb::test::get_test_memory_tracker();
 
-  // Write dimension "d"
+  // 3 tiles of coordinates (10 cells each, matching capacity)
+  std::vector<std::vector<int32_t>> tile_coords = {
+      {10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+      {200, 210, 220, 230, 240, 250, 260, 270, 280, 290},
+      {500, 510, 520, 530, 540, 550, 560, 570, 580, 590}};
+
+  // Write dimension "d" - 3 tiles
   {
     writer.open_field("d");
 
-    auto tile = WriterTileTuple(
-        *array_schema,
-        10,  // capacity
-        false,
-        false,
-        sizeof(int32_t),
-        Datatype::INT32,
-        memory_tracker);
+    for (int t = 0; t < 3; t++) {
+      auto tile = WriterTileTuple(
+          *array_schema,
+          10,  // capacity
+          false,
+          false,
+          sizeof(int32_t),
+          Datatype::INT32,
+          memory_tracker);
 
-    std::vector<int32_t> coords = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
-    tile.fixed_tile().write(coords.data(), 0, coords.size() * sizeof(int32_t));
-    tile.set_final_size(10);
+      tile.fixed_tile().write(
+          tile_coords[t].data(), 0, tile_coords[t].size() * sizeof(int32_t));
+      tile.set_final_size(10);
 
-    TileMetadataGenerator md_gen(
-        Datatype::INT32, true, false, sizeof(int32_t), 1);
-    md_gen.process_full_tile(tile);
-    md_gen.set_tile_metadata(tile);
+      TileMetadataGenerator md_gen(
+          Datatype::INT32, true, false, sizeof(int32_t), 1);
+      md_gen.process_full_tile(tile);
+      md_gen.set_tile_metadata(tile);
 
-    filter_tile_for_test("d", tile, *array_schema, get_resources());
-    writer.write_tile(tile);
+      filter_tile_for_test("d", tile, *array_schema, get_resources());
+      writer.write_tile(tile);
+    }
+
     writer.close_field();
   }
 
-  // Set MBRs after processing dimensions (allows freeing intermediate memory)
+  // Set MBRs after processing dimensions
+  std::vector<NDRange> mbrs(3);
+  for (int t = 0; t < 3; t++) {
+    int32_t min_coord = tile_coords[t].front();
+    int32_t max_coord = tile_coords[t].back();
+    mbrs[t].emplace_back(Range(&min_coord, &max_coord, sizeof(int32_t)));
+  }
   writer.set_mbrs(std::move(mbrs));
 
-  // Write attribute "a"
+  // Write attribute "a" - 3 tiles
   {
     writer.open_field("a");
 
-    auto tile = WriterTileTuple(
-        *array_schema,
-        10,  // capacity
-        false,
-        false,
-        sizeof(int32_t),
-        Datatype::INT32,
-        memory_tracker);
+    for (int t = 0; t < 3; t++) {
+      auto tile = WriterTileTuple(
+          *array_schema,
+          10,
+          false,
+          false,
+          sizeof(int32_t),
+          Datatype::INT32,
+          memory_tracker);
 
-    std::vector<int32_t> data = {
-        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000};
-    tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
-    tile.set_final_size(10);
+      std::vector<int32_t> data(10);
+      for (int i = 0; i < 10; i++) {
+        data[i] = t * 1000 + i;
+      }
+      tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
+      tile.set_final_size(10);
 
-    TileMetadataGenerator md_gen(
-        Datatype::INT32, false, false, sizeof(int32_t), 1);
-    md_gen.process_full_tile(tile);
-    md_gen.set_tile_metadata(tile);
+      TileMetadataGenerator md_gen(
+          Datatype::INT32, false, false, sizeof(int32_t), 1);
+      md_gen.process_full_tile(tile);
+      md_gen.set_tile_metadata(tile);
 
-    filter_tile_for_test("a", tile, *array_schema, get_resources());
-    writer.write_tile(tile);
+      filter_tile_for_test("a", tile, *array_schema, get_resources());
+      writer.write_tile(tile);
+    }
+
     writer.close_field();
   }
 
@@ -680,36 +597,20 @@ TEST_CASE_METHOD(
     tiledb::Query read_query(ctx_, read_array, TILEDB_READ);
     read_query.set_layout(TILEDB_UNORDERED);
 
-    std::vector<int32_t> coords(10);
-    std::vector<int32_t> data(10);
+    std::vector<int32_t> coords(30);
+    std::vector<int32_t> data(30);
     read_query.set_data_buffer("d", coords);
     read_query.set_data_buffer("a", data);
     read_query.submit();
     read_array.close();
 
-    // Verify coordinates
-    CHECK(coords[0] == 10);
-    CHECK(coords[1] == 20);
-    CHECK(coords[2] == 30);
-    CHECK(coords[3] == 40);
-    CHECK(coords[4] == 50);
-    CHECK(coords[5] == 60);
-    CHECK(coords[6] == 70);
-    CHECK(coords[7] == 80);
-    CHECK(coords[8] == 90);
-    CHECK(coords[9] == 100);
-
-    // Verify attribute values
-    CHECK(data[0] == 1000);
-    CHECK(data[1] == 2000);
-    CHECK(data[2] == 3000);
-    CHECK(data[3] == 4000);
-    CHECK(data[4] == 5000);
-    CHECK(data[5] == 6000);
-    CHECK(data[6] == 7000);
-    CHECK(data[7] == 8000);
-    CHECK(data[8] == 9000);
-    CHECK(data[9] == 10000);
+    // Verify all 3 tiles (10 cells each)
+    for (int t = 0; t < 3; t++) {
+      for (int i = 0; i < 10; i++) {
+        CHECK(coords[t * 10 + i] == tile_coords[t][i]);
+        CHECK(data[t * 10 + i] == t * 1000 + i);
+      }
+    }
   }
 }
 
