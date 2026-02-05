@@ -135,10 +135,9 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
   }
 
   // For sparse arrays with dynamic growth (tile_num_=0 initially, first field),
-  // grow metadata using doubling strategy.
-  // After first field closes, tile_num_ is fixed.
+  // grow metadata. After first field closes, tile_num_ is fixed.
   if (!dense_ && !first_field_closed_ && current_tile_idx_ >= tile_num_) {
-    tile_num_ = (tile_num_ == 0) ? 1 : tile_num_ * 2;
+    tile_num_++;
     frag_meta_->set_num_tiles(tile_num_);
   } else if (current_tile_idx_ >= tile_num_) {
     throw ColumnFragmentWriterException(
