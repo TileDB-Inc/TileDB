@@ -120,6 +120,7 @@ struct ColumnFragmentWriterFx {
     dom.add_dimension(dim);
 
     auto attr = tiledb::Attribute::create<std::string>(ctx_, "a");
+    attr.set_nullable(true);
 
     tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
     schema.set_domain(dom);
@@ -494,7 +495,7 @@ TEST_CASE_METHOD(
 
   // Non-empty domain covering all coordinates across 3 tiles
   int32_t domain_start = 10;
-  int32_t domain_end = 590;
+  int32_t domain_end = 540;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
       Range(&domain_start, &domain_end, sizeof(int32_t)));
@@ -510,20 +511,21 @@ TEST_CASE_METHOD(
   EncryptionKey enc_key;
   auto memory_tracker = tiledb::test::get_test_memory_tracker();
 
-  // 3 tiles of coordinates (10 cells each, matching capacity)
+  // 3 tiles: first two full (10 cells), last partial (5 cells)
   std::vector<std::vector<int32_t>> tile_coords = {
       {10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
       {200, 210, 220, 230, 240, 250, 260, 270, 280, 290},
-      {500, 510, 520, 530, 540, 550, 560, 570, 580, 590}};
+      {500, 510, 520, 530, 540}};
 
   // Write dimension "d" - 3 tiles
   {
     writer.open_field("d");
 
     for (int t = 0; t < 3; t++) {
+      const uint64_t cell_num = tile_coords[t].size();
       auto tile = WriterTileTuple(
           *array_schema,
-          10,  // capacity
+          cell_num,
           false,
           false,
           sizeof(int32_t),
@@ -531,8 +533,8 @@ TEST_CASE_METHOD(
           memory_tracker);
 
       tile.fixed_tile().write(
-          tile_coords[t].data(), 0, tile_coords[t].size() * sizeof(int32_t));
-      tile.set_final_size(10);
+          tile_coords[t].data(), 0, cell_num * sizeof(int32_t));
+      tile.set_final_size(cell_num);
 
       TileMetadataGenerator md_gen(
           Datatype::INT32, true, false, sizeof(int32_t), 1);
@@ -560,21 +562,22 @@ TEST_CASE_METHOD(
     writer.open_field("a");
 
     for (int t = 0; t < 3; t++) {
+      const uint64_t cell_num = tile_coords[t].size();
       auto tile = WriterTileTuple(
           *array_schema,
-          10,
+          cell_num,
           false,
           false,
           sizeof(int32_t),
           Datatype::INT32,
           memory_tracker);
 
-      std::vector<int32_t> data(10);
-      for (int i = 0; i < 10; i++) {
+      std::vector<int32_t> data(cell_num);
+      for (uint64_t i = 0; i < cell_num; i++) {
         data[i] = t * 1000 + i;
       }
       tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
-      tile.set_final_size(10);
+      tile.set_final_size(cell_num);
 
       TileMetadataGenerator md_gen(
           Datatype::INT32, false, false, sizeof(int32_t), 1);
@@ -591,25 +594,30 @@ TEST_CASE_METHOD(
   // Finalize sparse fragment
   writer.finalize(enc_key);
 
+  // Verify last_tile_cell_num matches the partial last tile
+  CHECK(writer.fragment_metadata()->last_tile_cell_num() == 5);
+
   // Read back and verify using standard API
   {
     tiledb::Array read_array(ctx_, ARRAY_NAME, TILEDB_READ);
     tiledb::Query read_query(ctx_, read_array, TILEDB_READ);
     read_query.set_layout(TILEDB_UNORDERED);
 
-    std::vector<int32_t> coords(30);
-    std::vector<int32_t> data(30);
+    std::vector<int32_t> coords(25);
+    std::vector<int32_t> data(25);
     read_query.set_data_buffer("d", coords);
     read_query.set_data_buffer("a", data);
     read_query.submit();
     read_array.close();
 
-    // Verify all 3 tiles (10 cells each)
+    // Verify all 3 tiles (10 + 10 + 5 cells)
+    uint64_t offset = 0;
     for (int t = 0; t < 3; t++) {
-      for (int i = 0; i < 10; i++) {
-        CHECK(coords[t * 10 + i] == tile_coords[t][i]);
-        CHECK(data[t * 10 + i] == t * 1000 + i);
+      for (size_t i = 0; i < tile_coords[t].size(); i++) {
+        CHECK(coords[offset + i] == tile_coords[t][i]);
+        CHECK(data[offset + i] == t * 1000 + (int)i);
       }
+      offset += tile_coords[t].size();
     }
   }
 }
@@ -625,100 +633,162 @@ TEST_CASE_METHOD(
   auto memory_tracker = tiledb::test::get_test_memory_tracker();
 
   CHECK(array_schema->var_size("a") == true);
+  CHECK(array_schema->is_nullable("a") == true);
 
   int32_t domain_start = 0;
-  int32_t domain_end = 9;
+  int32_t domain_end = 19;
   NDRange non_empty_domain;
   non_empty_domain.emplace_back(
       Range(&domain_start, &domain_end, sizeof(int32_t)));
 
   ColumnFragmentWriter writer(
-      &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
+      &get_resources(), array_schema, fragment_uri, non_empty_domain);
 
   EncryptionKey enc_key;
   const uint64_t cell_num = 10;  // matches sparse capacity
 
-  // Write dimension
+  // Write dimension - 2 tiles
   {
     writer.open_field("d");
 
-    auto tile = WriterTileTuple(
-        *array_schema,
-        cell_num,
-        false,
-        false,
-        sizeof(int32_t),
-        Datatype::INT32,
-        memory_tracker);
+    for (int t = 0; t < 2; t++) {
+      auto tile = WriterTileTuple(
+          *array_schema,
+          cell_num,
+          false,
+          false,
+          sizeof(int32_t),
+          Datatype::INT32,
+          memory_tracker);
 
-    std::vector<int32_t> dim_data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    tile.fixed_tile().write(
-        dim_data.data(), 0, dim_data.size() * sizeof(int32_t));
-    tile.set_final_size(cell_num);
+      std::vector<int32_t> dim_data(cell_num);
+      for (uint64_t i = 0; i < cell_num; i++) {
+        dim_data[i] = t * 10 + i;
+      }
+      tile.fixed_tile().write(
+          dim_data.data(), 0, dim_data.size() * sizeof(int32_t));
+      tile.set_final_size(cell_num);
 
-    TileMetadataGenerator md_gen(
-        Datatype::INT32, true, false, sizeof(int32_t), 1);
-    md_gen.process_full_tile(tile);
-    md_gen.set_tile_metadata(tile);
+      TileMetadataGenerator md_gen(
+          Datatype::INT32, true, false, sizeof(int32_t), 1);
+      md_gen.process_full_tile(tile);
+      md_gen.set_tile_metadata(tile);
 
-    filter_tile_for_test("d", tile, *array_schema, get_resources());
-    writer.write_tile(tile);
+      filter_tile_for_test("d", tile, *array_schema, get_resources());
+      writer.write_tile(tile);
+    }
+
     writer.close_field();
   }
 
   // Set MBRs after processing dimensions
-  std::vector<NDRange> mbrs(1);
-  mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
+  std::vector<NDRange> mbrs(2);
+  for (int t = 0; t < 2; t++) {
+    int32_t lo = t * 10, hi = t * 10 + 9;
+    mbrs[t].emplace_back(Range(&lo, &hi, sizeof(int32_t)));
+  }
   writer.set_mbrs(std::move(mbrs));
 
-  // Write var-size attribute
+  // Write var-size nullable attribute - 2 tiles
+  // Tile 0: all null. Tile 1: valid strings.
   {
     writer.open_field("a");
 
-    auto tile = WriterTileTuple(
-        *array_schema,
-        cell_num,
-        true,
-        false,
-        1,
-        Datatype::CHAR,
-        memory_tracker);
+    // Tile 0: all null
+    {
+      auto tile = WriterTileTuple(
+          *array_schema,
+          cell_num,
+          true,
+          true,
+          1,
+          Datatype::CHAR,
+          memory_tracker);
 
-    std::vector<std::string> strings = {
-        "hello",
-        "world",
-        "foo",
-        "bar",
-        "test",
-        "alpha",
-        "beta",
-        "gamma",
-        "delta",
-        "epsilon"};
-    std::string var_data;
-    std::vector<uint64_t> offsets;
-    for (const auto& s : strings) {
-      offsets.push_back(var_data.size());
-      var_data += s;
+      std::vector<uint64_t> offsets(cell_num, 0);
+      tile.offset_tile().write(
+          offsets.data(), 0, offsets.size() * sizeof(uint64_t));
+      tile.var_tile().set_size(0);
+      std::vector<uint8_t> validity(cell_num, 0);
+      tile.validity_tile().write(validity.data(), 0, validity.size());
+      tile.set_final_size(cell_num);
+
+      TileMetadataGenerator md_gen(
+          Datatype::STRING_ASCII, false, true, constants::var_num, 1);
+      md_gen.process_full_tile(tile);
+      md_gen.set_tile_metadata(tile);
+
+      filter_tile_for_test("a", tile, *array_schema, get_resources());
+      writer.write_tile(tile);
     }
 
-    tile.offset_tile().write(
-        offsets.data(), 0, offsets.size() * sizeof(uint64_t));
-    tile.var_tile().write_var(var_data.c_str(), 0, var_data.size());
-    tile.var_tile().set_size(var_data.size());
-    tile.set_final_size(cell_num);
+    // Tile 1: strings with all-valid
+    {
+      auto tile = WriterTileTuple(
+          *array_schema,
+          cell_num,
+          true,
+          true,
+          1,
+          Datatype::CHAR,
+          memory_tracker);
 
-    TileMetadataGenerator md_gen(
-        Datatype::STRING_ASCII, false, true, constants::var_num, 1);
-    md_gen.process_full_tile(tile);
-    md_gen.set_tile_metadata(tile);
+      std::vector<std::string> strings = {
+          "hello",
+          "world",
+          "foo",
+          "bar",
+          "test",
+          "alpha",
+          "beta",
+          "gamma",
+          "delta",
+          "epsilon"};
+      std::string var_data;
+      std::vector<uint64_t> offsets;
+      for (const auto& s : strings) {
+        offsets.push_back(var_data.size());
+        var_data += s;
+      }
 
-    filter_tile_for_test("a", tile, *array_schema, get_resources());
-    writer.write_tile(tile);
+      tile.offset_tile().write(
+          offsets.data(), 0, offsets.size() * sizeof(uint64_t));
+      tile.var_tile().write_var(var_data.c_str(), 0, var_data.size());
+      tile.var_tile().set_size(var_data.size());
+      std::vector<uint8_t> validity(cell_num, 1);
+      tile.validity_tile().write(validity.data(), 0, validity.size());
+      tile.set_final_size(cell_num);
+
+      TileMetadataGenerator md_gen(
+          Datatype::STRING_ASCII, false, true, constants::var_num, 1);
+      md_gen.process_full_tile(tile);
+      md_gen.set_tile_metadata(tile);
+
+      filter_tile_for_test("a", tile, *array_schema, get_resources());
+      writer.write_tile(tile);
+    }
+
     writer.close_field();
   }
 
   writer.finalize(enc_key);
+
+  // Verify var-size min/max metadata for tile 1 (the valid tile).
+  // With the all-null tile first, an index mismatch bug would cause
+  // tile 1's min/max to never be written to the metadata buffer.
+  {
+    auto frag_meta = writer.fragment_metadata();
+    auto* loaded = frag_meta->loaded_metadata();
+    auto& lm = loaded->loaded_metadata();
+    for (size_t i = 0; i < lm.tile_min_.size(); i++) {
+      lm.tile_min_[i] = true;
+      lm.tile_max_[i] = true;
+    }
+    auto min_val = frag_meta->get_tile_min_as<std::string_view>("a", 1);
+    auto max_val = frag_meta->get_tile_max_as<std::string_view>("a", 1);
+    CHECK(min_val == "alpha");
+    CHECK(max_val == "world");
+  }
 
   // Read back and verify
   {
@@ -726,23 +796,31 @@ TEST_CASE_METHOD(
     tiledb::Query read_query(ctx_, read_array, TILEDB_READ);
     read_query.set_layout(TILEDB_UNORDERED);
 
-    std::vector<int32_t> dim_result(cell_num);
-    std::vector<uint64_t> offsets_result(cell_num);
+    const uint64_t total_cells = 20;
+    std::vector<int32_t> dim_result(total_cells);
+    std::vector<uint64_t> offsets_result(total_cells);
     std::string data_result;
     data_result.resize(200);
+    std::vector<uint8_t> validity_result(total_cells);
 
     read_query.set_data_buffer("d", dim_result);
     read_query.set_data_buffer("a", data_result);
     read_query.set_offsets_buffer("a", offsets_result);
+    read_query.set_validity_buffer("a", validity_result);
     read_query.submit();
     read_array.close();
 
     auto result_num = read_query.result_buffer_elements()["a"];
-    CHECK(result_num.first == cell_num);
+    CHECK(result_num.first == total_cells);
+    // Tile 0: all null
     CHECK(dim_result[0] == 0);
-    CHECK(dim_result[9] == 9);
-    CHECK(data_result.substr(offsets_result[0], 5) == "hello");
-    CHECK(data_result.substr(offsets_result[9], 7) == "epsilon");
+    CHECK(validity_result[0] == 0);
+    CHECK(validity_result[9] == 0);
+    // Tile 1: valid strings
+    CHECK(dim_result[10] == 10);
+    CHECK(validity_result[10] == 1);
+    CHECK(data_result.substr(offsets_result[10], 5) == "hello");
+    CHECK(data_result.substr(offsets_result[19], 7) == "epsilon");
   }
 }
 

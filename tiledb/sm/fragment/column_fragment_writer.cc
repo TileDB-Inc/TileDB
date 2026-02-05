@@ -63,6 +63,7 @@ ColumnFragmentWriter::ColumnFragmentWriter(
     , current_tile_idx_(0)
     , tile_num_(0)
     , first_field_closed_(false)
+    , last_tile_cell_num_(0)
     , mbrs_set_(false) {
   // For dense arrays, compute tile count from domain.
   // For sparse arrays, tile_count is a capacity hint (upper bound).
@@ -186,11 +187,15 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
     frag_meta_->set_tile_var_size(
         name, current_tile_idx_, tile.var_pre_filtered_size());
 
-    if (has_min_max_md && null_count != cell_num) {
-      frag_meta_->set_tile_min_var_size(
-          name, current_tile_idx_, tile.min().size());
-      frag_meta_->set_tile_max_var_size(
-          name, current_tile_idx_, tile.max().size());
+    if (has_min_max_md) {
+      if (null_count != cell_num) {
+        frag_meta_->set_tile_min_var_size(
+            name, current_tile_idx_, tile.min().size());
+        frag_meta_->set_tile_max_var_size(
+            name, current_tile_idx_, tile.max().size());
+      }
+      var_min_values_.push_back(tile.min());
+      var_max_values_.push_back(tile.max());
     }
   } else {
     if (has_min_max_md && null_count != cell_num && !tile.min().empty()) {
@@ -215,6 +220,7 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
     frag_meta_->set_tile_null_count(name, current_tile_idx_, null_count);
   }
 
+  last_tile_cell_num_ = cell_num;
   current_tile_idx_++;
 }
 
@@ -243,6 +249,13 @@ void ColumnFragmentWriter::close_field() {
     if (TileMetadataGenerator::has_min_max_metadata(
             type, is_dim, var_size, cell_val_num)) {
       frag_meta_->convert_tile_min_max_var_sizes_to_offsets(name);
+
+      for (uint64_t i = 0; i < var_min_values_.size(); i++) {
+        frag_meta_->set_tile_min_var(name, i, var_min_values_[i]);
+        frag_meta_->set_tile_max_var(name, i, var_max_values_[i]);
+      }
+      var_min_values_.clear();
+      var_max_values_.clear();
     }
   }
 
@@ -251,8 +264,12 @@ void ColumnFragmentWriter::close_field() {
     throw_if_not_ok(resources_->vfs().close_file(validity_uri));
   }
 
+  // Set last tile cell num from the first field closed.
+  if (!first_field_closed_) {
+    frag_meta_->set_last_tile_cell_num(last_tile_cell_num_);
+  }
+
   // For sparse with dynamic growth, first closed field determines tile count.
-  // Resize to actual count (doubling may have over-allocated).
   if (!dense_ && !first_field_closed_) {
     tile_num_ = current_tile_idx_;
     frag_meta_->set_num_tiles(tile_num_);

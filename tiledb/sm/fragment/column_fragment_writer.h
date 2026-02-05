@@ -217,6 +217,16 @@ class ColumnFragmentWriter {
    */
   bool first_field_closed_;
 
+  /** Cell count of the most recently written tile (for set_last_tile_cell_num).
+   */
+  uint64_t last_tile_cell_num_;
+
+  /** Stored var-size min values per tile (applied in close_field). */
+  std::vector<ByteVec> var_min_values_;
+
+  /** Stored var-size max values per tile (applied in close_field). */
+  std::vector<ByteVec> var_max_values_;
+
   /** Whether MBRs have been set. */
   bool mbrs_set_;
 };
