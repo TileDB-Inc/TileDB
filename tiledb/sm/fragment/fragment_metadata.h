@@ -63,12 +63,20 @@ class Buffer;
 class EncryptionKey;
 class TileMetadata;
 class MemoryTracker;
+class WriterTileTuple;
 
 class FragmentMetadataStatusException : public StatusException {
  public:
   explicit FragmentMetadataStatusException(const std::string& message)
       : StatusException("FragmentMetadata", message) {
   }
+};
+
+/**
+ * Contains identifiers for fragment metadata footer optional sections.
+ */
+enum class OptionalSectionIdentifier : uint64_t {
+  tile_global_order_offsets = 0,
 };
 
 /** Stores the metadata structures of a fragment. */
@@ -139,6 +147,8 @@ class FragmentMetadata {
     std::vector<uint64_t> tile_validity_offsets_;
     std::vector<uint64_t> tile_min_offsets_;
     std::vector<uint64_t> tile_max_offsets_;
+    std::vector<uint64_t> tile_global_order_min_offsets_;  // per dimension only
+    std::vector<uint64_t> tile_global_order_max_offsets_;  // per dimension only
     std::vector<uint64_t> tile_sum_offsets_;
     std::vector<uint64_t> tile_null_count_offsets_;
     uint64_t fragment_min_max_sum_null_count_offset_;
@@ -606,6 +616,26 @@ class FragmentMetadata {
   void convert_tile_min_max_var_sizes_to_offsets(const std::string& name);
 
   /**
+   * Populate fixed parts of bounds for a dimension and tile using the
+   * coordinate values in `data`.
+   */
+  void set_tile_global_order_bounds_fixed(
+      const std::string& dim_name, uint64_t tile, const WriterTileTuple& data);
+
+  /**
+   * Populate var parts of bounds for a dimension and tile using the coordinate
+   * values in `data`.
+   */
+  void set_tile_global_order_bounds_var(
+      const std::string& dim_name, uint64_t tile, const WriterTileTuple& data);
+
+  /**
+   * Converts global order min/max sizes to offsets.
+   */
+  void convert_tile_global_order_bounds_sizes_to_offsets(
+      const std::string& dim_name);
+
+  /**
    * Sets a tile sum for the input attribute.
    *
    * @param name The attribute for which the sum is set.
@@ -812,6 +842,11 @@ class FragmentMetadata {
     return version_;
   }
 
+  /** has_tile_global_order_bounds accessor */
+  bool& has_tile_global_order_bounds() {
+    return has_tile_global_order_bounds_;
+  }
+
   /** timestamp_range accessor */
   std::pair<uint64_t, uint64_t>& timestamp_range() {
     return timestamp_range_;
@@ -933,6 +968,9 @@ class FragmentMetadata {
   /** The format version of this metadata. */
   uint32_t version_;
 
+  /** Whether this metadata contains tile global order bounds. */
+  bool has_tile_global_order_bounds_ = false;
+
   /** The timestamp range of the fragment. */
   std::pair<uint64_t, uint64_t> timestamp_range_;
 
@@ -1042,6 +1080,16 @@ class FragmentMetadata {
    * versions 16 or higher.
    */
   void load_generic_tile_offsets_v16_or_higher(Deserializer& deserializer);
+
+  /**
+   * Loads the footer's optional sections.
+   */
+  void load_optional_sections(Deserializer& deserializer);
+
+  /**
+   * Loads the offsets for the tile global order bounds.
+   */
+  void load_tile_global_order_offsets(Deserializer& deserializer);
 
   /**
    * Loads the array schema name.
@@ -1189,6 +1237,9 @@ class FragmentMetadata {
   /** Writes the generic tile offsets to the buffer. */
   void write_generic_tile_offsets(Serializer& serializer) const;
 
+  /** Writes the footer's optional sections to the buffer. */
+  void write_optional_sections(Serializer& serializer) const;
+
   /** Writes the array schema name. */
   void write_array_schema_name(Serializer& serializer) const;
 
@@ -1320,6 +1371,36 @@ class FragmentMetadata {
    * Writes the maxs of the input attribute idx to the input buffer.
    */
   void write_tile_maxs(unsigned idx, Serializer& serializer);
+
+  /**
+   * Writes the global order minimum of each tile to storage.
+   *
+   * @param dim The index of the dimension
+   * @param encryption_key The encryption key
+   * @param nbytes[in/out] The total number of bytes written
+   */
+  void store_tile_global_order_mins(
+      unsigned dim, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the global order minimum of each tile to the input buffer.
+   */
+  void write_tile_global_order_mins(unsigned dim, Serializer& serializer);
+
+  /**
+   * Writes the global order maximum of each tile to storage.
+   *
+   * @param dim The index of the dimension
+   * @param encryption_key The encryption key
+   * @param nbytes[in/out] The total number of bytes written
+   */
+  void store_tile_global_order_maxs(
+      unsigned dim, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the global order maximum of each tile to the input buffer.
+   */
+  void write_tile_global_order_maxs(unsigned dim, Serializer& serializer);
 
   /**
    * Writes the sums of the input attribute to storage.

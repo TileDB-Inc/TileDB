@@ -69,7 +69,6 @@
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/config/config_iter.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 
 #ifdef _WIN32
@@ -227,6 +226,10 @@ Aws::S3::Model::StorageClass S3_StorageClass_from_str(
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+namespace intercept {
+DEFINE_INTERCEPT(s3_get_make_upload_part_req, unsigned, bool&, bool&);
+}
 
 S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
   Headers ret;
@@ -1884,14 +1887,11 @@ Status S3::get_make_upload_part_req(
   bool success = upload_part_outcome.IsSuccess();
   bool induced_failure = false;
 
-  static const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-  if (unit_test_cfg.s3_fail_every_nth_upload_request.is_set() &&
-      ctx.upload_part_num %
-              unit_test_cfg.s3_fail_every_nth_upload_request.get() ==
-          0) {
-    success = false;
-    induced_failure = true;
-  }
+  INTERCEPT(
+      intercept::s3_get_make_upload_part_req,
+      ctx.upload_part_num,
+      success,
+      induced_failure);
 
   if (!success) {
     UniqueReadLock unique_rl(&multipart_upload_rwlock_);

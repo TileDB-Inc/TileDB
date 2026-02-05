@@ -38,7 +38,6 @@
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_time.h"
 
 #include <fstream>
@@ -110,8 +109,15 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     write_buffer[i] = (char)('a' + (i % 26));
 
   for (const int nth_failure : {2, 5, 10}) {
-    auto _ = UnitTestConfig::instance().s3_fail_every_nth_upload_request.set(
-        nth_failure);
+    auto fail_every_nth_upload =
+        tiledb::sm::intercept::s3_get_make_upload_part_req().and_also(
+            [nth_failure](
+                unsigned part_num, bool& success, bool& induced_failure) {
+              if (part_num % nth_failure == 0) {
+                success = false;
+                induced_failure = true;
+              }
+            });
 
     // Write one large file, the write will fail
     auto largefile =

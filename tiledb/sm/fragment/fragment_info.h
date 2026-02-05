@@ -215,6 +215,28 @@ class FragmentInfo {
   Status get_mbr_var(
       uint32_t fid, uint32_t mid, const char* dim_name, void* start, void* end);
 
+  /**
+   * Retrieves a global order lower bound of the fragment with the given index
+   * for the tile indexed by `mid`.
+   *
+   * For fragments of version 23 and newer this is precise.
+   * Otherwise the minimum bounding rectangle is used as an imprecise lower
+   * bound.
+   */
+  Status get_global_order_lower_bound(
+      uint32_t fid, uint32_t mid, size_t* dimension_sizes, void** dimensions);
+
+  /**
+   * Retrieves a global order upper bound of the fragment with the given index
+   * for the tile indexed by `mid`.
+   *
+   * For fragments of version 23 and newer this is precise.
+   * Otherwise the minimum bounding rectangle is used as an imprecise upper
+   * bound.
+   */
+  Status get_global_order_upper_bound(
+      uint32_t fid, uint32_t mid, size_t* dimension_sizes, void** dimensions);
+
   /** Retrieves the version of the fragment with the given index. */
   Status get_version(uint32_t fid, uint32_t* version) const;
 

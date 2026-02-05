@@ -279,6 +279,98 @@ class FragmentInfo {
     return std::make_pair(start, end);
   }
 
+  /**
+   * Returns the minimum coordinate in global order for a particular bounding
+   * rectangle in a fragment. The returned value contains one element per
+   * dimension.
+   *
+   * @throws TileDBError if the fragment index `fid` is invalid; if the bounding
+   * rectangle index `mid` is invalid; if the fragment is not a sparse fragment;
+   * or if the fragment was written in a format version which does not contain
+   * the bounding rectangle global order bounds.
+   */
+  std::vector<std::vector<uint8_t>> global_order_lower_bound(
+      uint32_t fid, uint32_t mid) const {
+    std::vector<size_t> dimension_sizes;
+    std::vector<void*> dimension_ptrs;
+    dimension_sizes.resize(array_schema(fid).domain().ndim());
+    dimension_ptrs.resize(dimension_sizes.size());
+
+    // 1. get sizes
+    ctx_.get().handle_error(tiledb_fragment_info_get_global_order_lower_bound(
+        ctx_.get().ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dimension_sizes.data(),
+        dimension_ptrs.data()));
+
+    // 2. get data
+    std::vector<std::vector<uint8_t>> dimension_bufs;
+    dimension_bufs.resize(dimension_sizes.size());
+
+    for (uint64_t d = 0; d < dimension_sizes.size(); d++) {
+      dimension_bufs[d].resize(dimension_sizes[d]);
+      dimension_ptrs[d] = dimension_bufs[d].data();
+    }
+
+    ctx_.get().handle_error(tiledb_fragment_info_get_global_order_lower_bound(
+        ctx_.get().ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dimension_sizes.data(),
+        dimension_ptrs.data()));
+
+    return dimension_bufs;
+  }
+
+  /**
+   * Returns the maximum coordinate in global order for a particular bounding
+   * rectangle in a fragment. The returned value contains one element per
+   * dimension.
+   *
+   * @throws TileDBError if the fragment index `fid` is invalid; if the bounding
+   * rectangle index `mid` is invalid; if the fragment is not a sparse fragment;
+   * or if the fragment was written in a format version which does not contain
+   * the bounding rectangle global order bounds.
+   */
+  std::vector<std::vector<uint8_t>> global_order_upper_bound(
+      uint32_t fid, uint32_t mid) const {
+    std::vector<size_t> dimension_sizes;
+    std::vector<void*> dimension_ptrs;
+    dimension_sizes.resize(array_schema(fid).domain().ndim());
+    dimension_ptrs.resize(dimension_sizes.size());
+
+    // 1. get sizes
+    ctx_.get().handle_error(tiledb_fragment_info_get_global_order_upper_bound(
+        ctx_.get().ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dimension_sizes.data(),
+        dimension_ptrs.data()));
+
+    // 2. get data
+    std::vector<std::vector<uint8_t>> dimension_bufs;
+    dimension_bufs.resize(dimension_sizes.size());
+
+    for (uint64_t d = 0; d < dimension_sizes.size(); d++) {
+      dimension_bufs[d].resize(dimension_sizes[d]);
+      dimension_ptrs[d] = dimension_bufs[d].data();
+    }
+
+    ctx_.get().handle_error(tiledb_fragment_info_get_global_order_upper_bound(
+        ctx_.get().ptr().get(),
+        fragment_info_.get(),
+        fid,
+        mid,
+        dimension_sizes.data(),
+        dimension_ptrs.data()));
+
+    return dimension_bufs;
+  }
+
   /** Returns the number of fragments. */
   uint32_t fragment_num() const {
     auto& ctx = ctx_.get();

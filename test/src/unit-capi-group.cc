@@ -44,7 +44,6 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_time.h"
 
 #include <iostream>

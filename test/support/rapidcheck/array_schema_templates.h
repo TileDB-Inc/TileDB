@@ -185,6 +185,10 @@ template <>
 void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os);
 
 template <>
+void show<Domain<int64_t>>(
+    const templates::Domain<int64_t>& domain, std::ostream& os);
+
+template <>
 void show<Domain<uint64_t>>(
     const templates::Domain<uint64_t>& domain, std::ostream& os);
 

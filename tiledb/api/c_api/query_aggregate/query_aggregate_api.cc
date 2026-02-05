@@ -233,8 +233,7 @@ capi_return_t tiledb_channel_apply_aggregate(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_aggregate_free(
-    tiledb_ctx_t*, tiledb_channel_operation_t** operation) {
+capi_return_t tiledb_aggregate_free(tiledb_channel_operation_t** operation) {
   ensure_output_pointer_is_valid(operation);
   ensure_operation_is_valid(*operation);
   tiledb_channel_operation_handle_t::break_handle(*operation);
@@ -242,8 +241,7 @@ capi_return_t tiledb_aggregate_free(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_query_channel_free(
-    tiledb_ctx_t*, tiledb_query_channel_t** channel) {
+capi_return_t tiledb_query_channel_free(tiledb_query_channel_t** channel) {
   ensure_output_pointer_is_valid(channel);
   ensure_query_channel_is_valid(*channel);
   tiledb_query_channel_handle_t::break_handle(*channel);
@@ -340,13 +338,13 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    aggregate_free, tiledb_ctx_t* ctx, tiledb_channel_operation_t** operation) {
-  return tiledb::api::api_entry_with_context<
-      tiledb::api::tiledb_aggregate_free>(ctx, operation);
+    aggregate_free, tiledb_ctx_t*, tiledb_channel_operation_t** operation) {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_aggregate_free>(
+      operation);
 }
 
 CAPI_INTERFACE(
-    query_channel_free, tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) {
-  return tiledb::api::api_entry_with_context<
-      tiledb::api::tiledb_query_channel_free>(ctx, channel);
+    query_channel_free, tiledb_ctx_t*, tiledb_query_channel_t** channel) {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_query_channel_free>(
+      channel);
 }
