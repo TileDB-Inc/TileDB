@@ -188,25 +188,18 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
         name, current_tile_idx_, tile.var_pre_filtered_size());
 
     if (has_min_max_md) {
-      if (null_count != cell_num) {
-        frag_meta_->set_tile_min_var_size(
-            name, current_tile_idx_, tile.min().size());
-        frag_meta_->set_tile_max_var_size(
-            name, current_tile_idx_, tile.max().size());
-      }
-      var_min_values_.push_back(tile.min());
-      var_max_values_.push_back(tile.max());
+      // Always append to maintain correct offset sequence. For all-null tiles,
+      // tile.min()/max() return empty ByteVec which is the correct behavior.
+      frag_meta_->append_tile_min_var(name, current_tile_idx_, tile.min());
+      frag_meta_->append_tile_max_var(name, current_tile_idx_, tile.max());
     }
 
-    // For var-size sparse dimensions, set global order bounds sizes and store
-    // values.
+    // For var-size sparse dimensions, append global order bounds directly.
     if (!dense_ && is_dim) {
-      frag_meta_->set_tile_global_order_bounds_fixed(
-          name, current_tile_idx_, tile);
-      global_order_min_values_.push_back(
-          tile.global_order_min().value_or(ByteVec{}));
-      global_order_max_values_.push_back(
-          tile.global_order_max().value_or(ByteVec{}));
+      frag_meta_->append_tile_global_order_min_var(
+          name, current_tile_idx_, tile.global_order_min().value_or(ByteVec{}));
+      frag_meta_->append_tile_global_order_max_var(
+          name, current_tile_idx_, tile.global_order_max().value_or(ByteVec{}));
     }
   } else {
     if (has_min_max_md && null_count != cell_num && !tile.min().empty()) {
@@ -258,35 +251,6 @@ void ColumnFragmentWriter::close_field() {
   if (var_size) {
     URI var_uri = frag_meta_->var_uri(name);
     throw_if_not_ok(resources_->vfs().close_file(var_uri));
-
-    // Convert min/max var sizes to offsets
-    const auto type = array_schema_->type(name);
-    const auto is_dim = array_schema_->is_dim(name);
-    const auto cell_val_num = array_schema_->cell_val_num(name);
-    if (TileMetadataGenerator::has_min_max_metadata(
-            type, is_dim, var_size, cell_val_num)) {
-      frag_meta_->convert_tile_min_max_var_sizes_to_offsets(name);
-
-      for (uint64_t i = 0; i < var_min_values_.size(); i++) {
-        frag_meta_->set_tile_min_var(name, i, var_min_values_[i]);
-        frag_meta_->set_tile_max_var(name, i, var_max_values_[i]);
-      }
-      var_min_values_.clear();
-      var_max_values_.clear();
-    }
-
-    // For var-size dimensions, convert global order bounds sizes to offsets
-    // and write the var data.
-    if (is_dim) {
-      frag_meta_->convert_tile_global_order_bounds_sizes_to_offsets(name);
-
-      for (uint64_t i = 0; i < global_order_min_values_.size(); i++) {
-        frag_meta_->set_tile_global_order_bounds_var(
-            name, i, global_order_min_values_[i], global_order_max_values_[i]);
-      }
-      global_order_min_values_.clear();
-      global_order_max_values_.clear();
-    }
   }
 
   if (nullable) {

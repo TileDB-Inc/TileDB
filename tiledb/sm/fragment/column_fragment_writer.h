@@ -221,18 +221,6 @@ class ColumnFragmentWriter {
    */
   uint64_t last_tile_cell_num_;
 
-  /** Stored var-size min values per tile (applied in close_field). */
-  std::vector<ByteVec> var_min_values_;
-
-  /** Stored var-size max values per tile (applied in close_field). */
-  std::vector<ByteVec> var_max_values_;
-
-  /** Stored global order min values per tile for var-size dims. */
-  std::vector<ByteVec> global_order_min_values_;
-
-  /** Stored global order max values per tile for var-size dims. */
-  std::vector<ByteVec> global_order_max_values_;
-
   /** Whether MBRs have been set. */
   bool mbrs_set_;
 };
