@@ -344,6 +344,44 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   loaded_metadata_ptr_->tile_max_var_buffer()[idx].resize(max_var_total);
 }
 
+/** Helper to append var data and store offset in one operation. */
+template <typename VarBufType>
+static void append_var_data(
+    tdb::pmr::vector<uint8_t>& offset_buf,
+    VarBufType& var_buf,
+    uint64_t tid,
+    const ByteVec& data) {
+  auto buff_offset = tid * sizeof(uint64_t);
+  iassert(buff_offset + sizeof(uint64_t) <= offset_buf.size());
+  auto offset_ptr = reinterpret_cast<uint64_t*>(&offset_buf[buff_offset]);
+  *offset_ptr = var_buf.size();
+  var_buf.insert(var_buf.end(), data.begin(), data.end());
+}
+
+void FragmentMetadata::append_tile_min_var(
+    const std::string& name, uint64_t tid, const ByteVec& min) {
+  auto it = idx_map_.find(name);
+  iassert(it != idx_map_.end());
+  auto idx = it->second;
+  append_var_data(
+      loaded_metadata_ptr_->tile_min_buffer()[idx],
+      loaded_metadata_ptr_->tile_min_var_buffer()[idx],
+      tid + tile_index_base_,
+      min);
+}
+
+void FragmentMetadata::append_tile_max_var(
+    const std::string& name, uint64_t tid, const ByteVec& max) {
+  auto it = idx_map_.find(name);
+  iassert(it != idx_map_.end());
+  auto idx = it->second;
+  append_var_data(
+      loaded_metadata_ptr_->tile_max_buffer()[idx],
+      loaded_metadata_ptr_->tile_max_var_buffer()[idx],
+      tid + tile_index_base_,
+      max);
+}
+
 void FragmentMetadata::set_tile_global_order_bounds_fixed(
     const std::string& dim_name,
     uint64_t which_tile,
@@ -471,6 +509,34 @@ void FragmentMetadata::convert_tile_global_order_bounds_sizes_to_offsets(
   // Allocate max var data buffer.
   loaded_metadata_ptr_->tile_global_order_max_var_buffer()[idx].resize(
       max_var_total);
+}
+
+void FragmentMetadata::append_tile_global_order_min_var(
+    const std::string& dim_name, uint64_t tid, const ByteVec& min) {
+  const auto idx = array_schema_->domain().get_dimension_index(dim_name);
+  if (!array_schema_->domain().dimensions()[idx]->var_size()) {
+    return;
+  }
+  append_var_data(
+      loaded_metadata_ptr_->tile_global_order_min_buffer()[idx],
+      loaded_metadata_ptr_->tile_global_order_min_var_buffer()[idx],
+      tid + tile_index_base_,
+      min);
+  has_tile_global_order_bounds_ = true;
+}
+
+void FragmentMetadata::append_tile_global_order_max_var(
+    const std::string& dim_name, uint64_t tid, const ByteVec& max) {
+  const auto idx = array_schema_->domain().get_dimension_index(dim_name);
+  if (!array_schema_->domain().dimensions()[idx]->var_size()) {
+    return;
+  }
+  append_var_data(
+      loaded_metadata_ptr_->tile_global_order_max_buffer()[idx],
+      loaded_metadata_ptr_->tile_global_order_max_var_buffer()[idx],
+      tid + tile_index_base_,
+      max);
+  has_tile_global_order_bounds_ = true;
 }
 
 void FragmentMetadata::set_tile_sum(
