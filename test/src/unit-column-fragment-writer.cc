@@ -601,6 +601,25 @@ TEST_CASE_METHOD(
   // Verify last_tile_cell_num matches the partial last tile
   CHECK(writer.fragment_metadata()->last_tile_cell_num() == 5);
 
+  // Verify tile min/max metadata for attribute "a"
+  {
+    auto frag_meta = writer.fragment_metadata();
+    auto* loaded = frag_meta->loaded_metadata();
+    auto& lm = loaded->loaded_metadata();
+    for (size_t i = 0; i < lm.tile_min_.size(); i++) {
+      lm.tile_min_[i] = true;
+      lm.tile_max_[i] = true;
+    }
+
+    // Attribute "a" tile min/max
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 0) == 0);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 0) == 9);
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 1) == 1000);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 1) == 1009);
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 2) == 2000);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 2) == 2004);
+  }
+
   // Read back and verify using standard API
   {
     tiledb::Array read_array(ctx_, ARRAY_NAME, TILEDB_READ);
@@ -1011,6 +1030,40 @@ TEST_CASE_METHOD(
 
   writer.finalize(enc_key);
 
+  // Verify tile min/max/null_count metadata for attribute "a"
+  {
+    auto frag_meta = writer.fragment_metadata();
+    auto* loaded = frag_meta->loaded_metadata();
+    auto& lm = loaded->loaded_metadata();
+    for (size_t i = 0; i < lm.tile_min_.size(); i++) {
+      lm.tile_min_[i] = true;
+      lm.tile_max_[i] = true;
+      lm.tile_null_count_[i] = true;
+    }
+
+    // Attribute "a" tile min/max (nullable, valid values:
+    // 100,300,500,600,800,1000)
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 0) == 100);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 0) == 1000);
+
+    // Null count: 4 nulls (indices 1, 3, 6, 8)
+    CHECK(loaded->get_tile_null_count("a", 0) == 4);
+  }
+
+  // Verify global order bounds
+  {
+    tiledb::FragmentInfo fragment_info(ctx_, ARRAY_NAME);
+    fragment_info.load();
+
+    auto lower = fragment_info.global_order_lower_bound(0, 0);
+    auto upper = fragment_info.global_order_upper_bound(0, 0);
+    int32_t actual_min, actual_max;
+    memcpy(&actual_min, lower[0].data(), sizeof(int32_t));
+    memcpy(&actual_max, upper[0].data(), sizeof(int32_t));
+    CHECK(actual_min == 0);
+    CHECK(actual_max == 9);
+  }
+
   // Read back and verify
   {
     tiledb::Array read_array(ctx_, ARRAY_NAME, TILEDB_READ);
@@ -1102,6 +1155,24 @@ TEST_CASE_METHOD(
   }
 
   writer.finalize(enc_key);
+
+  // Verify tile min/max metadata for attribute "a"
+  {
+    auto frag_meta = writer.fragment_metadata();
+    auto* loaded = frag_meta->loaded_metadata();
+    auto& lm = loaded->loaded_metadata();
+    for (size_t i = 0; i < lm.tile_min_.size(); i++) {
+      lm.tile_min_[i] = true;
+      lm.tile_max_[i] = true;
+    }
+
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 0) == 0);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 0) == 9);
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 1) == 1000);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 1) == 1009);
+    CHECK(frag_meta->get_tile_min_as<int32_t>("a", 2) == 2000);
+    CHECK(frag_meta->get_tile_max_as<int32_t>("a", 2) == 2009);
+  }
 
   // Read back and verify
   {
