@@ -57,11 +57,13 @@ jobs:
           components: clippy, rustfmt
 
       - name: Check Rust Formatting
+        if: ${{ inputs.rust }}
         run: |
           cd $GITHUB_WORKSPACE/tiledb/oxidize
           cargo fmt --quiet --check
 
       - name: Rust Lint
+        if: ${{ inputs.rust }}
         run: |
           cd $GITHUB_WORKSPACE/tiledb/oxidize
           cargo clippy --no-deps --all-targets --all-features -- -Dwarnings

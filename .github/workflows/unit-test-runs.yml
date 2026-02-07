@@ -10,6 +10,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
         build_type: [Release]
+        rust: [OFF]
       fail-fast: false
     name: Build - ${{ matrix.os }} (${{ matrix.build_type }})
     timeout-minutes: 90
@@ -42,6 +43,7 @@ jobs:
           pip install pyarrow pybind11[global] numpy
 
       - name: Install Rust Stable
+        if: ${{ inputs.rust }}
         uses: dtolnay/rust-toolchain@stable
 
       - name: Setup MSVC toolset
@@ -72,7 +74,7 @@ jobs:
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON \
-            -DTILEDB_RUST=ON
+            -DTILEDB_RUST="${{ matrix.rust }}"
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
       - name: 'Build standalone unit tests (non-windows)'
@@ -96,7 +98,7 @@ jobs:
             -DTILEDB_SERIALIZATION=ON `
             -DTILEDB_ASSERTIONS=ON `
             -DTILEDB_ARROW_TESTS=ON `
-            -DTILEDB_RUST=OFF
+            -DTILEDB_RUST="${{ inputs.rust }}"
         if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: 'Build standalone unit tests (Windows)'
