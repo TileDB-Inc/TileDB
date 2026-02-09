@@ -57,6 +57,7 @@
 #undef GetObject
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
+#include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/client/RetryStrategy.h>
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/utils/HashingUtils.h>
@@ -1037,78 +1038,34 @@ class S3 : public FilesystemBase {
   /**
    * The retry strategy for S3 request failures.
    */
-  class S3RetryStrategy : public Aws::Client::RetryStrategy {
+  class S3RetryStrategy : public Aws::Client::DefaultRetryStrategy {
    public:
     /** Constructor. */
     S3RetryStrategy(
-        stats::Stats* const s3_stats,
-        const uint64_t max_retries,
-        const uint64_t scale_factor)
-        : s3_stats_(s3_stats)
-        , max_retries_(max_retries)
-        , scale_factor_(scale_factor) {
+        stats::Stats* const s3_stats, long max_retries, long scale_factor)
+        : Aws::Client::DefaultRetryStrategy(max_retries, scale_factor)
+        , s3_stats_(s3_stats) {
     }
 
-    /*
+    /**
      * Returns true if the error can be retried given the error and
      * the number of times already tried.
      */
     bool ShouldRetry(
         const Aws::Client::AWSError<Aws::Client::CoreErrors>& error,
         long attempted_retries) const override {
-      // Unconditionally retry on 'SLOW_DOWN' errors. The request
-      // will eventually succeed.
+      // Count SLOW_DOWN errors.
       if (error.GetErrorType() == Aws::Client::CoreErrors::SLOW_DOWN) {
-        // With an average retry interval of 1.5 seconds, 100 retries
-        // would be a 2.5 minute hang, which is unreasonably long. Error
-        // out in this scenario, as we probably have encountered a
-        // programming error.
-        if (attempted_retries == 100) {
-          return false;
-        }
-
         s3_stats_->add_counter("vfs_s3_slow_down_retries", 1);
-
-        return true;
       }
 
-      if (static_cast<uint64_t>(attempted_retries) >= max_retries_)
-        return false;
-
-      return error.ShouldRetry();
-    }
-
-    /**
-     * Calculates the time in milliseconds the client should sleep
-     * before attempting another request based on the error and attempted
-     * retries.
-     */
-    long CalculateDelayBeforeNextRetry(
-        const Aws::Client::AWSError<Aws::Client::CoreErrors>& error,
-        long attempted_retries) const override {
-      // Unconditionally retry 'SLOW_DOWN' errors between 1.25 and 1.75
-      // seconds. The random 0.5 second range is to reduce the likelyhood
-      // of starving a single client when multiple clients are performing
-      // requests on the same prefix.
-      if (error.GetErrorType() == Aws::Client::CoreErrors::SLOW_DOWN) {
-        return 1250 + rand() % 500;
-      }
-
-      if (attempted_retries == 0)
-        return 0;
-
-      return (1L << attempted_retries) * static_cast<long>(scale_factor_);
+      return Aws::Client::DefaultRetryStrategy::ShouldRetry(
+          error, attempted_retries);
     }
 
    private:
     /** The S3 `stats_`. */
     stats::Stats* s3_stats_;
-
-    /** The maximum number of retries after an error. */
-    uint64_t max_retries_;
-
-    /** The scale of each exponential backoff delay. */
-    uint64_t scale_factor_;
   };
 
   /**

@@ -1352,8 +1352,8 @@ Status S3::init_client() const {
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
       stats_,
-      s3_params_.connect_max_tries_,
-      s3_params_.connect_scale_factor_);
+      (long)s3_params_.connect_max_tries_,
+      (long)s3_params_.connect_scale_factor_);
 
   client_config.useVirtualAddressing = s3_params_.use_virtual_addressing_;
   client_config.payloadSigningPolicy =
