@@ -35,6 +35,7 @@
 #define TILEDB_COLUMN_FRAGMENT_WRITER_H
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "tiledb/common/common.h"
@@ -116,7 +117,8 @@ class ColumnFragmentWriter {
    *
    * @param name The name of the field (attribute or dimension).
    * @throws ColumnFragmentWriterException if field doesn't exist in schema,
-   *         or if another field is already open.
+   *         if another field is already open, or if the field has already
+   *         been written.
    */
   void open_field(const std::string& name);
 
@@ -128,7 +130,7 @@ class ColumnFragmentWriter {
    * @throws ColumnFragmentWriterException if no field is open,
    *         tile is not filtered, or tile count limit reached.
    */
-  void write_tile(WriterTileTuple& tile);
+  void write_tile(const WriterTileTuple& tile);
 
   /**
    * Closes the currently open field. Flushes file buffers.
@@ -160,7 +162,8 @@ class ColumnFragmentWriter {
    *
    * @param encryption_key The encryption key for storing metadata.
    * @throws ColumnFragmentWriterException if a field is still open,
-   *         or if this is a sparse array without MBRs set.
+   *         if this is a sparse array without MBRs set, or if not all
+   *         schema fields have been written.
    */
   void finalize(const EncryptionKey& encryption_key);
 
@@ -181,9 +184,6 @@ class ColumnFragmentWriter {
 
   /** Creates the fragment directory structure. */
   void create_fragment_directory();
-
-  /** Internal finalize implementation. */
-  void finalize_internal(const EncryptionKey& encryption_key);
 
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -213,16 +213,15 @@ class ColumnFragmentWriter {
   /** Number of tiles to be written. */
   uint64_t tile_num_;
 
-  /** Whether the first field has been closed (for sparse dynamic tile count).
-   */
-  bool first_field_closed_;
-
   /** Cell count of the most recently written tile (for set_last_tile_cell_num).
    */
   uint64_t last_tile_cell_num_;
 
   /** Whether MBRs have been set. */
   bool mbrs_set_;
+
+  /** Fields that have been fully written and closed. */
+  std::unordered_set<std::string> written_fields_;
 };
 
 }  // namespace tiledb::sm

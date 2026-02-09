@@ -434,7 +434,7 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
  * Writes the variable-length part of the global order bounds into the fragment
  * metadata.
  *
- * The seqeunce of calls is
+ * The sequence of calls is
  * 1) set_tile_global_order_bounds_fixed
  * 2) convert_tile_global_order_bounds_sizes_to_offsets
  * 3) this

@@ -31,7 +31,6 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/support/src/helpers.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
@@ -41,8 +40,6 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/column_fragment_writer.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/storage_manager/context.h"
-#include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
@@ -149,25 +146,6 @@ struct ColumnFragmentWriterFx {
     schema.set_domain(dom);
     schema.add_attribute(attr);
     schema.set_capacity(10);
-
-    tiledb::Array::create(ARRAY_NAME, schema);
-  }
-
-  /**
-   * Creates a dense array with multiple tiles (domain 0-99, tile extent 10).
-   */
-  void create_multi_tile_dense_array() {
-    auto dim = tiledb::Dimension::create<int32_t>(ctx_, "d", {{0, 99}}, 10);
-    tiledb::Domain dom(ctx_);
-    dom.add_dimension(dim);
-
-    auto attr = tiledb::Attribute::create<int32_t>(ctx_, "a");
-
-    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
-    schema.set_domain(dom);
-    schema.add_attribute(attr);
-    schema.set_cell_order(TILEDB_ROW_MAJOR);
-    schema.set_tile_order(TILEDB_ROW_MAJOR);
 
     tiledb::Array::create(ARRAY_NAME, schema);
   }
@@ -327,6 +305,39 @@ TEST_CASE_METHOD(
         Catch::Matchers::ContainsSubstring("is still open"));
     // Don't close - the writer will be destroyed with the field still open
   }
+
+  SECTION("Error: open already-written field") {
+    auto memory_tracker = tiledb::test::get_test_memory_tracker();
+
+    writer.open_field("a");
+
+    auto tile = WriterTileTuple(
+        *array_schema,
+        10,
+        false,
+        false,
+        sizeof(int32_t),
+        Datatype::INT32,
+        memory_tracker);
+
+    std::vector<int32_t> data(10, 42);
+    tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
+    tile.set_final_size(10);
+
+    TileMetadataGenerator md_gen(
+        Datatype::INT32, false, false, sizeof(int32_t), 1);
+    md_gen.process_full_tile(tile);
+    md_gen.set_tile_metadata(tile);
+
+    filter_tile_for_test("a", tile, *array_schema, get_resources());
+    writer.write_tile(tile);
+    writer.close_field();
+
+    // Attempting to open the same field again should fail.
+    REQUIRE_THROWS_WITH(
+        writer.open_field("a"),
+        Catch::Matchers::ContainsSubstring("has already been written"));
+  }
 }
 
 TEST_CASE_METHOD(
@@ -441,6 +452,83 @@ TEST_CASE_METHOD(
       writer.set_mbrs(std::move(mbrs)),
       Catch::Matchers::ContainsSubstring(
           "Dense arrays should not provide MBRs"));
+}
+
+TEST_CASE_METHOD(
+    ColumnFragmentWriterFx,
+    "ColumnFragmentWriter: finalize requires all fields written",
+    "[column-fragment-writer]") {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  EncryptionKey enc_key;
+
+  SECTION("Dense: missing attribute") {
+    create_dense_array();
+    auto array_schema = get_array_schema();
+
+    int32_t domain_start = 0;
+    int32_t domain_end = 9;
+    NDRange non_empty_domain;
+    non_empty_domain.emplace_back(
+        Range(&domain_start, &domain_end, sizeof(int32_t)));
+
+    auto fragment_uri = generate_fragment_uri(700);
+    ColumnFragmentWriter writer(
+        &get_resources(), array_schema, fragment_uri, non_empty_domain);
+
+    // Dense arrays don't need dimensions written, but attribute is required.
+    REQUIRE_THROWS_WITH(
+        writer.finalize(enc_key),
+        Catch::Matchers::ContainsSubstring("attribute 'a' was not written"));
+  }
+
+  SECTION("Sparse: missing dimension") {
+    create_sparse_array();
+    auto array_schema = get_array_schema();
+
+    int32_t domain_start = 0;
+    int32_t domain_end = 9;
+    NDRange non_empty_domain;
+    non_empty_domain.emplace_back(
+        Range(&domain_start, &domain_end, sizeof(int32_t)));
+
+    auto fragment_uri = generate_fragment_uri(701);
+    ColumnFragmentWriter writer(
+        &get_resources(), array_schema, fragment_uri, non_empty_domain, 1);
+
+    // Write only attribute, skip dimension.
+    {
+      writer.open_field("a");
+      auto tile = WriterTileTuple(
+          *array_schema,
+          10,
+          false,
+          false,
+          sizeof(int32_t),
+          Datatype::INT32,
+          memory_tracker);
+
+      std::vector<int32_t> data(10, 1);
+      tile.fixed_tile().write(data.data(), 0, data.size() * sizeof(int32_t));
+      tile.set_final_size(10);
+
+      TileMetadataGenerator md_gen(
+          Datatype::INT32, false, false, sizeof(int32_t), 1);
+      md_gen.process_full_tile(tile);
+      md_gen.set_tile_metadata(tile);
+
+      filter_tile_for_test("a", tile, *array_schema, get_resources());
+      writer.write_tile(tile);
+      writer.close_field();
+    }
+
+    std::vector<NDRange> mbrs(1);
+    mbrs[0].emplace_back(Range(&domain_start, &domain_end, sizeof(int32_t)));
+    writer.set_mbrs(std::move(mbrs));
+
+    REQUIRE_THROWS_WITH(
+        writer.finalize(enc_key),
+        Catch::Matchers::ContainsSubstring("dimension 'd' was not written"));
+  }
 }
 
 TEST_CASE_METHOD(
@@ -1098,7 +1186,7 @@ TEST_CASE_METHOD(
     ColumnFragmentWriterFx,
     "ColumnFragmentWriter: multiple tiles per field",
     "[column-fragment-writer]") {
-  create_multi_tile_dense_array();
+  create_dense_array();
 
   auto array_schema = get_array_schema();
   auto fragment_uri = generate_fragment_uri(500);

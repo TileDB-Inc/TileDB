@@ -33,6 +33,8 @@
 #include "tiledb/sm/fragment/column_fragment_writer.h"
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
@@ -62,7 +64,6 @@ ColumnFragmentWriter::ColumnFragmentWriter(
     , dense_(array_schema->dense())
     , current_tile_idx_(0)
     , tile_num_(0)
-    , first_field_closed_(false)
     , last_tile_cell_num_(0)
     , mbrs_set_(false) {
   // For dense arrays, compute tile count from domain.
@@ -122,11 +123,16 @@ void ColumnFragmentWriter::open_field(const std::string& name) {
         "Field '" + name + "' does not exist in array schema");
   }
 
+  if (written_fields_.count(name)) {
+    throw ColumnFragmentWriterException(
+        "Field '" + name + "' has already been written");
+  }
+
   current_field_ = name;
   current_tile_idx_ = 0;
 }
 
-void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
+void ColumnFragmentWriter::write_tile(const WriterTileTuple& tile) {
   if (current_field_.empty()) {
     throw ColumnFragmentWriterException(
         "Cannot write tile: no field is currently open");
@@ -139,7 +145,7 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
 
   // For sparse arrays with dynamic growth (tile_num_=0 initially, first field),
   // grow metadata. After first field closes, tile_num_ is fixed.
-  if (!dense_ && !first_field_closed_ && current_tile_idx_ >= tile_num_) {
+  if (!dense_ && written_fields_.empty() && current_tile_idx_ >= tile_num_) {
     tile_num_++;
     frag_meta_->set_num_tiles(tile_num_);
   } else if (current_tile_idx_ >= tile_num_) {
@@ -157,13 +163,9 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   const bool has_min_max_md = TileMetadataGenerator::has_min_max_metadata(
       type, is_dim, var_size, cell_val_num);
-  const bool has_sum_md =
-      TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
 
-  // Get URIs for tile files
+  // Get URI for tile file
   URI uri = frag_meta_->uri(name);
-  URI var_uri = var_size ? frag_meta_->var_uri(name) : URI("");
-  URI validity_uri = nullable ? frag_meta_->validity_uri(name) : URI("");
 
   // Write fixed/offset tile
   auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
@@ -177,6 +179,7 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
 
   // Write var tile if var-size
   if (var_size) {
+    URI var_uri = frag_meta_->var_uri(name);
     auto& t_var = tile.var_tile();
     resources_->vfs().write(
         var_uri,
@@ -213,6 +216,8 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
           name, current_tile_idx_, tile);
     }
 
+    const bool has_sum_md =
+        TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
     if (has_sum_md) {
       frag_meta_->set_tile_sum(name, current_tile_idx_, tile.sum());
     }
@@ -220,6 +225,7 @@ void ColumnFragmentWriter::write_tile(WriterTileTuple& tile) {
 
   // Write validity tile if nullable
   if (nullable) {
+    URI validity_uri = frag_meta_->validity_uri(name);
     auto& t_val = tile.validity_tile();
     resources_->vfs().write(
         validity_uri,
@@ -258,22 +264,22 @@ void ColumnFragmentWriter::close_field() {
     throw_if_not_ok(resources_->vfs().close_file(validity_uri));
   }
 
-  // Set last tile cell num from the first field closed.
-  if (!first_field_closed_) {
+  // Set last tile cell num from the first field written.
+  if (written_fields_.empty()) {
     frag_meta_->set_last_tile_cell_num(last_tile_cell_num_);
   }
 
   // For sparse with dynamic growth, first closed field determines tile count.
-  if (!dense_ && !first_field_closed_) {
+  if (!dense_ && written_fields_.empty()) {
     tile_num_ = current_tile_idx_;
     frag_meta_->set_num_tiles(tile_num_);
-    first_field_closed_ = true;
   } else if (current_tile_idx_ != tile_num_) {
     throw ColumnFragmentWriterException(
         "Field '" + name + "' has " + std::to_string(current_tile_idx_) +
         " tiles but expected " + std::to_string(tile_num_));
   }
 
+  written_fields_.insert(current_field_);
   current_field_.clear();
   current_tile_idx_ = 0;
 }
@@ -312,11 +318,26 @@ void ColumnFragmentWriter::finalize(const EncryptionKey& encryption_key) {
         "Cannot finalize sparse array without MBRs. Call set_mbrs() first.");
   }
 
-  finalize_internal(encryption_key);
-}
+  // Validate that all schema fields have been written.
+  // For sparse arrays, dimensions must be written explicitly.
+  // For dense arrays, dimension data is implicit from the domain.
+  if (!dense_) {
+    for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
+      const auto& name = array_schema_->dimension_ptr(i)->name();
+      if (!written_fields_.count(name)) {
+        throw ColumnFragmentWriterException(
+            "Cannot finalize: dimension '" + name + "' was not written");
+      }
+    }
+  }
+  for (unsigned i = 0; i < array_schema_->attribute_num(); ++i) {
+    const auto& name = array_schema_->attribute(i)->name();
+    if (!written_fields_.count(name)) {
+      throw ColumnFragmentWriterException(
+          "Cannot finalize: attribute '" + name + "' was not written");
+    }
+  }
 
-void ColumnFragmentWriter::finalize_internal(
-    const EncryptionKey& encryption_key) {
   frag_meta_->compute_fragment_min_max_sum_null_count();
   frag_meta_->store(encryption_key);
 
