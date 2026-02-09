@@ -50,6 +50,7 @@ conclude(object_library)
 # `fragment_metadata` object library
 #
 list(APPEND SOURCES
+    column_fragment_writer.cc
     fragment_metadata.cc
     fragment_info.cc
     loaded_fragment_metadata.cc

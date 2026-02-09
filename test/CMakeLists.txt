@@ -96,6 +96,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
   src/unit-CellSlabIter.cc
+  src/unit-column-fragment-writer.cc
   src/unit-compression-dd.cc
   src/unit-compression-delta.cc
   src/unit-compression-rle.cc

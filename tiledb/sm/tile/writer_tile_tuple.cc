@@ -129,6 +129,17 @@ void WriterTileTuple::set_metadata(
 }
 
 std::optional<uint64_t> WriterTileTuple::filtered_size() const {
+  // Check if the main tile is filtered. If not, return nullopt.
+  if (var_size()) {
+    if (!offset_tile().filtered()) {
+      return std::nullopt;
+    }
+  } else {
+    if (!fixed_tile().filtered()) {
+      return std::nullopt;
+    }
+  }
+
   uint64_t tile_size = 0;
   if (var_size()) {
     tile_size += offset_tile().filtered_buffer().size();

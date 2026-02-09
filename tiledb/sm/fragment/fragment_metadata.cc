@@ -344,6 +344,44 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   loaded_metadata_ptr_->tile_max_var_buffer()[idx].resize(max_var_total);
 }
 
+/** Helper to append var data and store offset in one operation. */
+template <typename VarBufType>
+static void append_var_data(
+    tdb::pmr::vector<uint8_t>& offset_buf,
+    VarBufType& var_buf,
+    uint64_t tid,
+    const ByteVec& data) {
+  auto buff_offset = tid * sizeof(uint64_t);
+  iassert(buff_offset + sizeof(uint64_t) <= offset_buf.size());
+  auto offset_ptr = reinterpret_cast<uint64_t*>(&offset_buf[buff_offset]);
+  *offset_ptr = var_buf.size();
+  var_buf.insert(var_buf.end(), data.begin(), data.end());
+}
+
+void FragmentMetadata::append_tile_min_var(
+    const std::string& name, uint64_t tid, const ByteVec& min) {
+  auto it = idx_map_.find(name);
+  iassert(it != idx_map_.end());
+  auto idx = it->second;
+  append_var_data(
+      loaded_metadata_ptr_->tile_min_buffer()[idx],
+      loaded_metadata_ptr_->tile_min_var_buffer()[idx],
+      tid + tile_index_base_,
+      min);
+}
+
+void FragmentMetadata::append_tile_max_var(
+    const std::string& name, uint64_t tid, const ByteVec& max) {
+  auto it = idx_map_.find(name);
+  iassert(it != idx_map_.end());
+  auto idx = it->second;
+  append_var_data(
+      loaded_metadata_ptr_->tile_max_buffer()[idx],
+      loaded_metadata_ptr_->tile_max_var_buffer()[idx],
+      tid + tile_index_base_,
+      max);
+}
+
 void FragmentMetadata::set_tile_global_order_bounds_fixed(
     const std::string& dim_name,
     uint64_t which_tile,
@@ -396,25 +434,32 @@ void FragmentMetadata::set_tile_global_order_bounds_fixed(
  * Writes the variable-length part of the global order bounds into the fragment
  * metadata.
  *
- * The seqeunce of calls is
+ * The sequence of calls is
  * 1) set_tile_global_order_bounds_fixed
  * 2) convert_tile_global_order_bounds_sizes_to_offsets
  * 3) this
  */
 void FragmentMetadata::set_tile_global_order_bounds_var(
     const std::string& dim_name, uint64_t wtile, const WriterTileTuple& data) {
+  const auto& tile_min = data.global_order_min();
+  iassert(tile_min.has_value());
+  const auto& tile_max = data.global_order_max();
+  iassert(tile_max.has_value());
+  set_tile_global_order_bounds_var(
+      dim_name, wtile, tile_min.value(), tile_max.value());
+}
+
+void FragmentMetadata::set_tile_global_order_bounds_var(
+    const std::string& dim_name,
+    uint64_t wtile,
+    const ByteVec& tile_min,
+    const ByteVec& tile_max) {
   const auto dim = array_schema_->domain().get_dimension_index(dim_name);
   if (!array_schema_->domain().dimensions()[dim]->var_size()) {
     return;
   }
 
   const uint64_t tile = tile_index_base_ + wtile;
-
-  const auto& tile_min = data.global_order_min();
-  iassert(tile_min.has_value());
-
-  const auto& tile_max = data.global_order_max();
-  iassert(tile_max.has_value());
 
   const uint64_t* min_offsets = reinterpret_cast<const uint64_t*>(
       loaded_metadata_ptr_->tile_global_order_min_buffer()[dim].data());
@@ -424,19 +469,19 @@ void FragmentMetadata::set_tile_global_order_bounds_var(
   const uint64_t min_var_start = min_offsets[tile];
   const uint64_t max_var_start = max_offsets[tile];
 
-  if (tile_min.value().size()) {
+  if (tile_min.size()) {
     memcpy(
         &loaded_metadata_ptr_
              ->tile_global_order_min_var_buffer()[dim][min_var_start],
-        tile_min.value().data(),
-        tile_min.value().size());
+        tile_min.data(),
+        tile_min.size());
   }
-  if (tile_max.value().size()) {
+  if (tile_max.size()) {
     memcpy(
         &loaded_metadata_ptr_
              ->tile_global_order_max_var_buffer()[dim][max_var_start],
-        tile_max.value().data(),
-        tile_max.value().size());
+        tile_max.data(),
+        tile_max.size());
   }
 }
 
@@ -464,6 +509,34 @@ void FragmentMetadata::convert_tile_global_order_bounds_sizes_to_offsets(
   // Allocate max var data buffer.
   loaded_metadata_ptr_->tile_global_order_max_var_buffer()[idx].resize(
       max_var_total);
+}
+
+void FragmentMetadata::append_tile_global_order_min_var(
+    const std::string& dim_name, uint64_t tid, const ByteVec& min) {
+  const auto idx = array_schema_->domain().get_dimension_index(dim_name);
+  if (!array_schema_->domain().dimensions()[idx]->var_size()) {
+    return;
+  }
+  append_var_data(
+      loaded_metadata_ptr_->tile_global_order_min_buffer()[idx],
+      loaded_metadata_ptr_->tile_global_order_min_var_buffer()[idx],
+      tid + tile_index_base_,
+      min);
+  has_tile_global_order_bounds_ = true;
+}
+
+void FragmentMetadata::append_tile_global_order_max_var(
+    const std::string& dim_name, uint64_t tid, const ByteVec& max) {
+  const auto idx = array_schema_->domain().get_dimension_index(dim_name);
+  if (!array_schema_->domain().dimensions()[idx]->var_size()) {
+    return;
+  }
+  append_var_data(
+      loaded_metadata_ptr_->tile_global_order_max_buffer()[idx],
+      loaded_metadata_ptr_->tile_global_order_max_var_buffer()[idx],
+      tid + tile_index_base_,
+      max);
+  has_tile_global_order_bounds_ = true;
 }
 
 void FragmentMetadata::set_tile_sum(
@@ -1434,6 +1507,55 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   if (!dense_) {
     loaded_metadata_ptr_->rtree().set_leaf_num(num_tiles);
     sparse_tile_num_ = num_tiles;
+  }
+}
+
+void FragmentMetadata::reserve_num_tiles(uint64_t num_tiles) {
+  for (auto& it : idx_map_) {
+    auto i = it.second;
+
+    const auto is_dim = array_schema_->is_dim(it.first);
+    const auto var_size = array_schema_->var_size(it.first);
+    const auto cell_size = var_size ? constants::cell_var_offset_size :
+                                      array_schema_->cell_size(it.first);
+
+    loaded_metadata_ptr_->tile_offsets()[i].reserve(num_tiles);
+    loaded_metadata_ptr_->tile_var_offsets()[i].reserve(num_tiles);
+    loaded_metadata_ptr_->tile_var_sizes()[i].reserve(num_tiles);
+    loaded_metadata_ptr_->tile_validity_offsets()[i].reserve(num_tiles);
+
+    if (!array_schema_->dense() || !is_dim) {
+      const auto type = array_schema_->type(it.first);
+      const auto cell_val_num = array_schema_->cell_val_num(it.first);
+
+      if (TileMetadataGenerator::has_min_max_metadata(
+              type, is_dim, var_size, cell_val_num)) {
+        loaded_metadata_ptr_->tile_min_buffer()[i].reserve(
+            num_tiles * cell_size);
+        loaded_metadata_ptr_->tile_max_buffer()[i].reserve(
+            num_tiles * cell_size);
+      }
+
+      if (TileMetadataGenerator::has_sum_metadata(
+              type, var_size, cell_val_num)) {
+        if (!var_size)
+          loaded_metadata_ptr_->tile_sums()[i].reserve(
+              num_tiles * sizeof(uint64_t));
+      }
+
+      if (array_schema_->is_nullable(it.first))
+        loaded_metadata_ptr_->tile_null_counts()[i].reserve(num_tiles);
+    }
+
+    // Sparse arrays also store the global order lower/upper bounds
+    if (!array_schema_->dense() && is_dim) {
+      const unsigned dimension =
+          array_schema_->domain().get_dimension_index(it.first);
+      loaded_metadata_ptr_->tile_global_order_min_buffer()[dimension].reserve(
+          num_tiles * cell_size);
+      loaded_metadata_ptr_->tile_global_order_max_buffer()[dimension].reserve(
+          num_tiles * cell_size);
+    }
   }
 }
 

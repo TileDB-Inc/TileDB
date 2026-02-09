@@ -478,6 +478,15 @@ class FragmentMetadata {
   void set_num_tiles(uint64_t num_tiles);
 
   /**
+   * Reserves capacity in the per-tile metadata vectors.
+   * This avoids reallocations when tiles are added incrementally via
+   * set_num_tiles.
+   *
+   * @param num_tiles Number of tiles to reserve capacity for.
+   */
+  void reserve_num_tiles(uint64_t num_tiles);
+
+  /**
    * Sets the tile "index base" which is added to the tile index in the set_*()
    * functions. Only used during global order writes/appends.
    *
@@ -607,6 +616,28 @@ class FragmentMetadata {
   void convert_tile_min_max_var_sizes_to_offsets(const std::string& name);
 
   /**
+   * Appends a tile min for a var-size attribute directly to the var buffer.
+   * Stores the current buffer position as the offset and appends the data.
+   *
+   * @param name The attribute for which the min is appended.
+   * @param tid The index of the tile for which the min is appended.
+   * @param min The minimum value to append.
+   */
+  void append_tile_min_var(
+      const std::string& name, uint64_t tid, const ByteVec& min);
+
+  /**
+   * Appends a tile max for a var-size attribute directly to the var buffer.
+   * Stores the current buffer position as the offset and appends the data.
+   *
+   * @param name The attribute for which the max is appended.
+   * @param tid The index of the tile for which the max is appended.
+   * @param max The maximum value to append.
+   */
+  void append_tile_max_var(
+      const std::string& name, uint64_t tid, const ByteVec& max);
+
+  /**
    * Populate fixed parts of bounds for a dimension and tile using the
    * coordinate values in `data`.
    */
@@ -621,10 +652,44 @@ class FragmentMetadata {
       const std::string& dim_name, uint64_t tile, const WriterTileTuple& data);
 
   /**
+   * Populate var parts of bounds for a dimension and tile using the provided
+   * min/max values directly.
+   */
+  void set_tile_global_order_bounds_var(
+      const std::string& dim_name,
+      uint64_t tile,
+      const ByteVec& min,
+      const ByteVec& max);
+
+  /**
    * Converts global order min/max sizes to offsets.
    */
   void convert_tile_global_order_bounds_sizes_to_offsets(
       const std::string& dim_name);
+
+  /**
+   * Appends a tile global order min for a var-size dimension directly to the
+   * var buffer. Stores the current buffer position as the offset and appends
+   * the data.
+   *
+   * @param dim_name The dimension for which the min is appended.
+   * @param tid The index of the tile for which the min is appended.
+   * @param min The minimum value to append.
+   */
+  void append_tile_global_order_min_var(
+      const std::string& dim_name, uint64_t tid, const ByteVec& min);
+
+  /**
+   * Appends a tile global order max for a var-size dimension directly to the
+   * var buffer. Stores the current buffer position as the offset and appends
+   * the data.
+   *
+   * @param dim_name The dimension for which the max is appended.
+   * @param tid The index of the tile for which the max is appended.
+   * @param max The maximum value to append.
+   */
+  void append_tile_global_order_max_var(
+      const std::string& dim_name, uint64_t tid, const ByteVec& max);
 
   /**
    * Sets a tile sum for the input attribute.
