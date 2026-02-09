@@ -123,6 +123,14 @@ class PosixDIR {
   optional<DIR*> dir_;
 };
 
+Posix::~Posix() {
+  std::lock_guard<std::mutex> lock(open_files_mtx_);
+  for (auto& [path, of] : open_files_) {
+    ::close(of.fd);
+  }
+  open_files_.clear();
+}
+
 Posix::Posix(const Config& config) {
   // Initialize member variables with posix config parameters.
 
@@ -296,7 +304,34 @@ uint64_t Posix::read(
 }
 
 void Posix::flush(const URI& uri, bool) {
-  sync(uri);
+  auto path = uri.to_path();
+  int fd = -1;
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    auto it = open_files_.find(path);
+    if (it != open_files_.end()) {
+      fd = it->second.fd;
+      open_files_.erase(it);
+    }
+  }
+
+  if (fd != -1) {
+    // fsync and close the cached file descriptor.
+    if (::fsync(fd) != 0) {
+      auto err = errno;
+      ::close(fd);
+      throw IOError(
+          std::string("Cannot sync file '") + path + "'; " + strerror(err));
+    }
+    if (::close(fd) != 0) {
+      throw IOError(
+          std::string("Cannot close file '") + path + "'; " + strerror(errno));
+    }
+  } else {
+    // No cached fd (e.g. directory sync or file not written through us).
+    sync(uri);
+  }
 }
 
 void Posix::sync(const URI& uri) const {
@@ -350,32 +385,42 @@ void Posix::write(
     }
   }
 
-  // Get file offset (equal to file size)
-  Status st;
-  uint64_t file_offset = 0;
-  if (is_file(URI(path))) {
-    file_offset = file_size(URI(path));
-  } else {
-    throw_if_not_ok(ensure_directory(path));
+  int fd;
+  uint64_t file_offset;
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    auto it = open_files_.find(path);
+    if (it != open_files_.end()) {
+      // Reuse the cached file descriptor.
+      fd = it->second.fd;
+      file_offset = it->second.offset;
+    } else {
+      // First write to this path: open fd and determine current size.
+      if (is_file(URI(path))) {
+        file_offset = file_size(URI(path));
+      } else {
+        throw_if_not_ok(ensure_directory(path));
+        file_offset = 0;
+      }
+      fd = ::open(path.c_str(), O_WRONLY | O_CREAT, file_permissions_);
+      if (fd == -1) {
+        throw IOError(
+            std::string("Cannot open file '") + path + "'; " + strerror(errno));
+      }
+      open_files_.emplace(path, OpenFile{fd, file_offset});
+    }
   }
 
-  // Open or create file.
-  int fd = open(path.c_str(), O_WRONLY | O_CREAT, file_permissions_);
-  if (fd == -1) {
-    throw IOError(
-        std::string("Cannot open file '") + path + "'; " + strerror(errno));
-  }
-
-  st = write_at(fd, file_offset, buffer, buffer_size);
+  auto st = write_at(fd, file_offset, buffer, buffer_size);
   if (!st.ok()) {
-    close(fd);
-    std::stringstream errmsg;
-    errmsg << "Cannot write to file '" << path << "'; " << st.message();
-    throw IOError(errmsg.str());
-  }
-  if (close(fd) != 0) {
     throw IOError(
-        std::string("Cannot close file '") + path + "'; " + strerror(errno));
+        std::string("Cannot write to file '") + path + "'; " + st.message());
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    open_files_[path].offset = file_offset + buffer_size;
   }
 }
 

@@ -926,6 +926,69 @@ TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
   REQUIRE_NOTHROW(vfs.remove_dir(URI(path)));
 }
 
+// Basic smoke test for persistent file handle caching in Posix::write().
+// The fd is kept open across consecutive writes and only closed on flush().
+TEST_CASE(
+    "VFS: Persistent file handles for local writes",
+    "[vfs][persistent-handles]") {
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, Config{}};
+  std::string base = local_path();
+
+  SECTION("Multiple writes accumulate before flush") {
+    URI testfile(base + "multi_write_file");
+
+    std::string part1 = "Hello, ";
+    std::string part2 = "persistent ";
+    std::string part3 = "handles!";
+    REQUIRE_NOTHROW(vfs.write(testfile, part1.data(), part1.size()));
+    REQUIRE_NOTHROW(vfs.write(testfile, part2.data(), part2.size()));
+    REQUIRE_NOTHROW(vfs.write(testfile, part3.data(), part3.size()));
+
+    require_tiledb_ok(vfs.close_file(testfile));
+
+    std::string expected = "Hello, persistent handles!";
+    CHECK(vfs.file_size(testfile) == expected.size());
+
+    std::vector<char> buf(expected.size());
+    require_tiledb_ok(vfs.read_exactly(testfile, 0, buf.data(), buf.size()));
+    CHECK(std::string(buf.data(), buf.size()) == expected);
+
+    REQUIRE_NOTHROW(vfs.remove_file(testfile));
+  }
+
+  SECTION("Append across separate open cycles") {
+    URI testfile(base + "reopen_append_file");
+
+    // First write cycle.
+    std::string data1 = "first";
+    REQUIRE_NOTHROW(vfs.write(testfile, data1.data(), data1.size()));
+    require_tiledb_ok(vfs.close_file(testfile));
+    CHECK(vfs.file_size(testfile) == data1.size());
+
+    // Second write cycle -- file already exists on disk.
+    std::string data2 = "second";
+    REQUIRE_NOTHROW(vfs.write(testfile, data2.data(), data2.size()));
+    require_tiledb_ok(vfs.close_file(testfile));
+
+    std::string expected = "firstsecond";
+    CHECK(vfs.file_size(testfile) == expected.size());
+
+    std::vector<char> buf(expected.size());
+    require_tiledb_ok(vfs.read_exactly(testfile, 0, buf.data(), buf.size()));
+    CHECK(std::string(buf.data(), buf.size()) == expected);
+
+    REQUIRE_NOTHROW(vfs.remove_file(testfile));
+  }
+
+  // Clean up the test directory.
+  if (vfs.is_dir(URI(base))) {
+    REQUIRE_NOTHROW(vfs.remove_dir(URI(base)));
+  }
+}
+
 #ifdef HAVE_AZURE
 TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
   // Test the construction of Azure Blob Storage URIs from account name and SAS
