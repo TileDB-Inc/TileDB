@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +84,6 @@ struct CppConsolidationPlanFx {
 
 CppConsolidationPlanFx::CppConsolidationPlanFx()
     : vfs_(ctx_) {
-  cfg_.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(cfg_);
   vfs_ = VFS(ctx_);
 

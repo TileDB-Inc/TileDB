@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -337,11 +337,6 @@ class Config {
    *    fragment will have to fill with the special fill value
    *    (since the resulting fragment is dense). <br>
    *    **Default**: 1.0
-   * - `sm.consolidation.buffer_size` <br>
-   *    **Deprecated**
-   *    The size (in bytes) of the attribute buffers used during
-   *    consolidation. <br>
-   *    **Default**: 50,000,000
    * - `sm.consolidation.max_fragment_size` <br>
    *    **Experimental** <br>
    *    The size (in bytes) of the maximum on-disk fragment size that will be

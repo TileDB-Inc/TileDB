@@ -135,13 +135,8 @@ void FragmentConsolidationWorkspace::resize_buffers(
     buffer_weights.emplace_back(sizeof(uint64_t));
   }
 
-  // If a user set the per-attribute buffer size configuration, we override
-  // the use of the total_budget_size config setting for backwards
-  // compatible behavior.
   auto buffer_num = buffer_weights.size();
-  if (config.buffer_size_ != 0) {
-    total_buffers_budget = config.buffer_size_ * buffer_num;
-  }
+  total_buffers_budget = buffer_num;
 
   // Calculate the size of individual buffers by assigning a weight based
   // percentage of the total buffer size.
@@ -1009,17 +1004,6 @@ Status FragmentConsolidator::set_config(const Config& config) {
       "sm.consolidation.amplification", Config::must_find);
   config_.steps_ =
       merged_config.get<uint32_t>("sm.consolidation.steps", Config::must_find);
-  config_.buffer_size_ = 0;
-  // Only set the buffer_size_ if the user specified a value. Otherwise, we use
-  // the new sm.mem.consolidation.buffers_weight instead.
-  if (merged_config.set_params().count("sm.consolidation.buffer_size") > 0) {
-    logger_->warn(
-        "The `sm.consolidation.buffer_size configuration setting has been "
-        "deprecated. Set consolidation buffer sizes using the newer "
-        "`sm.mem.consolidation.buffers_weight` setting.");
-    config_.buffer_size_ = merged_config.get<uint64_t>(
-        "sm.consolidation.buffer_size", Config::must_find);
-  }
   config_.total_budget_ =
       merged_config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
   config_.buffers_weight_ = merged_config.get<uint64_t>(

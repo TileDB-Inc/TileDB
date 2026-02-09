@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,7 +81,6 @@ struct UpdatesFx {
 UpdatesFx::UpdatesFx()
     : vfs_(ctx_) {
   Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
   config["sm.allow_updates_experimental"] = "true";
   ctx_ = Context(config);
   vfs_ = VFS(ctx_);
