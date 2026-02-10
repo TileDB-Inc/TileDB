@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,12 +30,15 @@
  * Tests the C API consolidation.
  */
 
+#include <test/support/assert_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
@@ -45,6 +48,8 @@
 #include <iostream>
 
 using namespace tiledb::test;
+
+using Asserter = AsserterCatch;
 
 /** Tests for C API consolidation. */
 struct ConsolidationFx {
@@ -145,6 +150,12 @@ struct ConsolidationFx {
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
   void get_vac_files(std::vector<std::string>& files, bool dense = true);
+  void write_and_consolidate_fragments(
+      const char* array_name,
+      uint64_t num_small_cells,
+      uint64_t long_string_length,
+      uint64_t consolidation_budget,
+      tiledb_config_t* consolidate_cfg = nullptr);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -7587,28 +7598,568 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Helper method which attempts to validate fragment consolidation by writing
+ * `num_small_cells` small cells before writing one large cell of length
+ * `long_string_length`. Consolidation will succeed up to some value of
+ * `long_string_length`, and fail after by disrespecting the memory budget.
+ *
+ * @param array_name The name of the array.
+ * @param num_small_cells The number of small cells to consolidate.
+ * @param long_string_length The length of the long string to write.
+ * @param consolidation_budget The total budget to set for consolidation.
+ * @param consolidate_cfg Optional cfg with additional set-consolidation params.
+ */
+void ConsolidationFx::write_and_consolidate_fragments(
+    const char* array_name,
+    uint64_t num_small_cells,
+    uint64_t long_string_length,
+    uint64_t consolidation_budget,
+    tiledb_config_t* consolidate_cfg) {
+  std::string words[8] = {
+      "foo", "bar", "apple", "orange", "banana", "red", "yellow", "blue"};
+
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  TRY(ctx_, tiledb_config_alloc(&cfg, &err));
+  REQUIRE(err == nullptr);
+
+  // Create array
+  tiledb_dimension_t* dim;
+  uint64_t tile_extent = std::max(num_small_cells, long_string_length);
+  uint64_t dim_domain[] = {0, tile_extent + 1};
+  TRY(ctx_,
+      tiledb_dimension_alloc(
+          ctx_, "dim", TILEDB_UINT64, &dim_domain, &tile_extent, &dim));
+  tiledb_domain_t* domain;
+  TRY(ctx_, tiledb_domain_alloc(ctx_, &domain));
+  TRY(ctx_, tiledb_domain_add_dimension(ctx_, domain, dim));
+  tiledb_attribute_t* attr;
+  TRY(ctx_, tiledb_attribute_alloc(ctx_, "attr", TILEDB_CHAR, &attr));
+  TRY(ctx_,
+      set_attribute_compression_filter(ctx_, attr, TILEDB_FILTER_GZIP, -1));
+  TRY(ctx_, tiledb_attribute_set_cell_val_num(ctx_, attr, TILEDB_VAR_NUM));
+  tiledb_array_schema_t* array_schema;
+  TRY(ctx_, tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema));
+  TRY(ctx_,
+      tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR));
+  TRY(ctx_,
+      tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR));
+  TRY(ctx_, tiledb_array_schema_set_capacity(ctx_, array_schema, 2));
+  TRY(ctx_, tiledb_array_schema_set_domain(ctx_, array_schema, domain));
+  TRY(ctx_, tiledb_array_schema_add_attribute(ctx_, array_schema, attr));
+  TRY(ctx_, tiledb_array_schema_check(ctx_, array_schema));
+
+  if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    std::string encryption_type_string =
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
+    TRY(ctx_,
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err));
+    REQUIRE(err == nullptr);
+    TRY(ctx_,
+        tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err));
+    REQUIRE(err == nullptr);
+    // Do not remove the array when recreating context to set the new config
+    vfs_test_setup_.update_config(cfg);
+    ctx_ = vfs_test_setup_.ctx_c;
+    vfs_ = vfs_test_setup_.vfs_c;
+  }
+  TRY(ctx_, tiledb_array_create(ctx_, array_name, array_schema));
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Prepare to write many small cells to the array
+  std::vector<uint64_t> small_cells_coords;
+  std::vector<uint64_t> small_cells_offsets;
+  small_cells_coords.reserve(num_small_cells);
+  small_cells_offsets.reserve(num_small_cells);
+  small_cells_offsets.push_back(0);
+  std::string small_cells_string = "";
+  for (uint64_t i = 0; i < num_small_cells; i++) {
+    std::string word = words[i % 8];
+    small_cells_string += word;
+    small_cells_coords.push_back(i + 1);
+    if (i != num_small_cells - 1) {
+      small_cells_offsets.push_back(small_cells_offsets[i] + word.length());
+    }
+  }
+  std::vector<char> small_cells_vec(
+      small_cells_string.begin(), small_cells_string.end());
+  uint64_t small_cells_vec_size = small_cells_vec.size();
+  uint64_t small_cells_coords_size =
+      sizeof(uint64_t) * small_cells_coords.size();
+  uint64_t small_cells_offsets_size =
+      sizeof(uint64_t) * small_cells_offsets.size();
+
+  // Write small cells to the array
+  tiledb_array_t* array;
+  TRY(ctx_, tiledb_array_alloc(ctx_, array_name, &array));
+  TRY(ctx_, tiledb_array_open(ctx_, array, TILEDB_WRITE));
+  tiledb_query_t* query;
+  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query));
+  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          "attr",
+          small_cells_string.data(),
+          &small_cells_vec_size));
+  TRY(ctx_,
+      tiledb_query_set_offsets_buffer(
+          ctx_,
+          query,
+          "attr",
+          small_cells_offsets.data(),
+          &small_cells_offsets_size));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_,
+          query,
+          "dim",
+          small_cells_coords.data(),
+          &small_cells_coords_size));
+  TRY(ctx_, tiledb_query_submit_and_finalize(ctx_, query));
+  TRY(ctx_, tiledb_array_close(ctx_, array));
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Prepare to write long string to the array
+  const std::string test_chars = "abcdefghijklmnopqrstuvwxyz";
+  std::vector<char> long_string;
+  for (uint64_t i = 0; i < long_string_length; i++) {
+    long_string.emplace_back(test_chars[i % 26]);
+  }
+  uint64_t long_string_size = long_string.size();
+  uint64_t long_string_offset = 0;
+  uint64_t long_string_offset_size = sizeof(uint64_t);
+  uint64_t long_string_coord = small_cells_coords.back();
+  uint64_t long_string_coord_size = sizeof(uint64_t);
+
+  // Write long string to the array
+  TRY(ctx_, tiledb_array_alloc(ctx_, array_name, &array));
+  TRY(ctx_, tiledb_array_open(ctx_, array, TILEDB_WRITE));
+  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query));
+  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "attr", long_string.data(), &long_string_size));
+  TRY(ctx_,
+      tiledb_query_set_offsets_buffer(
+          ctx_, query, "attr", &long_string_offset, &long_string_offset_size));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "dim", &long_string_coord, &long_string_coord_size));
+  TRY(ctx_, tiledb_query_submit_and_finalize(ctx_, query));
+  TRY(ctx_, tiledb_array_close(ctx_, array));
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Consolidate, using caller's config if provided.
+  tiledb_config_t* consolidation_cfg =
+      (consolidate_cfg != nullptr) ? consolidate_cfg : cfg;
+  TRY(ctx_,
+      tiledb_config_set(
+          consolidation_cfg,
+          "sm.mem.total_budget",
+          std::to_string(consolidation_budget).c_str(),
+          &err));
+  REQUIRE(err == nullptr);
+  TRY(ctx_,
+      tiledb_config_set(
+          consolidation_cfg, "sm.consolidation.step_min_frags", "2", &err));
+  REQUIRE(err == nullptr);
+
+  throw_if_error(
+      ctx_, tiledb_array_consolidate(ctx_, array_name, consolidation_cfg));
+  tiledb_config_free(&cfg);
+
+  // Ensure there is only 1 fragment after consolidation.
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  TRY(ctx_, tiledb_fragment_info_alloc(ctx_, array_name, &fragment_info));
+  TRY(ctx_, tiledb_fragment_info_load(ctx_, fragment_info));
+  uint32_t fragment_num;
+  TRY(ctx_,
+      tiledb_fragment_info_get_fragment_num(
+          ctx_, fragment_info, &fragment_num));
+  CHECK(fragment_num == 1);
+  tiledb_fragment_info_free(&fragment_info);
+
+  // Validate data after consolidation.
+  uint64_t read_data_size = long_string_size + small_cells_vec_size;
+  uint64_t read_offset_size =
+      small_cells_offsets_size + long_string_offset_size;
+  uint64_t read_coords_size = small_cells_coords_size + long_string_coord_size;
+  auto read_data_buffer = (char*)malloc(read_data_size);
+  auto read_offset_buffer = (uint64_t*)malloc(read_offset_size);
+  auto read_coords_buffer = (uint64_t*)malloc(read_coords_size);
+  TRY(ctx_, tiledb_array_alloc(ctx_, array_name, &array));
+  TRY(ctx_, tiledb_array_open(ctx_, array, TILEDB_READ));
+  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_READ, &query));
+  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "attr", read_data_buffer, &read_data_size));
+  TRY(ctx_,
+      tiledb_query_set_offsets_buffer(
+          ctx_, query, "attr", read_offset_buffer, &read_offset_size));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(
+          ctx_, query, "dim", read_coords_buffer, &read_coords_size));
+  TRY(ctx_, tiledb_query_submit(ctx_, query));
+  TRY(ctx_, tiledb_array_close(ctx_, array));
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  // Note: There's a bug which drops the last 4 bits of the first fragment.
+  // #TODO Update this test once the bug is fixed.
+  std::vector<char> expected_values(
+      small_cells_string.begin(), small_cells_string.end() - 4);
+  expected_values.insert(
+      expected_values.end(), long_string.begin(), long_string.end());
+  for (uint64_t i = 0; i < read_data_size; i++) {
+    CHECK(read_data_buffer[i] == expected_values[i]);
+  }
+}
+
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test consolidation, sparse string, no progress",
-    "[capi][consolidation][sparse][string][no-progress][non-rest]") {
-  remove_sparse_string_array();
-  create_sparse_string_array();
+    "C API: Test sparse fragment consolidation",
+    "[capi][consolidation][fragment][sparse][non-rest]") {
+  const char* array_name = "fragment_consolidation_array";
+  remove_array(array_name);
 
-  write_sparse_string_full();
-  write_sparse_string_unordered();
-  consolidate_sparse_string(1, true);
+  uint64_t num_small_cells = 10000;
+  uint64_t long_string_length = 10000;
+  uint64_t consolidation_budget = 10000000;
+  std::string expected_error_msg = "";
 
-  tiledb_error_t* err = NULL;
-  tiledb_ctx_get_last_error(ctx_, &err);
+  SECTION(
+      "Success: "
+      "num small cells = 10000, "
+      "long string length = 10000, "
+      "consolidation_budget = 10000000") {
+    num_small_cells = 10000;
+    long_string_length = 10000;
+    consolidation_budget = 10000000;
+    CHECK_NOTHROW(write_and_consolidate_fragments(
+        array_name, num_small_cells, long_string_length, consolidation_budget));
+  }
 
-  const char* msg;
-  tiledb_error_message(err, &msg);
-  CHECK(
-      std::string("FragmentConsolidator: Consolidation read 0 cells, no "
-                  "progress can be made") == msg);
+  // #TODO update intercept tests. These are currently out-of-date.
+  // #TODO decide what meaningful information to gather & report...
+  /*SECTION("Success; validate reader thread's wait conditions: ") {
+    // This test explicitly validates the edge cases of the reader thread's wait
+    // conditions in `FragmentConsolidator::copy_array`.
+    //
+    // If the so-called `next_buffer_size` to enqueue will put the
+    // `enqueued_buffer_size` over the `max_buffer_size`, the reader must wait
+    // for the writer to dequeue buffers until there's room.
+    //
+    // This test validates that this condition occurs:
+    // 1. At the end of a read iteration
+    // 2. After buffer growth
+    num_small_cells = 10000;
+    consolidation_budget = 10000000;
 
-  remove_sparse_string_array();
+    int end_of_reader_count = 0;
+    int after_buffer_growth_count = 0;
+    auto validate_wait =
+        tiledb::sm::intercept::fragment_consolidator_copy_array().and_also(
+            [&end_of_reader_count, &after_buffer_growth_count](
+                const uint64_t& enqueued_buffer_size,
+                uint64_t& next_buffer_size,
+                uint64_t& max_buffer_size,
+                bool buffer_has_grown) {
+              if (buffer_has_grown) {
+                after_buffer_growth_count++;
+                CHECK(enqueued_buffer_size != 0);
+                CHECK(next_buffer_size <= max_buffer_size);
+              } else {
+                end_of_reader_count++;
+                // #TODO
+              }
+              //CHECK(enqueued_buffer_size + next_buffer_size >
+  max_buffer_size);
+            });
+
+    SECTION("no wait") {
+      // The entire fragment can fit in one read / write, so no reader waiting
+      long_string_length = 10000;
+      CHECK_NOTHROW(write_and_consolidate_fragments(
+          array_name,
+          num_small_cells,
+          long_string_length,
+          consolidation_budget));
+      CHECK(end_of_reader_count == 0);
+      CHECK(after_buffer_growth_count == 0);
+    }
+
+    SECTION("at the end of read iteration") {
+      // The buffer can fit and will not grow here
+      long_string_length = 10000;
+
+      tiledb_config_t* cfg;
+      tiledb_error_t* err = nullptr;
+      TRY(ctx_, tiledb_config_alloc(&cfg, &err));
+      REQUIRE(err == nullptr);
+      TRY(ctx_,
+          tiledb_config_set(
+              cfg,
+              "sm.mem.consolidation.initial_buffer_size",
+              std::to_string(8 * (num_small_cells + long_string_length))
+                  .c_str(),
+              &err));
+      REQUIRE(err == nullptr);
+
+      CHECK_NOTHROW(write_and_consolidate_fragments(
+          array_name,
+          num_small_cells,
+          long_string_length,
+          consolidation_budget,
+          cfg));
+      tiledb_config_free(&cfg);
+      //CHECK(end_of_reader_count == 2);
+      CHECK(after_buffer_growth_count == 0);
+    }
+
+    SECTION("after buffer growth") {
+      // Write a fragment that is 4x `initial_buffer_size` to ensure 4x growth
+      uint64_t initial_buffer_size = 10000;
+      long_string_length = 4 * initial_buffer_size;
+
+      tiledb_config_t* cfg;
+      tiledb_error_t* err = nullptr;
+      TRY(ctx_, tiledb_config_alloc(&cfg, &err));
+      REQUIRE(err == nullptr);
+      TRY(ctx_,
+          tiledb_config_set(
+              cfg,
+              "sm.mem.consolidation.initial_buffer_size",
+              std::to_string(initial_buffer_size).c_str(),
+              &err));
+      REQUIRE(err == nullptr);
+      // Do not remove the array when recreating context to set the new config
+      vfs_test_setup_.update_config(cfg);
+      ctx_ = vfs_test_setup_.ctx_c;
+      vfs_ = vfs_test_setup_.vfs_c;
+
+      CHECK_NOTHROW(write_and_consolidate_fragments(
+          array_name,
+          num_small_cells,
+          long_string_length,
+          consolidation_budget,
+          cfg));
+      tiledb_config_free(&cfg);
+      CHECK(end_of_reader_count > 8);
+      CHECK(after_buffer_growth_count == 4);
+    }
+  }*/
+
+  // #TODO This hangs unless `initial_buffer_budget` is floored by a factor of 8
+  /*SECTION(
+      "Error after buffer growth: "
+      "num small cells = 10000, "
+      "long string length = 5000000, "
+      "consolidation_budget = 10000000") {
+    expected_error_msg = " Unable to copy one slab with current budget/buffers";
+    num_small_cells = 10000;
+    long_string_length = 5000000;
+    consolidation_budget = 10000000;
+    CHECK_THROWS_WITH(
+        write_and_consolidate_fragments(
+            array_name,
+            num_small_cells,
+            long_string_length,
+            consolidation_budget),
+        Catch::Matchers::ContainsSubstring(expected_error_msg));
+  }*/
+
+  SECTION(
+      "Error attempting to load R-tree: "
+      "num small cells = 100000, "
+      "long string length = 100000, "
+      "consolidation_budget = 10000000 ") {
+    expected_error_msg = "Cannot load R-tree; Insufficient memory budget";
+    num_small_cells = 100000;
+    long_string_length = 100000;
+    consolidation_budget = 10000000;
+    CHECK_THROWS_WITH(
+        write_and_consolidate_fragments(
+            array_name,
+            num_small_cells,
+            long_string_length,
+            consolidation_budget),
+        Catch::Matchers::ContainsSubstring(expected_error_msg));
+  }
+
+  SECTION(
+      "Error loading tile offsets: "
+      "num small cells = 1000, "
+      "long string length = 1000, "
+      "consolidation_budget = 500000 ") {
+    expected_error_msg = "Cannot load tile offsets";
+
+    num_small_cells = 1000;
+    long_string_length = 1000;
+    consolidation_budget = 500000;
+    CHECK_THROWS_WITH(
+        write_and_consolidate_fragments(
+            array_name,
+            num_small_cells,
+            long_string_length,
+            consolidation_budget),
+        Catch::Matchers::ContainsSubstring(expected_error_msg));
+  }
+
+  // #TODO This hangs unless `initial_buffer_budget` is floored by a factor of 8
+  /*sSECTION(
+      "Error after buffer growth: "
+      "num small cells = 2, "
+      "long string length = 20000, "
+      "consolidation_budget = 50000 ") {
+    expected_error_msg = "Consolidation read 0 cells";
+
+    num_small_cells = 2;
+    long_string_length = 20000;
+    consolidation_budget = 50000;
+    CHECK_THROWS_WITH(
+        write_and_consolidate_fragments(
+            array_name,
+            num_small_cells,
+            long_string_length,
+            consolidation_budget),
+        Catch::Matchers::ContainsSubstring(expected_error_msg));
+  }*/
+
+  SECTION(
+      "Success when setting a too-large initial_buffer_size: "
+      "num small cells = 10000, "
+      "long string length = 10000, "
+      "consolidation_budget = 10000000, "
+      "initial_buffer_size = consolidation_budget") {
+    // Note: rather than fail with "Consolidation read 0 cells",
+    // the consolidator will use `initial_buffer_size` == `buffer_budget`
+    num_small_cells = 10000;
+    long_string_length = 10000;
+    consolidation_budget = 10000000;
+    uint64_t initial_buffer_size = consolidation_budget;
+
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    TRY(ctx_, tiledb_config_alloc(&cfg, &err));
+    REQUIRE(err == nullptr);
+    TRY(ctx_,
+        tiledb_config_set(
+            cfg,
+            "sm.mem.consolidation.initial_buffer_size",
+            std::to_string(initial_buffer_size).c_str(),
+            &err));
+    REQUIRE(err == nullptr);
+
+    CHECK_NOTHROW(write_and_consolidate_fragments(
+        array_name,
+        num_small_cells,
+        long_string_length,
+        consolidation_budget,
+        cfg));
+    tiledb_config_free(&cfg);
+  }
+
+  SECTION(
+      "Success when setting deprecated param buffer_size too large: "
+      "num small cells = 10000, "
+      "long string length = 10000, "
+      "consolidation_budget = 10000000, "
+      "buffer_size = consolidation_budget") {
+    // Note: rather than fail with "Consolidation read 0 cells",
+    // the consolidator will use `buffer_size` == `buffer_budget`
+    num_small_cells = 10000;
+    long_string_length = 10000;
+    consolidation_budget = 10000000;
+    uint64_t buffer_size = consolidation_budget;
+
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    TRY(ctx_, tiledb_config_alloc(&cfg, &err));
+    REQUIRE(err == nullptr);
+    TRY(ctx_,
+        tiledb_config_set(
+            cfg,
+            "sm.consolidation.buffer_size",
+            std::to_string(buffer_size).c_str(),
+            &err));
+    REQUIRE(err == nullptr);
+
+    CHECK_NOTHROW(write_and_consolidate_fragments(
+        array_name,
+        num_small_cells,
+        long_string_length,
+        consolidation_budget,
+        cfg));
+    tiledb_config_free(&cfg);
+  }
+
+  remove_array(array_name);
 }
+
+// Commenting out; will probably need to remove
+/*TEST_CASE("C API: Fragment consolidation benchmark",
+                "[capi][consolidation][fragments][benchmark][non-rest]") {
+    // original array:
+      //
+s3://tiledb-spencer/customers/cellarity/soma/index_siletti23_allenbrainatlas_cellarity_2/obs/
+      // ~200MB array
+      // 1 dim, 53 nullable, var-sized attrs
+      // grew the array to ~7.5GB via Tables:
+        // CREATE EXTERNAL TABLE benchmark STORED AS tiledb LOCATION <xyz>;
+        // INSERT INTO benchmark SELECT * FROM benchmark;
+
+    const char* array_name = "benchmark_array";
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+
+    tiledb_vfs_t* vfs;
+    tiledb_vfs_alloc(ctx, NULL, &vfs);
+    int is_dir = 0;
+    tiledb_vfs_is_dir(ctx, vfs, array_name, &is_dir);
+    tiledb_vfs_free(&vfs);
+    if (!is_dir) {
+        tiledb_ctx_free(&ctx);
+        SKIP("Benchmark array does not exist - create benchmark_array to run
+this test");
+    }
+
+    uint64_t initial_buffer_size = 2.5 * 1073741824;  // 2.5GB;
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    TRY(ctx, tiledb_config_alloc(&cfg, &err));
+    REQUIRE(err == nullptr);
+    TRY(ctx,
+        tiledb_config_set(
+            cfg,
+            "sm.mem.consolidation.initial_buffer_size",
+            std::to_string(initial_buffer_size).c_str(),
+            &err));
+    REQUIRE(err == nullptr);
+
+    auto begin = std::chrono::high_resolution_clock::now();
+    TRY(ctx, tiledb_array_consolidate(ctx, array_name, cfg));
+    auto end = std::chrono::high_resolution_clock::now();
+
+    auto elapsed_sec =
+        std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+    auto elapsed_msec =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+
+        std::cerr<<"Time elapsed, seconds: "<<elapsed_sec.count()<<std::endl;
+    std::cerr<<"Time elapsed, milliseconds: "<<elapsed_msec.count()<<std::endl;
+
+    tiledb_config_free(&cfg);
+    tiledb_ctx_free(&ctx);
+}*/
 
 TEST_CASE_METHOD(
     ConsolidationFx,

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -291,6 +291,9 @@ class Config {
 
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
+
+  /** Initial size for consolidation buffers before growth. */
+  static const std::string SM_MEM_CONSOLIDATION_INITIAL_BUFFER_SIZE;
 
   /** Weight for consolidation buffers used to split total budget. */
   static const std::string SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT;

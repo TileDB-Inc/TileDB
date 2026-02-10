@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -277,6 +277,7 @@ void check_save_to_file() {
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
   ss << "sm.mem.consolidation.buffers_weight 1\n";
+  ss << "sm.mem.consolidation.initial_buffer_size 10485760\n";
   ss << "sm.mem.consolidation.reader_weight 3\n";
   ss << "sm.mem.consolidation.writer_weight 2\n";
   ss << "sm.mem.malloc_trim true\n";
@@ -653,6 +654,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.condition_evaluator"] =
       Config::SM_QUERY_CONDITION_EVALUATOR;
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
+  all_param_values["sm.mem.consolidation.initial_buffer_size"] = "10485760";
   all_param_values["sm.mem.consolidation.buffers_weight"] = "1";
   all_param_values["sm.mem.consolidation.reader_weight"] = "3";
   all_param_values["sm.mem.consolidation.writer_weight"] = "2";

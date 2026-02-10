@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/util/intercept.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
@@ -48,6 +49,15 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+namespace intercept {
+DECLARE_INTERCEPT(
+    fragment_consolidator_copy_array,
+    const uint64_t&,
+    uint64_t&,
+    uint64_t&,
+    bool);
+}
 
 class ArraySchema;
 class Config;
@@ -82,6 +92,10 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
   uint64_t buffer_size_;
   /** Total memory budget for consolidation operation. */
   uint64_t total_budget_;
+  /** Initial size of the consolidation buffers before growth. */
+  uint64_t initial_buffer_size_;
+  /** True if user explicitly set sm.mem.consolidation.initial_buffer_size. */
+  bool initial_buffer_size_user_set_;
   /** Consolidation buffers weight used to partition total budget. */
   uint64_t buffers_weight_;
   /** Reader weight used to partition total budget. */
@@ -115,31 +129,26 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
  */
 class FragmentConsolidationWorkspace {
  public:
-  FragmentConsolidationWorkspace(shared_ptr<MemoryTracker> memory_tracker);
+  /**
+   * Constructor.
+   *
+   * @param memory_tracker The workspace's MemoryTracker.
+   * @param config The consolidation config.
+   * @param array_schema The array schema.
+   * @param avg_cell_sizes The average cell sizes.
+   * @param total_buffers_budget Total budget for the consolidation buffers.
+   */
+  FragmentConsolidationWorkspace(
+      shared_ptr<MemoryTracker> memory_tracker,
+      const FragmentConsolidationConfig& config,
+      const ArraySchema& array_schema,
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+      uint64_t total_buffers_budget);
 
   // Disable copy and move construction/assignment so we don't have
   // to think about it.
   DISABLE_COPY_AND_COPY_ASSIGN(FragmentConsolidationWorkspace);
   DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentConsolidationWorkspace);
-
-  /**
-   * Resize the buffers that will be used upon reading the input fragments and
-   * writing into the new fragment. It also retrieves the number of buffers
-   * created.
-   *
-   * @param stats The stats.
-   * @param config The consolidation config.
-   * @param array_schema The array schema.
-   * @param avg_cell_sizes The average cell sizes.
-   * @param total_buffers_budget Total budget for the consolidation buffers.
-   * @return a consolidation workspace containing the buffers
-   */
-  void resize_buffers(
-      stats::Stats* stats,
-      const FragmentConsolidationConfig& config,
-      const ArraySchema& array_schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
-      uint64_t total_buffers_budget);
 
   /** Accessor for buffers. */
   tdb::pmr::vector<span<std::byte>>& buffers() {
@@ -150,6 +159,11 @@ class FragmentConsolidationWorkspace {
   tdb::pmr::vector<uint64_t>& sizes() {
     return sizes_;
   };
+
+  /** Accessor for the total allocated buffer size. */
+  size_t total_buffer_size() const {
+    return backing_buffer_.size();
+  }
 
  private:
   /*** The backing buffer used for all buffers. */
@@ -293,6 +307,7 @@ class FragmentConsolidator : public Consolidator {
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
    * @param cw A workspace containing buffers for the queries
+   *
    * @return Status
    */
   Status consolidate_internal(
@@ -300,20 +315,46 @@ class FragmentConsolidator : public Consolidator {
       shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
-      URI* new_fragment_uri,
-      FragmentConsolidationWorkspace& cw);
+      URI* new_fragment_uri);
 
   /**
-   * Copies the array by reading from the fragments to be consolidated
-   * with `query_r` and writing to the new fragment with `query_w`.
+   * Copy of buffer-weight logic from `FragmentConsolidationWorkspace`.
+   *
+   * Estimates the total bytes per cell for incoming read buffers.
+   *
+   * @param array_schema The reader's latest array schema.
+   * @param avg_var_cell_sizes A map of the reader's computed average cell size
+   * for var size attrs / dims.
+   * @return An estimate of the total bytes per-cell of the read buffers.
+   */
+  uint64_t compute_bytes_per_cell(
+      const ArraySchema& array_schema,
+      const std::unordered_map<std::string, uint64_t>& average_var_cell_sizes)
+      const;
+
+  /**
+   * Copies the array by concurrently reading from the fragments to be
+   * consolidated with `query_r` and writing to the new fragment with `query_w`.
    * It also appropriately sets the query buffers.
    *
    * @param query_r The read query.
    * @param query_w The write query.
-   * @param cw A workspace containing buffers for the queries
+   * @param reader_array_schema_latest The reader's latest array schema.
+   * @param avg_var_cell_sizes A map of the reader's computed average cell size
+   * for var size attrs / dims.
+   * @param initial_buffer_size Initial size of consolidation buffers.
+   * @param max_queue_size Maximum total size of in-flight buffers in queue.
+   *    For pipeline throughput, use at least 2x typical chunk (buffer) size.
+   * @param expected_total_bytes Estimated total read size; default 0 (unknown)
    */
   void copy_array(
-      Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw);
+      Query* query_r,
+      Query* query_w,
+      const ArraySchema& reader_array_schema_latest,
+      std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
+      uint64_t initial_buffer_size,
+      uint64_t max_queue_size,
+      uint64_t expected_total_bytes = 0);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves

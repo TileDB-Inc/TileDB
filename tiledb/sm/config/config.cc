@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -112,6 +112,8 @@ const std::string Config::SM_QUERY_CONDITION_EVALUATOR = "ast";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
+const std::string Config::SM_MEM_CONSOLIDATION_INITIAL_BUFFER_SIZE =
+    "10485760";  // 10MB
 const std::string Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT = "1";
 const std::string Config::SM_MEM_CONSOLIDATION_READER_WEIGHT = "3";
 const std::string Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT = "2";
@@ -318,6 +320,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
+    std::make_pair(
+        "sm.mem.consolidation.initial_buffer_size",
+        Config::SM_MEM_CONSOLIDATION_INITIAL_BUFFER_SIZE),
     std::make_pair(
         "sm.mem.consolidation.buffers_weight",
         Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT),
