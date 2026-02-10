@@ -94,6 +94,8 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
   uint64_t total_budget_;
   /** Initial size of the consolidation buffers before growth. */
   uint64_t initial_buffer_size_;
+  /** True if user explicitly set sm.mem.consolidation.initial_buffer_size. */
+  bool initial_buffer_size_user_set_;
   /** Consolidation buffers weight used to partition total budget. */
   uint64_t buffers_weight_;
   /** Reader weight used to partition total budget. */
@@ -316,6 +318,21 @@ class FragmentConsolidator : public Consolidator {
       URI* new_fragment_uri);
 
   /**
+   * Copy of buffer-weight logic from `FragmentConsolidationWorkspace`.
+   *
+   * Estimates the total bytes per cell for incoming read buffers.
+   *
+   * @param array_schema The reader's latest array schema.
+   * @param avg_var_cell_sizes A map of the reader's computed average cell size
+   * for var size attrs / dims.
+   * @return An estimate of the total bytes per-cell of the read buffers.
+   */
+  uint64_t compute_bytes_per_cell(
+      const ArraySchema& array_schema,
+      const std::unordered_map<std::string, uint64_t>& average_var_cell_sizes)
+      const;
+
+  /**
    * Copies the array by concurrently reading from the fragments to be
    * consolidated with `query_r` and writing to the new fragment with `query_w`.
    * It also appropriately sets the query buffers.
@@ -326,7 +343,9 @@ class FragmentConsolidator : public Consolidator {
    * @param avg_var_cell_sizes A map of the reader's computed average cell size
    * for var size attrs / dims.
    * @param initial_buffer_size Initial size of consolidation buffers.
-   * @param max_buffer_size Maximum-allowed size of consolidation buffers.
+   * @param max_queue_size Maximum total size of in-flight buffers in queue.
+   *    For pipeline throughput, use at least 2x typical chunk (buffer) size.
+   * @param expected_total_bytes Estimated total read size; default 0 (unknown)
    */
   void copy_array(
       Query* query_r,
@@ -334,7 +353,8 @@ class FragmentConsolidator : public Consolidator {
       const ArraySchema& reader_array_schema_latest,
       std::unordered_map<std::string, uint64_t> avg_var_cell_sizes,
       uint64_t initial_buffer_size,
-      uint64_t max_buffer_size);
+      uint64_t max_queue_size,
+      uint64_t expected_total_bytes = 0);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
