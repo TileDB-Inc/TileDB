@@ -32,10 +32,12 @@
 
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+
+#include <barrier>
+
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include <cstring>
-#include <iostream>
 #include <numeric>
 
 using namespace tiledb;
@@ -122,8 +124,8 @@ struct RemoteGlobalOrderWriteFx {
       std::iota(data.begin(), data.end(), 0);
 
       std::vector<uint8_t> validity_buffer(submit_cell_count, 0);
-      for (size_t i = 0; i < validity_buffer.size(); i += 2) {
-        validity_buffer[i] = 1;
+      for (size_t j = 0; j < validity_buffer.size(); j += 2) {
+        validity_buffer[j] = 1;
       }
 
       // Handle coords for sparse case.
@@ -807,7 +809,8 @@ uint64_t write_bad_digest_array_at(
     const Context& ctx,
     const std::string& array_uri,
     const uint64_t total_bytes_to_write,
-    const std::string& contig) {
+    const std::string& contig,
+    std::barrier<>& /*barrier*/) {
   if (total_bytes_to_write == 0) {
     return 0;
   }
@@ -932,6 +935,8 @@ uint64_t write_bad_digest_array_at(
       .set_data_buffer("fmt_GT", fmt_gt_data)
       .set_offsets_buffer("fmt_GT", fmt_gt_offsets);
 
+  // TODO: This might improve reliability / speed of the repro?
+  // barrier.arrive_and_wait();
   query.submit_and_finalize();
   CHECK(query.query_status() == Query::Status::COMPLETE);
   array.close();
@@ -948,7 +953,9 @@ TEST_CASE(
   create_bad_digest_array(ctx, array_uri);
   uint64_t size = 1024UL * 1024 * 1024 * 2;
   std::vector<std::future<uint64_t>> futures;
-  for (int i = 0; i < 21; ++i) {
+  int threads = 21;
+  std::barrier barrier(threads);
+  for (int i = 0; i < threads; ++i) {
     std::string str = "chr" + std::to_string(i);
     futures.push_back(
         std::async(
@@ -957,7 +964,8 @@ TEST_CASE(
             ctx,
             array_uri,
             size,
-            str));
+            str,
+            std::ref(barrier)));
   }
   for (auto& t : futures) {
     auto generated = t.get();
