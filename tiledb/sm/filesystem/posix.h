@@ -302,7 +302,6 @@ class Posix : public LocalFilesystem {
  private:
   uint32_t file_permissions_, directory_permissions_;
 
-  // TODO: Apply the same pattern to Win (win.h / win.cc).
   // TODO: Add concurrency and error-path tests (parallel writes to different
   //       files, write failure mid-stream, destructor cleanup of leaked fds).
 

@@ -66,6 +66,14 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+Win::~Win() {
+  std::lock_guard<std::mutex> lock(open_files_mtx_);
+  for (auto& [path, of] : open_files_) {
+    CloseHandle(of.handle);
+  }
+  open_files_.clear();
+}
+
 namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {

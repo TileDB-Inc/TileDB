@@ -36,7 +36,9 @@
 #ifdef _WIN32
 
 #include <sys/types.h>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/status.h"
@@ -86,6 +88,9 @@ class Win : public LocalFilesystem {
    */
   Win(const Config&) {
   }
+
+  /** Destructor. Cleans up any HANDLEs still in the cache. */
+  ~Win() override;
 
   /* ********************************* */
   /*                 API               */
@@ -280,6 +285,18 @@ class Win : public LocalFilesystem {
       uint64_t file_offset,
       const void* buffer,
       uint64_t buffer_size);
+
+  // TODO: Wire write()/flush() to reuse these cached HANDLEs the same
+  //       way the Posix side does (keep open across writes, close on flush).
+
+  /** Cached HANDLE + write offset for a file that's still being written to. */
+  struct OpenFile {
+    HANDLE handle;
+    uint64_t offset;
+  };
+
+  std::unordered_map<std::string, OpenFile> open_files_;
+  std::mutex open_files_mtx_;
 };
 
 }  // namespace tiledb::sm
