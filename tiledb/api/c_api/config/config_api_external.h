@@ -730,9 +730,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If true, incomplete queries received from server are automatically
  *    resubmitted before returning to user control. <br>
  *    **Default**: "true"
- * - `rest.ignore_ssl_validation` <br>
- *    Have curl ignore ssl peer and host validation for REST server. <br>
- *    **Default**: false
  * - `rest.creation_access_credentials_name` <br>
  *    The name of the registered access key to use for creation of the REST
  *    server. <br>
