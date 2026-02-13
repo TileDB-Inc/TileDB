@@ -703,7 +703,7 @@ Status S3::disconnect() {
           // Lock multipart state
           std::unique_lock<std::mutex> state_lck(state->mtx);
 
-          if (state->st.ok()) {
+          if (state->st.ok() && !state->completed_parts.empty()) {
             Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
                 make_multipart_complete_request(*state);
             auto outcome = client_->CompleteMultipartUpload(complete_request);
@@ -785,7 +785,7 @@ void S3::flush(const URI& uri, bool finalize) {
   std::unique_lock<std::mutex> state_lck(state->mtx);
   unique_rl.unlock();
 
-  if (state->st.ok()) {
+  if (state->st.ok() && !state->completed_parts.empty()) {
     Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
         make_multipart_complete_request(*state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
@@ -874,7 +874,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
     throw_if_not_ok(get_make_upload_part_req(uri, uri_path, ctx));
   }
 
-  if (state.st.ok()) {
+  if (state.st.ok() && !state.completed_parts.empty()) {
     Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
         make_multipart_complete_request(state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
