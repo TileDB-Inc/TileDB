@@ -670,151 +670,11 @@ uint64_t append_var_num_cell(
   return sizeof(uint64_t) + value_count * sizeof(T);
 }
 
-uint64_t write_bad_digest_array(
-    const Context& ctx,
-    const std::string& array_uri,
-    const uint64_t total_bytes_to_write) {
-  if (total_bytes_to_write == 0) {
-    return 0;
-  }
-
-  Array array(ctx, array_uri, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
-
-  // Dimension buffers.
-  std::vector<uint64_t> contig_offsets;
-  std::vector<char> contig_data;
-  std::vector<uint32_t> start_pos;
-  std::vector<uint64_t> sample_offsets;
-  std::vector<char> sample_data;
-
-  // Fixed-size attribute buffers.
-  std::vector<uint32_t> real_start_pos;
-  std::vector<uint32_t> end_pos;
-  std::vector<float> qual;
-
-  // Variable-size string attribute buffers.
-  std::vector<uint64_t> alleles_offsets;
-  std::vector<char> alleles_data;
-  std::vector<uint64_t> id_offsets;
-  std::vector<char> id_data;
-
-  // TILEDB_VAR_NUM attribute buffers.
-  std::vector<uint64_t> filter_ids_offsets;
-  std::vector<int32_t> filter_ids_data;
-  std::vector<uint64_t> info_offsets;
-  std::vector<uint8_t> info_data;
-  std::vector<uint64_t> fmt_offsets;
-  std::vector<uint8_t> fmt_data;
-  std::vector<uint64_t> fmt_gt_offsets;
-  std::vector<uint8_t> fmt_gt_data;
-
-  std::random_device device;
-  std::mt19937_64 rng(device());
-  std::uniform_real_distribution<float> qual_dist(0.0f, 120.0f);
-  std::uniform_int_distribution<uint32_t> end_delta_dist(0, 300);
-  std::uniform_int_distribution<uint32_t> sample_len_minmax(4, 20);
-  std::uniform_int_distribution<uint32_t> var_count_dist(1, 8);
-  std::uniform_int_distribution<int32_t> filter_id_dist(-32, 32);
-  std::uniform_int_distribution<uint32_t> byte_dist(0, 255);
-
-  uint64_t bytes_generated = 0;
-  uint32_t next_start_pos = 0;
-  while (bytes_generated < total_bytes_to_write) {
-    if (next_start_pos == std::numeric_limits<uint32_t>::max()) {
-      throw std::runtime_error(
-          "Cannot generate more cells: exhausted start_pos domain.");
-    }
-
-    // Dimension buffers.
-    // Keep contig constant so coordinates remain valid for global-order writes.
-    bytes_generated +=
-        append_var_string_cell(contig_offsets, contig_data, "chr1");
-
-    const uint32_t cell_start_pos = next_start_pos++;
-    start_pos.push_back(cell_start_pos);
-    bytes_generated += sizeof(uint32_t);
-
-    const auto sample_len = sample_len_minmax(rng);
-    bytes_generated += append_var_string_cell(
-        sample_offsets,
-        sample_data,
-        random_ascii_string(rng, sample_len, sample_len));
-
-    // Attribute buffers.
-    std::uniform_int_distribution<uint32_t> start_jitter_dist(0, 10);
-    const uint32_t rs = cell_start_pos + start_jitter_dist(rng);
-    real_start_pos.push_back(rs);
-    bytes_generated += sizeof(uint32_t);
-
-    end_pos.push_back(rs + end_delta_dist(rng));
-    bytes_generated += sizeof(uint32_t);
-
-    qual.push_back(qual_dist(rng));
-    bytes_generated += sizeof(float);
-
-    bytes_generated += append_var_string_cell(
-        alleles_offsets,
-        alleles_data,
-        random_ascii_string(rng, 1, 18, "ACGTN"));
-
-    bytes_generated += append_var_string_cell(
-        id_offsets, id_data, random_ascii_string(rng, 8, 24));
-
-    bytes_generated += append_var_num_cell(
-        rng,
-        var_count_dist,
-        filter_id_dist,
-        filter_ids_offsets,
-        filter_ids_data);
-
-    bytes_generated += append_var_num_cell(
-        rng, var_count_dist, byte_dist, info_offsets, info_data);
-    bytes_generated += append_var_num_cell(
-        rng, var_count_dist, byte_dist, fmt_offsets, fmt_data);
-    bytes_generated += append_var_num_cell(
-        rng, var_count_dist, byte_dist, fmt_gt_offsets, fmt_gt_data);
-  }
-
-  query.set_data_buffer("contig", contig_data)
-      .set_offsets_buffer("contig", contig_offsets)
-      .set_data_buffer("start_pos", start_pos)
-      .set_data_buffer("sample", sample_data)
-      .set_offsets_buffer("sample", sample_offsets)
-      .set_data_buffer("real_start_pos", real_start_pos)
-      .set_data_buffer("end_pos", end_pos)
-      .set_data_buffer("qual", qual)
-      .set_data_buffer("alleles", alleles_data)
-      .set_offsets_buffer("alleles", alleles_offsets)
-      .set_data_buffer("id", id_data)
-      .set_offsets_buffer("id", id_offsets)
-      .set_data_buffer("filter_ids", filter_ids_data)
-      .set_offsets_buffer("filter_ids", filter_ids_offsets)
-      .set_data_buffer("info", info_data)
-      .set_offsets_buffer("info", info_offsets)
-      .set_data_buffer("fmt", fmt_data)
-      .set_offsets_buffer("fmt", fmt_offsets)
-      .set_data_buffer("fmt_GT", fmt_gt_data)
-      .set_offsets_buffer("fmt_GT", fmt_gt_offsets);
-
-  query.submit_and_finalize();
-  CHECK(query.query_status() == Query::Status::COMPLETE);
-  array.close();
-
-  return bytes_generated;
-}
-
 uint64_t write_bad_digest_array_at(
     const Context& ctx,
     const std::string& array_uri,
     const uint64_t total_bytes_to_write,
-    const std::string& contig,
-    std::barrier<>& /*barrier*/) {
-  if (total_bytes_to_write == 0) {
-    return 0;
-  }
-
+    const std::string& contig) {
   Array array(ctx, array_uri, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
@@ -935,8 +795,6 @@ uint64_t write_bad_digest_array_at(
       .set_data_buffer("fmt_GT", fmt_gt_data)
       .set_offsets_buffer("fmt_GT", fmt_gt_offsets);
 
-  // TODO: This might improve reliability / speed of the repro?
-  // barrier.arrive_and_wait();
   query.submit_and_finalize();
   CHECK(query.query_status() == Query::Status::COMPLETE);
   array.close();
@@ -944,6 +802,149 @@ uint64_t write_bad_digest_array_at(
   return bytes_generated;
 }
 
+uint64_t write_bad_digest_array_at_chained(
+    const Context& ctx,
+    const std::string& array_uri,
+    uint64_t start,
+    uint64_t end,
+    const uint64_t total_bytes_to_write) {
+  Array array(ctx, array_uri, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+
+  uint64_t bytes_generated = 0;
+  for (uint64_t i = start; i <= end; i++) {
+    std::string contig = "chr" + std::to_string(i);
+
+    // Dimension buffers.
+    std::vector<uint64_t> contig_offsets;
+    std::vector<char> contig_data;
+    std::vector<uint32_t> start_pos;
+    std::vector<uint64_t> sample_offsets;
+    std::vector<char> sample_data;
+
+    // Fixed-size attribute buffers.
+    std::vector<uint32_t> real_start_pos;
+    std::vector<uint32_t> end_pos;
+    std::vector<float> qual;
+
+    // Variable-size string attribute buffers.
+    std::vector<uint64_t> alleles_offsets;
+    std::vector<char> alleles_data;
+    std::vector<uint64_t> id_offsets;
+    std::vector<char> id_data;
+
+    // TILEDB_VAR_NUM attribute buffers.
+    std::vector<uint64_t> filter_ids_offsets;
+    std::vector<int32_t> filter_ids_data;
+    std::vector<uint64_t> info_offsets;
+    std::vector<uint8_t> info_data;
+    std::vector<uint64_t> fmt_offsets;
+    std::vector<uint8_t> fmt_data;
+    std::vector<uint64_t> fmt_gt_offsets;
+    std::vector<uint8_t> fmt_gt_data;
+
+    std::random_device device;
+    std::mt19937_64 rng(device());
+    std::uniform_real_distribution<float> qual_dist(0.0f, 120.0f);
+    std::uniform_int_distribution<uint32_t> end_delta_dist(0, 300);
+    std::uniform_int_distribution<uint32_t> sample_len_minmax(4, 20);
+    std::uniform_int_distribution<uint32_t> var_count_dist(1, 8);
+    std::uniform_int_distribution<int32_t> filter_id_dist(-32, 32);
+    std::uniform_int_distribution<uint32_t> byte_dist(0, 255);
+
+    uint64_t bytes_generated = 0;
+    uint32_t next_start_pos = 0;
+    while (bytes_generated < total_bytes_to_write) {
+      if (next_start_pos == std::numeric_limits<uint32_t>::max()) {
+        throw std::runtime_error(
+            "Cannot generate more cells: exhausted start_pos domain.");
+      }
+
+      // Dimension buffers.
+      // Keep contig constant so coordinates remain valid for global-order
+      // writes.
+      bytes_generated +=
+          append_var_string_cell(contig_offsets, contig_data, contig);
+
+      const uint32_t cell_start_pos = next_start_pos++;
+      start_pos.push_back(cell_start_pos);
+      bytes_generated += sizeof(uint32_t);
+
+      const auto sample_len = sample_len_minmax(rng);
+      bytes_generated += append_var_string_cell(
+          sample_offsets,
+          sample_data,
+          random_ascii_string(rng, sample_len, sample_len));
+
+      // Attribute buffers.
+      std::uniform_int_distribution<uint32_t> start_jitter_dist(0, 10);
+      const uint32_t rs = cell_start_pos + start_jitter_dist(rng);
+      real_start_pos.push_back(rs);
+      bytes_generated += sizeof(uint32_t);
+
+      end_pos.push_back(rs + end_delta_dist(rng));
+      bytes_generated += sizeof(uint32_t);
+
+      qual.push_back(qual_dist(rng));
+      bytes_generated += sizeof(float);
+
+      bytes_generated += append_var_string_cell(
+          alleles_offsets,
+          alleles_data,
+          random_ascii_string(rng, 1, 18, "ACGTN"));
+
+      bytes_generated += append_var_string_cell(
+          id_offsets, id_data, random_ascii_string(rng, 8, 24));
+
+      bytes_generated += append_var_num_cell(
+          rng,
+          var_count_dist,
+          filter_id_dist,
+          filter_ids_offsets,
+          filter_ids_data);
+
+      bytes_generated += append_var_num_cell(
+          rng, var_count_dist, byte_dist, info_offsets, info_data);
+      bytes_generated += append_var_num_cell(
+          rng, var_count_dist, byte_dist, fmt_offsets, fmt_data);
+      bytes_generated += append_var_num_cell(
+          rng, var_count_dist, byte_dist, fmt_gt_offsets, fmt_gt_data);
+    }
+
+    query.set_data_buffer("contig", contig_data)
+        .set_offsets_buffer("contig", contig_offsets)
+        .set_data_buffer("start_pos", start_pos)
+        .set_data_buffer("sample", sample_data)
+        .set_offsets_buffer("sample", sample_offsets)
+        .set_data_buffer("real_start_pos", real_start_pos)
+        .set_data_buffer("end_pos", end_pos)
+        .set_data_buffer("qual", qual)
+        .set_data_buffer("alleles", alleles_data)
+        .set_offsets_buffer("alleles", alleles_offsets)
+        .set_data_buffer("id", id_data)
+        .set_offsets_buffer("id", id_offsets)
+        .set_data_buffer("filter_ids", filter_ids_data)
+        .set_offsets_buffer("filter_ids", filter_ids_offsets)
+        .set_data_buffer("info", info_data)
+        .set_offsets_buffer("info", info_offsets)
+        .set_data_buffer("fmt", fmt_data)
+        .set_offsets_buffer("fmt", fmt_offsets)
+        .set_data_buffer("fmt_GT", fmt_gt_data)
+        .set_offsets_buffer("fmt_GT", fmt_gt_offsets);
+
+    if (i == end) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
+  }
+
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+  return bytes_generated;
+}
+
+// This test calls submit_and_finalize on every thread for 21 individual writes.
 TEST_CASE(
     "Remote global order writes BadDigest",
     "[rest][global-order][write][bad-digest]") {
@@ -954,7 +955,6 @@ TEST_CASE(
   uint64_t size = 1024UL * 1024 * 1024 * 2;
   std::vector<std::future<uint64_t>> futures;
   int threads = 21;
-  std::barrier barrier(threads);
   for (int i = 0; i < threads; ++i) {
     std::string str = "chr" + std::to_string(i);
     futures.push_back(
@@ -964,11 +964,45 @@ TEST_CASE(
             ctx,
             array_uri,
             size,
-            str,
-            std::ref(barrier)));
+            str));
   }
   for (auto& t : futures) {
     auto generated = t.get();
     CHECK(generated >= size);
+  }
+}
+
+// This test writes contigs in the range [start, end] on each thread. (Only the final contig calls submit_and_finalize)
+// TODO: This test fails due to chained submits not respecting global order.
+TEST_CASE(
+    "Remote global order writes BadDigest chained submits",
+    "[rest][global-order][write][bad-digest]") {
+  VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri = vfs_test_setup.array_uri("remote-global-order-bad-digest");
+  create_bad_digest_array(ctx, array_uri);
+  uint64_t write_size = 1024UL * 1024 * 2;
+  std::vector<std::future<uint64_t>> futures;
+  int threads = 20;
+  Array array(ctx, array_uri, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+
+  int batch_size = 5;
+  for (int i = 0; i < threads; i += batch_size) {
+    std::string str = "chr" + std::to_string(i);
+    futures.push_back(
+        std::async(
+            std::launch::async,
+            &write_bad_digest_array_at_chained,
+            ctx,
+            array_uri,
+            i,
+            i+batch_size,
+            write_size));
+  }
+  for (auto& t : futures) {
+    auto generated = t.get();
+    CHECK(generated >= write_size);
   }
 }
