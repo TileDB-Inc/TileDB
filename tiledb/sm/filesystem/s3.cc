@@ -1145,6 +1145,8 @@ void S3::global_order_write(
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath());
 
+  MultiPartUploadState* state_ptr = nullptr;
+
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
@@ -1157,6 +1159,7 @@ void S3::global_order_write(
 
     state_iter =
         multipart_upload_states_.emplace(uri_path, std::move(state)).first;
+    state_ptr = &state_iter->second;
 
     unique_wl.unlock();
 
@@ -1164,11 +1167,12 @@ void S3::global_order_write(
       remove_file(uri);
     }
   } else {
+    state_ptr = &state_iter->second;
     // Unlock, as make_upload_part_req will reaquire as necessary.
     unique_rl.unlock();
   }
 
-  auto& state = state_iter->second;
+  auto& state = *state_ptr;
 
   // Read the comments near BufferedChunk definition to get a better
   // understanding of what intermediate chunks are and how they function
