@@ -53,6 +53,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 
+#include <aws/core/client/AwsError.h>
+#include <aws/core/client/RetryStrategy.h>
 #include <aws/core/client/SpecifiedRetryableErrorsRetryStrategy.h>
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
@@ -220,6 +222,68 @@ Aws::S3::Model::StorageClass S3_StorageClass_from_str(
   else
     return StorageClass::NOT_SET;
 }
+
+/**
+ * Proxies an AWS SDK retry strategy instance, to log a stats counter for the
+ * number of Slow Down errors.
+ */
+class SlowDownTrackingRetryStrategy : public Aws::Client::RetryStrategy {
+ public:
+  SlowDownTrackingRetryStrategy(
+      std::shared_ptr<Aws::Client::RetryStrategy>&& inner,
+      tiledb::sm::stats::Stats* stats)
+      : inner_(std::move(inner))
+      , stats_(stats) {
+  }
+
+  virtual bool ShouldRetry(
+      const Aws::Client::AWSError<Aws::Client::CoreErrors>& error,
+      long attemptedRetries) const override {
+    // Count SLOW_DOWN errors.
+    if (error.GetErrorType() == Aws::Client::CoreErrors::SLOW_DOWN) {
+      stats_->add_counter("vfs_s3_slow_down_retries", 1);
+    }
+    return inner_->ShouldRetry(error, attemptedRetries);
+  }
+
+  virtual long CalculateDelayBeforeNextRetry(
+      const Aws::Client::AWSError<Aws::Client::CoreErrors>& error,
+      long attemptedRetries) const {
+    return inner_->CalculateDelayBeforeNextRetry(error, attemptedRetries);
+  }
+
+  virtual long GetMaxAttempts() const {
+    return inner_->GetMaxAttempts();
+  }
+
+  virtual void GetSendToken() {
+    inner_->GetSendToken();
+  }
+
+  virtual bool HasSendToken() {
+    return inner_->HasSendToken();
+  }
+
+  virtual void RequestBookkeeping(
+      const Aws::Client::HttpResponseOutcome& httpResponseOutcome) {
+    inner_->RequestBookkeeping(httpResponseOutcome);
+  }
+
+  virtual void RequestBookkeeping(
+      const Aws::Client::HttpResponseOutcome& httpResponseOutcome,
+      const Aws::Client::AWSError<Aws::Client::CoreErrors>& lastError) {
+    inner_->RequestBookkeeping(httpResponseOutcome, lastError);
+  }
+
+  virtual const char* GetStrategyName() const {
+    return inner_->GetStrategyName();
+  }
+
+ private:
+  std::shared_ptr<Aws::Client::RetryStrategy> inner_;
+
+  tiledb::sm::stats::Stats* stats_;
+};
 
 }  // namespace
 
@@ -1349,11 +1413,15 @@ Status S3::init_client() const {
   client_config.caPath = ssl_config_.ca_path();
   client_config.verifySSL = ssl_config_.verify();
 
-  client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
-      constants::s3_allocation_tag.c_str(),
-      stats_,
-      (long)s3_params_.connect_max_tries_,
-      (long)s3_params_.connect_scale_factor_);
+  std::shared_ptr<Aws::Client::RetryStrategy> retry_strategy;
+  if (s3_params_.connect_max_tries_.has_value()) {
+    retry_strategy = Aws::Client::InitRetryStrategy(
+        s3_params_.connect_max_tries_.value(), s3_params_.retry_strategy_);
+  } else {
+    retry_strategy = Aws::Client::InitRetryStrategy(s3_params_.retry_strategy_);
+  }
+  client_config.retryStrategy = make_shared<SlowDownTrackingRetryStrategy>(
+      HERE(), std::move(retry_strategy), stats_);
 
   client_config.useVirtualAddressing = s3_params_.use_virtual_addressing_;
   client_config.payloadSigningPolicy =
@@ -1375,7 +1443,7 @@ Status S3::init_client() const {
               "InvalidToken",
               // SSOCredentialsProvider
               "TooManyRequestsException"},
-          s3_params_.connect_max_tries_);
+          s3_params_.connect_max_tries_.value_or(10));
 
   shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider;
 

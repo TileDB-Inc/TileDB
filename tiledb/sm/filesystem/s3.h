@@ -57,8 +57,6 @@
 #undef GetObject
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
-#include <aws/core/client/DefaultRetryStrategy.h>
-#include <aws/core/client/RetryStrategy.h>
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/utils/HashingUtils.h>
 #include <aws/core/utils/Outcome.h>
@@ -204,8 +202,7 @@ struct S3Parameters {
             "vfs.s3.multipart_part_size", Config::must_find))
       , connect_timeout_ms_(
             config.get<int64_t>("vfs.s3.connect_timeout_ms", Config::must_find))
-      , connect_max_tries_(
-            config.get<int64_t>("vfs.s3.connect_max_tries", Config::must_find))
+      , connect_max_tries_(config.get<int64_t>("vfs.s3.connect_max_tries"))
       , connect_scale_factor_(config.get<int64_t>(
             "vfs.s3.connect_scale_factor", Config::must_find))
       , custom_headers_(load_headers(config))
@@ -297,8 +294,11 @@ struct S3Parameters {
   /** The connection timeout in ms. Any `long` value is acceptable. */
   int64_t connect_timeout_ms_;
 
+  /** The retry strategy to use for the S3 client. */
+  std::string retry_strategy_;
+
   /** The maximum tries for a connection. Any `long` value is acceptable. */
-  int64_t connect_max_tries_;
+  std::optional<int64_t> connect_max_tries_;
 
   /** The scale factor for exponential backoff when connecting to S3. */
   int64_t connect_scale_factor_;
@@ -1034,39 +1034,6 @@ class S3 : public FilesystemBase {
    * Identifies the current state of this class.
    */
   enum State { UNINITIALIZED, INITIALIZED, DISCONNECTED };
-
-  /**
-   * The retry strategy for S3 request failures.
-   */
-  class S3RetryStrategy : public Aws::Client::DefaultRetryStrategy {
-   public:
-    /** Constructor. */
-    S3RetryStrategy(
-        stats::Stats* const s3_stats, long max_retries, long scale_factor)
-        : Aws::Client::DefaultRetryStrategy(max_retries, scale_factor)
-        , s3_stats_(s3_stats) {
-    }
-
-    /**
-     * Returns true if the error can be retried given the error and
-     * the number of times already tried.
-     */
-    bool ShouldRetry(
-        const Aws::Client::AWSError<Aws::Client::CoreErrors>& error,
-        long attempted_retries) const override {
-      // Count SLOW_DOWN errors.
-      if (error.GetErrorType() == Aws::Client::CoreErrors::SLOW_DOWN) {
-        s3_stats_->add_counter("vfs_s3_slow_down_retries", 1);
-      }
-
-      return Aws::Client::DefaultRetryStrategy::ShouldRetry(
-          error, attempted_retries);
-    }
-
-   private:
-    /** The S3 `stats_`. */
-    stats::Stats* s3_stats_;
-  };
 
   /**
    * This struct wraps the context state of a pending multipart upload request.

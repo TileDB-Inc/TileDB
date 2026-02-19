@@ -587,9 +587,18 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.s3.connect_timeout_ms` <br>
  *    The connection timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 10800
+ * - `vfs.s3.retry_strategy` <br>
+ *    The AWS SDK retry strategy to use for requests to S3. Supported values
+ *    are `standard` and `adaptive`, which follow the AWS SDK conventions in
+ *    https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html.
+ *    If set to the empty string, the retry strategy will be determined by the
+ *    AWS SDK. If set to another value, the SDK's legacy retry strategy will be
+ *    used.
+ *    **Default**: "standard"
  * - `vfs.s3.connect_max_tries` <br>
- *    The maximum tries for a connection. Any `long` value is acceptable. <br>
- *    **Default**: 5
+ *    The maximum tries for a connection. Any `long` value is acceptable.
+ *    If set to the empty string, the value is determined by the AWS SDK. <br>
+ *    **Default**: ""
  * - `vfs.s3.connect_scale_factor` <br>
  *    The scale factor for exponential backoff when connecting to S3.
  *    Any `long` value is acceptable. <br>
