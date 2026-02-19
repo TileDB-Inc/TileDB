@@ -1413,6 +1413,12 @@ Status S3::init_client() const {
   client_config.caPath = ssl_config_.ca_path();
   client_config.verifySSL = ssl_config_.verify();
 
+  if (s3_params_.has_connect_scale_factor_) {
+    LOG_WARN(
+        "The 'vfs.s3.connect_scale_factor' option is deprecated and no longer "
+        "supported.");
+  }
+
   std::shared_ptr<Aws::Client::RetryStrategy> retry_strategy;
   if (s3_params_.connect_max_tries_.has_value()) {
     retry_strategy = Aws::Client::InitRetryStrategy(

@@ -624,9 +624,6 @@ class Config {
   /** Retry strategy for S3 client. */
   static const std::string VFS_S3_RETRY_STRATEGY;
 
-  /** Connect scale factor for exponential backoff. */
-  static const std::string VFS_S3_CONNECT_SCALE_FACTOR;
-
   /** S3 server-side encryption algorithm. */
   static const std::string VFS_S3_SSE;
 

@@ -212,7 +212,6 @@ const std::string Config::VFS_S3_CA_FILE = "";
 const std::string Config::VFS_S3_CA_PATH = "";
 const std::string Config::VFS_S3_CONNECT_TIMEOUT_MS = "10800";
 const std::string Config::VFS_S3_RETRY_STRATEGY = "standard";
-const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
 const std::string Config::VFS_S3_SSE = "";
 const std::string Config::VFS_S3_SSE_KMS_KEY_ID = "";
 const std::string Config::VFS_S3_STORAGE_CLASS = "NOT_SET";
@@ -490,8 +489,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.s3.connect_timeout_ms", Config::VFS_S3_CONNECT_TIMEOUT_MS),
     std::make_pair("vfs.s3.retry_strategy", Config::VFS_S3_RETRY_STRATEGY),
-    std::make_pair(
-        "vfs.s3.connect_scale_factor", Config::VFS_S3_CONNECT_SCALE_FACTOR),
     std::make_pair("vfs.s3.sse", Config::VFS_S3_SSE),
     std::make_pair("vfs.s3.sse_kms_key_id", Config::VFS_S3_SSE_KMS_KEY_ID),
     std::make_pair("vfs.s3.storage_class", Config::VFS_S3_STORAGE_CLASS),
@@ -855,8 +852,6 @@ Status Config::sanity_check(
   } else if (param == "vfs.s3.connect_timeout_ms") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.connect_max_tries" && !value.empty()) {
-    RETURN_NOT_OK(utils::parse::convert(value, &vint64));
-  } else if (param == "vfs.s3.connect_scale_factor") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.request_timeout_ms") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));

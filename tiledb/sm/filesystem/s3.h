@@ -203,8 +203,8 @@ struct S3Parameters {
       , connect_timeout_ms_(
             config.get<int64_t>("vfs.s3.connect_timeout_ms", Config::must_find))
       , connect_max_tries_(config.get<int64_t>("vfs.s3.connect_max_tries"))
-      , connect_scale_factor_(config.get<int64_t>(
-            "vfs.s3.connect_scale_factor", Config::must_find))
+      , has_connect_scale_factor_(
+            config.get<int64_t>("vfs.s3.connect_scale_factor").has_value())
       , custom_headers_(load_headers(config))
       , logging_level_(std::string(config.get<std::string_view>(
             "vfs.s3.logging_level", Config::must_find)))
@@ -300,8 +300,8 @@ struct S3Parameters {
   /** The maximum tries for a connection. Any `long` value is acceptable. */
   std::optional<int64_t> connect_max_tries_;
 
-  /** The scale factor for exponential backoff when connecting to S3. */
-  int64_t connect_scale_factor_;
+  /** Whether the deprecated "vfs.s3.connect_scale_factor" is set. */
+  bool has_connect_scale_factor_;
 
   /** Custom headers to add to all s3 requests. */
   Headers custom_headers_;

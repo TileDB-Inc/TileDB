@@ -770,10 +770,6 @@ class Config {
    *    The maximum tries for a connection. Any `long` value is acceptable.
    *    If set to the empty string, the value is determined by the AWS SDK. <br>
    *    **Default**: ""
-   * - `vfs.s3.connect_scale_factor` <br>
-   *    The scale factor for exponential backoff when connecting to S3.
-   *    Any `long` value is acceptable. <br>
-   *    **Default**: 25
    * - `vfs.s3.custom_headers.*` <br>
    *    (Optional) Prefix for custom headers on s3 requests. For each custom
    *    header, use "vfs.s3.custom_headers.header_key" = "header_value" <br>
