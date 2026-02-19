@@ -1,11 +1,11 @@
 /**
- * @file   bench_dense_attribute_filtering.cc
+ * @file   bench_dense_multi_fragment_read.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * Benchmarks a query condition that filters out the first half of all cells
- * values using a single less-than clause.
+ * Benchmark dense 2D read performance across multiple unconsolidated
+ * fragments. Setup writes 10 overlapping fragments, run reads the full array.
+ *
+ * For large-scale runs, increase array_rows/array_cols to 20000 and
+ * num_fragments to 50.
  */
 
 #include <tiledb/tiledb>
@@ -43,28 +46,33 @@ class Benchmark : public BenchmarkBase {
   virtual void setup() {
     ArraySchema schema(ctx_, TILEDB_DENSE);
     Domain domain(ctx_);
-    domain.add_dimension(
-        Dimension::create<uint64_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
+    domain.add_dimension(Dimension::create<uint32_t>(
+        ctx_, "d1", {{1, array_rows}}, tile_extent));
+    domain.add_dimension(Dimension::create<uint32_t>(
+        ctx_, "d2", {{1, array_cols}}, tile_extent));
     schema.set_domain(domain);
     FilterList filters(ctx_);
+    filters.add_filter({ctx_, TILEDB_FILTER_LZ4});
     schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
-    data_.resize(array_rows);
-    for (uint64_t i = 0; i < data_.size(); i++) {
-      data_[i] = i;
+    // Write num_fragments overlapping fragments, each covering the full domain
+    uint64_t ncells = array_rows * array_cols;
+    std::vector<int> data(ncells);
+    for (unsigned f = 0; f < num_fragments; f++) {
+      for (uint64_t i = 0; i < ncells; i++)
+        data[i] = f * ncells + i;
+
+      Array array(ctx_, array_uri_, TILEDB_WRITE);
+      Query query(ctx_, array, TILEDB_WRITE);
+      query
+          .set_subarray(Subarray(ctx_, array)
+                            .set_subarray({1u, array_rows, 1u, array_cols}))
+          .set_layout(TILEDB_ROW_MAJOR)
+          .set_data_buffer("a", data);
+      query.submit();
+      array.close();
     }
-
-    Array array(ctx_, array_uri_, TILEDB_WRITE);
-    Query query(ctx_, array, TILEDB_WRITE);
-
-    query
-        .set_subarray(
-            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data_);
-    query.submit();
-    array.close();
   }
 
   virtual void teardown() {
@@ -72,30 +80,26 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    data_.resize(array_rows);
+    data_.resize(array_rows * array_cols);
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
-    const int cmp_value = array_rows / 2;
-    QueryCondition condition =
-        QueryCondition::create(ctx_, "a", cmp_value, TILEDB_LT);
     query
-        .set_subarray(
-            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
+        .set_subarray(Subarray(ctx_, array)
+                          .set_subarray({1u, array_rows, 1u, array_cols}))
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_condition(condition)
         .set_data_buffer("a", data_);
-    auto st = query.submit();
+    query.submit();
     array.close();
   }
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-
-  // 3.2GB for a single cell, 4-byte attribute.
-  const uint64_t array_rows = 800000000;
+  const unsigned array_rows = 5000, array_cols = 5000;
+  const unsigned tile_extent = 500;
+  const unsigned num_fragments = 10;
 
   Context ctx_{bench_config()};
   std::vector<int> data_;

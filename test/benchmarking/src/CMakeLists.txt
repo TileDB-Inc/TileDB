@@ -52,19 +52,48 @@ add_library(benchmark_core OBJECT
 
 # List of benchmarks
 set(BENCHMARKS
+  bench_consolidation
+  bench_dense_3d_read
+  bench_dense_3d_write
   bench_dense_attribute_filtering
+  bench_dense_delete
+  bench_dense_multi_attr
+  bench_dense_multi_fragment_read
+  bench_dense_read_col_major
+  bench_dense_read_incomplete
   bench_dense_read_large_tile
+  bench_dense_read_nullable
+  bench_dense_read_qc_combined
   bench_dense_read_small_tile
+  bench_dense_read_varlen
   bench_dense_tile_cache
+  bench_dense_write_global_order
   bench_dense_write_large_tile
+  bench_dense_write_nullable
   bench_dense_write_small_tile
+  bench_dense_write_varlen
+  bench_filter_comparison
   bench_large_io
   bench_reader_base_unfilter_tile
+  bench_sparse_delete
+  bench_sparse_multi_attr
+  bench_sparse_multi_fragment_read
+  bench_sparse_read_incomplete
   bench_sparse_read_large_tile
+  bench_sparse_read_nullable
+  bench_sparse_read_qc_combined
+  bench_sparse_read_query_condition
   bench_sparse_read_small_tile
+  bench_sparse_read_unordered
+  bench_sparse_read_varlen
+  bench_sparse_string_dim_read
+  bench_sparse_string_dim_write
   bench_sparse_tile_cache
+  bench_sparse_write_global_order
   bench_sparse_write_large_tile
+  bench_sparse_write_nullable
   bench_sparse_write_small_tile
+  bench_sparse_write_varlen
 )
 
 foreach(NAME IN LISTS BENCHMARKS)

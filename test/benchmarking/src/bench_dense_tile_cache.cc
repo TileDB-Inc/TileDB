@@ -33,6 +33,7 @@
 #include <tiledb/tiledb>
 
 #include "benchmark.h"
+#include "benchmark_config.h"
 
 using namespace tiledb;
 
@@ -43,7 +44,7 @@ class Benchmark : public BenchmarkBase {
     // Set the max tile cache size to 10GB -- this is more
     // than enough to guarantee that the tile cach can
     // hold all of our tiles.
-    Config config;
+    Config config = bench_config();
     config["sm.tile_cache_size"] = "10000000000";
     ctx_ = std::make_unique<Context>(config);
   }
@@ -81,9 +82,7 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void teardown() {
-    VFS vfs(*ctx_);
-    if (vfs.is_dir(array_uri_))
-      vfs.remove_dir(array_uri_);
+    bench_teardown(*ctx_, array_uri_);
   }
 
   virtual void pre_run() {
@@ -118,7 +117,7 @@ class Benchmark : public BenchmarkBase {
   }
 
  private:
-  const std::string array_uri_ = "bench_array";
+  const std::string array_uri_ = bench_uri("bench_array");
   const unsigned array_rows = 10000, array_cols = 20000;
   const unsigned tile_rows = 100, tile_cols = 100;
 

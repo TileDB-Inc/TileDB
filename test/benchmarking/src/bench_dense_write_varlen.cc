@@ -1,11 +1,11 @@
 /**
- * @file   bench_dense_attribute_filtering.cc
+ * @file   bench_dense_write_varlen.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Benchmarks a query condition that filters out the first half of all cells
- * values using a single less-than clause.
+ * Benchmark dense 1D write performance with a variable-length STRING_ASCII
+ * attribute. Measures offset+data buffer write overhead.
+ *
+ * For large-scale runs, increase num_cells to 50000000.
  */
 
 #include <tiledb/tiledb>
@@ -44,27 +46,12 @@ class Benchmark : public BenchmarkBase {
     ArraySchema schema(ctx_, TILEDB_DENSE);
     Domain domain(ctx_);
     domain.add_dimension(
-        Dimension::create<uint64_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
+        Dimension::create<uint64_t>(ctx_, "d1", {{1, num_cells}}, tile_extent));
     schema.set_domain(domain);
-    FilterList filters(ctx_);
-    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+
+    auto attr = Attribute::create<std::string>(ctx_, "a");
+    schema.add_attribute(attr);
     Array::create(array_uri_, schema);
-
-    data_.resize(array_rows);
-    for (uint64_t i = 0; i < data_.size(); i++) {
-      data_[i] = i;
-    }
-
-    Array array(ctx_, array_uri_, TILEDB_WRITE);
-    Query query(ctx_, array, TILEDB_WRITE);
-
-    query
-        .set_subarray(
-            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data_);
-    query.submit();
-    array.close();
   }
 
   virtual void teardown() {
@@ -72,33 +59,43 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    data_.resize(array_rows);
+    offsets_.clear();
+    data_.clear();
+
+    // Generate variable-length strings (5 to 50 chars each)
+    uint32_t seed = 42;
+    for (uint64_t i = 0; i < num_cells; i++) {
+      offsets_.push_back(data_.size());
+      seed = seed * 1103515245 + 12345;
+      unsigned len = 5 + (seed >> 16) % 46;
+      for (unsigned j = 0; j < len; j++) {
+        seed = seed * 1103515245 + 12345;
+        data_.push_back('a' + (seed >> 16) % 26);
+      }
+    }
   }
 
   virtual void run() {
-    Array array(ctx_, array_uri_, TILEDB_READ);
-    Query query(ctx_, array);
-    const int cmp_value = array_rows / 2;
-    QueryCondition condition =
-        QueryCondition::create(ctx_, "a", cmp_value, TILEDB_LT);
+    Array array(ctx_, array_uri_, TILEDB_WRITE);
+    Query query(ctx_, array, TILEDB_WRITE);
     query
         .set_subarray(
-            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
+            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, num_cells}))
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_condition(condition)
-        .set_data_buffer("a", data_);
-    auto st = query.submit();
+        .set_data_buffer("a", data_)
+        .set_offsets_buffer("a", offsets_);
+    query.submit();
     array.close();
   }
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-
-  // 3.2GB for a single cell, 4-byte attribute.
-  const uint64_t array_rows = 800000000;
+  const uint64_t num_cells = 5000000;
+  const uint64_t tile_extent = 100000;
 
   Context ctx_{bench_config()};
-  std::vector<int> data_;
+  std::string data_;
+  std::vector<uint64_t> offsets_;
 };
 
 int main(int argc, char** argv) {

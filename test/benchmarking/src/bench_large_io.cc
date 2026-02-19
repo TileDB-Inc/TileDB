@@ -33,6 +33,7 @@
 #include <tiledb/tiledb>
 
 #include "benchmark.h"
+#include "benchmark_config.h"
 
 using namespace tiledb;
 
@@ -101,11 +102,8 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void teardown() {
-    VFS vfs(ctx_);
-    if (vfs.is_dir(dense_array_uri_))
-      vfs.remove_dir(dense_array_uri_);
-    if (vfs.is_dir(sparse_array_uri_))
-      vfs.remove_dir(sparse_array_uri_);
+    bench_teardown(ctx_, dense_array_uri_);
+    bench_teardown(ctx_, sparse_array_uri_);
   }
 
   virtual void pre_run() {
@@ -185,13 +183,13 @@ class Benchmark : public BenchmarkBase {
   }
 
  private:
-  const std::string dense_array_uri_ = "dense_bench_array";
-  const std::string sparse_array_uri_ = "sparse_bench_array";
+  const std::string dense_array_uri_ = bench_uri("dense_bench_array");
+  const std::string sparse_array_uri_ = bench_uri("sparse_bench_array");
   const unsigned dense_array_rows = 6000, dense_array_cols = 6000;
   const unsigned sparse_max_row = 12000, sparse_max_col = 12000;
   const unsigned tile_rows = 2000, tile_cols = 2000;
 
-  Context ctx_;
+  Context ctx_{bench_config()};
 
   std::vector<int> data_a_;
   std::vector<int> data_b_;

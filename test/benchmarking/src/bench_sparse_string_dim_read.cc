@@ -1,11 +1,11 @@
 /**
- * @file   bench_dense_attribute_filtering.cc
+ * @file   bench_sparse_string_dim_read.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Benchmarks a query condition that filters out the first half of all cells
- * values using a single less-than clause.
+ * Benchmark sparse 1D array read with a STRING_ASCII dimension.
+ * Reads a range covering approximately half of all keys.
+ *
+ * For large-scale runs, increase num_cells to 10000000.
  */
 
 #include <tiledb/tiledb>
@@ -41,28 +43,36 @@ using namespace tiledb;
 class Benchmark : public BenchmarkBase {
  protected:
   virtual void setup() {
-    ArraySchema schema(ctx_, TILEDB_DENSE);
+    ArraySchema schema(ctx_, TILEDB_SPARSE);
     Domain domain(ctx_);
     domain.add_dimension(
-        Dimension::create<uint64_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
+        Dimension::create(ctx_, "d1", TILEDB_STRING_ASCII, nullptr, nullptr));
     schema.set_domain(domain);
-    FilterList filters(ctx_);
-    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+    schema.set_capacity(capacity);
+    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a"));
     Array::create(array_uri_, schema);
 
-    data_.resize(array_rows);
-    for (uint64_t i = 0; i < data_.size(); i++) {
-      data_[i] = i;
+    // Write data during setup
+    std::string wdim_data;
+    std::vector<uint64_t> wdim_offsets;
+    std::vector<int32_t> wattr_data(num_cells);
+    for (uint64_t i = 0; i < num_cells; i++) {
+      wdim_offsets.push_back(wdim_data.size());
+      std::string key = "key_";
+      std::string num = std::to_string(i);
+      while (num.size() < 7)
+        num = "0" + num;
+      key += num;
+      wdim_data += key;
+      wattr_data[i] = static_cast<int32_t>(i);
     }
 
     Array array(ctx_, array_uri_, TILEDB_WRITE);
-    Query query(ctx_, array, TILEDB_WRITE);
-
-    query
-        .set_subarray(
-            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data_);
+    Query query(ctx_, array);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("d1", wdim_data)
+        .set_offsets_buffer("d1", wdim_offsets)
+        .set_data_buffer("a", wattr_data);
     query.submit();
     array.close();
   }
@@ -72,33 +82,42 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    data_.resize(array_rows);
+    // Allocate read buffers generously
+    dim_data_.resize(num_cells * 12);
+    dim_offsets_.resize(num_cells);
+    attr_data_.resize(num_cells);
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
+    // Read range covering the first half of keys
+    std::string lo = "key_0000000";
+    std::string hi = "key_" + std::to_string(num_cells / 2 - 1);
+    while (hi.size() < 11)
+      hi.insert(4, 1, '0');
+
+    Subarray subarray(ctx_, array);
+    subarray.add_range(0, lo, hi);
+
     Query query(ctx_, array);
-    const int cmp_value = array_rows / 2;
-    QueryCondition condition =
-        QueryCondition::create(ctx_, "a", cmp_value, TILEDB_LT);
-    query
-        .set_subarray(
-            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
+    query.set_subarray(subarray)
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_condition(condition)
-        .set_data_buffer("a", data_);
-    auto st = query.submit();
+        .set_data_buffer("d1", dim_data_)
+        .set_offsets_buffer("d1", dim_offsets_)
+        .set_data_buffer("a", attr_data_);
+    query.submit();
     array.close();
   }
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-
-  // 3.2GB for a single cell, 4-byte attribute.
-  const uint64_t array_rows = 800000000;
+  const uint64_t num_cells = 2000000;
+  const uint64_t capacity = 100000;
 
   Context ctx_{bench_config()};
-  std::vector<int> data_;
+  std::string dim_data_;
+  std::vector<uint64_t> dim_offsets_;
+  std::vector<int32_t> attr_data_;
 };
 
 int main(int argc, char** argv) {

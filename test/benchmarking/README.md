@@ -60,11 +60,78 @@ $ ./bench_dense_read_small_tile teardown
 
 The above is essentially what the Python benchmark harness script does.
 
+## Running with S3 backend
+
+Benchmarks can target S3 storage instead of local filesystem. Pass the
+`--backend s3` flag along with `--uri-prefix` and any required S3 options:
+
+```bash
+$ ./benchmark.py --backend s3 \
+    --uri-prefix "s3://my-bucket/benchmarks/" \
+    --s3-region us-east-1
+```
+
+For a local S3-compatible endpoint such as MinIO or LocalStack:
+
+```bash
+$ ./benchmark.py --backend s3 \
+    --uri-prefix "s3://my-bucket/benchmarks/" \
+    --s3-endpoint localhost:9999 \
+    --s3-scheme https \
+    --s3-virtual-addressing false
+```
+
+When running manually, set the corresponding environment variables:
+
+```bash
+$ BENCH_URI_PREFIX=s3://my-bucket/benchmarks/ \
+  BENCH_S3_REGION=us-east-1 \
+  ./bench_dense_read_large_tile
+```
+
+## Running with REST server (tiledb:// URIs)
+
+Benchmarks can target a TileDB REST server using `tiledb://` URIs:
+
+```bash
+$ ./benchmark.py --backend rest \
+    --uri-prefix "tiledb://my-namespace/" \
+    --rest-server "https://api.tiledb.com" \
+    --rest-token "YOUR_API_TOKEN"
+```
+
+Or manually with environment variables:
+
+```bash
+$ BENCH_URI_PREFIX=tiledb://my-namespace/ \
+  BENCH_REST_SERVER=https://api.tiledb.com \
+  BENCH_REST_TOKEN=YOUR_API_TOKEN \
+  ./bench_dense_read_large_tile
+```
+
+When using S3 or REST backends, the harness skips local filesystem cache
+operations (`sync` and `purge`) since they are not relevant for remote storage.
+
+## Environment variables reference
+
+| Variable                          | Purpose                                      |
+| --------------------------------- | -------------------------------------------- |
+| `BENCH_URI_PREFIX`                | Prepended to array name to form full URI     |
+| `BENCH_S3_ENDPOINT`               | S3 endpoint override (for MinIO, LocalStack) |
+| `BENCH_S3_REGION`                 | S3 region                                    |
+| `BENCH_S3_SCHEME`                 | S3 connection scheme                         |
+| `BENCH_S3_USE_VIRTUAL_ADDRESSING` | Virtual host-style addressing (true/false)   |
+| `BENCH_REST_SERVER`               | REST server address                          |
+| `BENCH_REST_TOKEN`                | REST API token                               |
+
 ## Adding benchmarks
 
 1. Create a new file `src/bench_<name>.cc`.
 2. Subclass from the `BenchmarkBase` class and implement the desired methods.
-3. In the `main` function, call the `BenchmarkBase::main` function of an instance of your subclass.
-4. Add `bench_<name>` to the `BENCHMARKS` list in `src/CMakeLists.txt`.
+3. Include `benchmark_config.h` and use `bench_uri("name")` for the array URI,
+   `bench_config()` for the `Context` config, and `bench_teardown(ctx, uri)`
+   in teardown.
+4. In the `main` function, call the `BenchmarkBase::main` function of an instance of your subclass.
+5. Add `bench_<name>` to the `BENCHMARKS` list in `src/CMakeLists.txt`.
 
 When you next run `benchmark.py` it will build and run the added benchmark.

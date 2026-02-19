@@ -1,5 +1,5 @@
 /**
- * @file   bench_dense_write_small_tile.cc
+ * @file   bench_sparse_write_varlen.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed dense 2D write performance with small tiles.
+ * Benchmark sparse 2D write performance with a variable-length STRING_ASCII
+ * attribute. Measures combined coordinate + var-length attribute write
+ * overhead.
+ *
+ * For large-scale runs, increase max_row and max_col to 15000.
  */
 
 #include <tiledb/tiledb>
@@ -40,17 +44,23 @@ using namespace tiledb;
 class Benchmark : public BenchmarkBase {
  protected:
   virtual void setup() {
-    ArraySchema schema(ctx_, TILEDB_DENSE);
+    ArraySchema schema(ctx_, TILEDB_SPARSE);
     Domain domain(ctx_);
-    domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d1", {{1, array_rows}}, tile_rows));
-    domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}, tile_cols));
+    domain.add_dimension(Dimension::create<uint32_t>(
+        ctx_,
+        "d1",
+        {{1, std::numeric_limits<uint32_t>::max() - tile_extent}},
+        tile_extent));
+    domain.add_dimension(Dimension::create<uint32_t>(
+        ctx_,
+        "d2",
+        {{1, std::numeric_limits<uint32_t>::max() - tile_extent}},
+        tile_extent));
     schema.set_domain(domain);
-    FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
-    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+    schema.set_capacity(capacity);
+
+    auto attr = Attribute::create<std::string>(ctx_, "a");
+    schema.add_attribute(attr);
     Array::create(array_uri_, schema);
   }
 
@@ -59,31 +69,50 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    data_.resize(array_rows * array_cols);
-    for (uint64_t i = 0; i < data_.size(); i++) {
-      data_[i] = i;
+    d1_.clear();
+    d2_.clear();
+    offsets_.clear();
+    data_.clear();
+
+    const unsigned skip = 2;
+    uint32_t seed = 42;
+    for (uint32_t i = 1; i < max_row; i += skip) {
+      for (uint32_t j = 1; j < max_col; j += skip) {
+        d1_.push_back(i);
+        d2_.push_back(j);
+        offsets_.push_back(data_.size());
+        seed = seed * 1103515245 + 12345;
+        unsigned len = 5 + (seed >> 16) % 46;
+        for (unsigned k = 0; k < len; k++) {
+          seed = seed * 1103515245 + 12345;
+          data_.push_back('a' + (seed >> 16) % 26);
+        }
+      }
     }
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array);
-    query
-        .set_subarray(Subarray(ctx_, array)
-                          .set_subarray({1u, array_rows, 1u, array_cols}))
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data_);
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a", data_)
+        .set_offsets_buffer("a", offsets_)
+        .set_data_buffer("d1", d1_)
+        .set_data_buffer("d2", d2_);
     query.submit();
     array.close();
   }
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-  const unsigned array_rows = 10000, array_cols = 10000;
-  const unsigned tile_rows = 100, tile_cols = 100;
+  const unsigned tile_extent = 300;
+  const unsigned capacity = 100000;
+  const unsigned max_row = 5000, max_col = 5000;
 
   Context ctx_{bench_config()};
-  std::vector<int> data_;
+  std::string data_;
+  std::vector<uint64_t> offsets_;
+  std::vector<uint32_t> d1_, d2_;
 };
 
 int main(int argc, char** argv) {
