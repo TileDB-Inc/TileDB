@@ -333,7 +333,6 @@ void check_save_to_file() {
   ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
   ss << "vfs.s3.config_source auto\n";
-  ss << "vfs.s3.retry_strategy standard\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
   ss << "vfs.s3.install_sigpipe_handler true\n";
   ss << "vfs.s3.logging_level Off\n";
@@ -346,6 +345,7 @@ void check_save_to_file() {
   ss << "vfs.s3.proxy_scheme http\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.requester_pays false\n";
+  ss << "vfs.s3.retry_strategy standard\n";
   ss << "vfs.s3.scheme https\n";
   ss << "vfs.s3.skip_init false\n";
   ss << "vfs.s3.storage_class NOT_SET\n";
