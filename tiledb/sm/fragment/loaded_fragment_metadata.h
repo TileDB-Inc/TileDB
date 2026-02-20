@@ -547,6 +547,10 @@ class LoadedFragmentMetadata {
     loaded_metadata_ = loaded_metadata;
   }
 
+  const FragmentMetadata& parent_fragment() const {
+    return parent_fragment_;
+  }
+
   /** loaded_metadata accessor . */
   inline const LoadedMetadata& loaded_metadata() const {
     return loaded_metadata_;
