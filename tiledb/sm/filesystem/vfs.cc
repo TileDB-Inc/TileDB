@@ -576,7 +576,7 @@ Status VFS::read_exactly(
     const URI& uri,
     const uint64_t offset,
     void* const buffer,
-    const uint64_t nbytes) {
+    const uint64_t nbytes) const {
   uint64_t length_read = 0;
   RETURN_NOT_OK(ok_if_not_throw(
       [&]() { length_read = read(uri, offset, buffer, nbytes); }));
@@ -590,7 +590,7 @@ Status VFS::read_exactly(
 }
 
 uint64_t VFS::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   stats_->add_counter("read_byte_num", nbytes);
 
   // Ensure that each thread is responsible for at least min_parallel_size
@@ -651,7 +651,7 @@ Status VFS::read_impl(
     void* buffer,
     uint64_t nbytes,
     [[maybe_unused]] bool use_read_ahead,
-    uint64_t* length_read) {
+    uint64_t* length_read) const {
   auto instrument = make_log_duration_instrument(uri, "read");
   stats_->add_counter("read_ops_num", 1);
   log_read(uri, offset, nbytes);
@@ -937,7 +937,7 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
   return Status::Ok();
 }
 
-void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {
+void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) const {
   std::string read_to_log;
   switch (vfs_params_.read_logging_mode_) {
     case VFSParameters::ReadLoggingMode::DISABLED: {

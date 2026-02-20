@@ -117,7 +117,7 @@ class FailingFS : public FilesystemBase {
     throw get_exception();
   }
 
-  virtual uint64_t read(const URI&, uint64_t, void*, uint64_t) override {
+  virtual uint64_t read(const URI&, uint64_t, void*, uint64_t) const override {
     throw get_exception();
   }
 

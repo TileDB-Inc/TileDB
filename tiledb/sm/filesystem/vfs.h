@@ -713,8 +713,8 @@ class VFS : FilesystemBase,
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    */
-  uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
+  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
+      const override;
 
   /**
    * Reads the specified number of bytes from a file.
@@ -726,7 +726,7 @@ class VFS : FilesystemBase,
    * @return Status
    */
   Status read_exactly(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
@@ -1042,7 +1042,7 @@ class VFS : FilesystemBase,
   ThreadPool* io_tp_;
 
   /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
-  CancelableTasks cancelable_tasks_;
+  mutable CancelableTasks cancelable_tasks_;
 
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
@@ -1051,7 +1051,7 @@ class VFS : FilesystemBase,
   VFSParameters vfs_params_;
 
   /** The URIs previously read by this instance. */
-  std::unordered_set<std::string> reads_logged_;
+  mutable std::unordered_set<std::string> reads_logged_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -1073,7 +1073,7 @@ class VFS : FilesystemBase,
       void* buffer,
       uint64_t nbytes,
       bool use_read_ahead,
-      uint64_t* length_read);
+      uint64_t* length_read) const;
 
   /**
    * Retrieves the backend-specific max number of parallel operations for VFS
@@ -1089,7 +1089,7 @@ class VFS : FilesystemBase,
    * @param offset The offset being read from.
    * @param nbytes The number of bytes requested.
    */
-  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
+  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes) const;
 
   /**
    * Creates a LogDurationInstrument, if enabled in config.

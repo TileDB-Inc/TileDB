@@ -618,8 +618,8 @@ class Azure : public FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    */
-  uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) override;
+  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
+      const override;
 
   /**
    * Deletes a container.

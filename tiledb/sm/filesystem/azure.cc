@@ -837,7 +837,7 @@ uint64_t Azure::file_size(const URI& uri) const {
 }
 
 uint64_t Azure::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   const auto& c = client();
 
   if (!uri.is_azure()) {

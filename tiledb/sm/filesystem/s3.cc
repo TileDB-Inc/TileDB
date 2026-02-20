@@ -471,7 +471,7 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 uint64_t S3::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   throw_if_not_ok(init_client());
 
   Aws::Http::URI aws_uri = uri.c_str();
