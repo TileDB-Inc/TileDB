@@ -53,7 +53,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 
-#include <aws/core/client/AwsError.h>
+#include <aws/core/client/AWSError.h>
 #include <aws/core/client/RetryStrategy.h>
 #include <aws/core/client/SpecifiedRetryableErrorsRetryStrategy.h>
 #include <aws/core/utils/logging/AWSLogging.h>
