@@ -957,14 +957,13 @@ TEST_CASE(
   int threads = 21;
   for (int i = 0; i < threads; ++i) {
     std::string str = "chr" + std::to_string(i);
-    futures.push_back(
-        std::async(
-            std::launch::async,
-            &write_bad_digest_array_at,
-            ctx,
-            array_uri,
-            size,
-            str));
+    futures.push_back(std::async(
+        std::launch::async,
+        &write_bad_digest_array_at,
+        ctx,
+        array_uri,
+        size,
+        str));
   }
   for (auto& t : futures) {
     auto generated = t.get();
@@ -972,7 +971,8 @@ TEST_CASE(
   }
 }
 
-// This test writes contigs in the range [start, end] on each thread. (Only the final contig calls submit_and_finalize)
+// This test writes contigs in the range [start, end] on each thread. (Only the
+// final contig calls submit_and_finalize)
 // TODO: This test fails due to chained submits not respecting global order.
 TEST_CASE(
     "Remote global order writes BadDigest chained submits",
@@ -991,15 +991,14 @@ TEST_CASE(
   int batch_size = 5;
   for (int i = 0; i < threads; i += batch_size) {
     std::string str = "chr" + std::to_string(i);
-    futures.push_back(
-        std::async(
-            std::launch::async,
-            &write_bad_digest_array_at_chained,
-            ctx,
-            array_uri,
-            i,
-            i+batch_size,
-            write_size));
+    futures.push_back(std::async(
+        std::launch::async,
+        &write_bad_digest_array_at_chained,
+        ctx,
+        array_uri,
+        i,
+        i + batch_size,
+        write_size));
   }
   for (auto& t : futures) {
     auto generated = t.get();
