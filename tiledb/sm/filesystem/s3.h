@@ -202,6 +202,8 @@ struct S3Parameters {
             "vfs.s3.multipart_part_size", Config::must_find))
       , connect_timeout_ms_(
             config.get<int64_t>("vfs.s3.connect_timeout_ms", Config::must_find))
+      , retry_strategy_(std::string(config.get<std::string_view>(
+            "vfs.s3.retry_strategy", Config::must_find)))
       , connect_max_tries_(config.get<int64_t>("vfs.s3.connect_max_tries"))
       , has_connect_scale_factor_(
             config.get<int64_t>("vfs.s3.connect_scale_factor").has_value())
