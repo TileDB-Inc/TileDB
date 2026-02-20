@@ -248,34 +248,35 @@ class SlowDownTrackingRetryStrategy : public Aws::Client::RetryStrategy {
 
   virtual long CalculateDelayBeforeNextRetry(
       const Aws::Client::AWSError<Aws::Client::CoreErrors>& error,
-      long attemptedRetries) const {
+      long attemptedRetries) const override {
     return inner_->CalculateDelayBeforeNextRetry(error, attemptedRetries);
   }
 
-  virtual long GetMaxAttempts() const {
+  virtual long GetMaxAttempts() const override {
     return inner_->GetMaxAttempts();
   }
 
-  virtual void GetSendToken() {
+  virtual void GetSendToken() override {
     inner_->GetSendToken();
   }
 
-  virtual bool HasSendToken() {
+  virtual bool HasSendToken() override {
     return inner_->HasSendToken();
   }
 
   virtual void RequestBookkeeping(
-      const Aws::Client::HttpResponseOutcome& httpResponseOutcome) {
+      const Aws::Client::HttpResponseOutcome& httpResponseOutcome) override {
     inner_->RequestBookkeeping(httpResponseOutcome);
   }
 
   virtual void RequestBookkeeping(
       const Aws::Client::HttpResponseOutcome& httpResponseOutcome,
-      const Aws::Client::AWSError<Aws::Client::CoreErrors>& lastError) {
+      const Aws::Client::AWSError<Aws::Client::CoreErrors>& lastError)
+      override {
     inner_->RequestBookkeeping(httpResponseOutcome, lastError);
   }
 
-  virtual const char* GetStrategyName() const {
+  virtual const char* GetStrategyName() const override {
     return inner_->GetStrategyName();
   }
 
