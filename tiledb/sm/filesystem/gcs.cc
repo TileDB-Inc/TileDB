@@ -1283,7 +1283,7 @@ Status GCS::flush_object_direct(const URI& uri) {
 }
 
 uint64_t GCS::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   // ReadRange will return an error on 0-byte reads. Instead, just return here.
   if (offset + nbytes == 0) {
     return 0;
