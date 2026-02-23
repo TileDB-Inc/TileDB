@@ -322,6 +322,9 @@ void Azure::AzureClientSingleton::ensure_initialized(
   options.Retry.RetryDelay = params.retry_delay_;
   options.Retry.MaxRetryDelay = params.max_retry_delay_;
   options.Transport.Transport = create_transport(params.ssl_cfg_);
+  // TODO: Remove this when azurite updates to support the latest Azure API.
+  // https://github.com/Azure/Azurite/pull/2629
+  options.ApiVersion = "2025-11-05";
 
   // Construct the Azure service credential.
   auto credential =
@@ -350,6 +353,8 @@ void Azure::AzureClientSingleton::ensure_initialized(
     ::Azure::Storage::Files::DataLake::DataLakeClientOptions data_lake_options;
     data_lake_options.Retry = options.Retry;
     data_lake_options.Transport = options.Transport;
+    // TODO: Remove this when azurite updates to support the latest Azure API.
+    data_lake_options.ApiVersion = options.ApiVersion;
 
     data_lake_client_ = make_service_client<DataLakeServiceClientType>(
         GetDfsUrlFromUrl(params.blob_endpoint_), credential, data_lake_options);
