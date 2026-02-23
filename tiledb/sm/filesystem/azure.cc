@@ -1214,7 +1214,8 @@ LsObjects Azure::list_blobs_impl(
                   recursive ? "" : "/",
                   {.Prefix = blob_path,
                    .ContinuationToken = to_azure_nullable(continuation_token),
-                   .PageSizeHint = max_keys});
+                   .PageSizeHint = max_keys,
+                   .StartFrom = {}});
       continuation_token = from_azure_nullable(response.NextPageToken);
 
       result.reserve(response.Blobs.size() + response.BlobPrefixes.size());
