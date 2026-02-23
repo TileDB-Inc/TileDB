@@ -35,6 +35,7 @@ run_azurite() {
     --location /tmp/azurite-data \
     --debug /tmp/azurite-data/debug.log \
     --blobPort 10000 \
+    --skipApiVersionCheck \
     --blobHost 0.0.0.0 &
   export AZURITE_PID=$!
 }
