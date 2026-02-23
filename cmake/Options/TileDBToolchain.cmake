@@ -36,7 +36,7 @@ if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         # Inspired from https://github.com/Azure/azure-sdk-for-cpp/blob/azure-core_1.10.3/cmake-modules/AzureVcpkg.cmake
         message("TILEDB_DISABLE_AUTO_VCPKG is not defined. Fetch a local copy of vcpkg.")
         # To help with resolving conflicts, when you update the commit, also update its date.
-        set(VCPKG_COMMIT_STRING 3b9d086009cc1c2256e9c28ad44a00036fbd9b26) # 2025-10-24
+        set(VCPKG_COMMIT_STRING dd930e314f529c86d2703a60d5ea7dd6573d9e5a) # 2026-2-19
         message("Vcpkg commit string used: ${VCPKG_COMMIT_STRING}")
         include(FetchContent)
         FetchContent_Declare(
