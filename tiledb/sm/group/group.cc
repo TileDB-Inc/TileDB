@@ -45,6 +45,7 @@
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/object/object_mutex.h"
