@@ -302,8 +302,12 @@ class Posix : public LocalFilesystem {
  private:
   uint32_t file_permissions_, directory_permissions_;
 
-  // TODO: Add concurrency and error-path tests (parallel writes to different
-  //       files, write failure mid-stream, destructor cleanup of leaked fds).
+  /**
+   * Closes and removes cached fds whose path equals or is under the given
+   * prefix. Called from const removal/move methods to keep the cache
+   * consistent.
+   */
+  void evict_cached_fds(const std::string& path_prefix) const;
 
   /** State for a file descriptor kept open between write() and flush(). */
   struct OpenFile {
@@ -312,10 +316,10 @@ class Posix : public LocalFilesystem {
   };
 
   /** Maps path -> cached file descriptor and current write offset. */
-  std::unordered_map<std::string, OpenFile> open_files_;
+  mutable std::unordered_map<std::string, OpenFile> open_files_;
 
   /** Protects open_files_. */
-  std::mutex open_files_mtx_;
+  mutable std::mutex open_files_mtx_;
 };
 
 }  // namespace sm

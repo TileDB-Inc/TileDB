@@ -207,8 +207,22 @@ bool Posix::is_file(const URI& uri) const {
   return (stat(uri.to_path().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
+void Posix::evict_cached_fds(const std::string& path_prefix) const {
+  std::lock_guard<std::mutex> lock(open_files_mtx_);
+  for (auto it = open_files_.begin(); it != open_files_.end();) {
+    if (it->first == path_prefix ||
+        it->first.compare(0, path_prefix.size() + 1, path_prefix + "/") == 0) {
+      ::close(it->second.fd);
+      it = open_files_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void Posix::remove_dir(const URI& uri) const {
   auto path = uri.to_path();
+  evict_cached_fds(path);
   int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
   if (rc) {
     throw IOError(
@@ -231,6 +245,7 @@ bool Posix::remove_dir_if_empty(const std::string& path) const {
 
 void Posix::remove_file(const URI& uri) const {
   auto path = uri.to_path();
+  evict_cached_fds(path);
   if (remove(path.c_str()) != 0) {
     throw IOError(
         std::string("Cannot delete file '") + path + "'; " + strerror(errno));
@@ -253,6 +268,7 @@ uint64_t Posix::file_size(const URI& uri) const {
 }
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
+  evict_cached_fds(old_path.to_path());
   auto new_uri_path = new_path.to_path();
   throw_if_not_ok(ensure_directory(new_uri_path));
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {

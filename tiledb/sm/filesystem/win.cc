@@ -287,9 +287,23 @@ err:
       get_last_error_msg(gle, offender.c_str()))));
 }
 
+void Win::evict_cached_handles(const std::string& path_prefix) const {
+  std::lock_guard<std::mutex> lock(open_files_mtx_);
+  for (auto it = open_files_.begin(); it != open_files_.end();) {
+    if (it->first == path_prefix ||
+        it->first.compare(0, path_prefix.size() + 1, path_prefix + "\\") == 0) {
+      CloseHandle(it->second.handle);
+      it = open_files_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void Win::remove_dir(const URI& uri) const {
   auto path = uri.to_path();
   if (is_dir(uri)) {
+    evict_cached_handles(path);
     throw_if_not_ok(recursively_remove_directory(path));
   } else {
     throw WindowsException(
@@ -312,6 +326,7 @@ bool Win::remove_dir_if_empty(const std::string& path) const {
 
 void Win::remove_file(const URI& uri) const {
   auto path = uri.to_path();
+  evict_cached_handles(path);
   if (!DeleteFile(path.c_str())) {
     throw WindowsException(std::string(
         "Failed to delete file '" + path + "' " +
@@ -426,6 +441,7 @@ err:
 
 void Win::move_path(const URI& old_uri, const URI& new_uri) const {
   auto old_path = old_uri.to_path();
+  evict_cached_handles(old_path);
   auto new_path = new_uri.to_path();
   if (MoveFileEx(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
@@ -600,7 +616,7 @@ void Win::write(
       file_h = CreateFile(
           path.c_str(),
           GENERIC_WRITE,
-          0,
+          FILE_SHARE_READ | FILE_SHARE_DELETE,
           NULL,
           OPEN_ALWAYS,
           FILE_ATTRIBUTE_NORMAL,
