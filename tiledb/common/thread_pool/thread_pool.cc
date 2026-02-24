@@ -40,6 +40,13 @@
 
 namespace tiledb::common {
 
+class ThreadPoolException : public StatusException {
+ public:
+  explicit ThreadPoolException(const std::string& message)
+      : StatusException("ThreadPool", message) {
+  }
+};
+
 // Constructor.  May throw an exception on error.  No logging is done as the
 // logger may not yet be initialized.
 ThreadPool::ThreadPool(size_t n)
@@ -57,8 +64,7 @@ ThreadPool::ThreadPool(size_t n)
     std::string msg = "Error initializing thread pool of concurrency level " +
                       std::to_string(concurrency_level_) +
                       "; Requested size too large";
-    auto st = Status_ThreadPoolError(msg);
-    throw std::runtime_error(msg);
+    throw ThreadPoolException(msg);
   }
 
   threads_.reserve(concurrency_level_);
@@ -77,13 +83,11 @@ ThreadPool::ThreadPool(size_t n)
       } catch (const std::system_error& e) {
         if (e.code() != std::errc::resource_unavailable_try_again ||
             tries == 0) {
-          auto st = Status_ThreadPoolError(
+          std::string msg =
               "Error initializing thread pool of concurrency level " +
-              std::to_string(concurrency_level_) + "; " + e.what());
+              std::to_string(concurrency_level_) + "; " + e.what();
           shutdown();
-          throw std::runtime_error(
-              "Error initializing thread pool of concurrency level " +
-              std::to_string(concurrency_level_) + "; " + e.what());
+          throw ThreadPoolException(msg);
         }
         continue;
       }
