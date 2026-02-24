@@ -511,7 +511,36 @@ uint64_t Win::read(
 }
 
 void Win::flush(const URI& uri, bool) {
-  sync(uri);
+  auto path = uri.to_path();
+  HANDLE file_h = INVALID_HANDLE_VALUE;
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    auto it = open_files_.find(path);
+    if (it != open_files_.end()) {
+      file_h = it->second.handle;
+      open_files_.erase(it);
+    }
+  }
+
+  if (file_h != INVALID_HANDLE_VALUE) {
+    // Flush and close the cached HANDLE.
+    if (FlushFileBuffers(file_h) == 0) {
+      auto gle = GetLastError();
+      CloseHandle(file_h);
+      throw WindowsException(
+          "Cannot sync file '" + path + "'; " +
+          get_last_error_msg(gle, "FlushFileBuffers"));
+    }
+    if (CloseHandle(file_h) == 0) {
+      throw WindowsException(
+          "Cannot close file '" + path + "'; " +
+          get_last_error_msg("CloseHandle"));
+    }
+  } else {
+    // No cached handle (e.g. directory sync or file not written through us).
+    sync(uri);
+  }
 }
 
 void Win::sync(const URI& uri) const {
@@ -554,39 +583,56 @@ void Win::sync(const URI& uri) const {
 void Win::write(
     const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
   auto path = uri.to_path();
-  throw_if_not_ok(ensure_directory(path));
-  // Open the file for appending, creating it if it doesn't exist.
-  HANDLE file_h = CreateFile(
-      path.c_str(),
-      GENERIC_WRITE,
-      0,
-      NULL,
-      OPEN_ALWAYS,
-      FILE_ATTRIBUTE_NORMAL,
-      NULL);
-  if (file_h == INVALID_HANDLE_VALUE) {
-    throw WindowsException(
-        "Cannot write to file '" + path + "'; File opening error " +
-        get_last_error_msg("CreateFile"));
+
+  HANDLE file_h;
+  uint64_t file_offset;
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    auto it = open_files_.find(path);
+    if (it != open_files_.end()) {
+      // Reuse the cached HANDLE.
+      file_h = it->second.handle;
+      file_offset = it->second.offset;
+    } else {
+      // First write to this path: open HANDLE and cache it.
+      throw_if_not_ok(ensure_directory(path));
+      file_h = CreateFile(
+          path.c_str(),
+          GENERIC_WRITE,
+          0,
+          NULL,
+          OPEN_ALWAYS,
+          FILE_ATTRIBUTE_NORMAL,
+          NULL);
+      if (file_h == INVALID_HANDLE_VALUE) {
+        throw WindowsException(
+            "Cannot write to file '" + path + "'; File opening error " +
+            get_last_error_msg("CreateFile"));
+      }
+      // Determine current file size for append semantics.
+      LARGE_INTEGER file_size_lg_int;
+      if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
+        auto gle = GetLastError();
+        CloseHandle(file_h);
+        throw WindowsException(
+            "Cannot write to file '" + path + "'; File size error " +
+            get_last_error_msg(gle, "GetFileSizeEx"));
+      }
+      file_offset = file_size_lg_int.QuadPart;
+      open_files_.emplace(path, OpenFile{file_h, file_offset});
+    }
   }
-  // Get the current file size.
-  LARGE_INTEGER file_size_lg_int;
-  if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
+
+  auto st = write_at(file_h, file_offset, buffer, buffer_size);
+  if (!st.ok()) {
     throw WindowsException(
-        "Cannot write to file '" + path + "'; File size error " +
-        get_last_error_msg(gle, "GetFileSizeEx"));
+        "Cannot write to file '" + path + "'; " + st.message());
   }
-  uint64_t file_offset = file_size_lg_int.QuadPart;
-  if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
-    CloseHandle(file_h);
-    throw WindowsException("Cannot write to file '" + path);
-  }
-  // Always close the handle.
-  if (CloseHandle(file_h) == 0) {
-    throw WindowsException(
-        "Cannot write to file '" + path + "'; File closing error");
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    open_files_[path].offset = file_offset + buffer_size;
   }
 }
 
