@@ -234,11 +234,11 @@ void Tile::zip_coordinates() {
   tdb_free((void*)tile_tmp);
 }
 
-uint64_t Tile::load_chunk_data(ChunkData& chunk_data) {
+uint64_t Tile::load_chunk_data(ChunkData& chunk_data) const {
   return load_chunk_data(chunk_data, size());
 }
 
-uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) {
+uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) const {
   auto s = size();
   if (s < 8) {
     throw TileException("Offsets tile should at least be 8 bytes.");
@@ -278,7 +278,7 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 /* ********************************* */
 
 uint64_t Tile::load_chunk_data(
-    ChunkData& unfiltered_tile, uint64_t expected_original_size) {
+    ChunkData& unfiltered_tile, uint64_t expected_original_size) const {
   iassert(filtered());
 
   Deserializer deserializer(filtered_data(), filtered_size());

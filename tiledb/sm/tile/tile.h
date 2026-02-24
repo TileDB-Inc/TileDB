@@ -263,6 +263,10 @@ class Tile : public TileBase {
     return static_cast<char*>(filtered_data_);
   }
 
+  inline const char* filtered_data() const {
+    return static_cast<const char*>(filtered_data_);
+  }
+
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
@@ -278,7 +282,7 @@ class Tile : public TileBase {
   /**
    * Returns the buffer size.
    */
-  inline uint64_t filtered_size() {
+  inline uint64_t filtered_size() const {
     return filtered_size_;
   }
 
@@ -294,7 +298,7 @@ class Tile : public TileBase {
    * @param chunk_data Tile chunk info, buffers and offsets.
    * @return Original size.
    */
-  uint64_t load_chunk_data(ChunkData& chunk_data);
+  uint64_t load_chunk_data(ChunkData& chunk_data) const;
 
   /**
    * Reads the chunk data of a tile offsets buffer and populates a chunk data
@@ -303,7 +307,7 @@ class Tile : public TileBase {
    * @param chunk_data Tile chunk info, buffers and offsets.
    * @return Original size.
    */
-  uint64_t load_offsets_chunk_data(ChunkData& chunk_data);
+  uint64_t load_offsets_chunk_data(ChunkData& chunk_data) const;
 
  private:
   /* ********************************* */
@@ -338,7 +342,7 @@ class Tile : public TileBase {
    * @return Original size.
    */
   uint64_t load_chunk_data(
-      ChunkData& chunk_data, uint64_t expected_original_size);
+      ChunkData& chunk_data, uint64_t expected_original_size) const;
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
