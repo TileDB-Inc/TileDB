@@ -87,7 +87,7 @@ ASTNodeVal::ASTNodeVal(
         "ASTNodeVal set membership offsets must not be nullptr");
   }
 
-  if (offsets_size == 0) {
+  if (data_size > 0 && offsets_size == 0) {
     throw std::invalid_argument(
         "ASTNodeVal set membership offsets size must be greater than zero.");
   }
@@ -107,7 +107,7 @@ ASTNodeVal::ASTNodeVal(
     }
   }
 
-  if (offset_elems[num_offsets - 1] > data_size) {
+  if (data_size > 0 && offset_elems[num_offsets - 1] > data_size) {
     throw std::invalid_argument(
         "ASTNodeVal invalid set membership offsets invalid for data size: "
         "last offset " +
@@ -122,7 +122,9 @@ ASTNodeVal::ASTNodeVal(
   }
 
   data_ = ByteVecValue(data_size);
-  memcpy(data_.data(), data, data_size);
+  if (data != nullptr) {
+    memcpy(data_.data(), data, data_size);
+  }
 
   offsets_ = ByteVecValue(offsets_size);
   memcpy(offsets_.data(), offsets, offsets_size);

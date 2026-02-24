@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/ast_helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -81,7 +82,6 @@ using QCSetsCellSelector = std::function<bool(QCSetsCell& cell)>;
 
 struct CPPQueryConditionFx {
   CPPQueryConditionFx();
-  ~CPPQueryConditionFx();
 
   void create_array(TestArrayType type, bool serialize);
   void write_delete(QueryCondition& qc);
@@ -121,6 +121,7 @@ struct CPPQueryConditionFx {
   T choose_value(std::vector<T>& values);
   float random();
 
+  test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
   Context ctx_;
   VFS vfs_;
@@ -146,7 +147,9 @@ struct CPPQueryConditionFx {
 #endif
 
 TEST_CASE_METHOD(
-    CPPQueryConditionFx, "IN - Float", "[query-condition][set][basic][float]") {
+    CPPQueryConditionFx,
+    "IN - Float",
+    "[query-condition][set][basic][float][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -163,7 +166,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - String",
-    "[query-condition][set][basic][string]") {
+    "[query-condition][set][basic][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -181,7 +184,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - Fixed Length String",
-    "[query-condition][set][basic][fixed-length-string]") {
+    "[query-condition][set][basic][fixed-length-string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -199,7 +202,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - Int Dimension",
-    "[query-condition][set][basic][int][dimension]") {
+    "[query-condition][set][basic][int][dimension][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -214,7 +217,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - Enumeration",
-    "[query-condition][set][basic][enumeration]") {
+    "[query-condition][set][basic][enumeration][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -230,7 +233,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN Nullable - String",
-    "[query-condition][set][in-with-nullable][string]") {
+    "[query-condition][set][in-with-nullable][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -248,7 +251,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "NOT_IN - String",
-    "[query-condition][set][not-in][string]") {
+    "[query-condition][set][not-in][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -264,7 +267,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - String With Non-Enumeration Value",
-    "[query-condition][set][non-enum-value][string]") {
+    "[query-condition][set][non-enum-value][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -280,7 +283,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "NOT_IN - Enumeration",
-    "[query-condition][set][basic][enumeration]") {
+    "[query-condition][set][basic][enumeration][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -296,7 +299,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "NOT_IN Nullable - String",
-    "[query-condition][set][not-in-nullable][string]") {
+    "[query-condition][set][not-in-nullable][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -314,7 +317,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - Empty String",
-    "[query-condition][set][in][empty-string]") {
+    "[query-condition][set][in][empty-string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -330,7 +333,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN - Non-empty string doesn't match empty string",
-    "[query-condition][set][in][non-empty-string-no-match-empty]") {
+    "[query-condition][set][in][non-empty-string-no-match-empty][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -346,7 +349,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "NOT IN - Empty String",
-    "[query-condition][set][not-in][empty-string]") {
+    "[query-condition][set][not-in][empty-string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -362,7 +365,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "Negated IN - String",
-    "[query-condition][set][negated-in][string]") {
+    "[query-condition][set][negated-in][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -379,7 +382,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "Negated NOT IN - String",
-    "[query-condition][set][negated-not-in][string]") {
+    "[query-condition][set][negated-not-in][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -398,7 +401,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN with AND - String",
-    "[query-condition][set][in-with-and][string]") {
+    "[query-condition][set][in-with-and][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -418,7 +421,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "IN with OR - String",
-    "[query-condition][set][in-with-or][string]") {
+    "[query-condition][set][in-with-or][string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -438,7 +441,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "Delete with SET - String",
-    "[query-condition][set][delete-with-set][string]") {
+    "[query-condition][set][delete-with-set][string][rest]") {
   auto type = GENERATE(TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
   create_array(type, serialize);
@@ -461,7 +464,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "INT - Set Member Size Check",
-    "[query-condition][set][size-check][int]") {
+    "[query-condition][set][size-check][int][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -478,7 +481,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
     "Fixed Length STRING - Set Member Size Check",
-    "[query-condition][set][size-check][fixed-length-string]") {
+    "[query-condition][set][size-check][fixed-length-string][rest]") {
   auto type = GENERATE(
       TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
   auto serialize = SERIALIZE_TESTS();
@@ -541,6 +544,9 @@ TEST_CASE(
   uint64_t offsets[2] = {0, 3};
   REQUIRE_THROWS(
       sm::ASTNodeVal("foo", data, 6, offsets, 0, sm::QueryConditionOp::IN));
+  // If the QC returned empty results, offsets may be empty.
+  REQUIRE_NOTHROW(
+      sm::ASTNodeVal("foo", nullptr, 0, offsets, 0, sm::QueryConditionOp::IN));
 }
 
 TEST_CASE(
@@ -598,14 +604,32 @@ TEST_CASE("AST Expression Errors", "[query-condition][set][error]") {
   REQUIRE_THROWS(expr->get_offsets());
 }
 
-CPPQueryConditionFx::CPPQueryConditionFx()
-    : uri_("query_condition_test_array")
-    , vfs_(ctx_) {
-  rm_array();
+TEST_CASE_METHOD(
+    CPPQueryConditionFx,
+    "Empty value node - enumerations",
+    "[query-condition][set][enumerations][rest]") {
+  auto type = GENERATE(
+      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
+  create_array(type, false);
+  auto op = GENERATE(TILEDB_IN, TILEDB_NOT_IN);
+
+  Array array(ctx_, uri_, TILEDB_READ);
+  // These enumerations do not match any enumerations written to the array.
+  std::vector<std::string> values = {"joe", "schmo"};
+  // This results in an empty value node when rewriting the QC for the schema
+  // during query submission. See ASTNodeVal::rewrite_for_schema
+  auto qc = QueryConditionExperimental::create(ctx_, "attr6", values, op);
+  if (op == TILEDB_IN) {
+    check_read(qc, [](const QCSetsCell&) { return false; });
+  } else {
+    check_read(qc, [](const QCSetsCell& c) { return (c.a6 >= 0 && c.a6 < 4); });
+  }
 }
 
-CPPQueryConditionFx::~CPPQueryConditionFx() {
-  rm_array();
+CPPQueryConditionFx::CPPQueryConditionFx()
+    : uri_(vfs_test_setup_.array_uri("query_condition_test_array"))
+    , ctx_(vfs_test_setup_.ctx())
+    , vfs_(ctx_) {
 }
 
 void CPPQueryConditionFx::create_array(TestArrayType type, bool serialize) {
@@ -834,12 +858,6 @@ void CPPQueryConditionFx::check_read(
   REQUIRE(attr6_read.size() == attr6_expected.size());
   for (size_t i = 0; i < attr6_expected.size(); i++) {
     REQUIRE(attr6_read[i] == attr6_expected[i]);
-  }
-}
-
-void CPPQueryConditionFx::rm_array() {
-  if (vfs_.is_dir(uri_)) {
-    vfs_.remove_dir(uri_);
   }
 }
 
