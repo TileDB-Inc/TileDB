@@ -358,6 +358,14 @@ void ColumnFragmentWriter::finalize(const EncryptionKey& encryption_key) {
 /*             ACCESSORS             */
 /* ********************************* */
 
+ContextResources& ColumnFragmentWriter::resources() const {
+  return *resources_;
+}
+
+const ArraySchema& ColumnFragmentWriter::array_schema() const {
+  return *array_schema_;
+}
+
 const URI& ColumnFragmentWriter::fragment_uri() const {
   return fragment_uri_;
 }
