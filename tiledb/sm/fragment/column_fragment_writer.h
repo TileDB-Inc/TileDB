@@ -171,6 +171,12 @@ class ColumnFragmentWriter {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** Returns the context resources. */
+  ContextResources& resources() const;
+
+  /** Returns the array schema. */
+  const ArraySchema& array_schema() const;
+
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
 
