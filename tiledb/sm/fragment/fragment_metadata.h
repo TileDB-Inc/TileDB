@@ -294,6 +294,11 @@ class FragmentMetadata {
     return has_consolidated_footer_;
   }
 
+  /** Returns true if the fragment metadata has tile global order bounds */
+  inline bool has_tile_global_order_bounds() const {
+    return has_tile_global_order_bounds_;
+  }
+
   /** Returns true if the fragment has timestamps. */
   inline bool has_timestamps() const {
     return has_timestamps_;

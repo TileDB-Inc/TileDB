@@ -233,7 +233,7 @@ class FilesystemBase {
    * @param nbytes Number of bytes to read.
    */
   virtual uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) = 0;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const = 0;
 
   /**
    * Flushes an object store file.

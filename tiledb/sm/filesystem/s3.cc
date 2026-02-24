@@ -471,7 +471,7 @@ void S3::copy_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 uint64_t S3::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   throw_if_not_ok(init_client());
 
   Aws::Http::URI aws_uri = uri.c_str();
@@ -703,7 +703,7 @@ Status S3::disconnect() {
           // Lock multipart state
           std::unique_lock<std::mutex> state_lck(state->mtx);
 
-          if (state->st.ok()) {
+          if (state->st.ok() && !state->completed_parts.empty()) {
             Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
                 make_multipart_complete_request(*state);
             auto outcome = client_->CompleteMultipartUpload(complete_request);
@@ -785,7 +785,7 @@ void S3::flush(const URI& uri, bool finalize) {
   std::unique_lock<std::mutex> state_lck(state->mtx);
   unique_rl.unlock();
 
-  if (state->st.ok()) {
+  if (state->st.ok() && !state->completed_parts.empty()) {
     Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
         make_multipart_complete_request(*state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
@@ -874,7 +874,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
     throw_if_not_ok(get_make_upload_part_req(uri, uri_path, ctx));
   }
 
-  if (state.st.ok()) {
+  if (state.st.ok() && !state.completed_parts.empty()) {
     Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
         make_multipart_complete_request(state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
@@ -1145,6 +1145,8 @@ void S3::global_order_write(
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath());
 
+  MultiPartUploadState* state_ptr = nullptr;
+
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
@@ -1157,6 +1159,7 @@ void S3::global_order_write(
 
     state_iter =
         multipart_upload_states_.emplace(uri_path, std::move(state)).first;
+    state_ptr = &state_iter->second;
 
     unique_wl.unlock();
 
@@ -1164,11 +1167,12 @@ void S3::global_order_write(
       remove_file(uri);
     }
   } else {
+    state_ptr = &state_iter->second;
     // Unlock, as make_upload_part_req will reaquire as necessary.
     unique_rl.unlock();
   }
 
-  auto& state = state_iter->second;
+  auto& state = *state_ptr;
 
   // Read the comments near BufferedChunk definition to get a better
   // understanding of what intermediate chunks are and how they function

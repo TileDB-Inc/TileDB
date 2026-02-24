@@ -287,7 +287,7 @@ uint64_t LoadedFragmentMetadata::persisted_tile_var_size(
 }
 
 uint64_t LoadedFragmentMetadata::tile_var_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;

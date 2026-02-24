@@ -278,7 +278,7 @@ class LoadedFragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Size.
    */
-  uint64_t tile_var_size(const std::string& name, uint64_t tile_idx);
+  uint64_t tile_var_size(const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
@@ -545,6 +545,10 @@ class LoadedFragmentMetadata {
    */
   inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
     loaded_metadata_ = loaded_metadata;
+  }
+
+  const FragmentMetadata& parent_fragment() const {
+    return parent_fragment_;
   }
 
   /** loaded_metadata accessor . */

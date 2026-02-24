@@ -444,7 +444,7 @@ void Win::move_file(const URI& old_uri, const URI& new_uri) const {
 }
 
 uint64_t Win::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   auto path = uri.to_path();
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
