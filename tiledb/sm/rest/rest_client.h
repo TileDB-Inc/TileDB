@@ -176,7 +176,6 @@
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/rest/rest_capabilities.h"
-#include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
@@ -207,6 +206,7 @@ class RestClientDisabledException : public RestClientException {
 /*
  * Forward declarations required for `RestClient` member function declarations
  */
+class Array;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Config;

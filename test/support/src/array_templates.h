@@ -343,7 +343,9 @@ struct query_buffers<T> {
       : values_(cells) {
   }
 
-  bool operator==(const self_type&) const = default;
+  // Do not use self_type because of MSVC bug
+  // https://developercommunity.visualstudio.com/t/11047743
+  bool operator==(const query_buffers&) const = default;
 
   uint64_t num_cells() const {
     return values_.size();
