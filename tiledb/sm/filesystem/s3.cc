@@ -1425,6 +1425,8 @@ Status S3::init_client() const {
     retry_strategy = Aws::Client::InitRetryStrategy(
         s3_params_.connect_max_tries_.value(), s3_params_.retry_strategy_);
   } else {
+    // Let the AWS SDK determine the max tries, through environment variables
+    // or profile configuration.
     retry_strategy = Aws::Client::InitRetryStrategy(s3_params_.retry_strategy_);
   }
   client_config.retryStrategy = make_shared<SlowDownTrackingRetryStrategy>(
@@ -1450,7 +1452,8 @@ Status S3::init_client() const {
               "InvalidToken",
               // SSOCredentialsProvider
               "TooManyRequestsException"},
-          s3_params_.connect_max_tries_.value_or(10));
+          s3_params_.connect_max_tries_.value_or(
+              10) /* use default parameter value */);
 
   shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider;
 
