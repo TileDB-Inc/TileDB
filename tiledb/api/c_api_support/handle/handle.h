@@ -65,13 +65,6 @@ class CAPIHandle {
 /**
  * Construct a handle object and return its allocated address.
  *
- * Construction in brief:
- * - Allocate memory for derived handle as `shared_ptr`
- * - Default-construct `self_`
- * - Initialize member variables of derived handle
- * - Copy `shared_ptr` into derived handle
- * - Return plain pointer value of `shared_ptr`
- *
  * @tparam T A class satisfying CAPIHandleImplementation
  * @param args Argument pack for `T` constructor
  * @return A pointer to T*
