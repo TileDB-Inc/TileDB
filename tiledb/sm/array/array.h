@@ -113,6 +113,11 @@ class OpenedArray {
   }
 
   /** Returns the context resources. */
+  inline const ContextResources& resources() const {
+    return resources_;
+  }
+
+  /** Returns the context resources. */
   inline ContextResources& resources() {
     return resources_;
   }
