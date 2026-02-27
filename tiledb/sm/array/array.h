@@ -304,7 +304,7 @@ class Array {
   /* ********************************* */
 
   /** Returns the opened array. */
-  inline const shared_ptr<OpenedArray> opened_array() const {
+  inline const shared_ptr<OpenedArray>& opened_array() const {
     return opened_array_;
   };
 
