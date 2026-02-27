@@ -59,9 +59,9 @@
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
-static int setenv(const char* __name, const char* __value) {
 using namespace tiledb::api;
 
+static int setenv(const char* __name, const char* __value) {
 #ifdef _WIN32
   return _putenv_s(__name, __value);
 #else
