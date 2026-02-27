@@ -110,7 +110,7 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const offsets_tile,
+      const Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

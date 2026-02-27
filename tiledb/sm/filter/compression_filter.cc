@@ -302,7 +302,7 @@ void CompressionFilter::run_forward(
 
 Status CompressionFilter::run_reverse(
     const Tile& tile,
-    Tile* const offsets_tile,
+    const Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -612,7 +612,7 @@ Status CompressionFilter::compress_var_string_coords(
 Status CompressionFilter::decompress_var_string_coords(
     FilterBuffer& input,
     FilterBuffer& input_metadata,
-    Tile* offsets_tile,
+    const Tile* offsets_tile,
     FilterBuffer& output) const {
   if (input.num_buffers() != 1) {
     throw CompressionFilterStatusException(
