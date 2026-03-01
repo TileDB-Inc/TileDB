@@ -49,7 +49,7 @@ else
     # If running on CI, print out the change-set
     if [ "$CI" = true ]; then
       echo "-------- see list of files to update below --------"
-      find "${SOURCE_PATHS[@]}" "${FIND_FILES[@]}" -print0 | xargs -P8 -0 $CLANG_FORMAT -i
+      find "${SOURCE_PATHS[@]}" \( "${FIND_FILES[@]}" \) -print0 | xargs -P8 -0 $CLANG_FORMAT -i
       git diff --name-only
 
       echo "-------- see diff below --------"
