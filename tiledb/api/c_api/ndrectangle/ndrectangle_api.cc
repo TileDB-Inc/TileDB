@@ -210,7 +210,7 @@ capi_return_t tiledb_ndrectangle_dump_str(
 
   std::stringstream ss;
   ss << *(ndr->ndrectangle());
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 

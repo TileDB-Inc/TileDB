@@ -39,8 +39,7 @@
 #include "tiledb/sm/rest/rest_profile.h"
 
 /** Handle `struct` for CAPI profile objects. */
-struct tiledb_profile_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_profile_handle_t> {
+struct tiledb_profile_handle_t : public tiledb::api::CAPIHandle {
   /** Type name */
   static constexpr std::string_view object_type_name{"profile"};
 

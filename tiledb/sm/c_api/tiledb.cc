@@ -1483,8 +1483,8 @@ int32_t tiledb_deserialize_array_create(
           buffer->buffer(),
           memory_tracker);
 
-  *array_schema = tiledb_array_schema_t::make_handle(shared_schema);
-  *storage_uri = tiledb_string_handle_t::make_handle(storage.c_str());
+  *array_schema = make_handle<tiledb_array_schema_t>(shared_schema);
+  *storage_uri = make_handle<tiledb_string_handle_t>(storage.c_str());
 
   return TILEDB_OK;
 }

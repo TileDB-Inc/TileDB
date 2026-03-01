@@ -109,7 +109,7 @@ capi_return_t tiledb_array_schema_alloc_at_timestamp(
   // Create ArraySchema object
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
-  *array_schema = tiledb_array_schema_t::make_handle(
+  *array_schema = make_handle<tiledb_array_schema_t>(
       static_cast<tiledb::sm::ArrayType>(array_type),
       memory_tracker,
       std::make_pair(timestamp, timestamp));

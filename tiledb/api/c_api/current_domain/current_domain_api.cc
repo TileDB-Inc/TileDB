@@ -112,7 +112,7 @@ capi_return_t tiledb_current_domain_dump_str(
 
   std::stringstream ss;
   ss << *(current_domain->current_domain());
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 
