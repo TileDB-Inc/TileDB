@@ -56,8 +56,7 @@ TEST_CASE(
     "CAPIString: Test creating string handle and getting its value",
     "[capi_string][get]") {
   const std::string test_string = "hello";
-  tiledb_string_t* handle =
-      make_handle<tiledb_string_t>(test_string);
+  tiledb_string_t* handle = make_handle<tiledb_string_t>(test_string);
   std::string result;
 
   SECTION("convert_to_string") {
@@ -78,8 +77,7 @@ TEST_CASE(
     "CAPIString: Test that accessing freed handle fails",
     "[capi_string][freed_handle]") {
   const std::string test_string = "hello";
-  tiledb_string_t* handle =
-      make_handle<tiledb_string_t>(test_string);
+  tiledb_string_t* handle = make_handle<tiledb_string_t>(test_string);
   tiledb_string_t* handle_copy = handle;
   std::ignore = convert_to_string(&handle);
   const char* chars = nullptr;
