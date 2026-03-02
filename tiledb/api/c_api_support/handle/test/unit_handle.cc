@@ -52,10 +52,10 @@ TEST_CASE("CAPIHandle: is_handle_valid") {
 TEST_CASE("CAPIHandle: ensure_handle_is_valid") {
   TestHandle* x = nullptr;
   CHECK_THROWS_WITH(
-      ensure_handle_is_valid(x), "Invalid TileDB TestHandle object");
+      ensure_handle_is_valid(x), "C API: Invalid TileDB TestHandle object");
   x = make_handle<TestHandle>();
   CHECK_NOTHROW(ensure_handle_is_valid(x));
   break_handle(x);
   CHECK_THROWS_WITH(
-      ensure_handle_is_valid(x), "Invalid TileDB TestHandle object");
+      ensure_handle_is_valid(x), "C API: Invalid TileDB TestHandle object");
 }
