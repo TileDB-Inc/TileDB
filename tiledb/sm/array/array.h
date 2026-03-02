@@ -302,6 +302,9 @@ class Array {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+  const ContextResources& resources() const {
+    return resources_;
+  }
 
   /** Returns the opened array. */
   inline const shared_ptr<OpenedArray>& opened_array() const {
