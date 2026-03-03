@@ -50,7 +50,7 @@ capi_return_t tiledb_string_view(
 capi_return_t tiledb_string_free(tiledb_string_handle_t** s) {
   ensure_output_pointer_is_valid(s);
   ensure_string_is_valid(*s);
-  tiledb_string_handle_t::break_handle(*s);
+  break_handle(*s);
   return TILEDB_OK;
 }
 

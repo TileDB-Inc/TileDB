@@ -74,7 +74,7 @@ capi_return_t tiledb_array_schema_load(
   ensure_output_pointer_is_valid(array_schema);
 
   // Use a default constructed config to load the schema with default options.
-  *array_schema = tiledb_array_schema_t::make_handle(
+  *array_schema = make_handle<tiledb_array_schema_t>(
       load_array_schema(ctx->context(), sm::URI(array_uri), sm::Config()));
 
   return TILEDB_OK;
@@ -89,7 +89,7 @@ capi_return_t tiledb_array_schema_load_with_config(
   ensure_output_pointer_is_valid(array_schema);
 
   // Use passed config or context config to load the schema with set options.
-  *array_schema = tiledb_array_schema_t::make_handle(load_array_schema(
+  *array_schema = make_handle<tiledb_array_schema_t>(load_array_schema(
       ctx->context(),
       sm::URI(array_uri),
       config ? config->config() : ctx->config()));
@@ -102,7 +102,7 @@ capi_return_t tiledb_array_alloc(
   ensure_output_pointer_is_valid(array);
 
   // Create Array object
-  *array = tiledb_array_t::make_handle(
+  *array = make_handle<tiledb_array_t>(
       ctx->resources(), URI(array_uri, URI::must_be_valid));
   return TILEDB_OK;
 }
@@ -110,7 +110,7 @@ capi_return_t tiledb_array_alloc(
 void tiledb_array_free(tiledb_array_t** array) {
   ensure_output_pointer_is_valid(array);
   ensure_array_is_valid(*array);
-  tiledb_array_t::break_handle(*array);
+  break_handle(*array);
 }
 
 capi_return_t tiledb_array_create(
@@ -199,14 +199,14 @@ capi_return_t tiledb_array_reopen(tiledb_array_t* array) {
 capi_return_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* array_uri) {
   // Create Array object
   auto uri = tiledb::sm::URI(array_uri, URI::must_be_valid);
-  tiledb_array_t* array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  tiledb_array_t* array = make_handle<tiledb_array_t>(ctx->resources(), uri);
 
   // Open the array for exclusive modification
   try {
     throw_if_not_ok(array->open(
         QueryType::WRITE, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   } catch (...) {
-    tiledb_array_t::break_handle(array);
+    break_handle(array);
     throw;
   }
 
@@ -215,10 +215,10 @@ capi_return_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* array_uri) {
     array->delete_array(uri);
   } catch (...) {
     throw_if_not_ok(array->close());
-    tiledb_array_t::break_handle(array);
+    break_handle(array);
     throw;
   }
-  tiledb_array_t::break_handle(array);
+  break_handle(array);
 
   return TILEDB_OK;
 }
@@ -230,7 +230,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
     uint64_t timestamp_end) {
   // Allocate an array object
   auto uri = tiledb::sm::URI(uri_str, URI::must_be_valid);
-  tiledb_array_t* array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  tiledb_array_t* array = make_handle<tiledb_array_t>(ctx->resources(), uri);
 
   // Set array open timestamps and open the array for exclusive modification
   try {
@@ -242,7 +242,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
         nullptr,
         0));
   } catch (...) {
-    tiledb_array_t::break_handle(array);
+    break_handle(array);
     throw;
   }
 
@@ -251,13 +251,13 @@ capi_return_t tiledb_array_delete_fragments_v2(
     array->delete_fragments(uri, timestamp_start, timestamp_end);
   } catch (...) {
     throw_if_not_ok(array->close());
-    tiledb_array_t::break_handle(array);
+    break_handle(array);
     throw;
   }
 
   // Close and delete the array
   throw_if_not_ok(array->close());
-  tiledb_array_t::break_handle(array);
+  break_handle(array);
 
   return TILEDB_OK;
 }
@@ -287,7 +287,7 @@ capi_return_t tiledb_array_delete_fragments_list(
   }
 
   // Allocate an array object
-  tiledb_array_t* array = tiledb_array_t::make_handle(
+  tiledb_array_t* array = make_handle<tiledb_array_t>(
       ctx->resources(), URI(uri_str, URI::must_be_valid));
 
   // Open the array
@@ -298,7 +298,7 @@ capi_return_t tiledb_array_delete_fragments_list(
         nullptr,
         0));
   } catch (...) {
-    tiledb_array_t::break_handle(array);
+    break_handle(array);
     throw;
   }
 
@@ -307,13 +307,13 @@ capi_return_t tiledb_array_delete_fragments_list(
     array->delete_fragments_list(uris);
   } catch (...) {
     throw_if_not_ok(array->close());
-    tiledb_array_t::break_handle(array);
+    break_handle(array);
     throw CAPIException("Failed to delete fragments list");
   }
 
   // Close the array
   throw_if_not_ok(array->close());
-  tiledb_array_t::break_handle(array);
+  break_handle(array);
 
   return TILEDB_OK;
 }
@@ -344,7 +344,7 @@ capi_return_t tiledb_array_get_config(
     tiledb_array_t* array, tiledb_config_t** config) {
   ensure_array_is_valid(array);
   ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(array->config());
+  *config = make_handle<tiledb_config_handle_t>(array->config());
   return TILEDB_OK;
 }
 
@@ -372,7 +372,7 @@ capi_return_t tiledb_array_get_schema(
   // Get schema
   auto&& [st, array_schema_get] = array->get_array_schema();
   throw_if_not_ok(st);
-  *array_schema = tiledb_array_schema_t::make_handle(array_schema_get.value());
+  *array_schema = make_handle<tiledb_array_schema_t>(array_schema_get.value());
 
   return TILEDB_OK;
 }
@@ -654,7 +654,7 @@ capi_return_t tiledb_array_get_enumeration(
   }
 
   auto ptr = array->get_enumeration(attr_name);
-  *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
+  *enumeration = make_handle<tiledb_enumeration_handle_t>(ptr);
 
   return TILEDB_OK;
 }

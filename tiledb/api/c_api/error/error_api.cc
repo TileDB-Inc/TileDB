@@ -37,7 +37,7 @@
 namespace tiledb::api {
 
 void create_error(tiledb_error_handle_t** error, const std::string& message) {
-  *error = tiledb_error_handle_t::make_handle(message);
+  *error = make_handle<tiledb_error_handle_t>(message);
 }
 
 capi_return_t tiledb_error_message(
@@ -57,7 +57,7 @@ capi_return_t tiledb_error_message(
 void tiledb_error_free(tiledb_error_handle_t** err) {
   ensure_output_pointer_is_valid(err);
   ensure_error_is_valid(*err);
-  tiledb_error_handle_t::break_handle(*err);
+  break_handle(*err);
 }
 
 }  // namespace tiledb::api

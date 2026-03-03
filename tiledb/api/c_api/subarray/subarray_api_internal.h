@@ -42,8 +42,7 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 /** Handle `struct` for API Subarray objects. */
-struct tiledb_subarray_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_subarray_handle_t> {
+struct tiledb_subarray_handle_t : public tiledb::api::CAPIHandle {
   /** Type name */
   static constexpr std::string_view object_type_name{"subarray"};
 

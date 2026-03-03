@@ -49,7 +49,7 @@ int32_t tiledb_attribute_alloc(
     throw CAPIStatusException("Argument \"name\" may not be NULL");
   }
   sm::ensure_datatype_is_valid(type);
-  *attr = tiledb_attribute_handle_t::make_handle(
+  *attr = make_handle<tiledb_attribute_handle_t>(
       name, static_cast<tiledb::sm::Datatype>(type));
   return TILEDB_OK;
 }
@@ -57,7 +57,7 @@ int32_t tiledb_attribute_alloc(
 void tiledb_attribute_free(tiledb_attribute_handle_t** attr) {
   ensure_output_pointer_is_valid(attr);
   ensure_attribute_is_valid(*attr);
-  tiledb_attribute_handle_t::break_handle(*attr);
+  break_handle(*attr);
 }
 
 int32_t tiledb_attribute_set_nullable(
@@ -112,7 +112,7 @@ int32_t tiledb_attribute_get_filter_list(
   api::ensure_output_pointer_is_valid(filter_list);
   // Copy-construct a separate FilterPipeline object
   *filter_list =
-      tiledb_filter_list_t::make_handle(sm::FilterPipeline{attr->filters()});
+      make_handle<tiledb_filter_list_t>(sm::FilterPipeline{attr->filters()});
   return TILEDB_OK;
 }
 
@@ -139,7 +139,7 @@ int32_t tiledb_attribute_dump_str(
 
   std::stringstream ss;
   ss << *attr;
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
 
   return TILEDB_OK;
 }
@@ -201,7 +201,7 @@ capi_return_t tiledb_attribute_get_enumeration_name(
     return TILEDB_OK;
   }
 
-  *name = tiledb_string_handle_t::make_handle(enmr_name.value());
+  *name = make_handle<tiledb_string_handle_t>(enmr_name.value());
 
   return TILEDB_OK;
 }

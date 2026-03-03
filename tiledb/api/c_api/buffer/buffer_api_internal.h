@@ -38,8 +38,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 
-struct tiledb_buffer_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_buffer_handle_t> {
+struct tiledb_buffer_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

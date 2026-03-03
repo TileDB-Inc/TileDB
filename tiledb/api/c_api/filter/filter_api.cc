@@ -41,7 +41,7 @@ capi_return_t tiledb_filter_alloc(
     tiledb_ctx_t*, tiledb_filter_type_t type, tiledb_filter_t** filter) {
   ensure_output_pointer_is_valid(filter);
 
-  *filter = tiledb_filter_t::make_handle(tiledb::sm::FilterCreate::make(
+  *filter = make_handle<tiledb_filter_t>(tiledb::sm::FilterCreate::make(
       static_cast<tiledb::sm::FilterType>(type)));
   return TILEDB_OK;
 }
@@ -49,7 +49,7 @@ capi_return_t tiledb_filter_alloc(
 void tiledb_filter_free(tiledb_filter_t** filter) {
   ensure_output_pointer_is_valid(filter);
   ensure_filter_is_valid(*filter);
-  tiledb_filter_t::break_handle(*filter);
+  break_handle(*filter);
 }
 
 capi_return_t tiledb_filter_get_type(

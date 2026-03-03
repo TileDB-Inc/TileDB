@@ -42,8 +42,7 @@
 /**
  * Handle `struct` for API dimension objects.
  */
-struct tiledb_dimension_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_dimension_handle_t> {
+struct tiledb_dimension_handle_t : public tiledb::api::CAPIHandle {
  private:
   /**
    * The underlying type of this handle is an allocated object because that's

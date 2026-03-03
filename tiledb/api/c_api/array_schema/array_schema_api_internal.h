@@ -44,8 +44,7 @@
 #include "tiledb/sm/enums/layout.h"
 
 /** Handle `struct` for API ArraySchema objects. */
-struct tiledb_array_schema_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_array_schema_handle_t> {
+struct tiledb_array_schema_handle_t : public tiledb::api::CAPIHandle {
   /** Type name */
   static constexpr std::string_view object_type_name{"array_schema"};
 

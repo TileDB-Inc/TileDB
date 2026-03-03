@@ -39,8 +39,7 @@
 /**
  * Handle `struct` for API error objects.
  */
-struct tiledb_error_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_error_handle_t> {
+struct tiledb_error_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

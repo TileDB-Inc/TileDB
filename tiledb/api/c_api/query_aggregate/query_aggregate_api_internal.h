@@ -41,8 +41,7 @@
 #include "tiledb/sm/query/readers/aggregators/operation.h"
 #include "tiledb/sm/query/readers/aggregators/query_channel.h"
 
-struct tiledb_channel_operation_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_channel_operation_handle_t> {
+struct tiledb_channel_operation_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */
@@ -77,8 +76,7 @@ namespace tiledb::sm {
 class Query;
 }
 
-struct tiledb_query_channel_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_query_channel_handle_t> {
+struct tiledb_query_channel_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */
@@ -123,8 +121,7 @@ struct tiledb_query_channel_handle_t
   }
 };
 
-struct tiledb_channel_operator_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_channel_operator_handle_t> {
+struct tiledb_channel_operator_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

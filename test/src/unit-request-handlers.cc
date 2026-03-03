@@ -52,6 +52,7 @@
 #include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/storage_manager/context.h"
 
+using namespace tiledb::api;
 using namespace tiledb::sm;
 
 struct RequestHandlerFx {
@@ -214,9 +215,9 @@ TEST_CASE_METHOD(
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
   auto stype = TILEDB_CAPNP;
-  auto req_buf = tiledb_buffer_handle_t::make_handle(
+  auto req_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
-  auto resp_buf = tiledb_buffer_handle_t::make_handle(
+  auto resp_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
 
   auto rval = tiledb_handle_load_array_schema_request(
@@ -323,9 +324,9 @@ TEST_CASE_METHOD(
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
   auto stype = TILEDB_CAPNP;
-  auto req_buf = tiledb_buffer_handle_t::make_handle(
+  auto req_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
-  auto resp_buf = tiledb_buffer_handle_t::make_handle(
+  auto resp_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
 
   auto rval = tiledb_handle_query_plan_request(
@@ -370,9 +371,9 @@ TEST_CASE_METHOD(
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
   auto stype = TILEDB_CAPNP;
-  auto req_buf = tiledb_buffer_handle_t::make_handle(
+  auto req_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
-  auto resp_buf = tiledb_buffer_handle_t::make_handle(
+  auto resp_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
 
   auto rval = tiledb_handle_consolidation_plan_request(
@@ -528,9 +529,9 @@ HandleLoadArraySchemaRequestFx::call_handler(
   // objects.
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
-  auto req_buf = tiledb_buffer_handle_t::make_handle(
+  auto req_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
-  auto resp_buf = tiledb_buffer_handle_t::make_handle(
+  auto resp_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
 
   serialization::serialize_load_array_schema_request(
@@ -581,9 +582,9 @@ QueryPlan HandleQueryPlanRequestFx::call_handler(
     SerializationType stype, Query& query) {
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
-  auto req_buf = tiledb_buffer_handle_t::make_handle(
+  auto req_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
-  auto resp_buf = tiledb_buffer_handle_t::make_handle(
+  auto resp_buf = make_handle<tiledb_buffer_handle_t>(
       ctx.ptr()->resources().serialization_memory_tracker());
 
   serialization::serialize_query_plan_request(
@@ -599,8 +600,8 @@ QueryPlan HandleQueryPlanRequestFx::call_handler(
   auto query_plan = serialization::deserialize_query_plan_response(
       query, stype, resp_buf->buffer());
 
-  tiledb_buffer_handle_t::break_handle(req_buf);
-  tiledb_buffer_handle_t::break_handle(resp_buf);
+  break_handle(req_buf);
+  break_handle(resp_buf);
 
   return query_plan;
 }

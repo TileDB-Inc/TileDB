@@ -40,8 +40,7 @@
 /*
  * Handle `struct` for API attribute objects.
  */
-struct tiledb_attribute_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_attribute_handle_t> {
+struct tiledb_attribute_handle_t : public tiledb::api::CAPIHandle {
  private:
   /**
    * Storage type matches how attributes are stored in the array schema class.

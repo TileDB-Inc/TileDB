@@ -106,7 +106,7 @@ capi_return_t tiledb_group_alloc(
         "Failed to allocate TileDB group API object; Invalid URI");
   }
 
-  *group = tiledb_group_handle_t::make_handle(ctx->resources(), uri);
+  *group = make_handle<tiledb_group_handle_t>(ctx->resources(), uri);
 
   return TILEDB_OK;
 }
@@ -114,7 +114,7 @@ capi_return_t tiledb_group_alloc(
 void tiledb_group_free(tiledb_group_handle_t** group) {
   ensure_output_pointer_is_valid(group);
   ensure_group_is_valid(*group);
-  tiledb_group_handle_t::break_handle(*group);
+  break_handle(*group);
 }
 
 capi_return_t tiledb_group_open(
@@ -149,7 +149,7 @@ capi_return_t tiledb_group_get_config(
   ensure_group_is_valid(group);
   ensure_output_pointer_is_valid(config);
 
-  *config = tiledb_config_handle_t::make_handle(group->group().config());
+  *config = make_handle<tiledb_config_handle_t>(group->group().config());
 
   return TILEDB_OK;
 }
@@ -339,14 +339,14 @@ capi_return_t tiledb_group_get_member_by_index_v2(
   auto&& [uri_str, object_type, name_str] =
       group->group().member_by_index(index);
 
-  *uri = tiledb_string_handle_t::make_handle(uri_str);
+  *uri = make_handle<tiledb_string_handle_t>(uri_str);
   *type = static_cast<tiledb_object_t>(object_type);
   try {
     *name = name_str.has_value() ?
-                tiledb_string_handle_t::make_handle(*name_str) :
+                make_handle<tiledb_string_handle_t>(*name_str) :
                 nullptr;
   } catch (...) {
-    tiledb_string_handle_t::break_handle(*uri);
+    break_handle(*uri);
     throw;
   }
 
@@ -367,7 +367,7 @@ capi_return_t tiledb_group_get_member_by_name_v2(
   std::tie(uri_str, object_type, std::ignore, std::ignore) =
       group->group().member_by_name(name);
 
-  *uri = tiledb_string_handle_t::make_handle(std::move(uri_str));
+  *uri = make_handle<tiledb_string_handle_t>(std::move(uri_str));
   *type = static_cast<tiledb_object_t>(object_type);
 
   return TILEDB_OK;
@@ -428,7 +428,7 @@ capi_return_t tiledb_group_dump_str_v2(
   ensure_output_pointer_is_valid(dump_ascii);
 
   *dump_ascii =
-      tiledb_string_handle_t::make_handle(group->group().dump(2, 0, recursive));
+      make_handle<tiledb_string_handle_t>(group->group().dump(2, 0, recursive));
 
   return TILEDB_OK;
 }
@@ -443,7 +443,7 @@ capi_return_t tiledb_serialize_group(
   ensure_output_pointer_is_valid(buffer);
 
   // ALERT: Conditional Handle Construction
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   // We're not using throw_if_not_ok here because we have to
@@ -454,7 +454,7 @@ capi_return_t tiledb_serialize_group(
       buf->buffer());
 
   if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     throw StatusException(st);
   }
 
@@ -488,7 +488,7 @@ capi_return_t tiledb_serialize_group_metadata(
   ensure_output_pointer_is_valid(buffer);
 
   // ALERT: Conditional Handle Construction
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   // Get metadata to serialize, this will load it if it does not exist
@@ -500,7 +500,7 @@ capi_return_t tiledb_serialize_group_metadata(
       buf->buffer());
 
   if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     throw StatusException(st);
   }
 

@@ -40,14 +40,14 @@ int32_t tiledb_domain_alloc(
   ensure_output_pointer_is_valid(domain);
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
-  *domain = tiledb_domain_handle_t::make_handle(memory_tracker);
+  *domain = make_handle<tiledb_domain_handle_t>(memory_tracker);
   return TILEDB_OK;
 }
 
 void tiledb_domain_free(tiledb_domain_handle_t** domain) {
   ensure_output_pointer_is_valid(domain);
   ensure_domain_is_valid(*domain);
-  tiledb_domain_handle_t::break_handle(*domain);
+  break_handle(*domain);
 }
 
 int32_t tiledb_domain_get_type(
@@ -105,7 +105,7 @@ int32_t tiledb_domain_get_dimension_from_index(
   }
   auto dimension{domain->shared_dimension(index)};
   // `shared_dimension` never returns `nullptr`
-  *dim = tiledb_dimension_handle_t::make_handle(dimension);
+  *dim = make_handle<tiledb_dimension_handle_t>(dimension);
   return TILEDB_OK;
 }
 
@@ -125,7 +125,7 @@ int32_t tiledb_domain_get_dimension_from_name(
   if (!dimension) {
     throw CAPIStatusException("Dimension '" + name + "' does not exist");
   }
-  *dim = tiledb_dimension_handle_t::make_handle(dimension);
+  *dim = make_handle<tiledb_dimension_handle_t>(dimension);
   return TILEDB_OK;
 }
 
@@ -148,7 +148,7 @@ int32_t tiledb_domain_dump_str(
 
   std::stringstream ss;
   ss << *domain;
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 

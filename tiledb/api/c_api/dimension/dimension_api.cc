@@ -53,13 +53,13 @@ int32_t tiledb_dimension_alloc(
   ensure_output_pointer_is_valid(dim);
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
-  *dim = tiledb_dimension_handle_t::make_handle(
+  *dim = make_handle<tiledb_dimension_handle_t>(
       name, static_cast<tiledb::sm::Datatype>(type), memory_tracker);
   try {
     (*dim)->set_domain(dim_domain);
     (*dim)->set_tile_extent(tile_extent);
   } catch (...) {
-    tiledb_dimension_handle_t::break_handle(*dim);
+    break_handle(*dim);
     throw;
   }
   // Success
@@ -69,7 +69,7 @@ int32_t tiledb_dimension_alloc(
 void tiledb_dimension_free(tiledb_dimension_t** dim) {
   ensure_output_pointer_is_valid(dim);
   ensure_dimension_is_valid(*dim);
-  tiledb_dimension_handle_t::break_handle(*dim);
+  break_handle(*dim);
 }
 
 int32_t tiledb_dimension_set_filter_list(
@@ -93,7 +93,7 @@ int32_t tiledb_dimension_get_filter_list(
   ensure_output_pointer_is_valid(filter_list);
   // Copy-construct a separate FilterPipeline object
   *filter_list =
-      tiledb_filter_list_t::make_handle(sm::FilterPipeline{dim->filters()});
+      make_handle<tiledb_filter_list_t>(sm::FilterPipeline{dim->filters()});
   return TILEDB_OK;
 }
 
@@ -144,7 +144,7 @@ int32_t tiledb_dimension_dump_str(
 
   std::stringstream ss;
   ss << *dim;
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 

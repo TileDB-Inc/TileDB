@@ -73,8 +73,7 @@
  * storage or from network. These functions call `make_shared` with constructor
  * arguments (C.41-complaint).
  */
-struct tiledb_filter_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_filter_handle_t> {
+struct tiledb_filter_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

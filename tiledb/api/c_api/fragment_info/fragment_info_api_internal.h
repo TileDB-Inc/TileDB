@@ -40,8 +40,7 @@
 #include "tiledb/sm/fragment/fragment_info.h"
 
 /** Handle `struct` for API FragmentInfo objects. */
-struct tiledb_fragment_info_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_fragment_info_handle_t> {
+struct tiledb_fragment_info_handle_t : public tiledb::api::CAPIHandle {
   /** Type name */
   static constexpr std::string_view object_type_name{"fragment_info"};
 

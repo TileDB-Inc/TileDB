@@ -39,8 +39,7 @@
 /**
  * Handle `struct` for API filter objects.
  */
-struct tiledb_filter_list_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_filter_list_handle_t> {
+struct tiledb_filter_list_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */
