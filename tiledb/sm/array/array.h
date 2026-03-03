@@ -302,7 +302,7 @@ class Array {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-  const ContextResources& resources() const {
+  inline const ContextResources& resources() const {
     return resources_;
   }
 
