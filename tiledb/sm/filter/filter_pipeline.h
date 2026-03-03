@@ -250,7 +250,7 @@ class FilterPipeline {
   Status run_reverse(
       stats::Stats* const reader_stats,
       Tile* const tile,
-      Tile* const offsets_tile,
+      const Tile* const offsets_tile,
       const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,

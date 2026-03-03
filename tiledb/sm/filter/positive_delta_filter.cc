@@ -246,7 +246,7 @@ Status PositiveDeltaFilter::encode_part(
 
 Status PositiveDeltaFilter::run_reverse(
     const Tile& tile,
-    Tile* const offsets_tile,
+    const Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -325,7 +325,7 @@ Status PositiveDeltaFilter::run_reverse(
 template <typename T>
 Status PositiveDeltaFilter::run_reverse(
     const Tile&,
-    Tile* const,
+    const Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

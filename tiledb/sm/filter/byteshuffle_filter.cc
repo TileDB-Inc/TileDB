@@ -110,7 +110,7 @@ Status ByteshuffleFilter::shuffle_part(
 
 Status ByteshuffleFilter::run_reverse(
     const Tile& tile,
-    Tile*,
+    const Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

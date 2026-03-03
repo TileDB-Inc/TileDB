@@ -74,7 +74,7 @@ void Add1OutOfPlace::run_forward(
 
 Status Add1OutOfPlace::run_reverse(
     const Tile&,
-    Tile*,
+    const Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

@@ -62,7 +62,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      Tile*,
+      const Tile*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

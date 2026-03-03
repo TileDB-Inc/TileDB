@@ -136,7 +136,7 @@ class CompressionFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const offsets_tile,
+      const Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -227,7 +227,7 @@ class CompressionFilter : public Filter {
   Status decompress_var_string_coords(
       FilterBuffer& input,
       FilterBuffer& input_metadata,
-      Tile* offsets_tile,
+      const Tile* offsets_tile,
       FilterBuffer& output) const;
 
   /** Gets an option from this filter. */
