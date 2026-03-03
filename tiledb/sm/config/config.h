@@ -621,11 +621,8 @@ class Config {
   /** Connect timeout in milliseconds. */
   static const std::string VFS_S3_CONNECT_TIMEOUT_MS;
 
-  /** Connect max tries. */
-  static const std::string VFS_S3_CONNECT_MAX_TRIES;
-
-  /** Connect scale factor for exponential backoff. */
-  static const std::string VFS_S3_CONNECT_SCALE_FACTOR;
+  /** Retry strategy for S3 client. */
+  static const std::string VFS_S3_RETRY_STRATEGY;
 
   /** S3 server-side encryption algorithm. */
   static const std::string VFS_S3_SSE;

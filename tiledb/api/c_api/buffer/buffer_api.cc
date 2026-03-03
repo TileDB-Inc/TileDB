@@ -43,7 +43,7 @@ capi_return_t tiledb_buffer_alloc(
     tiledb_ctx_handle_t* ctx, tiledb_buffer_handle_t** buffer) {
   ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer);
-  *buffer = tiledb_buffer_handle_t::make_handle(
+  *buffer = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
   return TILEDB_OK;
 }
@@ -51,7 +51,7 @@ capi_return_t tiledb_buffer_alloc(
 void tiledb_buffer_free(tiledb_buffer_handle_t** buffer) {
   ensure_output_pointer_is_valid(buffer);
   ensure_buffer_is_valid(*buffer);
-  tiledb_buffer_handle_t::break_handle(*buffer);
+  break_handle(*buffer);
 }
 
 capi_return_t tiledb_buffer_set_type(

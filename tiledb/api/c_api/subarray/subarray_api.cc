@@ -51,7 +51,7 @@ capi_return_t tiledb_subarray_alloc(
   }
 
   // Create Subarray object
-  *subarray = tiledb_subarray_t::make_handle(
+  *subarray = make_handle<tiledb_subarray_t>(
       array->array().get(),
       (tiledb::sm::stats::Stats*)nullptr,
       ctx->resources().logger(),
@@ -62,7 +62,7 @@ capi_return_t tiledb_subarray_alloc(
 void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   ensure_output_pointer_is_valid(subarray);
   ensure_subarray_is_valid(*subarray);
-  tiledb_subarray_t::break_handle(*subarray);
+  break_handle(*subarray);
 }
 
 capi_return_t tiledb_subarray_set_config(

@@ -130,14 +130,14 @@ capi_return_t tiledb_query_get_field(
   ensure_field_name_is_valid(field_name);
   ensure_output_pointer_is_valid(field);
 
-  *field = tiledb_query_field_handle_t::make_handle(query, field_name);
+  *field = make_handle<tiledb_query_field_handle_t>(query, field_name);
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_field_free(tiledb_query_field_t** field) {
   ensure_output_pointer_is_valid(field);
   ensure_query_field_is_valid(*field);
-  tiledb_query_field_handle_t::break_handle(*field);
+  break_handle(*field);
   return TILEDB_OK;
 }
 

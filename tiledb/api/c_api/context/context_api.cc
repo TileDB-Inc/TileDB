@@ -52,10 +52,10 @@ capi_return_t tiledb_ctx_alloc(
     tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) {
   ensure_output_pointer_is_valid(ctx);
   if (config == nullptr) {
-    *ctx = tiledb_ctx_handle_t::make_handle(sm::Config{});
+    *ctx = make_handle<tiledb_ctx_handle_t>(sm::Config{});
   } else {
     ensure_config_is_valid(config);
-    *ctx = tiledb_ctx_handle_t::make_handle(config->config());
+    *ctx = make_handle<tiledb_ctx_handle_t>(config->config());
   }
   return TILEDB_OK;
 }
@@ -74,7 +74,7 @@ capi_return_t tiledb_ctx_alloc_with_error(
 void tiledb_ctx_free(tiledb_ctx_t** ctx) {
   ensure_output_pointer_is_valid(ctx);
   ensure_context_is_valid(*ctx);
-  tiledb_ctx_handle_t::break_handle(*ctx);
+  break_handle(*ctx);
 }
 
 capi_return_t tiledb_ctx_get_stats(
@@ -96,7 +96,7 @@ capi_return_t tiledb_ctx_get_stats(
 capi_return_t tiledb_ctx_get_config(
     tiledb_ctx_handle_t* ctx, tiledb_config_handle_t** config) {
   api::ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(ctx->config());
+  *config = make_handle<tiledb_config_handle_t>(ctx->config());
   return TILEDB_OK;
 }
 

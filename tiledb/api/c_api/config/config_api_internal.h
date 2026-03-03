@@ -42,8 +42,7 @@
 /**
  * Handle `struct` for API configuration objects.
  */
-struct tiledb_config_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_config_handle_t> {
+struct tiledb_config_handle_t : public tiledb::api::CAPIHandle {
   using config_type = tiledb::sm::Config;
   /**
    * Type name
@@ -72,8 +71,7 @@ struct tiledb_config_handle_t
 /**
  * Handle `struct` for API configuration-iterator objects.
  */
-struct tiledb_config_iter_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_config_iter_handle_t> {
+struct tiledb_config_iter_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

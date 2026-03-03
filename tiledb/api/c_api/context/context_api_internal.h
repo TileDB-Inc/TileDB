@@ -39,8 +39,7 @@
 #include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context.h"
 
-struct tiledb_ctx_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_ctx_handle_t> {
+struct tiledb_ctx_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

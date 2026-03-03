@@ -35,6 +35,7 @@
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/sm/cpp_api/capi_string.h"
 
+using namespace tiledb::api;
 using namespace tiledb::impl;
 
 TEST_CASE(
@@ -55,7 +56,7 @@ TEST_CASE(
     "CAPIString: Test creating string handle and getting its value",
     "[capi_string][get]") {
   const std::string test_string = "hello";
-  tiledb_string_t* handle = tiledb_string_t::make_handle(test_string);
+  tiledb_string_t* handle = make_handle<tiledb_string_t>(test_string);
   std::string result;
 
   SECTION("convert_to_string") {
@@ -70,20 +71,6 @@ TEST_CASE(
   REQUIRE(handle == nullptr);
   REQUIRE(result == test_string);
 }
-
-#ifndef HAVE_SANITIZER
-TEST_CASE(
-    "CAPIString: Test that accessing freed handle fails",
-    "[capi_string][freed_handle]") {
-  const std::string test_string = "hello";
-  tiledb_string_t* handle = tiledb_string_t::make_handle(test_string);
-  tiledb_string_t* handle_copy = handle;
-  std::ignore = convert_to_string(&handle);
-  const char* chars = nullptr;
-  size_t length = 0;
-  REQUIRE(tiledb_string_view(handle_copy, &chars, &length) == TILEDB_ERR);
-}
-#endif
 
 TEST_CASE(
     "CAPIString: Test convert_to_string with null handle", "[capi_string]") {

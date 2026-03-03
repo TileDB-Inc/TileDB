@@ -40,14 +40,14 @@ namespace tiledb::api {
 capi_return_t tiledb_filter_list_alloc(
     tiledb_ctx_t*, tiledb_filter_list_t** filter_list) {
   ensure_output_pointer_is_valid(filter_list);
-  *filter_list = tiledb_filter_list_t::make_handle(sm::FilterPipeline());
+  *filter_list = make_handle<tiledb_filter_list_t>(sm::FilterPipeline());
   return TILEDB_OK;
 }
 
 void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) {
   ensure_output_pointer_is_valid(filter_list);
   ensure_filter_list_is_valid(*filter_list);
-  tiledb_filter_list_t::break_handle(*filter_list);
+  break_handle(*filter_list);
 }
 
 capi_return_t tiledb_filter_list_add_filter(
@@ -92,7 +92,7 @@ capi_return_t tiledb_filter_list_get_filter_from_index(
     throw CAPIStatusException(
         "Failed to retrieve filter at index " + std::to_string(index));
   }
-  *filter = tiledb_filter_t::make_handle(f->clone());
+  *filter = make_handle<tiledb_filter_t>(f->clone());
   return TILEDB_OK;
 }
 

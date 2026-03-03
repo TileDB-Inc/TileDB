@@ -39,8 +39,7 @@ namespace tiledb::sm {
 class MemoryTracker;
 }
 
-struct tiledb_domain_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_domain_handle_t> {
+struct tiledb_domain_handle_t : public tiledb::api::CAPIHandle {
  private:
   using domain_type = shared_ptr<tiledb::sm::Domain>;
   using dimension_size_type = tiledb::sm::Domain::dimension_size_type;

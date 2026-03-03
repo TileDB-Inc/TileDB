@@ -46,7 +46,7 @@ capi_return_t tiledb_profile_alloc(
   std::optional<std::string> dir_str =
       dir ? std::make_optional(dir) : std::nullopt;
 
-  *profile = tiledb_profile_t::make_handle(name_str, dir_str);
+  *profile = make_handle<tiledb_profile_handle_t>(name_str, dir_str);
 
   return TILEDB_OK;
 }
@@ -54,14 +54,14 @@ capi_return_t tiledb_profile_alloc(
 void tiledb_profile_free(tiledb_profile_t** profile) {
   ensure_output_pointer_is_valid(profile);
   ensure_profile_is_valid(*profile);
-  tiledb_profile_t::break_handle(*profile);
+  break_handle(*profile);
 }
 
 capi_return_t tiledb_profile_get_name(
     tiledb_profile_t* profile, tiledb_string_handle_t** name) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(name);
-  *name = tiledb_string_handle_t::make_handle(profile->profile()->name());
+  *name = make_handle<tiledb_string_handle_t>(profile->profile()->name());
   return TILEDB_OK;
 }
 
@@ -69,7 +69,7 @@ capi_return_t tiledb_profile_get_dir(
     tiledb_profile_t* profile, tiledb_string_handle_t** dir) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(dir);
-  *dir = tiledb_string_handle_t::make_handle(profile->profile()->dir());
+  *dir = make_handle<tiledb_string_handle_t>(profile->profile()->dir());
   return TILEDB_OK;
 }
 
@@ -96,7 +96,7 @@ capi_return_t tiledb_profile_get_param(
   auto maybe_param_value = profile->profile()->get_param(param);
 
   *value = maybe_param_value.has_value() ?
-               tiledb_string_handle_t::make_handle(maybe_param_value.value()) :
+               make_handle<tiledb_string_handle_t>(maybe_param_value.value()) :
                nullptr;
 
   return TILEDB_OK;
@@ -128,7 +128,7 @@ capi_return_t tiledb_profile_dump_str(
     tiledb_profile_t* profile, tiledb_string_handle_t** out) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(out);
-  *out = tiledb_string_handle_t::make_handle(profile->profile()->dump());
+  *out = make_handle<tiledb_string_handle_t>(profile->profile()->dump());
   return TILEDB_OK;
 }
 

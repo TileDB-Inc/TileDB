@@ -53,14 +53,14 @@ capi_return_t tiledb_fragment_info_alloc(
   }
 
   // Create FragmentInfo object
-  *fragment_info = tiledb_fragment_info_t::make_handle(uri, ctx->resources());
+  *fragment_info = make_handle<tiledb_fragment_info_t>(uri, ctx->resources());
   return TILEDB_OK;
 }
 
 void tiledb_fragment_info_free(tiledb_fragment_info_t** fragment_info) {
   ensure_output_pointer_is_valid(fragment_info);
   ensure_fragment_info_is_valid(*fragment_info);
-  tiledb_fragment_info_t::break_handle(*fragment_info);
+  break_handle(*fragment_info);
 }
 
 capi_return_t tiledb_fragment_info_set_config(
@@ -75,7 +75,7 @@ capi_return_t tiledb_fragment_info_get_config(
     tiledb_fragment_info_t* fragment_info, tiledb_config_t** config) {
   ensure_fragment_info_is_valid(fragment_info);
   ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(fragment_info->config());
+  *config = make_handle<tiledb_config_handle_t>(fragment_info->config());
   return TILEDB_OK;
 }
 
@@ -92,7 +92,7 @@ capi_return_t tiledb_fragment_info_get_fragment_name_v2(
   ensure_fragment_info_is_valid(fragment_info);
   ensure_output_pointer_is_valid(name);
   *name =
-      tiledb_string_handle_t::make_handle(fragment_info->fragment_name(fid));
+      make_handle<tiledb_string_handle_t>(fragment_info->fragment_name(fid));
   return TILEDB_OK;
 }
 
@@ -409,7 +409,7 @@ capi_return_t tiledb_fragment_info_get_array_schema(
   ensure_fragment_info_is_valid(fragment_info);
   ensure_output_pointer_is_valid(array_schema);
   auto&& array_schema_get = fragment_info->get_array_schema(fid);
-  *array_schema = tiledb_array_schema_t::make_handle(array_schema_get);
+  *array_schema = make_handle<tiledb_array_schema_t>(array_schema_get);
   return TILEDB_OK;
 }
 
@@ -446,7 +446,7 @@ capi_return_t tiledb_fragment_info_dump_str(
 
   std::stringstream ss;
   ss << *fragment_info->fragment_info();
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
 
   return TILEDB_OK;
 }

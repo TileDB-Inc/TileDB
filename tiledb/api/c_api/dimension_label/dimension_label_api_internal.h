@@ -42,8 +42,7 @@
 /**
  * Handle `struct` for API dimension label objects.
  */
-struct tiledb_dimension_label_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_dimension_label_handle_t> {
+struct tiledb_dimension_label_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

@@ -37,8 +37,7 @@
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/array_schema/current_domain.h"
 
-struct tiledb_current_domain_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_current_domain_handle_t> {
+struct tiledb_current_domain_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

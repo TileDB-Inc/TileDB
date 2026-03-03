@@ -45,14 +45,14 @@ void ensure_param_argument_is_valid(const char* param) {
 
 capi_return_t tiledb_config_alloc(tiledb_config_handle_t** config) {
   ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(tiledb::sm::Config());
+  *config = make_handle<tiledb_config_handle_t>(tiledb::sm::Config());
   return TILEDB_OK;
 }
 
 void tiledb_config_free(tiledb_config_handle_t** config) {
   ensure_output_pointer_is_valid(config);
   ensure_config_is_valid(*config);
-  tiledb_config_handle_t::break_handle(*config);
+  break_handle(*config);
 }
 
 capi_return_t tiledb_config_set(
@@ -120,7 +120,7 @@ capi_return_t tiledb_config_iter_alloc(
   ensure_output_pointer_is_valid(config_iter);
   std::string prefix_str = (prefix == nullptr) ? "" : std::string(prefix);
   *config_iter =
-      tiledb_config_iter_handle_t::make_handle(config->config(), prefix_str);
+      make_handle<tiledb_config_iter_handle_t>(config->config(), prefix_str);
   return TILEDB_OK;
 }
 
@@ -138,7 +138,7 @@ capi_return_t tiledb_config_iter_reset(
 void tiledb_config_iter_free(tiledb_config_iter_t** config_iter) {
   ensure_output_pointer_is_valid(config_iter);
   ensure_config_iter_is_valid(*config_iter);
-  tiledb_config_iter_handle_t::break_handle(*config_iter);
+  break_handle(*config_iter);
 }
 
 capi_return_t tiledb_config_iter_here(

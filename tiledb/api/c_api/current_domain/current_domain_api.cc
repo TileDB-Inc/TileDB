@@ -48,7 +48,7 @@ capi_return_t tiledb_current_domain_create(
 
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
-  *current_domain = tiledb_current_domain_handle_t::make_handle(
+  *current_domain = make_handle<tiledb_current_domain_handle_t>(
       memory_tracker, sm::constants::current_domain_version);
   return TILEDB_OK;
 }
@@ -57,7 +57,7 @@ capi_return_t tiledb_current_domain_free(
     tiledb_current_domain_t** current_domain) {
   ensure_output_pointer_is_valid(current_domain);
   ensure_handle_is_valid(*current_domain);
-  tiledb_current_domain_handle_t::break_handle(*current_domain);
+  break_handle(*current_domain);
 
   return TILEDB_OK;
 }
@@ -77,7 +77,7 @@ capi_return_t tiledb_current_domain_get_ndrectangle(
   ensure_handle_is_valid(current_domain);
   ensure_output_pointer_is_valid(ndr);
 
-  *ndr = tiledb_ndrectangle_handle_t::make_handle(
+  *ndr = make_handle<tiledb_ndrectangle_handle_t>(
       current_domain->current_domain()->ndrectangle());
 
   return TILEDB_OK;
@@ -112,7 +112,7 @@ capi_return_t tiledb_current_domain_dump_str(
 
   std::stringstream ss;
   ss << *(current_domain->current_domain());
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 

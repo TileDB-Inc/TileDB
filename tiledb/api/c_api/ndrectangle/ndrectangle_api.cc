@@ -89,7 +89,7 @@ capi_return_t tiledb_ndrectangle_alloc(
 
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
-  *ndr = tiledb_ndrectangle_handle_t::make_handle(
+  *ndr = make_handle<tiledb_ndrectangle_handle_t>(
       memory_tracker, domain->copy_domain());
   return TILEDB_OK;
 }
@@ -97,7 +97,7 @@ capi_return_t tiledb_ndrectangle_alloc(
 capi_return_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr) {
   ensure_output_pointer_is_valid(ndr);
   ensure_handle_is_valid(*ndr);
-  tiledb_ndrectangle_handle_t::break_handle(*ndr);
+  break_handle(*ndr);
 
   return TILEDB_OK;
 }
@@ -210,7 +210,7 @@ capi_return_t tiledb_ndrectangle_dump_str(
 
   std::stringstream ss;
   ss << *(ndr->ndrectangle());
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 

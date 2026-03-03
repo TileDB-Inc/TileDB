@@ -59,7 +59,7 @@ capi_return_t tiledb_array_schema_get_dimension_label_from_name(
     tiledb_dimension_label_t** dim_label) {
   ensure_array_schema_is_valid(array_schema);
   ensure_output_pointer_is_valid(dim_label);
-  *dim_label = tiledb_dimension_label_t::make_handle(
+  *dim_label = make_handle<tiledb_dimension_label_t>(
       array_schema->array_uri(), array_schema->dimension_label(label_name));
   return TILEDB_OK;
 }
@@ -110,7 +110,7 @@ capi_return_t tiledb_array_schema_get_dimension_label_from_index(
     tiledb_dimension_label_t** dim_label) {
   ensure_array_schema_is_valid(array_schema);
   ensure_output_pointer_is_valid(dim_label);
-  *dim_label = tiledb_dimension_label_t::make_handle(
+  *dim_label = make_handle<tiledb_dimension_label_t>(
       array_schema->array_uri(),
       array_schema->dimension_label(dim_label_index));
   return TILEDB_OK;

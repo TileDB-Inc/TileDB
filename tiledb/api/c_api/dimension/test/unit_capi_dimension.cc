@@ -35,6 +35,7 @@
 #include "../../filter_list/filter_list_api_internal.h"
 #include "../dimension_api_internal.h"
 
+using namespace tiledb::api;
 using namespace tiledb::api::test_support;
 
 TEST_CASE(
@@ -121,7 +122,7 @@ TEST_CASE(
     "[capi][dimension]") {
   ordinary_dimension_1 dim;
   auto fp{
-      tiledb_filter_list_handle_t::make_handle(tiledb::sm::FilterPipeline())};
+      make_handle<tiledb_filter_list_handle_t>(tiledb::sm::FilterPipeline())};
   SECTION("success") {
     capi_return_t rc =
         tiledb_dimension_set_filter_list(dim.ctx.context, dim.dimension, fp);
@@ -142,7 +143,7 @@ TEST_CASE(
         dim.ctx.context, dim.dimension, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  tiledb_filter_list_handle_t::break_handle(fp);
+  break_handle(fp);
 }
 
 TEST_CASE(
