@@ -2,8 +2,8 @@ name: TileDB Nightly Test Build
 
 on:
   schedule:
-    # runs every day at 2:50 UTC
-    - cron: "50 02 * * *"
+    # runs every Tuesday and Thursday at 2:50 UTC
+    - cron: "50 02 * * 2,4"
   workflow_dispatch:
 
 jobs:
