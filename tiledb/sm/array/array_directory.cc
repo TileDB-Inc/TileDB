@@ -323,10 +323,12 @@ void ArrayDirectory::delete_fragments_list(
   throw_if_not_ok(parallel_for(
       &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
         auto& vfs = resources_.get().vfs();
-        vfs.remove_dir(uris[i]);
+        // Delete the commit first
         if (vfs.is_file(commit_uris_to_delete[i])) {
           vfs.remove_file(commit_uris_to_delete[i]);
         }
+        // Delete the fragment next
+        vfs.remove_dir(uris[i]);
         return Status::Ok();
       }));
 }
