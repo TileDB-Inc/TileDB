@@ -144,8 +144,7 @@ tiledb::sm::Azure::ServiceCredentialType get_service_credential(
   // Otherwise, if we did not specify an SAS token
   // and we are connecting to an HTTPS endpoint,
   // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
-  if (!params.has_sas_token_ && tiledb::sm::utils::parse::starts_with(
-                                    params.blob_endpoint_, "https://")) {
+  if (!params.has_sas_token_ && params.blob_endpoint_.starts_with("https://")) {
     try {
       ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
       cred_options.Retry = retry_options;
@@ -264,8 +263,8 @@ std::string get_blob_endpoint(
     } else {
       return "";
     }
-  } else if (!(utils::parse::starts_with(result, "http://") ||
-               utils::parse::starts_with(result, "https://"))) {
+  } else if (!(result.starts_with("http://") ||
+               result.starts_with("https://"))) {
     LOG_WARN(
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
         "or HTTPS).");
@@ -275,7 +274,7 @@ std::string get_blob_endpoint(
     // (https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview#sas-token),
     // but in the Azure Portal the SAS token starts with one. If it does not, we
     // add the question mark ourselves.
-    if (!utils::parse::starts_with(sas_token, "?")) {
+    if (!sas_token.starts_with("?")) {
       result += '?';
     }
     result += sas_token;

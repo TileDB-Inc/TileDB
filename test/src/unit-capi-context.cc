@@ -83,10 +83,9 @@ TEST_CASE("C API: Test context", "[capi][context]") {
   const char* err_msg;
   rc = tiledb_error_message(error, &err_msg);
   CHECK(rc == TILEDB_OK);
-  CHECK(tiledb::stdx::string::ends_with(
-      std::string(err_msg),
+  CHECK(std::string(err_msg).ends_with(
       "Error initializing thread pool of concurrency level " + too_large +
-          "; Requested size too large"));
+      "; Requested size too large"));
 
   // Check another non-failure
   // Set this to non-error value

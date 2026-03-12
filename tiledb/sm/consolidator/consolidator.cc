@@ -281,7 +281,7 @@ void Consolidator::write_consolidated_commits_file(
     total_size += relative_uri.size() + 1;
 
     // If the file is a delete, find its physical payload size.
-    if (stdx::string::ends_with(relative_uri, constants::delete_file_suffix)) {
+    if (relative_uri.ends_with(constants::delete_file_suffix)) {
       auto it = location_map.find(relative_uri);
       if (it == location_map.end()) {
         throw ConsolidatorException(
@@ -324,7 +324,7 @@ void Consolidator::write_consolidated_commits_file(
 
     // For deletes, read the delete condition payload from its mapped physical
     // location.
-    if (stdx::string::ends_with(relative_uri, constants::delete_file_suffix)) {
+    if (relative_uri.ends_with(constants::delete_file_suffix)) {
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
 

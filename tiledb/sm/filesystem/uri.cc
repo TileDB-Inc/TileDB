@@ -122,12 +122,11 @@ bool URI::is_invalid() const {
 
 bool URI::is_file(std::string_view path) {
 #ifdef _WIN32
-  return utils::parse::starts_with(path, "file://") ||
-         path.find("://") == std::string::npos;
+  constexpr const char* prefix = "file://";
 #else
-  return utils::parse::starts_with(path, "file:///") ||
-         path.find("://") == std::string::npos;
+  constexpr const char* prefix = "file:///";
 #endif
+  return path.starts_with(prefix) || path.find("://") == std::string::npos;
 }
 
 bool URI::contains(std::string_view str) const {
@@ -141,54 +140,50 @@ bool URI::is_file() const {
   // Observed: semantics here differ from sibling
   // is_file(std::string_view path), here is missing
   // additional check using "://".
-  return utils::parse::starts_with(uri_, "file:///");
+  return uri_.starts_with("file:///");
 #endif
 }
 
 bool URI::is_s3(std::string_view path) {
-  return utils::parse::starts_with(path, "s3://") ||
-         utils::parse::starts_with(path, "http://") ||
-         utils::parse::starts_with(path, "https://");
+  return path.starts_with("s3://") || path.starts_with("http://") ||
+         path.starts_with("https://");
 }
 
 bool URI::is_s3() const {
-  return utils::parse::starts_with(uri_, "s3://") ||
-         utils::parse::starts_with(uri_, "http://") ||
-         utils::parse::starts_with(uri_, "https://");
+  return uri_.starts_with("s3://") || uri_.starts_with("http://") ||
+         uri_.starts_with("https://");
 }
 
 bool URI::is_azure(std::string_view path) {
-  return utils::parse::starts_with(path, "azure://");
+  return path.starts_with("azure://");
 }
 
 bool URI::is_azure() const {
-  return utils::parse::starts_with(uri_, "azure://");
+  return uri_.starts_with("azure://");
 }
 
 bool URI::is_gcs(std::string_view path) {
-  return utils::parse::starts_with(path, "gcs://") ||
-         utils::parse::starts_with(path, "gs://");
+  return path.starts_with("gcs://") || path.starts_with("gs://");
 }
 
 bool URI::is_gcs() const {
-  return utils::parse::starts_with(uri_, "gcs://") ||
-         utils::parse::starts_with(uri_, "gs://");
+  return uri_.starts_with("gcs://") || uri_.starts_with("gs://");
 }
 
 bool URI::is_memfs(std::string_view path) {
-  return utils::parse::starts_with(path, "mem://");
+  return path.starts_with("mem://");
 }
 
 bool URI::is_memfs() const {
-  return utils::parse::starts_with(uri_, "mem://");
+  return uri_.starts_with("mem://");
 }
 
 bool URI::is_tiledb(std::string_view path) {
-  return utils::parse::starts_with(path, "tiledb://");
+  return path.starts_with("tiledb://");
 }
 
 bool URI::is_tiledb() const {
-  return utils::parse::starts_with(uri_, "tiledb://");
+  return uri_.starts_with("tiledb://");
 }
 
 bool URI::is_timestamped_name() const {
