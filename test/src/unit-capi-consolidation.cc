@@ -7602,9 +7602,8 @@ TEST_CASE_METHOD(
   const char* msg;
   tiledb_error_message(err, &msg);
   CHECK(
-      std::string(
-          "FragmentConsolidator: Consolidation read 0 cells, no "
-          "progress can be made") == msg);
+      std::string("FragmentConsolidator: Consolidation read 0 cells, no "
+                  "progress can be made") == msg);
 
   remove_sparse_string_array();
 }
