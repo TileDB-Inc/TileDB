@@ -1900,8 +1900,7 @@ TEST_CASE_METHOD(
   bool ok_exists = false;
   std::string ok_prefix;
   for (auto uri : uris) {
-    if (tiledb::sm::utils::parse::ends_with(
-            uri, tiledb::sm::constants::ok_file_suffix)) {
+    if (uri.ends_with(tiledb::sm::constants::ok_file_suffix)) {
       ok_exists = true;
       ok_prefix = uri.substr(0, uri.find_last_of("."));
     }
@@ -1910,8 +1909,7 @@ TEST_CASE_METHOD(
   auto tdb_dir = vfs_.ls(ok_prefix);
   CHECK(tdb_dir.size() == 7);
   for (auto tdb : tdb_dir) {
-    CHECK(tiledb::sm::utils::parse::ends_with(
-        tdb, tiledb::sm::constants::file_suffix));
+    CHECK(tdb.ends_with(tiledb::sm::constants::file_suffix));
   }
 
   // Delete array data
@@ -1920,7 +1918,7 @@ TEST_CASE_METHOD(
   // Check working directory after delete
   uris = vfs_.ls(array_name);
   for (auto uri : uris) {
-    CHECK(!tiledb::sm::utils::parse::starts_with(uri, ok_prefix));
+    CHECK(!uri.starts_with(ok_prefix));
   }
   REQUIRE(vfs_.is_file(extraneous_file_path));
   validate_array_dir_after_delete(array_name);

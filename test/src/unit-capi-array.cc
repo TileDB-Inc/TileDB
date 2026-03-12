@@ -146,7 +146,7 @@ void ArrayFx::remove_temp_dir(const std::string& path) {
 
 int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   auto data_vec = (std::vector<uint64_t>*)data;
-  if (utils::parse::ends_with(path, constants::write_file_suffix)) {
+  if (std::string_view(path).ends_with(constants::write_file_suffix)) {
     FragmentID fragment_id{path};
     auto timestamp_range{fragment_id.timestamp_range()};
     data_vec->push_back(timestamp_range.first);

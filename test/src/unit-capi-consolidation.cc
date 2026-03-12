@@ -4797,8 +4797,7 @@ int ConsolidationFx::get_dir_num(const char* path, void* data) {
 
 int ConsolidationFx::get_meta_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::meta_file_suffix))
+  if (std::string_view(path).ends_with(tiledb::sm::constants::meta_file_suffix))
     ++data_struct->num;
 
   return 1;
@@ -4806,8 +4805,8 @@ int ConsolidationFx::get_meta_num(const char* path, void* data) {
 
 int ConsolidationFx::get_commits_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::con_commits_file_suffix))
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::con_commits_file_suffix))
     ++data_struct->num;
 
   return 1;
@@ -4815,8 +4814,8 @@ int ConsolidationFx::get_commits_num(const char* path, void* data) {
 
 int ConsolidationFx::get_wrt_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::write_file_suffix))
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::write_file_suffix))
     ++data_struct->num;
 
   return 1;
@@ -4824,8 +4823,8 @@ int ConsolidationFx::get_wrt_num(const char* path, void* data) {
 
 int ConsolidationFx::get_ignore_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::ignore_file_suffix))
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::ignore_file_suffix))
     ++data_struct->num;
 
   return 1;
@@ -4833,8 +4832,7 @@ int ConsolidationFx::get_ignore_num(const char* path, void* data) {
 
 int ConsolidationFx::get_ok_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::ok_file_suffix))
+  if (std::string_view(path).ends_with(tiledb::sm::constants::ok_file_suffix))
     ++data_struct->num;
 
   return 1;
@@ -4842,8 +4840,8 @@ int ConsolidationFx::get_ok_num(const char* path, void* data) {
 
 int ConsolidationFx::get_vac_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::vacuum_file_suffix)) {
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::vacuum_file_suffix)) {
     ++data_struct->num;
   }
 
@@ -4853,8 +4851,8 @@ int ConsolidationFx::get_vac_num(const char* path, void* data) {
 int ConsolidationFx::get_array_meta_files_callback(
     const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
-  if (!tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::vacuum_file_suffix))
+  if (!std::string_view(path).ends_with(
+          tiledb::sm::constants::vacuum_file_suffix))
     vec->emplace_back(path);
 
   return 1;
@@ -4863,8 +4861,8 @@ int ConsolidationFx::get_array_meta_files_callback(
 int ConsolidationFx::get_array_meta_vac_files_callback(
     const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::vacuum_file_suffix))
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::vacuum_file_suffix))
     vec->emplace_back(path);
 
   return 1;
@@ -4872,8 +4870,8 @@ int ConsolidationFx::get_array_meta_vac_files_callback(
 
 int ConsolidationFx::get_vac_files_callback(const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::vacuum_file_suffix))
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::vacuum_file_suffix))
     vec->emplace_back(path);
 
   return 1;

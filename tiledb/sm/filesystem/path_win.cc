@@ -77,9 +77,9 @@ std::string path_from_uri(std::string_view uri_view) {
   std::string uri(uri_view);
 
   std::string uri_with_scheme =
-      (stdx::string::starts_with(uri, "file://") ||
+      (uri.starts_with("file://") ||
        // also accept 'file:/x...'
-       (stdx::string::starts_with(uri, "file:/") && uri.substr(6, 1) != "/")) ?
+       (uri.starts_with("file:/") && uri.substr(6, 1) != "/")) ?
           uri
           // else treat as file: item on 'localhost' (empty host name)
           :

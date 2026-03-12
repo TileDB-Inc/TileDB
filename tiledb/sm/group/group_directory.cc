@@ -394,7 +394,7 @@ GroupDirectory::compute_filtered_uris(
 }
 
 bool GroupDirectory::is_vacuum_file(const URI& uri) const {
-  if (utils::parse::ends_with(uri.to_string(), constants::vacuum_file_suffix))
+  if (uri.to_string().ends_with(constants::vacuum_file_suffix))
     return true;
 
   return false;

@@ -414,12 +414,12 @@ std::string Posix::abs_path(std::string_view path) {
   std::string resolved_path = abs_path_internal(path);
 
   // Ensure the returned has the same postfix slash as 'path'.
-  if (utils::parse::ends_with(path, "/")) {
-    if (!utils::parse::ends_with(resolved_path, "/")) {
+  if (path.ends_with("/")) {
+    if (!resolved_path.ends_with("/")) {
       resolved_path = resolved_path + "/";
     }
   } else {
-    if (utils::parse::ends_with(resolved_path, "/")) {
+    if (resolved_path.ends_with("/")) {
       resolved_path = resolved_path.substr(0, resolved_path.length() - 1);
     }
   }
@@ -434,7 +434,7 @@ std::string Posix::current_dir() {
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
-  iassert(utils::parse::starts_with(*path, "file://"));
+  iassert(path->starts_with("file://"));
   path->erase(
       std::unique(
           path->begin() + std::string("file://").size(),
@@ -465,14 +465,14 @@ std::string Posix::abs_path_internal(std::string_view path) {
 
   // Other cases
   std::string ret_dir;
-  if (utils::parse::starts_with(path, posix_prefix))
+  if (path.starts_with(posix_prefix))
     return std::string(path);
-  else if (utils::parse::starts_with(path, "/"))
+  else if (path.starts_with("/"))
     ret_dir = posix_prefix + std::string(path);
-  else if (utils::parse::starts_with(path, "~/"))
+  else if (path.starts_with("~/"))
     ret_dir =
         posix_prefix + home + std::string(path.substr(1, path.size() - 1));
-  else if (utils::parse::starts_with(path, "./"))
+  else if (path.starts_with("./"))
     ret_dir =
         posix_prefix + current + std::string(path.substr(1, path.size() - 1));
   else
@@ -494,7 +494,7 @@ void Posix::purge_dots_from_path(std::string* path) {
   if (path_size == 0 || *path == "file:///")
     return;
 
-  iassert(utils::parse::starts_with(*path, "file:///"));
+  iassert(path->starts_with("file:///"));
 
   // Tokenize
   const char* token_c_str = path->c_str() + 8;

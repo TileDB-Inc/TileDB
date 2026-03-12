@@ -87,8 +87,7 @@ load_delete_and_update_conditions(
             *(opened_array.encryption_key()),
             resources.ephemeral_memory_tracker());
 
-        if (tiledb::sm::utils::parse::ends_with(
-                locations[i].condition_marker(),
+        if (locations[i].condition_marker().ends_with(
                 tiledb::sm::constants::delete_file_suffix)) {
           conditions[i] = tiledb::sm::deletes_and_updates::serialization::
               deserialize_condition(
@@ -96,8 +95,7 @@ load_delete_and_update_conditions(
                   locations[i].condition_marker(),
                   tile->data(),
                   tile->size());
-        } else if (tiledb::sm::utils::parse::ends_with(
-                       locations[i].condition_marker(),
+        } else if (locations[i].condition_marker().ends_with(
                        tiledb::sm::constants::update_file_suffix)) {
           auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
               deserialize_update_condition_and_values(
