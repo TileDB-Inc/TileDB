@@ -29,6 +29,6 @@
 #include "../stdx_string.h"
 
 int main() {
-  (void)tiledb::stdx::string::starts_with("", "");
+  (void)tiledb::stdx::string::common_prefix_size("", "");
   return 0;
 }

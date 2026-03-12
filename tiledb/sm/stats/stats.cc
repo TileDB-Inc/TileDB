@@ -127,7 +127,7 @@ std::string Stats::dump(
   ss << l_indent << indent << "\"timers\": {\n";
   bool printed_first_timer = false;
   for (const auto& timer : sorted_timers) {
-    if (utils::parse::ends_with(timer.first, ".sum")) {
+    if (timer.first.ends_with(".sum")) {
       if (printed_first_timer) {
         ss << ",\n";
       }
@@ -152,7 +152,7 @@ std::string Stats::dump(
   bool printed_first_counter = false;
   for (const auto& counter : sorted_counters) {
     // Ignore the reserved "timer_count" counters.
-    if (utils::parse::ends_with(counter.first, ".timer_count")) {
+    if (counter.first.ends_with(".timer_count")) {
       continue;
     }
 

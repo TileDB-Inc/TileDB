@@ -659,8 +659,8 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
   std::vector<URI> fragment_uris;
   // Find the commited fragments from consolidated commits URIs
   for (size_t i = 0; i < consolidated_uris.size(); ++i) {
-    if (stdx::string::ends_with(
-            consolidated_uris[i].to_string(), constants::write_file_suffix)) {
+    if (consolidated_uris[i].to_string().ends_with(
+            constants::write_file_suffix)) {
       auto name = consolidated_uris[i].last_path_part();
       name = name.substr(0, name.size() - constants::write_file_suffix.size());
       fragment_uris.emplace_back(
@@ -670,8 +670,8 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
 
   // Find the commited fragments
   for (size_t i = 0; i < commits_dir_uris.size(); ++i) {
-    if (stdx::string::ends_with(
-            commits_dir_uris[i].to_string(), constants::write_file_suffix)) {
+    if (commits_dir_uris[i].to_string().ends_with(
+            constants::write_file_suffix)) {
       if (consolidated_commit_uris_set_.count(commits_dir_uris[i]) == 0) {
         auto name = commits_dir_uris[i].last_path_part();
         name =
@@ -683,10 +683,12 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     } else if (is_vacuum_file(commits_dir_uris[i])) {
       fragment_uris.emplace_back(commits_dir_uris[i]);
     } else if (
-        stdx::string::ends_with(
-            commits_dir_uris[i].to_string(), constants::delete_file_suffix) ||
-        stdx::string::ends_with(
-            commits_dir_uris[i].to_string(), constants::update_file_suffix)) {
+
+        commits_dir_uris[i].to_string().ends_with(
+            constants::delete_file_suffix) ||
+
+        commits_dir_uris[i].to_string().ends_with(
+            constants::update_file_suffix)) {
       // Get the start and end timestamp for this delete/update
       FragmentID fragment_id{commits_dir_uris[i]};
       auto timestamp_range{fragment_id.timestamp_range()};
@@ -722,8 +724,7 @@ ArrayDirectory::load_consolidated_commit_uris(
   // optimized by vacuuming.
   std::unordered_set<std::string> ignore_set;
   for (auto& uri : commits_dir_uris) {
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::ignore_file_suffix)) {
+    if (uri.to_string().ends_with(constants::ignore_file_suffix)) {
       uint64_t size = resources_.get().vfs().file_size(uri);
       std::string names;
       names.resize(size);
@@ -744,8 +745,7 @@ ArrayDirectory::load_consolidated_commit_uris(
   std::vector<std::pair<URI, std::string>> meta_files;
   for (uint64_t i = 0; i < commits_dir_uris.size(); i++) {
     auto& uri = commits_dir_uris[i];
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::con_commits_file_suffix)) {
+    if (uri.to_string().ends_with(constants::con_commits_file_suffix)) {
       uint64_t size = resources_.get().vfs().file_size(uri);
       meta_files.emplace_back(uri, std::string());
 
@@ -762,8 +762,7 @@ ArrayDirectory::load_consolidated_commit_uris(
         }
 
         // If we have a delete, process the condition tile
-        if (stdx::string::ends_with(
-                condition_marker, constants::delete_file_suffix)) {
+        if (condition_marker.ends_with(constants::delete_file_suffix)) {
           storage_size_t size = 0;
           ss.read(
               static_cast<char*>(static_cast<void*>(&size)),
@@ -812,15 +811,13 @@ ArrayDirectory::load_consolidated_commit_uris(
 
       if (all_in_set && count == uris_set.size()) {
         for (auto& uri : commits_dir_uris) {
-          if (stdx::string::ends_with(
-                  uri.to_string(), constants::con_commits_file_suffix)) {
+          if (uri.to_string().ends_with(constants::con_commits_file_suffix)) {
             if (uri != meta_file.first) {
               consolidated_commits_uris_to_vacuum_.emplace_back(uri);
             }
           }
 
-          if (stdx::string::ends_with(
-                  uri.to_string(), constants::ignore_file_suffix)) {
+          if (uri.to_string().ends_with(constants::ignore_file_suffix)) {
             consolidated_commits_uris_to_vacuum_.emplace_back(uri);
           }
         }
@@ -907,7 +904,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
 
   // Add the ok file URIs not already in the list.
   for (auto& uri : array_dir_uris) {
-    if (stdx::string::ends_with(uri.to_string(), constants::ok_file_suffix)) {
+    if (uri.to_string().ends_with(constants::ok_file_suffix)) {
       if (consolidated_uris_set.count(uri) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
       }
@@ -916,10 +913,9 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
 
   // Add the wrt file URIs not already in the list.
   for (auto& uri : commits_dir_uris) {
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::write_file_suffix) ||
-        stdx::string::ends_with(
-            uri.to_string(), constants::delete_file_suffix)) {
+    if (uri.to_string().ends_with(constants::write_file_suffix) ||
+
+        uri.to_string().ends_with(constants::delete_file_suffix)) {
       if (consolidated_uris_set.count(uri) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
       }
@@ -935,8 +931,7 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
   // That fragments are "committed" for versions >= 5
   std::unordered_set<std::string> ok_uris;
   for (size_t i = 0; i < array_dir_uris.size(); ++i) {
-    if (stdx::string::ends_with(
-            array_dir_uris[i].to_string(), constants::ok_file_suffix)) {
+    if (array_dir_uris[i].to_string().ends_with(constants::ok_file_suffix)) {
       auto name = array_dir_uris[i].to_string();
       name = name.substr(0, name.size() - constants::ok_file_suffix.size());
       ok_uris.emplace(name);
@@ -947,7 +942,7 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
   std::vector<uint8_t> is_fragment(array_dir_uris.size(), 0);
   auto& tp = resources_.get().compute_tp();
   auto status = parallel_for(&tp, 0, array_dir_uris.size(), [&](size_t i) {
-    if (stdx::string::starts_with(array_dir_uris[i].last_path_part(), "."))
+    if (array_dir_uris[i].last_path_part().ends_with("."))
       return Status::Ok();
     int32_t flag;
     throw_if_not_ok(this->is_fragment(
@@ -974,7 +969,7 @@ std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
 
   // Get the consolidated fragment metadata URIs
   for (const auto& uri : array_dir_uris) {
-    if (stdx::string::ends_with(uri.to_string(), constants::meta_file_suffix)) {
+    if (uri.to_string().ends_with(constants::meta_file_suffix)) {
       ret.emplace_back(uri);
     }
   }
@@ -1255,7 +1250,7 @@ URI ArrayDirectory::select_latest_array_schema_uri() {
 }
 
 bool ArrayDirectory::is_vacuum_file(const URI& uri) const {
-  if (utils::parse::ends_with(uri.to_string(), constants::vacuum_file_suffix))
+  if (uri.to_string().ends_with(constants::vacuum_file_suffix))
     return true;
 
   return false;

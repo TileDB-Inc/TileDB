@@ -1456,7 +1456,7 @@ TEST_CASE(
   auto children = vfs.ls(temp_dir.path() + "/__group");
   CHECK(children.size() == 2);
   std::sort(children.begin(), children.end());
-  CHECK(!tiledb::sm::utils::parse::ends_with(children[0], "_1"));
+  CHECK(!children[0].ends_with("_1"));
   // This is the file written by this test.
-  CHECK(tiledb::sm::utils::parse::ends_with(children[1], "_1"));
+  CHECK(children[1].ends_with("_1"));
 }

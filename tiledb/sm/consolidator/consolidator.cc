@@ -270,8 +270,7 @@ void Consolidator::write_consolidated_commits_file(
 
     // If the file is a delete, add the file size to the count and the size of
     // the size variable.
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::delete_file_suffix)) {
+    if (uri.to_string().ends_with(constants::delete_file_suffix)) {
       file_sizes[i] = resources.vfs().file_size(uri);
       total_size += file_sizes[i];
       total_size += sizeof(storage_size_t);
@@ -289,8 +288,7 @@ void Consolidator::write_consolidated_commits_file(
     file_index += relative_uri.size();
 
     // For deletes, read the delete condition to the output file.
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::delete_file_suffix)) {
+    if (uri.to_string().ends_with(constants::delete_file_suffix)) {
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
       throw_if_not_ok(resources.vfs().read_exactly(

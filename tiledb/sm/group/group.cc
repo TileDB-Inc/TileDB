@@ -910,8 +910,7 @@ void Group::load_group_details() {
   // to check for that as well
   auto part = latest_group_uri.last_path_part();
   auto underscoreCount = std::count(part.begin(), part.end(), '_');
-  if (underscoreCount == 4 ||
-      (underscoreCount == 5 && utils::parse::ends_with(part, "_1"))) {
+  if (underscoreCount == 4 || (underscoreCount == 5 && part.ends_with("_1"))) {
     load_group_from_uri(latest_group_uri);
     return;
   }

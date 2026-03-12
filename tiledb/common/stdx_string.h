@@ -34,30 +34,6 @@
 namespace tiledb::stdx::string {
 
 /**
- * Checks if a string starts with a certain prefix.
- *
- * C++20: Replace with std::string::starts_with, a member function. This
- * function is a non-member equivalent.
- *
- * @param value The base string.
- * @param prefix The prefix string to be tested.
- * @return `true` if `value` starts with `prefix`; `false` otherwise.
- */
-bool starts_with(std::string_view value, std::string_view prefix);
-
-/**
- * Checks if a string ends with a certain suffix.
- *
- * C++20: Replace with std::string::ends_with, a member function. This
- * function is a non-member equivalent.
- *
- * @param value The base string.
- * @param suffix The suffix to be tested.
- * @return `true` if `value` ends with `suffix`; `false` otherwise.
- */
-bool ends_with(std::string_view value, std::string_view suffix);
-
-/**
  * Returns the size of the common prefix between `a` and `b`.
  *
  * Postcondition: Let n be the return value.
@@ -68,15 +44,4 @@ size_t common_prefix_size(std::string_view a, std::string_view b);
 
 }  // namespace tiledb::stdx::string
 
-/*
- * Functions forwarded into the legacy namespace.
- */
-namespace tiledb::sm::utils::parse {
-inline bool starts_with(std::string_view value, std::string_view prefix) {
-  return tiledb::stdx::string::starts_with(value, prefix);
-}
-inline bool ends_with(std::string_view value, std::string_view suffix) {
-  return tiledb::stdx::string::ends_with(value, suffix);
-}
-}  // namespace tiledb::sm::utils::parse
 #endif  // TILEDB_COMMON_STDX_STRING_H

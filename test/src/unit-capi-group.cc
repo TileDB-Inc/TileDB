@@ -146,8 +146,8 @@ void GroupFx::set_group_timestamp(
 
 static int get_group_meta_files_cb(const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
-  if (!tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::vacuum_file_suffix))
+  if (!std::string_view(path).ends_with(
+          tiledb::sm::constants::vacuum_file_suffix))
     vec->emplace_back(path);
 
   return 1;
@@ -155,8 +155,8 @@ static int get_group_meta_files_cb(const char* path, void* data) {
 
 static int get_group_meta_vac_files_cb(const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::vacuum_file_suffix))
+  if (std::string_view(path).ends_with(
+          tiledb::sm::constants::vacuum_file_suffix))
     vec->emplace_back(path);
 
   return 1;

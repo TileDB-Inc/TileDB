@@ -95,8 +95,7 @@ ObjectType object_type(ContextResources& resources, const URI& uri) {
     // URI as a directory will work as expected. Listing a non-directory object
     // is not an error for S3/Azure/GCS.
     auto uri_str = uri.to_string();
-    dir_uri =
-        URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
+    dir_uri = URI(uri_str.ends_with("/") ? uri_str : (uri_str + "/"));
   } else if (!uri.is_tiledb()) {
     // For non public cloud backends, listing a non-directory is an error.
     if (!resources.vfs().is_dir(uri)) {
