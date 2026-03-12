@@ -27,7 +27,6 @@
  */
 
 #include "../object.h"
-#include "../object_mutex.h"
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -40,6 +39,5 @@ int main() {
   ContextResources resources(config, logger, 1, 1, "");
   object_move(resources, "old_path", "new_path");
 
-  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
   return 0;
 }
