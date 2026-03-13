@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -406,14 +406,11 @@ TEST_CASE_METHOD(
     CPPMetadataFx,
     "C++ API: Metadata, multiple metadata and consolidate",
     "[cppapi][metadata][multiple][consolidation]") {
-  Config cfg;
-  cfg["sm.consolidation.buffer_size"] = "10000";
-
   // Create default array
   create_default_array_1d();
 
   // Create and open array in write mode
-  tiledb::Context ctx(cfg);
+  tiledb::Context ctx;
   tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
