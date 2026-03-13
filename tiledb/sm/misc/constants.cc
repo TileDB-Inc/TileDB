@@ -96,9 +96,9 @@ const std::string array_enumerations_dir_name = "__enumerations";
 const std::vector<std::string> array_dir_names = {
     array_schema_dir_name,
     array_metadata_dir_name,
+    array_commits_dir_name,
     array_fragment_meta_dir_name,
     array_fragments_dir_name,
-    array_commits_dir_name,
     array_dimension_labels_dir_name,
     array_enumerations_dir_name};
 
