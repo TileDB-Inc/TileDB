@@ -209,8 +209,6 @@ Status FragmentConsolidator::consolidate(
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_frags");
 
-  check_array_uri(array_name);
-
   // Open array for reading
   auto array_for_reads{make_shared<Array>(HERE(), resources_, URI(array_name))};
   throw_if_not_ok(array_for_reads->open_without_fragments(
