@@ -1227,10 +1227,6 @@ void S3::global_order_write(
     state_ptr = &state_iter->second;
 
     unique_wl.unlock();
-
-    if (is_file(uri)) {
-      remove_file(uri);
-    }
   } else {
     state_ptr = &state_iter->second;
     // Unlock, as make_upload_part_req will reaquire as necessary.
