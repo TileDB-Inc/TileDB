@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -292,6 +292,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
+ * - `sm.mem.consolidation.initial_buffer_size` <br>
+ *    The initial size of the consolidation buffers before growth. The buffers
+ *    will remain within the budgeted range.
+ *    **Default**: 10MB
  * - `sm.mem.consolidation.buffers_weight` <br>
  *    Weight used to split `sm.mem.total_budget` and assign to the
  *    consolidation buffers. The budget is split across 3 values,
