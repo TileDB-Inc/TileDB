@@ -49,6 +49,7 @@
 #include "tiledb/sm/filesystem/s3/STSCredentialsProvider.h"
 
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
+#include <aws/core/auth/LoginCredentialsProvider.h>
 #include <aws/core/auth/SSOCredentialsProvider.h>
 #include <aws/core/config/EC2InstanceProfileConfigLoader.h>
 #include <aws/core/platform/Environment.h>
@@ -80,6 +81,10 @@ DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain(
   // going to be added upstream soon with
   // https://github.com/aws/aws-sdk-cpp/pull/2860, let's not update it for now.
   AddProvider(make_shared<SSOCredentialsProvider>(HERE()));
+  if (clientConfig) {
+    AddProvider(make_shared<LoginCredentialsProvider>(
+        HERE(), clientConfig->credentialProviderConfig));
+  }
 
   // General HTTP Credentials (prev. known as ECS TaskRole credentials) only
   // available when ENVIRONMENT VARIABLE is set
