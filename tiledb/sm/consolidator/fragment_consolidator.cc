@@ -662,7 +662,7 @@ Status FragmentConsolidator::consolidate_internal(
   copy_array(query_r.get(), query_w.get(), cw);
 
   try {
-  // Finalize write query
+    // Finalize write query
     query_w->finalize();
   } catch (...) {
     if (resources_.vfs().is_dir(*new_fragment_uri))
