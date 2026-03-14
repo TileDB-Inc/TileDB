@@ -129,12 +129,10 @@ void StorageManagerCanonical::increment_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-Status StorageManagerCanonical::query_submit(Query* query) {
+void StorageManagerCanonical::query_submit(Query* query) {
   // Process the query
   QueryInProgress in_progress(this);
-  auto st = query->process();
-
-  return st;
+  query->process();
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {

@@ -158,7 +158,7 @@ void ArrayDimensionLabelQueries::process_data_queries() {
         auto& query = data_queries_[query_idx];
         try {
           query->init();
-          throw_if_not_ok(query->process());
+          query->process();
           return Status::Ok();
         } catch (const StatusException& err) {
           throw DimensionLabelQueryException(
@@ -180,7 +180,7 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
           if (range_query) {
             // Process the query.
             range_query->init();
-            throw_if_not_ok(range_query->process());
+            range_query->process();
             if (!range_query->completed()) {
               throw DimensionLabelQueryException(
                   "Range query for label '" + range_query->dim_label_name() +

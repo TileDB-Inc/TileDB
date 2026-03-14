@@ -106,7 +106,7 @@ class StorageManagerCanonical {
   bool cancellation_in_progress() const;
 
   /** Submits a query for (sync) execution. */
-  Status query_submit(Query* query);
+  void query_submit(Query* query);
 
  private:
   /* ********************************* */

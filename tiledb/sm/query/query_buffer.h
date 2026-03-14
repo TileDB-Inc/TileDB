@@ -45,6 +45,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+template <class T>
+using query_buffer_t = std::pair<T*, uint64_t*>;
+
 /** Contains the buffer(s) and buffer size(s) for some attribute/dimension. */
 class QueryBuffer {
  public:
@@ -208,6 +211,14 @@ class QueryBuffer {
   /*           PUBLIC METHODS         */
   /* ********************************* */
 
+  query_buffer_t<void> get_data_buffer(bool is_var) const {
+    if (is_var) {
+      return {buffer_var_, buffer_var_size_};
+    } else {
+      return {buffer_, buffer_size_};
+    }
+  }
+
   void set_data_buffer(void* data_buffer, uint64_t* size) {
     buffer_ = data_buffer;
     buffer_size_ = size;
@@ -220,10 +231,18 @@ class QueryBuffer {
     original_buffer_var_size_ = *size;
   }
 
+  query_buffer_t<uint64_t> get_offsets_buffer() const {
+    return {(uint64_t*)buffer_, buffer_size_};
+  }
+
   void set_offsets_buffer(void* offsets_buffer, uint64_t* size) {
     buffer_ = offsets_buffer;
     buffer_size_ = size;
     original_buffer_size_ = *size;
+  }
+
+  query_buffer_t<uint8_t> get_validity_buffer() const {
+    return {validity_vector_.buffer(), validity_vector_.buffer_size()};
   }
 
   void set_validity_buffer(ValidityVector&& validity_vector) {
