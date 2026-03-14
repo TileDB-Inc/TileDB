@@ -661,16 +661,17 @@ Status FragmentConsolidator::consolidate_internal(
   // Read from one array and write to the other
   copy_array(query_r.get(), query_w.get(), cw);
 
-  // Finalize write query
-  auto st = query_w->finalize();
-  if (!st.ok()) {
+  try {
+    // Finalize write query
+    query_w->finalize();
+  } catch (...) {
     if (resources_.vfs().is_dir(*new_fragment_uri))
       resources_.vfs().remove_dir(*new_fragment_uri);
-    return st;
+    throw;
   }
 
   // Write vacuum file
-  st = write_vacuum_file(
+  auto st = write_vacuum_file(
       array_for_reads->array_schema_latest().write_version(),
       array_for_reads->array_uri(),
       vac_uri,
@@ -696,7 +697,7 @@ void FragmentConsolidator::copy_array(
 
   do {
     // READ
-    throw_if_not_ok(query_r->submit());
+    query_r->submit();
 
     // If Consolidation cannot make any progress, throw. The first buffer will
     // always contain fixed size data, whether it is tile offsets for var size
@@ -712,7 +713,7 @@ void FragmentConsolidator::copy_array(
     set_query_buffers(query_w, cw);
 
     // WRITE
-    throw_if_not_ok(query_w->submit());
+    query_w->submit();
   } while (query_r->status() == QueryStatus::INCOMPLETE);
 }
 
@@ -742,7 +743,7 @@ Status FragmentConsolidator::create_queries(
       array_for_reads,
       nullopt,
       read_memory_budget));
-  throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
+  query_r->set_layout(Layout::GLOBAL_ORDER);
 
   // Dense consolidation will do a tile aligned read.
   if (dense) {
@@ -750,12 +751,12 @@ Status FragmentConsolidator::create_queries(
     auto& domain{array_for_reads->array_schema_latest().domain()};
     array_for_reads->array_schema_latest().current_domain().expand_to_tiles(
         domain, read_subarray);
-    throw_if_not_ok(query_r->set_subarray_unsafe(read_subarray));
+    query_r->set_subarray_unsafe(read_subarray);
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
   if (config_.with_timestamps_ && !dense) {
-    throw_if_not_ok(query_r->set_consolidation_with_timestamps());
+    query_r->set_consolidation_with_timestamps();
   }
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
@@ -775,11 +776,11 @@ Status FragmentConsolidator::create_queries(
       array_for_writes,
       fragment_name,
       write_memory_budget));
-  throw_if_not_ok(query_w->set_layout(Layout::GLOBAL_ORDER));
-  throw_if_not_ok(query_w->disable_checks_consolidation());
+  query_w->set_layout(Layout::GLOBAL_ORDER);
+  query_w->disable_checks_consolidation();
   query_w->set_fragment_size(config_.max_fragment_size_);
   if (array_for_reads->array_schema_latest().dense()) {
-    throw_if_not_ok(query_w->set_subarray_unsafe(subarray));
+    query_w->set_subarray_unsafe(subarray);
   }
 
   // Set the processed conditions on new fragment.
@@ -932,29 +933,25 @@ void FragmentConsolidator::set_query_buffers(
   // were written or not.
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
-      throw_if_not_ok(query->set_data_buffer(
-          attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+      query->set_data_buffer(
+          attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]);
       ++bid;
       if (attr->nullable()) {
-        throw_if_not_ok(query->set_validity_buffer(
-            attr->name(),
-            (uint8_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid]));
+        query->set_validity_buffer(
+            attr->name(), (uint8_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]);
         ++bid;
       }
     } else {
-      throw_if_not_ok(query->set_data_buffer(
+      query->set_data_buffer(
           attr->name(),
           (void*)&(*buffers)[bid + 1][0],
-          &(*buffer_sizes)[bid + 1]));
-      throw_if_not_ok(query->set_offsets_buffer(
-          attr->name(), (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+          &(*buffer_sizes)[bid + 1]);
+      query->set_offsets_buffer(
+          attr->name(), (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]);
       bid += 2;
       if (attr->nullable()) {
-        throw_if_not_ok(query->set_validity_buffer(
-            attr->name(),
-            (uint8_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid]));
+        query->set_validity_buffer(
+            attr->name(), (uint8_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]);
         ++bid;
       }
     }
@@ -964,39 +961,39 @@ void FragmentConsolidator::set_query_buffers(
       auto dim{array_schema.dimension_ptr(d)};
       auto dim_name = dim->name();
       if (!dim->var_size()) {
-        throw_if_not_ok(query->set_data_buffer(
-            dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+        query->set_data_buffer(
+            dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]);
         ++bid;
       } else {
-        throw_if_not_ok(query->set_data_buffer(
+        query->set_data_buffer(
             dim_name,
             (void*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1]));
-        throw_if_not_ok(query->set_offsets_buffer(
-            dim_name, (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+            &(*buffer_sizes)[bid + 1]);
+        query->set_offsets_buffer(
+            dim_name, (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]);
         bid += 2;
       }
     }
   }
 
   if (config_.with_timestamps_ && !dense) {
-    throw_if_not_ok(query->set_data_buffer(
+    query->set_data_buffer(
         constants::timestamps,
         (void*)&(*buffers)[bid][0],
-        &(*buffer_sizes)[bid]));
+        &(*buffer_sizes)[bid]);
     ++bid;
   }
 
   if (config_.with_delete_meta_ && !dense) {
-    throw_if_not_ok(query->set_data_buffer(
+    query->set_data_buffer(
         constants::delete_timestamps,
         (void*)&(*buffers)[bid][0],
-        &(*buffer_sizes)[bid]));
+        &(*buffer_sizes)[bid]);
     ++bid;
-    throw_if_not_ok(query->set_data_buffer(
+    query->set_data_buffer(
         constants::delete_condition_index,
         (void*)&(*buffers)[bid][0],
-        &(*buffer_sizes)[bid]));
+        &(*buffer_sizes)[bid]);
     ++bid;
   }
 }

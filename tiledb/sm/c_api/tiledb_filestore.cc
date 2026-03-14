@@ -263,7 +263,7 @@ int32_t tiledb_filestore_uri_import(
       context.cancellation_source(),
       context.storage_manager(),
       array);
-  throw_if_not_ok(query.set_layout(tiledb::sm::Layout::GLOBAL_ORDER));
+  query.set_layout(tiledb::sm::Layout::GLOBAL_ORDER);
   std::vector<std::byte> buffer(buffer_size);
 
   tiledb::sm::Subarray subarray(
@@ -289,7 +289,7 @@ int32_t tiledb_filestore_uri_import(
         context.cancellation_source(),
         context.storage_manager(),
         array);
-    throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
+    query.set_layout(tiledb::sm::Layout::ROW_MAJOR);
     tiledb::sm::Subarray subarray_cloud_fix(
         array.get(), nullptr, context.resources().logger(), true);
 
@@ -299,11 +299,11 @@ int32_t tiledb_filestore_uri_import(
     subarray_cloud_fix.add_range(0, std::move(subarray_range_cloud_fix));
     query.set_subarray(subarray_cloud_fix);
     uint64_t data_buff_len = end - start + 1;
-    throw_if_not_ok(query.set_data_buffer(
+    query.set_data_buffer(
         tiledb::sm::constants::filestore_attribute_name,
         buffer.data(),
-        &data_buff_len));
-    throw_if_not_ok(query.submit());
+        &data_buff_len);
+    query.submit();
   };
 
   auto read_wrapper =
@@ -336,11 +336,11 @@ int32_t tiledb_filestore_uri_import(
     if (is_tiledb_uri) {
       tiledb_cloud_fix(start_range, end_cloud_fix);
     } else {
-      throw_if_not_ok(query.set_data_buffer(
+      query.set_data_buffer(
           tiledb::sm::constants::filestore_attribute_name,
           buffer.data(),
-          &query_buffer_len));
-      throw_if_not_ok(query.submit());
+          &query_buffer_len);
+      query.submit();
     }
 
     start_range += readlen;
@@ -355,7 +355,7 @@ int32_t tiledb_filestore_uri_import(
 
   if (!is_tiledb_uri) {
     // Dump the fragment on disk
-    throw_if_not_ok(query.finalize());
+    query.finalize();
   }
   throw_if_not_ok(vfs.close_file(tiledb::sm::URI(file_uri)));
 
@@ -422,7 +422,7 @@ int32_t tiledb_filestore_uri_export(
         context.cancellation_source(),
         context.storage_manager(),
         array);
-    throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
+    query.set_layout(tiledb::sm::Layout::ROW_MAJOR);
     query.set_subarray(subarray);
 
     // Cloud compatibility hack. Currently stored tiledb file arrays have a
@@ -435,17 +435,17 @@ int32_t tiledb_filestore_uri_export(
             ->attribute(tiledb::sm::constants::filestore_attribute_name)
             ->type();
     if (attr_type == tiledb::sm::Datatype::UINT8) {
-      throw_if_not_ok(query.set_data_buffer(
+      query.set_data_buffer(
           tiledb::sm::constants::filestore_attribute_name,
           reinterpret_cast<uint8_t*>(data.data()),
-          &write_size));
+          &write_size);
     } else {
-      throw_if_not_ok(query.set_data_buffer(
+      query.set_data_buffer(
           tiledb::sm::constants::filestore_attribute_name,
           data.data(),
-          &write_size));
+          &write_size);
     }
-    throw_if_not_ok(query.submit());
+    query.submit();
 
     vfs.write(
         tiledb::sm::URI(file_uri),
@@ -528,7 +528,7 @@ int32_t tiledb_filestore_buffer_import(
       context.cancellation_source(),
       context.storage_manager(),
       array);
-  throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
+  query.set_layout(tiledb::sm::Layout::ROW_MAJOR);
 
   tiledb::sm::Subarray subarray(
       array.get(), nullptr, context.resources().logger(), true);
@@ -540,9 +540,9 @@ int32_t tiledb_filestore_buffer_import(
 
   query.set_subarray(subarray);
   uint64_t size_tmp = size;
-  throw_if_not_ok(query.set_data_buffer(
-      tiledb::sm::constants::filestore_attribute_name, buf, &size_tmp));
-  throw_if_not_ok(query.submit());
+  query.set_data_buffer(
+      tiledb::sm::constants::filestore_attribute_name, buf, &size_tmp);
+  query.submit();
 
   throw_if_not_ok(array->close());
 
@@ -601,12 +601,12 @@ int32_t tiledb_filestore_buffer_export(
       context.cancellation_source(),
       context.storage_manager(),
       array);
-  throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
+  query.set_layout(tiledb::sm::Layout::ROW_MAJOR);
   query.set_subarray(subarray);
   uint64_t size_tmp = size;
-  throw_if_not_ok(query.set_data_buffer(
-      tiledb::sm::constants::filestore_attribute_name, buf, &size_tmp));
-  throw_if_not_ok(query.submit());
+  query.set_data_buffer(
+      tiledb::sm::constants::filestore_attribute_name, buf, &size_tmp);
+  query.submit();
 
   throw_if_not_ok(array->close());
 
