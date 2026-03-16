@@ -46,7 +46,7 @@ jobs:
       version: ''
 
   Build-R-Binaries:
-    uses: ./.github/workflows/build-rtools40.yml
+    uses: ./.github/workflows/build-rtools.yml
 
   Test-Release-Artifacts:
     needs:
