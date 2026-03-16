@@ -51,8 +51,8 @@ namespace tiledb::sm::filesystem::s3 {
 /**
  * Creates an AWSCredentialsProviderChain which uses in order
  * EnvironmentAWSCredentialsProvider, ProfileConfigFileAWSCredentialsProvider,
- * ProcessCredentialsProvider, STSAssumeRoleWebIdentityCredentialsProvider and
- * SSOCredentialsProvider.
+ * ProcessCredentialsProvider, STSAssumeRoleWebIdentityCredentialsProvider,
+ * SSOCredentialsProvider and LoginCredentialsProvider.
  */
 class DefaultAWSCredentialsProviderChain
     : public Aws::Auth::AWSCredentialsProviderChain {
@@ -60,8 +60,8 @@ class DefaultAWSCredentialsProviderChain
   /**
    * Initializes the provider chain with EnvironmentAWSCredentialsProvider,
    * ProfileConfigFileAWSCredentialsProvider, ProcessCredentialsProvider,
-   * STSAssumeRoleWebIdentityCredentialsProvider and SSOCredentialsProvider in
-   * that order.
+   * STSAssumeRoleWebIdentityCredentialsProvider, SSOCredentialsProvider and
+   * LoginCredentialsProvider (if clientConfig is not null) in that order.
    *
    * @param clientConfig Optional client configuration to use.
    */
