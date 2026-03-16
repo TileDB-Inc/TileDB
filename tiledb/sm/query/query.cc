@@ -561,7 +561,7 @@ query_buffer_t<void> Query::get_data_buffer(const char* name) const {
   if (it != buffers_.end()) {
     // Attribute or dimension
     is_var = array_schema_->var_size(name);
-  } else if (it = label_buffers_.find(name); it != buffers_.end()) {
+  } else if (it = label_buffers_.find(name); it != label_buffers_.end()) {
     // Dimension label
     is_var = array_schema_->dimension_label(name).is_var();
   } else {
@@ -1196,6 +1196,8 @@ void Query::set_offsets_buffer(
 
     aggregate_buffers_[name].set_offsets_buffer(
         buffer_offsets, buffer_offsets_size);
+
+    return;
   }
 
   // For easy reference
