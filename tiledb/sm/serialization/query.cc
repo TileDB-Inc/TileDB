@@ -1108,7 +1108,7 @@ Status reader_from_capnp(
   Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  query->set_subarray_unsafe(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1119,7 +1119,7 @@ Status reader_from_capnp(
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition = condition_from_capnp(condition_reader);
-    RETURN_NOT_OK(query->set_condition(condition));
+    query->set_condition(condition);
   }
 
   // If cap'n proto object has stats set it on c++ object
@@ -1146,7 +1146,7 @@ Status index_reader_from_capnp(
   Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  query->set_subarray_unsafe(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1157,7 +1157,7 @@ Status index_reader_from_capnp(
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition = condition_from_capnp(condition_reader);
-    RETURN_NOT_OK(query->set_condition(condition));
+    query->set_condition(condition);
   }
 
   // If cap'n proto object has stats set it on c++ object
@@ -1185,7 +1185,7 @@ Status dense_reader_from_capnp(
   Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  query->set_subarray_unsafe(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1196,7 +1196,7 @@ Status dense_reader_from_capnp(
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition = condition_from_capnp(condition_reader);
-    RETURN_NOT_OK(query->set_condition(condition));
+    query->set_condition(condition);
   }
 
   // If cap'n proto object has stats set it on c++ object
@@ -1216,7 +1216,7 @@ Status delete_from_capnp(
   if (delete_reader.hasCondition()) {
     auto condition_reader = delete_reader.getCondition();
     QueryCondition condition = condition_from_capnp(condition_reader);
-    RETURN_NOT_OK(query->set_condition(condition));
+    query->set_condition(condition);
   }
 
   // If cap'n proto object has stats set it on c++ object
@@ -1617,7 +1617,7 @@ Status query_from_capnp(
   // Make sure we have the right query strategy in place.
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
-  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+  query->reset_strategy_with_layout(layout, force_legacy_reader);
 
   // Reset QueryStatus to UNINITIALIZED
   // Note: this is a pre-C.41 hack. At present, Strategy creation is the point
@@ -1719,28 +1719,23 @@ Status query_from_capnp(
 
       if (var_size) {
         if (!nullable) {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_offsets_buffer(
-              name.c_str(),
-              &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr));
+          std::tie(existing_buffer, existing_buffer_size_ptr) =
+              query->get_data_buffer(name.c_str());
+          std::tie(existing_offset_buffer, existing_offset_buffer_size_ptr) =
+              query->get_offsets_buffer(name.c_str());
 
           if (existing_offset_buffer_size_ptr != nullptr)
             existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_offsets_buffer(
-              name.c_str(),
-              &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_validity_buffer(
-              name.c_str(),
-              &existing_validity_buffer,
-              &existing_validity_buffer_size_ptr));
+          std::tie(existing_buffer, existing_buffer_size_ptr) =
+              query->get_data_buffer(name.c_str());
+          std::tie(existing_offset_buffer, existing_offset_buffer_size_ptr) =
+              query->get_offsets_buffer(name.c_str());
+          std::tie(
+              existing_validity_buffer, existing_validity_buffer_size_ptr) =
+              query->get_validity_buffer(name.c_str());
 
           if (existing_offset_buffer_size_ptr != nullptr)
             existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
@@ -1751,18 +1746,17 @@ Status query_from_capnp(
         }
       } else {
         if (!nullable) {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+          std::tie(existing_buffer, existing_buffer_size_ptr) =
+              query->get_data_buffer(name.c_str());
 
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_validity_buffer(
-              name.c_str(),
-              &existing_validity_buffer,
-              &existing_validity_buffer_size_ptr));
+          std::tie(existing_buffer, existing_buffer_size_ptr) =
+              query->get_data_buffer(name.c_str());
+          std::tie(
+              existing_validity_buffer, existing_validity_buffer_size_ptr) =
+              query->get_validity_buffer(name.c_str());
 
           if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
@@ -2003,40 +1997,40 @@ Status query_from_capnp(
         attr_state->var_len_data.swap(varlen_buff);
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
-          throw_if_not_ok(query->set_data_buffer(
+          query->set_data_buffer(
               name,
               attr_state->var_len_data.data(),
               &attr_state->var_len_size,
               allocate_buffers,
-              true));
-          throw_if_not_ok(query->set_offsets_buffer(
+              true);
+          query->set_offsets_buffer(
               name,
               attr_state->fixed_len_data.data_as<uint64_t>(),
               &attr_state->fixed_len_size,
               allocate_buffers,
-              true));
+              true);
           if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
+            query->set_validity_buffer(
                 name,
                 attr_state->validity_len_data.data_as<uint8_t>(),
                 &attr_state->validity_len_size,
                 allocate_buffers,
-                true));
+                true);
           }
         } else {
-          throw_if_not_ok(query->set_data_buffer(
+          query->set_data_buffer(
               name,
               attr_state->fixed_len_data.data(),
               &attr_state->fixed_len_size,
               allocate_buffers,
-              true));
+              true);
           if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
+            query->set_validity_buffer(
                 name,
                 attr_state->validity_len_data.data_as<uint8_t>(),
                 &attr_state->validity_len_size,
                 allocate_buffers,
-                true));
+                true);
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -2064,25 +2058,25 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          throw_if_not_ok(query->set_data_buffer(
+          query->set_data_buffer(
               name,
               varlen_data,
               &attr_state->var_len_size,
               allocate_buffers,
-              true));
-          throw_if_not_ok(query->set_offsets_buffer(
+              true);
+          query->set_offsets_buffer(
               name,
               offsets,
               &attr_state->fixed_len_size,
               allocate_buffers,
-              true));
+              true);
           if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
+            query->set_validity_buffer(
                 name,
                 validity,
                 &attr_state->validity_len_size,
                 allocate_buffers,
-                true));
+                true);
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -2104,15 +2098,15 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          throw_if_not_ok(query->set_data_buffer(
-              name, data, &attr_state->fixed_len_size, allocate_buffers, true));
+          query->set_data_buffer(
+              name, data, &attr_state->fixed_len_size, allocate_buffers, true);
           if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
+            query->set_validity_buffer(
                 name,
                 validity,
                 &attr_state->validity_len_size,
                 allocate_buffers,
-                true));
+                true);
           }
         }
       } else {
@@ -2210,7 +2204,7 @@ Status query_from_capnp(
         Subarray subarray(array, layout, query->stats(), dummy_logger, true);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-        RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+        query->set_subarray_unsafe(subarray);
       }
     }
   } else {
@@ -2671,7 +2665,7 @@ Status query_est_result_size_reader_to_capnp(
   return Status::Ok();
 }
 
-Status query_est_result_size_reader_from_capnp(
+void query_est_result_size_reader_from_capnp(
     const capnp::EstimatedResultSize::Reader& est_result_size_reader,
     Query* const query) {
   using namespace tiledb::sm;
@@ -2703,7 +2697,7 @@ Status query_est_result_size_reader_from_capnp(
             memory_size.getSizeValidity()});
   }
 
-  return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);
+  query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);
 }
 
 Status query_est_result_size_serialize(
@@ -2761,8 +2755,8 @@ Status query_est_result_size_deserialize(
             serialized_buffer, estimated_result_size_builder);
         capnp::EstimatedResultSize::Reader estimated_result_size_reader =
             estimated_result_size_builder.asReader();
-        RETURN_NOT_OK(query_est_result_size_reader_from_capnp(
-            estimated_result_size_reader, query));
+        query_est_result_size_reader_from_capnp(
+            estimated_result_size_reader, query);
         break;
       }
       case SerializationType::CAPNP: {
@@ -2773,8 +2767,8 @@ Status query_est_result_size_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::EstimatedResultSize::Reader estimated_result_size_reader =
             reader.getRoot<capnp::EstimatedResultSize>();
-        RETURN_NOT_OK(query_est_result_size_reader_from_capnp(
-            estimated_result_size_reader, query));
+        query_est_result_size_reader_from_capnp(
+            estimated_result_size_reader, query);
         break;
       }
       default: {
@@ -3128,12 +3122,12 @@ void ordered_dim_label_reader_from_capnp(
   Subarray subarray(array, layout, query->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   throw_if_not_ok(subarray_from_capnp(subarray_reader, &subarray));
-  throw_if_not_ok(query->set_subarray_unsafe(subarray));
+  query->set_subarray_unsafe(subarray);
 
   // OrderedDimLabelReader requires an initialized subarray for construction.
   query->set_dimension_label_ordered_read(
       reader_reader.getDimLabelIncreasing());
-  throw_if_not_ok(query->reset_strategy_with_layout(layout, false));
+  query->reset_strategy_with_layout(layout, false);
   reader = dynamic_cast<OrderedDimLabelReader*>(query->strategy(true));
 
   // If cap'n proto object has stats set it on c++ object

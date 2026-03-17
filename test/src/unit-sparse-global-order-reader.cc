@@ -3603,9 +3603,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
   if (instance.condition.has_value()) {
     tiledb::sm::QueryCondition qc(instance.condition->get()->clone());
-    const auto rc =
-        query->query_->set_condition(qc);  // SAFETY: this performs a deep copy
-    ASSERTER(rc.to_string() == "Ok");
+    query->query_->set_condition(qc);  // SAFETY: this performs a deep copy
   }
 
   // Prepare output buffer

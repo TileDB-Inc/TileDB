@@ -470,7 +470,7 @@ int32_t tiledb_query_set_data_buffer(
     return TILEDB_ERR;
 
   // Set attribute buffer
-  throw_if_not_ok(query->query_->set_data_buffer(name, buffer, buffer_size));
+  query->query_->set_data_buffer(name, buffer, buffer_size);
 
   return TILEDB_OK;
 }
@@ -485,8 +485,7 @@ int32_t tiledb_query_set_offsets_buffer(
     return TILEDB_ERR;
 
   // Set attribute buffer
-  throw_if_not_ok(query->query_->set_offsets_buffer(
-      name, buffer_offsets, buffer_offsets_size));
+  query->query_->set_offsets_buffer(name, buffer_offsets, buffer_offsets_size);
 
   return TILEDB_OK;
 }
@@ -501,8 +500,8 @@ int32_t tiledb_query_set_validity_buffer(
     return TILEDB_ERR;
 
   // Set attribute buffer
-  throw_if_not_ok(query->query_->set_validity_buffer(
-      name, buffer_validity, buffer_validity_size));
+  query->query_->set_validity_buffer(
+      name, buffer_validity, buffer_validity_size);
 
   return TILEDB_OK;
 }
@@ -518,7 +517,7 @@ int32_t tiledb_query_get_data_buffer(
     return TILEDB_ERR;
 
   // Get attribute buffer
-  throw_if_not_ok(query->query_->get_data_buffer(name, buffer, buffer_size));
+  std::tie(*buffer, *buffer_size) = query->query_->get_data_buffer(name);
 
   return TILEDB_OK;
 }
@@ -534,7 +533,7 @@ int32_t tiledb_query_get_offsets_buffer(
     return TILEDB_ERR;
 
   // Get attribute buffer
-  throw_if_not_ok(query->query_->get_offsets_buffer(name, buffer, buffer_size));
+  std::tie(*buffer, *buffer_size) = query->query_->get_offsets_buffer(name);
 
   return TILEDB_OK;
 }
@@ -550,8 +549,7 @@ int32_t tiledb_query_get_validity_buffer(
     return TILEDB_ERR;
 
   // Get attribute buffer
-  throw_if_not_ok(
-      query->query_->get_validity_buffer(name, buffer, buffer_size));
+  std::tie(*buffer, *buffer_size) = query->query_->get_validity_buffer(name);
 
   return TILEDB_OK;
 }
@@ -563,8 +561,7 @@ int32_t tiledb_query_set_layout(
     return TILEDB_ERR;
 
   // Set layout
-  throw_if_not_ok(
-      query->query_->set_layout(static_cast<tiledb::sm::Layout>(layout)));
+  query->query_->set_layout(static_cast<tiledb::sm::Layout>(layout));
 
   return TILEDB_OK;
 }
@@ -579,7 +576,7 @@ int32_t tiledb_query_set_condition(
     return TILEDB_ERR;
 
   // Set layout
-  throw_if_not_ok(query->query_->set_condition(*cond->query_condition_));
+  query->query_->set_condition(*cond->query_condition_);
 
   return TILEDB_OK;
 }
@@ -594,7 +591,7 @@ int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     return TILEDB_ERR;
 
   // Flush query
-  throw_if_not_ok(query->query_->finalize());
+  query->query_->finalize();
 
   return TILEDB_OK;
 }
@@ -609,7 +606,7 @@ int32_t tiledb_query_submit_and_finalize(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(query->query_->submit_and_finalize());
+  query->query_->submit_and_finalize();
 
   return TILEDB_OK;
 }
@@ -627,7 +624,7 @@ int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(query->query_->submit());
+  query->query_->submit();
 
   return TILEDB_OK;
 }
@@ -786,7 +783,7 @@ int32_t tiledb_query_get_fragment_num(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(query->query_->get_written_fragment_num(num));
+  *num = query->query_->get_written_fragment_num();
 
   return TILEDB_OK;
 }
@@ -799,7 +796,7 @@ int32_t tiledb_query_get_fragment_uri(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(query->query_->get_written_fragment_uri(idx, uri));
+  *uri = query->query_->get_written_fragment_uri(idx).c_str();
 
   return TILEDB_OK;
 }
@@ -813,8 +810,7 @@ int32_t tiledb_query_get_fragment_timestamp_range(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(
-      query->query_->get_written_fragment_timestamp_range(idx, t1, t2));
+  std::tie(*t1, *t2) = query->query_->get_written_fragment_timestamp_range(idx);
 
   return TILEDB_OK;
 }
@@ -855,13 +851,7 @@ int32_t tiledb_query_add_update_value(
     return TILEDB_ERR;
   }
 
-  // Add update value.
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          query->query_->add_update_value(
-              field_name, update_value, update_value_size))) {
-    return TILEDB_ERR;
-  }
+  query->query_->add_update_value(field_name, update_value, update_value_size);
 
   // Success
   return TILEDB_OK;

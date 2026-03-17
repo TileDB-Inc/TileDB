@@ -315,7 +315,7 @@ TEST_CASE_METHOD(
   // Try to rewrite an attribute, will throw an exception.
   CHECK_THROWS_WITH(
       write_sparse_a1(*query, {8, 9, 10, 11, 12, 13, 14, 15}),
-      "[TileDB::Query] Error: Buffer a1 was already written");
+      "Query: Buffer a1 was already written");
 
   write_sparse_a2(*query, {8, 9, 10, 11, 12, 13, 14, 15});
 

@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/query_status_details.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -270,17 +271,16 @@ class Query {
 
  public:
   /** Retrieves the number of written fragments. */
-  Status get_written_fragment_num(uint32_t* num) const;
+  uint32_t get_written_fragment_num() const;
 
   /** Retrieves the URI of the written fragment with the input index. */
-  Status get_written_fragment_uri(uint32_t idx, const char** uri) const;
+  const URI& get_written_fragment_uri(uint32_t idx) const;
 
   /**
    * Retrieves the timestamp range [t1,t2] of the written fragment with the
    * input index.
    */
-  Status get_written_fragment_timestamp_range(
-      uint32_t idx, uint64_t* t1, uint64_t* t2) const;
+  timestamp_range_type get_written_fragment_timestamp_range(uint32_t idx) const;
 
   /** Returns the array's smart pointer. */
   inline shared_ptr<Array> array_shared() {
@@ -337,60 +337,48 @@ class Query {
    * Finalizes the query, flushing all internal state.
    * Applicable to write queries only.
    */
-  Status finalize();
+  void finalize();
 
   /**
    * Submits and finalizes a query, flushing all internal state. Applicable
    * only to global layout writes, returns an error otherwise.
    */
-  Status submit_and_finalize();
+  void submit_and_finalize();
 
   /**
    * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
    *     the special default attribute/dimension.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
+   * @return A pair of the pointers to the data, and to the size value.
    */
-  Status get_data_buffer(
-      const char* name, void** buffer, uint64_t** buffer_size) const;
+  query_buffer_t<void> get_data_buffer(const char* name) const;
 
   /**
    * Retrieves the offset buffer for a var-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
    * the special default attribute/dimension.
-   * @param buffer_off The offsets buffer to be retrieved. This buffer holds
-   * the starting offsets of each cell value in the data buffer.
-   * @param buffer_off_size A pointer to the buffer size to be retrieved.
-   * @return Status
+   * @return A pair of the pointers to the offsets, and to the size value. This
+   * buffer holds the starting offsets of each cell value in the data buffer.
    */
-  Status get_offsets_buffer(
-      const char* name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size) const;
+  query_buffer_t<uint64_t> get_offsets_buffer(const char* name) const;
 
   /**
    * Retrieves the validity buffer for a nullable attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
    * the special default attribute/dimension.
-   * @param buffer_validity_bytemap The buffer that either have the validity
-   * bytemap associated with the input data to be written, or will hold the
-   * validity bytemap to be read.
-   * @param buffer_validity_bytemap_size In the case of writes, this is the size
-   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
-   * contains the allocated size of `buffer_validity_bytemap`, but after the
+   * @return A pair of the pointers to the validity buffer, and to the size
+   * value. The buffer will either have the validity bytemap associated with the
+   * input data to be written, or will hold the validity bytemap to be read. The
+   * size pointer, in the case of writes, will contain the size of
+   * `buffer_validity_bytemap` in bytes, and in the case of reads, it will
+   * contain the allocated size of `buffer_validity_bytemap`, but after the
    * termination of the query it will contain the size of the useful (read)
    * data in `buffer_validity_bytemap`.
-   * @return Status
    */
-  Status get_validity_buffer(
-      const char* name,
-      uint8_t** buffer_validity_bytemap,
-      uint64_t** buffer_validity_bytemap_size) const;
+  query_buffer_t<uint8_t> get_validity_buffer(const char* name) const;
 
   /**
    * Returns the serialization state associated with the given attribute.
@@ -460,7 +448,7 @@ class Query {
   bool uses_dimension_labels() const;
 
   /** Processes a query. */
-  Status process();
+  void process();
 
   /** Gets the strategy of the query. */
   IQueryStrategy* strategy(bool skip_checks_serialization = false);
@@ -473,18 +461,18 @@ class Query {
    *    requested it.
    * @return Status
    */
-  Status reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
+  void reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
    * only to writes. This option will supercede the config.
    */
-  Status disable_checks_consolidation();
+  void disable_checks_consolidation();
 
   /**
    * Enables consolidation with timestamps.
    */
-  Status set_consolidation_with_timestamps();
+  void set_consolidation_with_timestamps();
 
   /**
    * Set the processed conditions for writes.
@@ -526,9 +514,8 @@ class Query {
    *
    * @param buffer The buffer that has the input data to be written.
    * @param buffer_size The size of `buffer` in bytes.
-   * @return Status
    */
-  Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
+  void set_coords_buffer(void* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the data for a fixed/var-sized attribute/dimension.
@@ -542,9 +529,8 @@ class Query {
    * allowed.
    * @param serialization_allow_new_attr If true, setting new attributes
    * is allowed in INITIALIZED state
-   * @return Status
    */
-  Status set_data_buffer(
+  void set_data_buffer(
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
@@ -581,9 +567,8 @@ class Query {
    * allowed.
    * @param serialization_allow_new_attr If true, setting new attributes
    * is allowed in INITIALIZED state
-   * @return Status
    */
-  Status set_offsets_buffer(
+  void set_offsets_buffer(
       const std::string& name,
       uint64_t* const buffer_offsets,
       uint64_t* const buffer_offsets_size,
@@ -606,9 +591,8 @@ class Query {
    * allowed.
    * @param serialization_allow_new_attr If true, setting new attributes
    * is allowed in INITIALIZED state
-   * @return Status
    */
-  Status set_validity_buffer(
+  void set_validity_buffer(
       const std::string& name,
       uint8_t* const buffer_validity_bytemap,
       uint64_t* const buffer_validity_bytemap_size,
@@ -627,24 +611,22 @@ class Query {
    *
    * @param est_result_size map to set
    * @param max_mem_size map to set
-   * @return Status
    */
-  Status set_est_result_size(
+  void set_est_result_size(
       std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
    * Sets the cell layout of the query.
    */
-  Status set_layout(Layout layout);
+  void set_layout(Layout layout);
 
   /**
    * Sets the condition for filtering results in a read query.
    *
    * @param condition The condition object.
-   * @return Status
    */
-  Status set_condition(const QueryCondition& condition);
+  void set_condition(const QueryCondition& condition);
 
   /**
    * Adds an update value for an update query.
@@ -654,7 +636,7 @@ class Query {
    * @param update_value_size The byte size of `update_value`.
    * @return Status
    */
-  Status add_update_value(
+  void add_update_value(
       const char* field_name,
       const void* update_value,
       uint64_t update_value_size);
@@ -700,10 +682,10 @@ class Query {
   void set_subarray(const tiledb::sm::Subarray& subarray);
 
   /** Sets the query subarray, without performing any checks. */
-  Status set_subarray_unsafe(const Subarray& subarray);
+  void set_subarray_unsafe(const Subarray& subarray);
 
   /** Sets the query subarray, without performing any checks. */
-  Status set_subarray_unsafe(const NDRange& subarray);
+  void set_subarray_unsafe(const NDRange& subarray);
 
   /**
    * Sets the query subarray without performing any checks.
@@ -715,7 +697,7 @@ class Query {
   void set_subarray_unsafe(const void* subarray);
 
   /** Submits the query to the storage manager. */
-  Status submit();
+  void submit();
 
   /** Returns the query status. */
   QueryStatus status() const;
@@ -1165,20 +1147,19 @@ class Query {
    *
    * @param skip_checks_serialization Skip checks during serialization.
    */
-  Status create_strategy(bool skip_checks_serialization = false);
+  void create_strategy(bool skip_checks_serialization = false);
 
-  Status check_set_fixed_buffer(const std::string& name);
+  void check_set_fixed_buffer(const std::string& name);
 
   /** Checks if the buffers names have been appropriately set for the query. */
-  Status check_buffer_names();
+  void check_buffer_names();
 
   /**
    * Internal routine for checking the completeness of all attribute
    * and dimensions buffers. Iteratively searches that all attributes &
    * dimensions buffers have been set correctly
-   * @return Status
    */
-  Status check_buffers_correctness();
+  void check_buffers_correctness();
 
   /**
    * Returns true if only querying dimension labels.
@@ -1195,7 +1176,7 @@ class Query {
    * only for remote global order writes and it should enforce tile alignment
    * for both dense and sparse arrays.
    */
-  Status check_tile_alignment() const;
+  void check_tile_alignment() const;
 
   /**
    * Reset coord buffer markers at end of a global write submit.

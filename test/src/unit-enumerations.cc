@@ -2488,7 +2488,7 @@ TEST_CASE_METHOD(
       ctx_.cancellation_source(),
       ctx_.storage_manager(),
       array);
-  throw_if_not_ok(q1.set_condition(qc1));
+  q1.set_condition(qc1);
 
   Query q2(
       ctx_.resources(),
@@ -2532,7 +2532,7 @@ TEST_CASE_METHOD(
       ctx_.cancellation_source(),
       ctx_.storage_manager(),
       array);
-  throw_if_not_ok(q1.set_condition(qc3));
+  q1.set_condition(qc3);
 
   Query q2(
       ctx_.resources(),
