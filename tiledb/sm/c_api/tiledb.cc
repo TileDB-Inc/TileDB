@@ -554,12 +554,12 @@ int32_t tiledb_query_get_validity_buffer(
   return TILEDB_OK;
 }
 
-int32_t tiledb_query_reset_buffers(tiledb_query_t* query) {
+int32_t tiledb_query_unset_buffers(tiledb_query_t* query) {
   if (query == nullptr) {
     return TILEDB_ERR;
   }
 
-  query->query_->reset_buffers();
+  query->query_->unset_buffers();
 
   return TILEDB_OK;
 }
@@ -2759,8 +2759,8 @@ CAPI_INTERFACE(
       ctx, query, name, buffer, buffer_size);
 }
 
-CAPI_INTERFACE(query_reset_buffers, tiledb_query_t* query) {
-  return api_entry_plain<tiledb::api::tiledb_query_reset_buffers>(query);
+CAPI_INTERFACE(query_unset_buffers, tiledb_query_t* query) {
+  return api_entry_plain<tiledb::api::tiledb_query_unset_buffers>(query);
 }
 
 CAPI_INTERFACE(

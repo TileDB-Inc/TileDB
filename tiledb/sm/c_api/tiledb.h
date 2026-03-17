@@ -557,7 +557,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
     uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
- * Clears all buffers set by previous calls to tiledb_query_set_data_buffer,
+ * Unsets all buffers set by previous calls to tiledb_query_set_data_buffer,
  * tiledb_query_set_offsets_buffer, and tiledb_query_set_validity_buffer,
  * resetting the query to a state as if no buffers had been set.
  *
@@ -569,7 +569,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error. The function will
  * return an error only if the query pointer is invalid.
  */
-TILEDB_EXPORT int32_t tiledb_query_reset_buffers(tiledb_query_t* query)
+TILEDB_EXPORT int32_t tiledb_query_unset_buffers(tiledb_query_t* query)
     TILEDB_NOEXCEPT;
 
 /**

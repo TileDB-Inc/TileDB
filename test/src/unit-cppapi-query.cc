@@ -348,8 +348,8 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: Test reset_buffers", "[cppapi][query][reset_buffers]") {
-  const std::string array_name = "reset_buffers_array";
+TEST_CASE("C++ API: Test unset buffers", "[cppapi][query][unset_buffers]") {
+  const std::string array_name = "unset_buffers_array";
   Context ctx;
   VFS vfs(ctx);
 
@@ -384,7 +384,7 @@ TEST_CASE("C++ API: Test reset_buffers", "[cppapi][query][reset_buffers]") {
 
   CHECK(query.result_buffer_elements_nullable().size() == 3);
   CHECK(query.ptr().get()->query_->buffers_count() == 3);
-  REQUIRE_NOTHROW(query.reset_buffers());
+  REQUIRE_NOTHROW(query.unset_buffers());
   CHECK(query.result_buffer_elements_nullable().size() == 0);
   CHECK(query.ptr().get()->query_->buffers_count() == 0);
 

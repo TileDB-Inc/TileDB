@@ -930,15 +930,15 @@ class Query {
   }
 
   /**
-   * Clears all buffers set by previous calls to tiledb_query_set_data_buffer,
+   * Unsets all buffers set by previous calls to tiledb_query_set_data_buffer,
    * tiledb_query_set_offsets_buffer, and tiledb_query_set_validity_buffer,
    * resetting the query to a state as if no buffers had been set.
    *
    * This function can be useful to call before releasing the memory from the
    * query buffers, providing additional memory safety.
    */
-  void reset_buffers() {
-    impl::check_return(tiledb_query_reset_buffers(query_.get()));
+  void unset_buffers() {
+    impl::check_return(tiledb_query_unset_buffers(query_.get()));
     buff_sizes_.clear();
     element_sizes_.clear();
   }

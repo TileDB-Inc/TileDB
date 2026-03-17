@@ -1342,7 +1342,7 @@ size_t Query::buffers_count() const {
          (has_zipped_coords_buffer_ ? 1 : 0);
 }
 
-void Query::reset_buffers() {
+void Query::unset_buffers() {
   buffers_.clear();
   label_buffers_.clear();
   aggregate_buffers_.clear();

@@ -603,11 +603,11 @@ class Query {
   size_t buffers_count() const;
 
   /**
-   * Clears all buffers set by previous calls to set_data_buffer,
+   * Unsets all buffers set by previous calls to set_data_buffer,
    * set_offsets_buffer, and set_validity_buffer, resetting the query to a
    * state as if no buffers had been set.
    */
-  void reset_buffers();
+  void unset_buffers();
 
   /**
    * Get the config of the query.
