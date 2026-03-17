@@ -600,6 +600,13 @@ class Query {
       const bool serialization_allow_new_attr = false);
 
   /**
+   * Clears all buffers set by previous calls to set_data_buffer,
+   * set_offsets_buffer, and set_validity_buffer, resetting the query to a
+   * state as if no buffers had been set.
+   */
+  void reset_buffers();
+
+  /**
    * Get the config of the query.
    *
    * @return Config from query

@@ -40,6 +40,7 @@
 #include <array>
 #include <functional>
 #include <iostream>
+#include <sstream>
 
 namespace tiledb {
 
@@ -392,6 +393,15 @@ inline void check_config_error(tiledb_error_t* err) {
     std::string msg = "Config Error: " + std::string(msg_cstr);
     tiledb_error_free(&err);
     throw TileDBError(msg);
+  }
+}
+
+/** Check for error return valud, and throw if there is one. */
+inline void check_return(capi_return_t ret) {
+  if (ret != TILEDB_OK) {
+    std::stringstream ss;
+    ss << "Operation failed. Error code: " << ret;
+    throw TileDBError(ss.str());
   }
 }
 
