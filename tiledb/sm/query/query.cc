@@ -1337,6 +1337,11 @@ void Query::set_validity_buffer(
       {buffer_validity_bytemap, buffer_validity_bytemap_size});
 }
 
+size_t Query::buffers_count() const {
+  return buffers_.size() + label_buffers_.size() + aggregate_buffers_.size() +
+         (has_zipped_coords_buffer_ ? 1 : 0);
+}
+
 void Query::reset_buffers() {
   buffers_.clear();
   label_buffers_.clear();

@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -342,6 +343,50 @@ TEST_CASE(
   REQUIRE(data_r[3] == data_w[3]);
   query_r.finalize();
   array_r.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE("C++ API: Test reset_buffers", "[cppapi][query][reset_buffers]") {
+  const std::string array_name = "reset_buffers_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  auto d1 = Dimension::create(ctx, "d1", TILEDB_STRING_ASCII, nullptr, nullptr);
+  Domain domain(ctx);
+  domain.add_dimension(d1);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
+  auto b = Attribute::create<int32_t>(ctx, "b");
+  b.set_nullable(true);
+  schema.add_attribute(b);
+  Array::create(array_name, schema);
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+
+  // First batch.
+  std::string d1_batch1 = "aabb";
+  std::vector<uint64_t> off_batch1 = {0, 2};
+  std::vector<int32_t> a_batch1 = {1, 2};
+  std::vector<int32_t> b_batch1 = {10, 20};
+  std::vector<uint8_t> bv_batch1 = {1, 1};
+  query.set_data_buffer("d1", (void*)d1_batch1.data(), d1_batch1.size())
+      .set_offsets_buffer("d1", off_batch1)
+      .set_data_buffer("a", a_batch1)
+      .set_data_buffer("b", b_batch1)
+      .set_validity_buffer("b", bv_batch1);
+
+  CHECK(query.result_buffer_elements_nullable().size() == 3);
+  CHECK(query.ptr().get()->query_->buffers_count() == 3);
+  REQUIRE_NOTHROW(query.reset_buffers());
+  CHECK(query.result_buffer_elements_nullable().size() == 0);
+  CHECK(query.ptr().get()->query_->buffers_count() == 0);
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
