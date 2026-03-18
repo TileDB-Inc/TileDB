@@ -1034,11 +1034,6 @@ Status GCS::write_parts(
 
       // Downgrade to read lock, expected below outside the create
       unique_wl.unlock();
-
-      // Delete file if it exists (overwrite).
-      if (is_file(uri)) {
-        remove_file(uri);
-      }
     } else {
       // If another thread switched state, switch back to a read lock
       state = &multi_part_upload_states_.at(uri.to_string());

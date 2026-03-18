@@ -1115,11 +1115,6 @@ void Azure::write_blocks(
 
     auto state_iter = block_list_upload_states_.find(uri.to_string());
     if (state_iter == block_list_upload_states_.end()) {
-      // Delete file if it exists (overwrite).
-      if (is_file(uri)) {
-        remove_file(uri);
-      }
-
       // Instantiate the new state.
       BlockListUploadState state;
 

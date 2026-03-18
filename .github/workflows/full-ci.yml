@@ -122,7 +122,7 @@ jobs:
     uses: ./.github/workflows/build-windows.yml
 
   ci_mingw_r:
-    uses: ./.github/workflows/build-rtools40.yml
+    uses: ./.github/workflows/build-rtools.yml
 
   backward_compatibility:
     uses: ./.github/workflows/build-backwards-compatibility.yml

@@ -54,7 +54,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
-#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/context.h"
@@ -193,7 +192,6 @@ void Array::create(
         "' already exists");
   }
 
-  std::lock_guard<std::mutex> lock{object_mtx};
   array_schema->set_array_uri(array_uri);
   array_schema->generate_uri(array_schema->timestamp_range());
   array_schema->check(resources.config(), true);
@@ -672,10 +670,12 @@ void Array::delete_fragments(
   auto& vfs = resources.vfs();
   throw_if_not_ok(parallel_for(
       &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-        vfs.remove_dir(fragment_uris[i].uri_);
+        // Delete the commit first
         if (vfs.is_file(commit_uris_to_delete[i])) {
           vfs.remove_file(commit_uris_to_delete[i]);
         }
+        // Delete the fragment next
+        vfs.remove_dir(fragment_uris[i].uri_);
         return Status::Ok();
       }));
 }

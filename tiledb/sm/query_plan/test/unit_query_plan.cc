@@ -128,7 +128,7 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
   shared_ptr<Array> array_shared = std::move(array);
   Query query(
       resources_, CancellationSource(sm_.get()), sm_.get(), array_shared);
-  REQUIRE(query.set_layout(Layout::ROW_MAJOR).ok());
+  query.set_layout(Layout::ROW_MAJOR);
 
   stats::Stats stats("foo");
   Subarray subarray(array_shared.get(), &stats, logger_);
@@ -138,7 +138,7 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
 
   std::vector<uint64_t> data(2);
   uint64_t size = 2;
-  REQUIRE(query.set_data_buffer("attr", data.data(), &size).ok());
+  query.set_data_buffer("attr", data.data(), &size);
 
   QueryPlan plan(query);
 

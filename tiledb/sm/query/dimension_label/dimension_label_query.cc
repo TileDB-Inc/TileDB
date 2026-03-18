@@ -146,7 +146,7 @@ DimensionLabelQuery::DimensionLabelQuery(
   }
 
   // Set the basic query properies.
-  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
+  set_layout(Layout::ROW_MAJOR);
   set_dimension_label_ordered_read(
       dim_label_ref.label_order() == DataOrder::INCREASING_DATA);
 
@@ -156,11 +156,11 @@ DimensionLabelQuery::DimensionLabelQuery(
   set_subarray(subarray);
 
   // Set index data buffer that will store the computed ranges.
-  throw_if_not_ok(set_data_buffer(
+  set_data_buffer(
       array_schema().dimension_ptr(0)->name(),
       index_data_->data(),
       index_data_->data_size(),
-      true));
+      true);
 }
 
 bool DimensionLabelQuery::completed() const {
@@ -173,7 +173,7 @@ void DimensionLabelQuery::initialize_read_labels_query(
     const QueryBuffer& label_buffer,
     const uint32_t dim_idx) {
   // Set the layout (ordered, 1D).
-  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
+  set_layout(Layout::ROW_MAJOR);
 
   // Set the subarray if it has index ranges added to it.
   if (!parent_subarray.is_default(dim_idx) &&
@@ -194,7 +194,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
     const QueryBuffer& index_buffer,
     const uint32_t dim_idx) {
   // Set query layout.
-  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
+  set_layout(Layout::ROW_MAJOR);
 
   // Set the label data buffer.
   set_dimension_label_buffer(label_attr_name, label_buffer);
@@ -255,14 +255,14 @@ void DimensionLabelQuery::initialize_unordered_write_query(
   }
 
   // Set-up indexed array query (sparse array).
-  throw_if_not_ok(set_layout(Layout::UNORDERED));
+  set_layout(Layout::UNORDERED);
   set_dimension_label_buffer(label_attr_name, label_buffer);
   if (use_local_index) {
-    throw_if_not_ok(set_data_buffer(
+    set_data_buffer(
         array_schema().dimension_ptr(0)->name(),
         index_data_->data(),
         index_data_->data_size(),
-        true));
+        true);
   } else {
     set_dimension_label_buffer(
         array_schema().dimension_ptr(0)->name(), index_buffer);
