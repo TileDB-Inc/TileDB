@@ -482,12 +482,12 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::schema_add_attribute(
   auto attr = tiledb::Attribute::create<int32_t>(ctx, attr_name);
   ase.add_attribute(attr);
   // Evolve and update the original schema member variable.
-  schema_ = ase.ptr()->array_schema_evolution_->evolve_schema(schema_);
+  schema_ = ase.ptr()->array_schema_evolution()->evolve_schema(schema_);
   // Apply the schema evolution.
   Array::evolve_array_schema(
       this->ctx_.resources(),
       this->uri_,
-      ase.ptr()->array_schema_evolution_,
+      ase.ptr()->array_schema_evolution().get(),
       this->enc_key_);
 
   // Return the new evolved schema for validation.

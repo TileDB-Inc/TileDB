@@ -48,55 +48,30 @@ namespace tiledb::api {
 /*            SCHEMA EVOLUTION       */
 /* ********************************* */
 
-int32_t tiledb_array_schema_evolution_alloc(
+capi_return_t tiledb_array_schema_evolution_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
-  // Sanity check
-
-  // Create schema evolution struct
-  *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
-  if (*array_schema_evolution == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new SchemaEvolution object
+  ensure_output_pointer_is_valid(array_schema_evolution);
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
-  (*array_schema_evolution)->array_schema_evolution_ =
-      new (std::nothrow) tiledb::sm::ArraySchemaEvolution(memory_tracker);
-  if ((*array_schema_evolution)->array_schema_evolution_ == nullptr) {
-    delete *array_schema_evolution;
-    *array_schema_evolution = nullptr;
-    auto st =
-        Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
+  *array_schema_evolution =
+      make_handle<tiledb_array_schema_evolution_t>(memory_tracker);
   return TILEDB_OK;
 }
 
 void tiledb_array_schema_evolution_free(
     tiledb_array_schema_evolution_t** array_schema_evolution) {
-  if (array_schema_evolution != nullptr && *array_schema_evolution != nullptr) {
-    delete (*array_schema_evolution)->array_schema_evolution_;
-    delete *array_schema_evolution;
-    *array_schema_evolution = nullptr;
-  }
+  ensure_output_pointer_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(*array_schema_evolution);
+  break_handle(*array_schema_evolution);
 }
 
 int32_t tiledb_array_schema_evolution_add_attribute(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_attribute_t* attr) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(array_schema_evolution);
   ensure_attribute_is_valid(attr);
-  array_schema_evolution->array_schema_evolution_->add_attribute(
+  array_schema_evolution->array_schema_evolution()->add_attribute(
       attr->copy_attribute());
 
   return TILEDB_OK;
@@ -105,9 +80,9 @@ int32_t tiledb_array_schema_evolution_add_attribute(
 int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* attribute_name) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(array_schema_evolution);
 
-  array_schema_evolution->array_schema_evolution_->drop_attribute(
+  array_schema_evolution->array_schema_evolution()->drop_attribute(
       attribute_name);
   return TILEDB_OK;
 }
@@ -115,12 +90,11 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
 capi_return_t tiledb_array_schema_evolution_add_enumeration(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_enumeration_t* enumeration) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
-
-  api::ensure_enumeration_is_valid(enumeration);
+  ensure_handle_is_valid(array_schema_evolution);
+  ensure_enumeration_is_valid(enumeration);
 
   auto enmr = enumeration->copy();
-  array_schema_evolution->array_schema_evolution_->add_enumeration(enmr);
+  array_schema_evolution->array_schema_evolution()->add_enumeration(enmr);
 
   return TILEDB_OK;
 }
@@ -128,12 +102,11 @@ capi_return_t tiledb_array_schema_evolution_add_enumeration(
 capi_return_t tiledb_array_schema_evolution_extend_enumeration(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_enumeration_t* enumeration) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
-
-  api::ensure_enumeration_is_valid(enumeration);
+  ensure_handle_is_valid(array_schema_evolution);
+  ensure_enumeration_is_valid(enumeration);
 
   auto enmr = enumeration->copy();
-  array_schema_evolution->array_schema_evolution_->extend_enumeration(enmr);
+  array_schema_evolution->array_schema_evolution()->extend_enumeration(enmr);
 
   return TILEDB_OK;
 }
@@ -141,13 +114,13 @@ capi_return_t tiledb_array_schema_evolution_extend_enumeration(
 capi_return_t tiledb_array_schema_evolution_drop_enumeration(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* enmr_name) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(array_schema_evolution);
 
   if (enmr_name == nullptr) {
     return TILEDB_ERR;
   }
 
-  array_schema_evolution->array_schema_evolution_->drop_enumeration(enmr_name);
+  array_schema_evolution->array_schema_evolution()->drop_enumeration(enmr_name);
 
   return TILEDB_OK;
 }
@@ -155,11 +128,10 @@ capi_return_t tiledb_array_schema_evolution_drop_enumeration(
 capi_return_t tiledb_array_schema_evolution_expand_current_domain(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_current_domain_t* expanded_domain) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(expanded_domain);
 
-  api::ensure_handle_is_valid(expanded_domain);
-
-  array_schema_evolution->array_schema_evolution_->expand_current_domain(
+  array_schema_evolution->array_schema_evolution()->expand_current_domain(
       expanded_domain->current_domain());
 
   return TILEDB_OK;
@@ -169,9 +141,9 @@ int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
     uint64_t hi) {
-  api::ensure_array_schema_evolution_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(array_schema_evolution);
 
-  array_schema_evolution->array_schema_evolution_->set_timestamp_range(
+  array_schema_evolution->array_schema_evolution()->set_timestamp_range(
       {lo, hi});
   return TILEDB_OK;
 }

@@ -1394,9 +1394,7 @@ int32_t tiledb_serialize_array_schema_evolution(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_handle_is_valid(array_schema_evolution);
 
   auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
@@ -1404,7 +1402,7 @@ int32_t tiledb_serialize_array_schema_evolution(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_serialize(
-              array_schema_evolution->array_schema_evolution_,
+              array_schema_evolution->array_schema_evolution().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
@@ -1423,34 +1421,26 @@ int32_t tiledb_deserialize_array_schema_evolution(
     tiledb_serialization_type_t serialize_type,
     int32_t,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
-  // Sanity check
-
   api::ensure_buffer_is_valid(buffer);
-
-  // Create array schema struct
-  *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
-  if (*array_schema_evolution == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  ensure_output_pointer_is_valid(array_schema_evolution);
 
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
+  tiledb::sm::ArraySchemaEvolution* ase_raw = nullptr;
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_deserialize(
-              &((*array_schema_evolution)->array_schema_evolution_),
+              &ase_raw,
               ctx->config(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer(),
               memory_tracker))) {
-    delete *array_schema_evolution;
-    *array_schema_evolution = nullptr;
     return TILEDB_ERR;
   }
+
+  tdb_unique_ptr<tiledb::sm::ArraySchemaEvolution> owned_ase(ase_raw);
+  *array_schema_evolution = make_handle<tiledb_array_schema_evolution_t>(
+      shared_ptr<tiledb::sm::ArraySchemaEvolution>(std::move(owned_ase)));
 
   return TILEDB_OK;
 }
