@@ -106,6 +106,9 @@ add_subdirectory(domain)
 # `attribute`: depends on `filter_list`, `datatype`
 add_subdirectory(attribute)
 
+# `array_schema_evolution`: depends on `array_schema`, `attribute`, `enumeration`, `current_domain`, `buffer`
+add_subdirectory(array_schema_evolution)
+
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
 
