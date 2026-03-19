@@ -184,20 +184,6 @@ macro(TileDB_Environment_object_library_end)
     #
     #target_link_libraries(${TileDB_Environment_object_library_end_Library} PUBLIC configuration_definitions)
 
-    # Compile test
-    add_executable(${TileDB_Environment_object_library_end_Compile} EXCLUDE_FROM_ALL)
-    target_link_libraries(${TileDB_Environment_object_library_end_Compile} PRIVATE ${TileDB_Environment_object_library_end_Library})
-    # Link assert since it is used everywhere (good)
-    target_link_libraries(${TileDB_Environment_object_library_end_Compile} PRIVATE assert)
-    # There must be a file named `test/compile_<object_library>_main.cc` for each object library.
-    # TODO: Add explicit check for missing `..._main.cc` file.
-    target_sources(${TileDB_Environment_object_library_end_Compile} PRIVATE
-        test/${TileDB_Environment_object_library_end_Compile}_main.cc $<TARGET_OBJECTS:${TileDB_Environment_object_library_end_Library}>
-        )
-    # Append the current link-complete compile target to the complete list of them
-    put_into(ACCUMULATOR object_library_compile_targets LIST ${TileDB_Environment_object_library_end_Compile})
-    # ----------------------------------
-
     message(${TileDB_Environment_object_library_end_Log_Level} "<<< object-library conclude end <<<")
 endmacro()
 

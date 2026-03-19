@@ -186,7 +186,7 @@ macro(TileDB_Environment_unit_test_end)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    # Append the current link-complete compile target to the complete list of them
+    # Append the current unit test target to the complete list of them
     put_into(ACCUMULATOR unit_test_targets LIST ${TileDB_Environment_unit_test_end_Unit_Test})
     # ----------------------------------
 

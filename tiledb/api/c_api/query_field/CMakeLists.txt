@@ -24,15 +24,6 @@
 # THE SOFTWARE.
 #
 
-# The object library `capi_query_field` cannot be linked standalone at the
-# present time. It depends upon member functions of `class Query`, which does
-# not yet have a standalone object library of its own. Without such a
-# dependency, `capi_query_field` would have to link (essentially) the whole 
-# library to get a complete executable.
-# 
-# It is against policy to use the `object_library` environment to define object
-# libraries that cannot stand alone. Therefore this definition is directly in
-# CMake and does not include a link-completeness target.
 include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES

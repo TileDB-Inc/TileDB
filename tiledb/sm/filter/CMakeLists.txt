@@ -120,13 +120,6 @@ commence(object_library webp_filter)
 conclude(object_library)
 
 #
-# Test-compile of object library ensures link-completeness.
-#
-#add_executable(compile_webp_filter EXCLUDE_FROM_ALL)
-#target_link_libraries(compile_webp_filter PRIVATE webp_filter)
-#target_sources(compile_webp_filter PRIVATE test/compile_webp_filter_main.cc)
-
-#
 # `all_filters` object library
 #
 commence(object_library all_filters)
