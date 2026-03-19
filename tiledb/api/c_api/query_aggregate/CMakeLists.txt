@@ -24,6 +24,7 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   query_aggregate_api.cc
@@ -33,13 +34,10 @@ gather_sources(${SOURCES})
 #
 # Object library for C API query_aggregate
 #
-# Maturity:
-#   This object library does not link standalone. There's no corresponding
-#   `query_aggregate` object library to link to, since at present nothing
-#   involving query is able to link standalone.
-#
-add_library(capi_query_aggregate OBJECT EXCLUDE_FROM_ALL ${SOURCES})
-target_link_libraries(capi_query_aggregate PUBLIC export)
-target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+commence(object_library capi_query_aggregate)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline)
+conclude(object_library)
 
 add_test_subdirectory()

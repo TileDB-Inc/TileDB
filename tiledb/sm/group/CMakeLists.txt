@@ -25,11 +25,12 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `group` object library
 #
-add_library(group OBJECT EXCLUDE_FROM_ALL group_directory.cc group.cc group_details.cc group_details_v1.cc group_details_v2.cc group_member.cc group_member_v1.cc group_member_v2.cc)
-target_link_libraries(group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(group PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(group PUBLIC object $<TARGET_OBJECTS:object>)
+commence(object_library group)
+    this_target_sources(group_directory.cc group.cc group_details.cc group_details_v1.cc group_details_v2.cc group_member.cc group_member_v1.cc group_member_v2.cc)
+    this_target_object_libraries(baseline buffer object)
+conclude(object_library)
