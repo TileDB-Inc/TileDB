@@ -36,7 +36,6 @@
 #include "../api_external_common.h"
 #include "../array_schema/array_schema_api_external.h"
 #include "../context/context_api_external.h"
-#include "../query/query_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +51,18 @@ typedef enum {
 #include "tiledb/api/c_api/array/encryption_type_enum.h"
 #undef TILEDB_ENCRYPTION_TYPE_ENUM
 } tiledb_encryption_type_t;
+
+/** TileDB query type. */
+typedef enum {
+/** Helper macro for defining query type enums. */
+#define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
+// Use token-pasting _CONCAT_ID version for precarious symbols
+// (such as DELETE, see `query_api_enum.h`)
+#define TILEDB_QUERY_TYPE_ENUM_CONCAT_ID(id, id2) TILEDB_##id##id2
+#include "tiledb/api/c_api/query/query_api_enum.h"
+#undef TILEDB_QUERY_TYPE_ENUM
+#undef TILEDB_QUERY_TYPE_ENUM_CONCAT_ID
+} tiledb_query_type_t;
 
 /**
  * Returns a string representation of the given encryption type.

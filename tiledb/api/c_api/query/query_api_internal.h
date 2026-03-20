@@ -45,7 +45,7 @@ namespace tiledb::api {
  *
  * @param query A C api query pointer
  */
-inline void ensure_query_is_valid(tiledb_query_t* query) {
+inline void ensure_query_is_valid(const tiledb_query_t* query) {
   if (!query || !query->query_) {
     throw CAPIStatusException("argument `query` may not be nullptr");
   }
