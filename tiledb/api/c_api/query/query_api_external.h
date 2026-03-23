@@ -38,16 +38,15 @@
 #include "../array_schema/array_schema_api_external.h"
 #include "../config/config_api_external.h"
 #include "../context/context_api_external.h"
+#include "../query_condition/query_condition_api_external.h"
 #include "../subarray/subarray_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/** A TileDB query object. */
 typedef struct tiledb_query_handle_t tiledb_query_t;
-
-/** A TileDB query condition object. */
-typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
 /** Query status. */
 typedef enum {

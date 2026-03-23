@@ -72,11 +72,6 @@ struct tiledb_query_handle_t : public tiledb::api::CAPIHandle {
   [[nodiscard]] tiledb::sm::Query* query() const {
     return query_.get();
   }
-
-  /** Returns the shared_ptr to the underlying Query. */
-  [[nodiscard]] shared_ptr<tiledb::sm::Query> query_shared() const {
-    return query_;
-  }
 };
 
 namespace tiledb::api {

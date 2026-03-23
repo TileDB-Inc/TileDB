@@ -121,10 +121,10 @@ add_subdirectory(object)
 # `profile`: no dependencies
 add_subdirectory(profile)
 
-# NOTE: Only the tiledb_query_type_t enum has been migrated
-# to the new C API layout.
-#
-# `query`: no dependencies yet but will have some
+# `query_condition`: no dependencies
+add_subdirectory(query_condition)
+
+# `query`: depends on `query_condition`
 add_subdirectory(query)
 
 # `subarray`: depends on `context`
