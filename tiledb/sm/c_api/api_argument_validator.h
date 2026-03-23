@@ -45,7 +45,7 @@
 /* ********************************* */
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
-  if (query == nullptr || query->query_ == nullptr) {
+  if (query == nullptr) {
     auto st = Status_Error("Invalid TileDB query object");
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);

@@ -36,6 +36,7 @@
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/query_type.h"
 
 namespace tiledb::api {
@@ -80,25 +81,22 @@ capi_return_t tiledb_query_alloc(
         ")");
   }
 
-  auto q = std::make_unique<tiledb_query_t>();
-  q->query_ = new tiledb::sm::Query(
+  *query = make_handle<tiledb_query_handle_t>(
       ctx->resources(),
       ctx->cancellation_source(),
       ctx->storage_manager(),
       array->array());
-  *query = q.release();
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_query_get_stats(
-    tiledb_query_t* query, char** stats_json) {
+capi_return_t tiledb_query_get_stats(tiledb_query_t* query, char** stats_json) {
   ensure_query_is_valid(query);
 
   if (stats_json == nullptr) {
     throw CAPIStatusException("Pointer to stats_json may not be NULL");
   }
 
-  const std::string str = query->query_->stats()->dump(2, 0);
+  const std::string str = query->query()->stats()->dump(2, 0);
 
   *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
   if (*stats_json == nullptr) {
@@ -116,7 +114,7 @@ capi_return_t tiledb_query_set_config(
     tiledb_query_t* query, tiledb_config_t* config) {
   ensure_query_is_valid(query);
   ensure_config_is_valid(config);
-  query->query_->set_config(config->config());
+  query->query()->set_config(config->config());
   return TILEDB_OK;
 }
 
@@ -124,7 +122,7 @@ capi_return_t tiledb_query_get_config(
     tiledb_query_t* query, tiledb_config_t** config) {
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(config);
-  *config = make_handle<tiledb_config_handle_t>(query->query_->config());
+  *config = make_handle<tiledb_config_handle_t>(query->query()->config());
   return TILEDB_OK;
 }
 
@@ -132,7 +130,7 @@ capi_return_t tiledb_query_set_subarray_t(
     tiledb_query_t* query, const tiledb_subarray_t* subarray) {
   ensure_query_is_valid(query);
   ensure_subarray_is_valid(subarray);
-  query->query_->set_subarray(*subarray->subarray());
+  query->query()->set_subarray(*subarray->subarray());
   return TILEDB_OK;
 }
 
@@ -142,7 +140,7 @@ capi_return_t tiledb_query_set_data_buffer(
     void* buffer,
     uint64_t* buffer_size) {
   ensure_query_is_valid(query);
-  query->query_->set_data_buffer(name, buffer, buffer_size);
+  query->query()->set_data_buffer(name, buffer, buffer_size);
   return TILEDB_OK;
 }
 
@@ -152,7 +150,7 @@ capi_return_t tiledb_query_set_offsets_buffer(
     uint64_t* buffer_offsets,
     uint64_t* buffer_offsets_size) {
   ensure_query_is_valid(query);
-  query->query_->set_offsets_buffer(name, buffer_offsets, buffer_offsets_size);
+  query->query()->set_offsets_buffer(name, buffer_offsets, buffer_offsets_size);
   return TILEDB_OK;
 }
 
@@ -162,7 +160,7 @@ capi_return_t tiledb_query_set_validity_buffer(
     uint8_t* buffer_validity,
     uint64_t* buffer_validity_size) {
   ensure_query_is_valid(query);
-  query->query_->set_validity_buffer(
+  query->query()->set_validity_buffer(
       name, buffer_validity, buffer_validity_size);
   return TILEDB_OK;
 }
@@ -173,7 +171,7 @@ capi_return_t tiledb_query_get_data_buffer(
     void** buffer,
     uint64_t** buffer_size) {
   ensure_query_is_valid(query);
-  std::tie(*buffer, *buffer_size) = query->query_->get_data_buffer(name);
+  std::tie(*buffer, *buffer_size) = query->query()->get_data_buffer(name);
   return TILEDB_OK;
 }
 
@@ -183,7 +181,7 @@ capi_return_t tiledb_query_get_offsets_buffer(
     uint64_t** buffer,
     uint64_t** buffer_size) {
   ensure_query_is_valid(query);
-  std::tie(*buffer, *buffer_size) = query->query_->get_offsets_buffer(name);
+  std::tie(*buffer, *buffer_size) = query->query()->get_offsets_buffer(name);
   return TILEDB_OK;
 }
 
@@ -193,25 +191,24 @@ capi_return_t tiledb_query_get_validity_buffer(
     uint8_t** buffer,
     uint64_t** buffer_size) {
   ensure_query_is_valid(query);
-  std::tie(*buffer, *buffer_size) = query->query_->get_validity_buffer(name);
+  std::tie(*buffer, *buffer_size) = query->query()->get_validity_buffer(name);
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_set_layout(
     tiledb_query_t* query, tiledb_layout_t layout) {
   ensure_query_is_valid(query);
-  query->query_->set_layout(static_cast<tiledb::sm::Layout>(layout));
+  query->query()->set_layout(static_cast<tiledb::sm::Layout>(layout));
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_set_condition(
-    tiledb_query_t* query,
-    const tiledb_query_condition_t* cond) {
+    tiledb_query_t* query, const tiledb_query_condition_t* cond) {
   ensure_query_is_valid(query);
   if (!cond || !cond->query_condition_) {
     throw CAPIStatusException("argument `cond` may not be nullptr");
   }
-  query->query_->set_condition(*cond->query_condition_);
+  query->query()->set_condition(*cond->query_condition_);
   return TILEDB_OK;
 }
 
@@ -220,7 +217,7 @@ capi_return_t tiledb_query_finalize(tiledb_query_t* query) {
     return TILEDB_OK;
   }
   ensure_query_is_valid(query);
-  query->query_->finalize();
+  query->query()->finalize();
   return TILEDB_OK;
 }
 
@@ -229,49 +226,47 @@ capi_return_t tiledb_query_submit_and_finalize(tiledb_query_t* query) {
     return TILEDB_OK;
   }
   ensure_query_is_valid(query);
-  query->query_->submit_and_finalize();
+  query->query()->submit_and_finalize();
   return TILEDB_OK;
 }
 
 void tiledb_query_free(tiledb_query_t** query) {
-  if (query != nullptr && *query != nullptr) {
-    delete (*query)->query_;
-    delete *query;
-    *query = nullptr;
-  }
+  ensure_output_pointer_is_valid(query);
+  ensure_handle_is_valid(*query);
+  break_handle(*query);
 }
 
 capi_return_t tiledb_query_submit(tiledb_query_t* query) {
   ensure_query_is_valid(query);
-  query->query_->submit();
+  query->query()->submit();
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_has_results(
     tiledb_query_t* query, int32_t* has_results) {
   ensure_query_is_valid(query);
-  *has_results = query->query_->has_results();
+  *has_results = query->query()->has_results();
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_get_status(
     tiledb_query_t* query, tiledb_query_status_t* status) {
   ensure_query_is_valid(query);
-  *status = (tiledb_query_status_t)query->query_->status();
+  *status = (tiledb_query_status_t)query->query()->status();
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_get_type(
     tiledb_query_t* query, tiledb_query_type_t* query_type) {
   ensure_query_is_valid(query);
-  *query_type = static_cast<tiledb_query_type_t>(query->query_->type());
+  *query_type = static_cast<tiledb_query_type_t>(query->query()->type());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_get_layout(
     tiledb_query_t* query, tiledb_layout_t* query_layout) {
   ensure_query_is_valid(query);
-  *query_layout = static_cast<tiledb_layout_t>(query->query_->layout());
+  *query_layout = static_cast<tiledb_layout_t>(query->query()->layout());
   return TILEDB_OK;
 }
 
@@ -279,20 +274,18 @@ capi_return_t tiledb_query_get_array(
     tiledb_query_t* query, tiledb_array_t** array) {
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(array);
-  *array = make_handle<tiledb_array_t>(query->query_->array_shared());
+  *array = make_handle<tiledb_array_t>(query->query()->array_shared());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_get_est_result_size(
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size) {
+    const tiledb_query_t* query, const char* name, uint64_t* size) {
   ensure_query_is_valid(query);
   auto field_name{to_string_view<"field name">(name)};
   if (size == nullptr) {
     throw CAPIStatusException("Pointer to size may not be NULL");
   }
-  auto est_size{query->query_->get_est_result_size_fixed_nonnull(field_name)};
+  auto est_size{query->query()->get_est_result_size_fixed_nonnull(field_name)};
   *size = est_size.fixed_;
   return TILEDB_OK;
 }
@@ -311,7 +304,7 @@ capi_return_t tiledb_query_get_est_result_size_var(
     throw CAPIStatusException("Pointer to value size may not be NULL");
   }
   auto est_size{
-      query->query_->get_est_result_size_variable_nonnull(field_name)};
+      query->query()->get_est_result_size_variable_nonnull(field_name)};
   *size_off = est_size.fixed_;
   *size_val = est_size.variable_;
   return TILEDB_OK;
@@ -330,7 +323,7 @@ capi_return_t tiledb_query_get_est_result_size_nullable(
   if (size_validity == nullptr) {
     throw CAPIStatusException("Pointer to validity size may not be NULL");
   }
-  auto est_size{query->query_->get_est_result_size_fixed_nullable(field_name)};
+  auto est_size{query->query()->get_est_result_size_fixed_nullable(field_name)};
   *size_val = est_size.fixed_;
   *size_validity = est_size.validity_;
   return TILEDB_OK;
@@ -354,7 +347,7 @@ capi_return_t tiledb_query_get_est_result_size_var_nullable(
     throw CAPIStatusException("Pointer to validity size may not be NULL");
   }
   auto est_size{
-      query->query_->get_est_result_size_variable_nullable(field_name)};
+      query->query()->get_est_result_size_variable_nullable(field_name)};
   *size_off = est_size.fixed_;
   *size_val = est_size.variable_;
   *size_validity = est_size.validity_;
@@ -364,26 +357,22 @@ capi_return_t tiledb_query_get_est_result_size_var_nullable(
 capi_return_t tiledb_query_get_fragment_num(
     const tiledb_query_t* query, uint32_t* num) {
   ensure_query_is_valid(query);
-  *num = query->query_->get_written_fragment_num();
+  *num = query->query()->get_written_fragment_num();
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_get_fragment_uri(
-    const tiledb_query_t* query,
-    uint64_t idx,
-    const char** uri) {
+    const tiledb_query_t* query, uint64_t idx, const char** uri) {
   ensure_query_is_valid(query);
-  *uri = query->query_->get_written_fragment_uri(idx).c_str();
+  *uri = query->query()->get_written_fragment_uri(idx).c_str();
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_query_get_fragment_timestamp_range(
-    const tiledb_query_t* query,
-    uint64_t idx,
-    uint64_t* t1,
-    uint64_t* t2) {
+    const tiledb_query_t* query, uint64_t idx, uint64_t* t1, uint64_t* t2) {
   ensure_query_is_valid(query);
-  std::tie(*t1, *t2) = query->query_->get_written_fragment_timestamp_range(idx);
+  std::tie(*t1, *t2) =
+      query->query()->get_written_fragment_timestamp_range(idx);
   return TILEDB_OK;
 }
 
@@ -391,15 +380,17 @@ capi_return_t tiledb_query_get_subarray_t(
     const tiledb_query_t* query, tiledb_subarray_t** subarray) {
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(subarray);
-  *subarray = make_handle<tiledb_subarray_t>(*(query->query_->subarray()));
+  *subarray = make_handle<tiledb_subarray_t>(*(query->query()->subarray()));
   return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_relevant_fragment_num(
     const tiledb_query_t* query, uint64_t* relevant_fragment_num) {
   ensure_query_is_valid(query);
-  *relevant_fragment_num =
-      query->query_->subarray()->relevant_fragments().relevant_fragments_size();
+  *relevant_fragment_num = query->query()
+                               ->subarray()
+                               ->relevant_fragments()
+                               .relevant_fragments_size();
 
   return TILEDB_OK;
 }
@@ -410,7 +401,7 @@ int32_t tiledb_query_add_update_value(
     const void* update_value,
     uint64_t update_value_size) {
   ensure_query_is_valid(query);
-  query->query_->add_update_value(field_name, update_value, update_value_size);
+  query->query()->add_update_value(field_name, update_value, update_value_size);
 
   // Success
   return TILEDB_OK;

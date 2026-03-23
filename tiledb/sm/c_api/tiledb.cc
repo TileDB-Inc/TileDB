@@ -50,6 +50,7 @@
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
@@ -94,6 +95,7 @@
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+
 
 #include <memory>
 #include <sstream>
@@ -944,7 +946,7 @@ int32_t tiledb_serialize_query(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::query_serialize(
-              query->query_,
+              query->query(),
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               (*buffer_list)->buffer_list()))) {
@@ -972,7 +974,7 @@ int32_t tiledb_deserialize_query(
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       nullptr,
-      query->query_,
+      query->query(),
       &ctx->resources().compute_tp(),
       ctx->resources().serialization_memory_tracker()));
 
@@ -1011,29 +1013,12 @@ int32_t tiledb_deserialize_query_and_array(
     throw;
   }
 
-  // Create query struct
-  *query = new (std::nothrow) tiledb_query_t;
-  if (*query == nullptr) {
-    break_handle(*array);
-    throw CAPIException(
-        "Failed to deserialize query and array; "
-        "TileDB query object allocation failed.");
-  }
-
   // Create query
-  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
+  *query = make_handle<tiledb_query_handle_t>(
       ctx->resources(),
       ctx->cancellation_source(),
       ctx->storage_manager(),
       (*array)->array());
-  if ((*query)->query_ == nullptr) {
-    delete *query;
-    *query = nullptr;
-    break_handle(*array);
-    throw CAPIException(
-        "Failed to deserialize query and array; "
-        "TileDB query object allocation failed.");
-  }
 
   try {
     throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
@@ -1041,12 +1026,11 @@ int32_t tiledb_deserialize_query_and_array(
         (tiledb::sm::SerializationType)serialize_type,
         client_side == 1,
         nullptr,
-        (*query)->query_,
+        (*query)->query(),
         &ctx->resources().compute_tp(),
         ctx->resources().serialization_memory_tracker()));
   } catch (...) {
-    delete *query;
-    *query = nullptr;
+    break_handle(*query);
     break_handle(*array);
     throw;
   }
@@ -1275,7 +1259,7 @@ int32_t tiledb_serialize_query_est_result_sizes(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::query_est_result_size_serialize(
-              query->query_,
+              query->query(),
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               buf->buffer()))) {
@@ -1301,7 +1285,7 @@ int32_t tiledb_deserialize_query_est_result_sizes(
   api::ensure_buffer_is_valid(buffer);
 
   throw_if_not_ok(tiledb::sm::serialization::query_est_result_size_deserialize(
-      query->query_,
+      query->query(),
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       buffer->buffer()));
@@ -1615,8 +1599,8 @@ int32_t tiledb_query_get_status_details(
 
   // Currently only one detailed reason. Retrieve it and set to user struct.
   tiledb_query_status_details_reason_t incomplete_reason =
-      (tiledb_query_status_details_reason_t)
-          query->query_->status_incomplete_reason();
+      (tiledb_query_status_details_reason_t)query->query()
+          ->status_incomplete_reason();
   status->incomplete_reason = incomplete_reason;
 
   return TILEDB_OK;

@@ -32,8 +32,8 @@
 
 #include "../string/string_api_internal.h"
 #include "query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 #include "tiledb/sm/query_plan/query_plan.h"
 
@@ -48,7 +48,7 @@ capi_return_t tiledb_query_get_plan(
     throw CAPIStatusException("argument `query` may not be nullptr");
   }
 
-  sm::QueryPlan plan(*query->query_);
+  sm::QueryPlan plan(*query->query());
   *rv = make_handle<tiledb_string_handle_t>(plan.dump_json());
 
   return TILEDB_OK;

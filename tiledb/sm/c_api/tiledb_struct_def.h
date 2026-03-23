@@ -34,20 +34,8 @@
 #ifndef TILEDB_C_API_STRUCT_DEF_H
 #define TILEDB_C_API_STRUCT_DEF_H
 
-#include "tiledb/api/c_api_support/handle/handle.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
-#include "tiledb/sm/filesystem/vfs_file_handle.h"
-#include "tiledb/sm/group/group.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/update_value.h"
-#include "tiledb/sm/storage_manager/context.h"
-
-struct tiledb_query_t {
-  tiledb::sm::Query* query_ = nullptr;
-};
 
 struct tiledb_query_condition_t {
   tiledb::sm::QueryCondition* query_condition_ = nullptr;
