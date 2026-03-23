@@ -1406,120 +1406,62 @@ int32_t tiledb_query_get_status_details(
 }
 
 int32_t tiledb_consolidation_plan_create_with_mbr(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
   ensure_array_is_valid(array);
+  ensure_output_pointer_is_valid(consolidation_plan);
 
-  // Create consolidation plan struct
-  *consolidation_plan = new (std::nothrow) tiledb_consolidation_plan_t;
-  if (*consolidation_plan == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB consolidation plan object; Memory allocation "
-        "error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Allocate a consolidation plan object
-  try {
-    (*consolidation_plan)->consolidation_plan_ =
-        make_shared<tiledb::sm::ConsolidationPlan>(
-            HERE(), array->array(), fragment_size);
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB consolidation plan object; Memory allocation "
-        "error");
-    delete *consolidation_plan;
-    *consolidation_plan = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  *consolidation_plan = make_handle<tiledb_consolidation_plan_handle_t>(
+      std::in_place, array->array(), fragment_size);
 
   return TILEDB_OK;
 }
 
 void tiledb_consolidation_plan_free(
     tiledb_consolidation_plan_t** consolidation_plan) {
-  if (consolidation_plan != nullptr && *consolidation_plan != nullptr) {
-    delete *consolidation_plan;
-    *consolidation_plan = nullptr;
-  }
+  break_handle(*consolidation_plan);
 }
 
 int32_t tiledb_consolidation_plan_get_num_nodes(
-    tiledb_ctx_t* ctx,
-    tiledb_consolidation_plan_t* consolidation_plan,
-    uint64_t* num_nodes) {
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+    tiledb_consolidation_plan_t* consolidation_plan, uint64_t* num_nodes) {
+  ensure_handle_is_valid(consolidation_plan);
 
-  *num_nodes = consolidation_plan->consolidation_plan_->get_num_nodes();
+  *num_nodes = consolidation_plan->consolidation_plan().get_num_nodes();
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_get_num_fragments(
-    tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t* num_fragments) {
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  ensure_handle_is_valid(consolidation_plan);
 
-  try {
-    *num_fragments =
-        consolidation_plan->consolidation_plan_->get_num_fragments(node_index);
-  } catch (StatusException& e) {
-    auto st = Status_Error(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  *num_fragments =
+      consolidation_plan->consolidation_plan().get_num_fragments(node_index);
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_get_fragment_uri(
-    tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t fragment_index,
     const char** uri) {
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  ensure_handle_is_valid(consolidation_plan);
 
-  try {
-    *uri = consolidation_plan->consolidation_plan_->get_fragment_uri(
-        node_index, fragment_index);
-  } catch (StatusException& e) {
-    auto st = Status_Error(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  *uri = consolidation_plan->consolidation_plan().get_fragment_uri(
+      node_index, fragment_index);
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_dump_json_str(
-    tiledb_ctx_t* ctx,
-    const tiledb_consolidation_plan_t* consolidation_plan,
-    char** out) {
-  if (out == nullptr) {
-    return TILEDB_ERR;
-  }
+    const tiledb_consolidation_plan_t* consolidation_plan, char** out) {
+  ensure_handle_is_valid(consolidation_plan);
+  ensure_output_pointer_is_valid(out);
 
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  std::string str = consolidation_plan->consolidation_plan_->dump();
+  std::string str = consolidation_plan->consolidation_plan().dump();
 
   *out = static_cast<char*>(std::malloc(str.size() + 1));
   if (*out == nullptr) {
@@ -2209,7 +2151,8 @@ CAPI_INTERFACE(
     tiledb_array_t* array,
     uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_create_with_mbr>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_create_with_mbr>(
       ctx, array, fragment_size, consolidation_plan);
 }
 
@@ -2224,7 +2167,8 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t* num_nodes) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_nodes>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_get_num_nodes>(
       ctx, consolidation_plan, num_nodes);
 }
 
@@ -2234,7 +2178,8 @@ CAPI_INTERFACE(
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t* num_fragments) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_fragments>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_get_num_fragments>(
       ctx, consolidation_plan, node_index, num_fragments);
 }
 
@@ -2245,7 +2190,8 @@ CAPI_INTERFACE(
     uint64_t node_index,
     uint64_t fragment_index,
     const char** uri) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
       ctx, consolidation_plan, node_index, fragment_index, uri);
 }
 
@@ -2254,7 +2200,8 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     const tiledb_consolidation_plan_t* consolidation_plan,
     char** out) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_dump_json_str>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_dump_json_str>(
       ctx, consolidation_plan, out);
 }
 

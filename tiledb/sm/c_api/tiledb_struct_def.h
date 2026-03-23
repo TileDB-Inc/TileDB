@@ -34,10 +34,30 @@
 #ifndef TILEDB_C_API_STRUCT_DEF_H
 #define TILEDB_C_API_STRUCT_DEF_H
 
+#include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 
-struct tiledb_consolidation_plan_t {
+struct tiledb_consolidation_plan_handle_t : public tiledb::api::CAPIHandle {
+  /** Type name */
+  static constexpr std::string_view object_type_name{"consolidation_plan"};
+
+ private:
   shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
+
+ public:
+  tiledb_consolidation_plan_handle_t(
+      shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan)
+      : consolidation_plan_(consolidation_plan) {
+  }
+
+  tiledb_consolidation_plan_handle_t(std::in_place_t, auto&&... args)
+      : consolidation_plan_(make_shared<tiledb::sm::ConsolidationPlan>(
+            HERE(), std::forward<decltype(args)>(args)...)) {
+  }
+
+  const tiledb::sm::ConsolidationPlan& consolidation_plan() const {
+    return *consolidation_plan_;
+  }
 };
 
 #endif

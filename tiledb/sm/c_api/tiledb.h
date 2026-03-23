@@ -181,7 +181,7 @@ TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev)
 /* ********************************* */
 
 /** A consolidation plan object. */
-typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
+typedef struct tiledb_consolidation_plan_handle_t tiledb_consolidation_plan_t;
 
 /* ********************************* */
 /*        ARRAY CONSOLIDATION        */
