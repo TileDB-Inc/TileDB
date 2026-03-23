@@ -34,6 +34,7 @@
 #include "query_api_internal.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/query_condition/query_condition_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -205,10 +206,8 @@ capi_return_t tiledb_query_set_layout(
 capi_return_t tiledb_query_set_condition(
     tiledb_query_t* query, const tiledb_query_condition_t* cond) {
   ensure_query_is_valid(query);
-  if (!cond || !cond->query_condition_) {
-    throw CAPIStatusException("argument `cond` may not be nullptr");
-  }
-  query->query()->set_condition(*cond->query_condition_);
+  ensure_handle_is_valid(cond);
+  query->query()->set_condition(*cond->query_condition());
   return TILEDB_OK;
 }
 

@@ -35,11 +35,6 @@
 #define TILEDB_C_API_STRUCT_DEF_H
 
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
-#include "tiledb/sm/query/query_condition.h"
-
-struct tiledb_query_condition_t {
-  tiledb::sm::QueryCondition* query_condition_ = nullptr;
-};
 
 struct tiledb_consolidation_plan_t {
   shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;

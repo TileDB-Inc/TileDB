@@ -77,7 +77,7 @@ typedef enum {
 /* ********************************* */
 
 /** A TileDB query condition object. */
-typedef struct tiledb_query_condition_t tiledb_query_condition_t;
+typedef struct tiledb_query_condition_handle_t tiledb_query_condition_t;
 
 /* ****************************** */
 /*          QUERY CONDITION       */

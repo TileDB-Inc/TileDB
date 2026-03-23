@@ -244,9 +244,7 @@ class QueryCondition {
    * @param combined_cond Where the negated condition is stored.
    * @return Status
    */
-  Status negate(
-      QueryConditionCombinationOp combination_op,
-      QueryCondition* combined_cond) const;
+  Status negate(QueryCondition* combined_cond) const;
 
   /**
    * Returns true if this condition does not have any nodes in the AST
