@@ -33,10 +33,10 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/writers/writer_base.h"
@@ -97,7 +97,7 @@ struct SerializationFx {
   }
 
   static void check_read_stats(const Query& query) {
-    auto stats = ((sm::WriterBase*)query.ptr()->query_->strategy())->stats();
+    auto stats = ((sm::WriterBase*)query.ptr()->query()->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
@@ -107,7 +107,7 @@ struct SerializationFx {
   }
 
   static void check_write_stats(const Query& query) {
-    auto stats = ((sm::Reader*)query.ptr()->query_->strategy())->stats();
+    auto stats = ((sm::Reader*)query.ptr()->query()->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
@@ -130,7 +130,7 @@ struct SerializationFx {
   }
 
   static void check_delete_stats(const Query& query) {
-    auto stats = ((sm::Reader*)query.ptr()->query_->strategy())->stats();
+    auto stats = ((sm::Reader*)query.ptr()->query()->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);

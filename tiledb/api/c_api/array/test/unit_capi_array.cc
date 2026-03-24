@@ -1297,7 +1297,8 @@ TEST_CASE(
 TEST_CASE("C API: tiledb_array_evolve argument validation", "[capi][array]") {
   capi_return_t rc;
   ordinary_array_without_schema x{};
-  tiledb_array_schema_evolution_t schema_evo;
+  tiledb_array_schema_evolution_t schema_evo{
+      shared_ptr<tiledb::sm::ArraySchemaEvolution>()};
   /*
    * No "success" section here; too much overhead to set up.
    * This test cannot yet invoke tiledb_array_schema_evolution_alloc without

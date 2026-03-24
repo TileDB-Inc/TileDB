@@ -34,6 +34,7 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"

@@ -41,11 +41,11 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/common/arithmetic.h"
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -96,7 +96,7 @@ struct CPPMaxFragmentSizeFx {
     Query query(ctx_, array, TILEDB_WRITE);
 
     // Set the maximum size for the fragments.
-    query.ptr().get()->query_->set_fragment_size(fragment_size);
+    query.ptr().get()->query()->set_fragment_size(fragment_size);
     query.set_layout(TILEDB_GLOBAL_ORDER);
 
     // Perform writes of the requested sizes.
@@ -173,7 +173,7 @@ struct CPPMaxFragmentSizeFx {
     Query query(ctx_, array, TILEDB_WRITE);
 
     // Set the maximum size for the fragments.
-    query.ptr().get()->query_->set_fragment_size(fragment_size);
+    query.ptr().get()->query()->set_fragment_size(fragment_size);
     query.set_layout(TILEDB_GLOBAL_ORDER);
 
     // Perform writes of the requested sizes.
@@ -504,7 +504,7 @@ TEST_CASE(
   Query query(ctx, array);
 
   // Set our max fragment size to force fragment writes
-  query.ptr()->query_->set_fragment_size(1080000);
+  query.ptr()->query()->set_fragment_size(1080000);
 
   query.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("dim", data);
 
@@ -618,7 +618,7 @@ instance_dense_global_order(
     Query query(ctx, array, TILEDB_WRITE);
     query.set_layout(TILEDB_GLOBAL_ORDER);
     query.set_subarray(sub);
-    query.ptr().get()->query_->set_fragment_size(max_fragment_size);
+    query.ptr().get()->query()->set_fragment_size(max_fragment_size);
 
     smsubarray = sub.ptr()->subarray()->ndrange(0);
 
@@ -666,7 +666,7 @@ instance_dense_global_order(
           templates::query::num_cells<Asserter>(attributes, cursor));
 
       const auto w = dynamic_cast<const sm::GlobalOrderWriter*>(
-          query.ptr()->query_->strategy());
+          query.ptr()->query()->strategy());
       ASSERTER(w);
       const auto g = w->get_global_state();
       ASSERTER(g);

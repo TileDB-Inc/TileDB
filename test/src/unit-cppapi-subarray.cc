@@ -34,7 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -1369,7 +1369,7 @@ TEST_CASE(
   query.submit();
 
   // Validate subarray ranges against expected values
-  auto subarray_ptr = *(query.ptr()->query_->subarray());
+  auto subarray_ptr = *(query.ptr()->query()->subarray());
   check_subarray(subarray_ptr, expected_ranges);
 
   // Clean up

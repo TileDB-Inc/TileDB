@@ -38,8 +38,8 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/comparators.h"
@@ -2534,7 +2534,7 @@ TEST_CASE_METHOD(
 
   // Check the internal loop count against expected value.
   auto stats =
-      ((sm::SparseGlobalOrderReader<uint8_t>*)query->query_->strategy())
+      ((sm::SparseGlobalOrderReader<uint8_t>*)query->query()->strategy())
           ->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
@@ -3603,7 +3603,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
   if (instance.condition.has_value()) {
     tiledb::sm::QueryCondition qc(instance.condition->get()->clone());
-    query->query_->set_condition(qc);  // SAFETY: this performs a deep copy
+    query->query()->set_condition(qc);  // SAFETY: this performs a deep copy
   }
 
   // Prepare output buffer

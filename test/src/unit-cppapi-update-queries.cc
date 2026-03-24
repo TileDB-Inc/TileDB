@@ -35,9 +35,10 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
+#include "tiledb/api/c_api/query_condition/query_condition_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/array_operations.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -213,7 +214,7 @@ void UpdatesFx::check_update_conditions(
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
-    auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
+    auto cmp = qcs[i].ptr()->query_condition()->negated_condition();
     CHECK(tiledb::test::ast_equal(conditions.at(i).ast(), cmp.ast()));
     auto& loaded_update_values = update_values.at(i);
     for (uint64_t j = 0; j < uvs[i].size(); j++) {
@@ -265,7 +266,7 @@ TEST_CASE("C++ API: Test setting an update value", "[cppapi][updates]") {
   QueryExperimental::add_update_value_to_query(
       ctx, query, "a", &val, sizeof(val));
 
-  query.ptr()->query_->update_values()[0].check(
+  query.ptr()->query()->update_values()[0].check(
       array.ptr()->array_schema_latest());
 
   array.close();

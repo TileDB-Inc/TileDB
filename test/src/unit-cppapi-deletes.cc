@@ -36,10 +36,10 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api/query_condition/query_condition_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/array_operations.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -396,7 +396,7 @@ void DeletesFx::check_delete_conditions(
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
-    auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
+    auto cmp = qcs[i].ptr()->query_condition()->negated_condition();
     CHECK(tiledb::test::ast_equal(delete_conditions.at(i).ast(), cmp.ast()));
   }
 

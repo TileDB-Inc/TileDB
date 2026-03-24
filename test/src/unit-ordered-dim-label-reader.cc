@@ -36,7 +36,7 @@ using namespace Catch::Matchers;
 #include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 #include "test/support/src/serialization_wrappers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
@@ -133,7 +133,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
           ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
     }
 
-    query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+    query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
     query.set_data_buffer("index", index);
     query.set_subarray(subarray);
     query.submit();
@@ -180,7 +180,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
               ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
         }
 
-        query.ptr()->query_->set_dimension_label_ordered_read(
+        query.ptr()->query()->set_dimension_label_ordered_read(
             increasing_labels_);
         query.set_data_buffer("index", index);
         query.set_subarray(subarray);
@@ -229,7 +229,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
   query.set_data_buffer("index", index);
 
@@ -263,7 +263,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
 
   REQUIRE_THROWS_WITH(
@@ -302,7 +302,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
   query.set_data_buffer("labels", labels);
 
@@ -342,7 +342,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
   query.set_data_buffer("index", index);
 
@@ -383,7 +383,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
   query.set_data_buffer("index", index);
 
@@ -419,7 +419,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   std::vector<int> index(ranges.size());
   query.set_data_buffer("index", index);
   query.set_subarray(subarray);
@@ -784,7 +784,7 @@ struct CPPOrderedDimLabelReaderVarFx {
           ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
     }
 
-    query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+    query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
     query.set_data_buffer("index", index);
     query.set_subarray(subarray);
     query.submit();
@@ -838,7 +838,7 @@ struct CPPOrderedDimLabelReaderVarFx {
               ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
         }
 
-        query.ptr()->query_->set_dimension_label_ordered_read(
+        query.ptr()->query()->set_dimension_label_ordered_read(
             increasing_labels_);
         query.set_data_buffer("index", index);
         query.set_subarray(subarray);
@@ -1064,7 +1064,7 @@ TEST_CASE_METHOD(
         ctx_.ptr().get(), array.ptr().get(), &subarray_ptr);
   }
 
-  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  query.ptr()->query()->set_dimension_label_ordered_read(increasing_labels_);
   query.set_data_buffer("index", index);
   query.set_subarray(subarray);
   query.submit();
@@ -1074,7 +1074,7 @@ TEST_CASE_METHOD(
 
   // Check the internal loop count against expected value.
   auto stats =
-      ((sm::OrderedDimLabelReader*)query.ptr()->query_->strategy())->stats();
+      ((sm::OrderedDimLabelReader*)query.ptr()->query()->strategy())->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);

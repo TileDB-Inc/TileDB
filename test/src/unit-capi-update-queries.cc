@@ -33,9 +33,9 @@
 #include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
@@ -220,7 +220,7 @@ TEST_CASE_METHOD(
 
   // Check the update value.
   CHECK_THROWS(
-      query->query_->update_values()[0].check(array->array_schema_latest()));
+      query->query()->update_values()[0].check(array->array_schema_latest()));
 
   // Clean up.
   tiledb_query_free(&query);
