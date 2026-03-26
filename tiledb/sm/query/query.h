@@ -599,6 +599,16 @@ class Query {
       const bool check_null_buffers = true,
       const bool serialization_allow_new_attr = false);
 
+  /** Returns the number of buffers set to the query. */
+  size_t buffers_count() const;
+
+  /**
+   * Unsets all buffers set by previous calls to set_data_buffer,
+   * set_offsets_buffer, and set_validity_buffer, resetting the query to a
+   * state as if no buffers had been set.
+   */
+  void unset_buffers();
+
   /**
    * Get the config of the query.
    *

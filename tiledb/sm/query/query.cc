@@ -1337,6 +1337,26 @@ void Query::set_validity_buffer(
       {buffer_validity_bytemap, buffer_validity_bytemap_size});
 }
 
+size_t Query::buffers_count() const {
+  return buffers_.size() + label_buffers_.size() + aggregate_buffers_.size() +
+         (has_zipped_coords_buffer_ ? 1 : 0);
+}
+
+void Query::unset_buffers() {
+  buffers_.clear();
+  label_buffers_.clear();
+  aggregate_buffers_.clear();
+
+  coords_info_ = CoordsInfo{};
+  has_coords_buffer_ = false;
+  has_zipped_coords_buffer_ = false;
+  coord_buffer_is_set_ = false;
+  coord_data_buffer_is_set_ = false;
+  coord_offsets_buffer_is_set_ = false;
+  data_buffer_name_ = "";
+  offsets_buffer_name_ = "";
+}
+
 void Query::set_est_result_size(
     std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
     std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
