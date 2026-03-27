@@ -31,7 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
@@ -2188,7 +2188,7 @@ TEST_CASE_METHOD(
         // first attribute get a var size overflow, which should not impact
         // the results of the second attribute as we don't request data for
         // the second attribute.
-        query.ptr()->query_->add_aggregator_to_default_channel(
+        query.ptr()->query()->add_aggregator_to_default_channel(
             "NullCount2",
             std::make_shared<
                 tiledb::sm::NullCountAggregator>(tiledb::sm::FieldInfo(
@@ -2331,7 +2331,7 @@ TEST_CASE_METHOD(
         // Add another aggregator on the second attribute. We will make this
         // attribute get a var size overflow, which should impact the result
         // of the first one hence throw an exception.
-        query.ptr()->query_->add_aggregator_to_default_channel(
+        query.ptr()->query()->add_aggregator_to_default_channel(
             "NullCount2",
             std::make_shared<
                 tiledb::sm::NullCountAggregator>(tiledb::sm::FieldInfo(

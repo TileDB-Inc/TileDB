@@ -50,6 +50,7 @@
 #include <test/support/tdb_catch.h>
 #include <chrono>
 #include <iostream>
+#include <numeric>
 #include <thread>
 
 using namespace tiledb;

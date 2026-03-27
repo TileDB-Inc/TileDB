@@ -33,10 +33,10 @@
 #ifndef TILEDB_CAPI_QUERY_FIELD_INTERNAL_H
 #define TILEDB_CAPI_QUERY_FIELD_INTERNAL_H
 
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
 
 class FieldOrigin {

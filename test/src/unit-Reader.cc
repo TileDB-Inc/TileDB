@@ -43,6 +43,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/query_state.h"
 #include "tiledb/type/range/range.h"
 
 #ifdef _WIN32

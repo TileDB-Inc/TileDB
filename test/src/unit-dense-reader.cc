@@ -31,9 +31,9 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 
@@ -532,7 +532,7 @@ void CDenseFx::read(
 
   // Check the internal loop count against expected value.
   if (rc == TILEDB_OK) {
-    auto stats = ((DenseReader*)query->query_->strategy())->stats();
+    auto stats = ((DenseReader*)query->query()->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
@@ -654,7 +654,7 @@ void CDenseFx::read_strings(
 
   if (rc == TILEDB_OK) {
     // Check the internal loop count against expected value.
-    auto stats = ((DenseReader*)query->query_->strategy())->stats();
+    auto stats = ((DenseReader*)query->query()->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
@@ -824,7 +824,7 @@ void CDenseFx::read_fixed_strings(
 
   if (rc == TILEDB_OK) {
     // Check the internal loop count against expected value.
-    auto stats = ((DenseReader*)query->query_->strategy())->stats();
+    auto stats = ((DenseReader*)query->query()->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);

@@ -217,15 +217,7 @@ Status QueryCondition::combine(
   return Status::Ok();
 }
 
-Status QueryCondition::negate(
-    QueryConditionCombinationOp combination_op,
-    QueryCondition* combined_cond) const {
-  if (combination_op != QueryConditionCombinationOp::NOT) {
-    return Status_QueryConditionError(
-        "Cannot negate query condition; Only the 'NOT' "
-        "combination op is supported in this function.");
-  }
-
+Status QueryCondition::negate(QueryCondition* combined_cond) const {
   combined_cond->field_names_.clear();
   combined_cond->enumeration_field_names_.clear();
   combined_cond->tree_ = this->tree_->get_negated_tree();

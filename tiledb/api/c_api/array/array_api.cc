@@ -624,7 +624,8 @@ capi_return_t tiledb_array_evolve(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_evolution_t* array_schema_evolution) {
-  ensure_array_schema_evolution_is_valid(array_schema_evolution);
+  ensure_handle_is_valid(ctx);
+  ensure_handle_is_valid(array_schema_evolution);
 
   // Create key
   tiledb::sm::EncryptionKey key;
@@ -635,7 +636,7 @@ capi_return_t tiledb_array_evolve(
   tiledb::sm::Array::evolve_array_schema(
       ctx->resources(),
       URI(array_uri, URI::must_be_valid),
-      array_schema_evolution->array_schema_evolution_,
+      array_schema_evolution->array_schema_evolution().get(),
       key);
 
   // Success

@@ -37,6 +37,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/rest/rest_client_remote.h"
 
 #include <cstring>
 #include <iostream>

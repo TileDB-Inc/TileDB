@@ -34,7 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
@@ -587,10 +587,10 @@ TEST_CASE(
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
 
   // Check the query subarray was updated with expected dimension ranges.
-  CHECK(query.ptr()->query_->subarray()->range_num() == 0);
+  CHECK(query.ptr()->query()->subarray()->range_num() == 0);
   query.submit();
-  CHECK(query.ptr()->query_->subarray()->range_num() == 1);
+  CHECK(query.ptr()->query()->subarray()->range_num() == 1);
   CHECK(
-      query.ptr()->query_->subarray()->ranges_for_dim(0) ==
+      query.ptr()->query()->subarray()->ranges_for_dim(0) ==
       expected_subarray.ptr()->ranges_for_dim(0));
 }

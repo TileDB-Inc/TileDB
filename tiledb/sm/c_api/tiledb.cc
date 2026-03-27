@@ -50,6 +50,7 @@
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
@@ -77,8 +78,6 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/object/object_iter.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
@@ -181,873 +180,6 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
 capi_return_t tiledb_as_built_dump(tiledb_string_t** out) {
   ensure_output_pointer_is_valid(out);
   *out = make_handle<tiledb_string_handle_t>(as_built::dump());
-  return TILEDB_OK;
-}
-
-/* ********************************* */
-/*            SCHEMA EVOLUTION       */
-/* ********************************* */
-
-int32_t tiledb_array_schema_evolution_alloc(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t** array_schema_evolution) {
-  // Sanity check
-
-  // Create schema evolution struct
-  *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
-  if (*array_schema_evolution == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new SchemaEvolution object
-  auto memory_tracker = ctx->resources().create_memory_tracker();
-  memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
-  (*array_schema_evolution)->array_schema_evolution_ =
-      new (std::nothrow) tiledb::sm::ArraySchemaEvolution(memory_tracker);
-  if ((*array_schema_evolution)->array_schema_evolution_ == nullptr) {
-    delete *array_schema_evolution;
-    *array_schema_evolution = nullptr;
-    auto st =
-        Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-void tiledb_array_schema_evolution_free(
-    tiledb_array_schema_evolution_t** array_schema_evolution) {
-  if (array_schema_evolution != nullptr && *array_schema_evolution != nullptr) {
-    delete (*array_schema_evolution)->array_schema_evolution_;
-    delete *array_schema_evolution;
-    *array_schema_evolution = nullptr;
-  }
-}
-
-int32_t tiledb_array_schema_evolution_add_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_attribute_t* attr) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_attribute_is_valid(attr);
-  array_schema_evolution->array_schema_evolution_->add_attribute(
-      attr->copy_attribute());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_schema_evolution_drop_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* attribute_name) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  array_schema_evolution->array_schema_evolution_->drop_attribute(
-      attribute_name);
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_schema_evolution_add_enumeration(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_enumeration_t* enumeration) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  api::ensure_enumeration_is_valid(enumeration);
-
-  auto enmr = enumeration->copy();
-  array_schema_evolution->array_schema_evolution_->add_enumeration(enmr);
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_schema_evolution_extend_enumeration(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_enumeration_t* enumeration) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  api::ensure_enumeration_is_valid(enumeration);
-
-  auto enmr = enumeration->copy();
-  array_schema_evolution->array_schema_evolution_->extend_enumeration(enmr);
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_schema_evolution_drop_enumeration(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* enmr_name) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  if (enmr_name == nullptr) {
-    return TILEDB_ERR;
-  }
-
-  array_schema_evolution->array_schema_evolution_->drop_enumeration(enmr_name);
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_schema_evolution_expand_current_domain(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_current_domain_t* expanded_domain) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  api::ensure_handle_is_valid(expanded_domain);
-
-  array_schema_evolution->array_schema_evolution_->expand_current_domain(
-      expanded_domain->current_domain());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_schema_evolution_set_timestamp_range(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    uint64_t lo,
-    uint64_t hi) {
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  array_schema_evolution->array_schema_evolution_->set_timestamp_range(
-      {lo, hi});
-  return TILEDB_OK;
-}
-
-/* ****************************** */
-/*              QUERY             */
-/* ****************************** */
-
-int32_t tiledb_query_alloc(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_query_t** query) {
-  ensure_array_is_valid(array);
-
-  // Error if array is not open
-  if (!array->is_open()) {
-    auto st = Status_Error("Cannot create query; Input array is not open");
-    *query = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Error if the query type and array query type do not match
-  tiledb::sm::QueryType array_query_type;
-  try {
-    array_query_type = array->get_query_type();
-  } catch (StatusException& e) {
-    return TILEDB_ERR;
-  }
-
-  if (query_type != static_cast<tiledb_query_type_t>(array_query_type)) {
-    std::stringstream errmsg;
-    errmsg << "Cannot create query; "
-           << "Array query type does not match declared query type: "
-           << "(" << query_type_str(array_query_type) << " != "
-           << tiledb::sm::query_type_str(
-                  static_cast<tiledb::sm::QueryType>(query_type))
-           << ")";
-    *query = nullptr;
-    auto st = Status_Error(errmsg.str());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Create query struct
-  *query = new (std::nothrow) tiledb_query_t;
-  if (*query == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB query object; Memory allocation failed");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create query
-  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
-      ctx->resources(),
-      ctx->cancellation_source(),
-      ctx->storage_manager(),
-      array->array());
-  if ((*query)->query_ == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB query object; Memory allocation failed");
-    delete *query;
-    *query = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_stats(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (stats_json == nullptr)
-    return TILEDB_ERR;
-
-  const std::string str = query->query_->stats()->dump(2, 0);
-
-  *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
-  if (*stats_json == nullptr)
-    return TILEDB_ERR;
-
-  std::memcpy(*stats_json, str.data(), str.size());
-  (*stats_json)[str.size()] = '\0';
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_config(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-  api::ensure_config_is_valid(config);
-  query->query_->set_config(config->config());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_config(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t** config) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-  api::ensure_output_pointer_is_valid(config);
-  *config = make_handle<tiledb_config_handle_t>(query->query_->config());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_subarray_t(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_subarray_t* subarray) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_subarray_is_valid(subarray);
-  query->query_->set_subarray(*subarray->subarray());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_data_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void* buffer,
-    uint64_t* buffer_size) {  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Set attribute buffer
-  query->query_->set_data_buffer(name, buffer, buffer_size);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_offsets_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* buffer_offsets,
-    uint64_t* buffer_offsets_size) {  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Set attribute buffer
-  query->query_->set_offsets_buffer(name, buffer_offsets, buffer_offsets_size);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_validity_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint8_t* buffer_validity,
-    uint64_t* buffer_validity_size) {  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Set attribute buffer
-  query->query_->set_validity_buffer(
-      name, buffer_validity, buffer_validity_size);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_data_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get attribute buffer
-  std::tie(*buffer, *buffer_size) = query->query_->get_data_buffer(name);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_offsets_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t** buffer,
-    uint64_t** buffer_size) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get attribute buffer
-  std::tie(*buffer, *buffer_size) = query->query_->get_offsets_buffer(name);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_validity_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint8_t** buffer,
-    uint64_t** buffer_size) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get attribute buffer
-  std::tie(*buffer, *buffer_size) = query->query_->get_validity_buffer(name);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_layout(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Set layout
-  query->query_->set_layout(static_cast<tiledb::sm::Layout>(layout));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_condition(
-    tiledb_ctx_t* const ctx,
-    tiledb_query_t* const query,
-    const tiledb_query_condition_t* const cond) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, cond) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Set layout
-  query->query_->set_condition(*cond->query_condition_);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  // Trivial case
-  if (query == nullptr)
-    return TILEDB_OK;
-
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Flush query
-  query->query_->finalize();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_submit_and_finalize(
-    tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  // Trivial case
-  if (query == nullptr)
-    return TILEDB_OK;
-
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  query->query_->submit_and_finalize();
-
-  return TILEDB_OK;
-}
-
-void tiledb_query_free(tiledb_query_t** query) {
-  if (query != nullptr && *query != nullptr) {
-    delete (*query)->query_;
-    delete *query;
-    *query = nullptr;
-  }
-}
-
-int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  // Sanity checks
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  query->query_->submit();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_has_results(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, int32_t* has_results) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *has_results = query->query_->has_results();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_status(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *status = (tiledb_query_status_t)query->query_->status();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_type(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *query_type = static_cast<tiledb_query_type_t>(query->query_->type());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_layout(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *query_layout = static_cast<tiledb_layout_t>(query->query_->layout());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_array(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Allocate an array object, taken from the query's array.
-  *array = make_handle<tiledb_array_t>(query->query_->array_shared());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_est_result_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size) {
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  auto field_name{to_string_view<"field name">(name)};
-  if (size == nullptr) {
-    throw CAPIStatusException("Pointer to size may not be NULL");
-  }
-  auto est_size{query->query_->get_est_result_size_fixed_nonnull(field_name)};
-  *size = est_size.fixed_;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_est_result_size_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val) {
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  auto field_name{to_string_view<"field name">(name)};
-  if (size_off == nullptr) {
-    throw CAPIStatusException("Pointer to offset size may not be NULL");
-  }
-  if (size_val == nullptr) {
-    throw CAPIStatusException("Pointer to value size may not be NULL");
-  }
-
-  auto est_size{
-      query->query_->get_est_result_size_variable_nonnull(field_name)};
-  *size_off = est_size.fixed_;
-  *size_val = est_size.variable_;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_est_result_size_nullable(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_val,
-    uint64_t* size_validity) {
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  auto field_name{to_string_view<"field name">(name)};
-  if (size_val == nullptr) {
-    throw CAPIStatusException("Pointer to value size may not be NULL");
-  }
-  if (size_validity == nullptr) {
-    throw CAPIStatusException("Pointer to validity size may not be NULL");
-  }
-
-  auto est_size{query->query_->get_est_result_size_fixed_nullable(field_name)};
-  *size_val = est_size.fixed_;
-  *size_validity = est_size.validity_;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_est_result_size_var_nullable(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    uint64_t* size_validity) {
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  auto field_name{to_string_view<"field name">(name)};
-  if (size_off == nullptr) {
-    throw CAPIStatusException("Pointer to offset size may not be NULL");
-  }
-  if (size_val == nullptr) {
-    throw CAPIStatusException("Pointer to value size may not be NULL");
-  }
-  if (size_validity == nullptr) {
-    throw CAPIStatusException("Pointer to validity size may not be NULL");
-  }
-  auto est_size{
-      query->query_->get_est_result_size_variable_nullable(field_name)};
-  *size_off = est_size.fixed_;
-  *size_val = est_size.variable_;
-  *size_validity = est_size.validity_;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_fragment_num(
-    tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *num = query->query_->get_written_fragment_num();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_fragment_uri(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint64_t idx,
-    const char** uri) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *uri = query->query_->get_written_fragment_uri(idx).c_str();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_fragment_timestamp_range(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint64_t idx,
-    uint64_t* t1,
-    uint64_t* t2) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  std::tie(*t1, *t2) = query->query_->get_written_fragment_timestamp_range(idx);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_subarray_t(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    tiledb_subarray_t** subarray) {
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(subarray);
-  *subarray = make_handle<tiledb_subarray_t>(*(query->query_->subarray()));
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_relevant_fragment_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint64_t* relevant_fragment_num) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *relevant_fragment_num =
-      query->query_->subarray()->relevant_fragments().relevant_fragments_size();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_add_update_value(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* field_name,
-    const void* update_value,
-    uint64_t update_value_size) {
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  query->query_->add_update_value(field_name, update_value, update_value_size);
-
-  // Success
-  return TILEDB_OK;
-}
-
-/* ****************************** */
-/*          QUERY CONDITION       */
-/* ****************************** */
-
-int32_t tiledb_query_condition_alloc(
-    tiledb_ctx_t* const ctx, tiledb_query_condition_t** const cond) {
-  // Create query condition struct
-  *cond = new (std::nothrow) tiledb_query_condition_t;
-  if (*cond == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB query condition object; Memory allocation "
-        "error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create QueryCondition object
-  (*cond)->query_condition_ = new (std::nothrow) tiledb::sm::QueryCondition();
-  if ((*cond)->query_condition_ == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB query condition object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    delete *cond;
-    *cond = nullptr;
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_query_condition_alloc_set_membership(
-    const char* field_name,
-    const void* data,
-    uint64_t data_size,
-    const void* offsets,
-    uint64_t offsets_size,
-    tiledb_query_condition_op_t op,
-    tiledb_query_condition_t** cond) {
-  // Validate input arguments. The data, data_size, offsets, and offsets_size,
-  // and op arguments are validated in the QueryCondition constructor so
-  // there's no need to validate them here.
-  if (field_name == nullptr) {
-    throw api::CAPIStatusException(
-        "QueryCondition field name must not be nullptr");
-  }
-  ensure_output_pointer_is_valid(cond);
-
-  // Create query condition struct
-  *cond = new tiledb_query_condition_t;
-  if (*cond == nullptr) {
-    throw api::CAPIStatusException(
-        "Failed to create TileDB query condition "
-        "object; Memory allocation error");
-  }
-
-  // Create QueryCondition object
-  (*cond)->query_condition_ = new tiledb::sm::QueryCondition(
-      field_name,
-      data,
-      data_size,
-      offsets,
-      offsets_size,
-      static_cast<tiledb::sm::QueryConditionOp>(op));
-  if ((*cond)->query_condition_ == nullptr) {
-    delete *cond;
-    throw api::CAPIStatusException(
-        "Failed to allocate TileDB query condition object");
-  }
-
-  return TILEDB_OK;
-}
-
-void tiledb_query_condition_free(tiledb_query_condition_t** cond) {
-  if (cond != nullptr && *cond != nullptr) {
-    delete (*cond)->query_condition_;
-    delete *cond;
-    *cond = nullptr;
-  }
-}
-
-int32_t tiledb_query_condition_init(
-    tiledb_ctx_t* const ctx,
-    tiledb_query_condition_t* const cond,
-    const char* const attribute_name,
-    const void* const condition_value,
-    const uint64_t condition_value_size,
-    const tiledb_query_condition_op_t op) {
-  if (sanity_check(ctx, cond) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  // Initialize the QueryCondition object
-  auto st = cond->query_condition_->init(
-      std::string(attribute_name),
-      condition_value,
-      condition_value_size,
-      static_cast<tiledb::sm::QueryConditionOp>(op));
-  if (!st.ok()) {
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_condition_combine(
-    tiledb_ctx_t* const ctx,
-    const tiledb_query_condition_t* const left_cond,
-    const tiledb_query_condition_t* const right_cond,
-    const tiledb_query_condition_combination_op_t combination_op,
-    tiledb_query_condition_t** const combined_cond) {
-  // Sanity check
-  if (sanity_check(ctx, left_cond) == TILEDB_ERR ||
-      (combination_op != TILEDB_NOT &&
-       sanity_check(ctx, right_cond) == TILEDB_ERR) ||
-      (combination_op == TILEDB_NOT && right_cond != nullptr))
-    return TILEDB_ERR;
-
-  // Create the combined query condition struct
-  *combined_cond = new (std::nothrow) tiledb_query_condition_t;
-  if (*combined_cond == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB query condition object; Memory allocation "
-        "error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create the combined QueryCondition object
-  (*combined_cond)->query_condition_ =
-      new (std::nothrow) tiledb::sm::QueryCondition();
-  if ((*combined_cond)->query_condition_ == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB query condition object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    delete *combined_cond;
-    *combined_cond = nullptr;
-    return TILEDB_OOM;
-  }
-
-  if (combination_op == TILEDB_NOT) {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            left_cond->query_condition_->negate(
-                static_cast<tiledb::sm::QueryConditionCombinationOp>(
-                    combination_op),
-                (*combined_cond)->query_condition_))) {
-      delete (*combined_cond)->query_condition_;
-      delete *combined_cond;
-      return TILEDB_ERR;
-    }
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            left_cond->query_condition_->combine(
-                *right_cond->query_condition_,
-                static_cast<tiledb::sm::QueryConditionCombinationOp>(
-                    combination_op),
-                (*combined_cond)->query_condition_))) {
-      delete (*combined_cond)->query_condition_;
-      delete *combined_cond;
-      return TILEDB_ERR;
-    }
-  }
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_condition_negate(
-    tiledb_ctx_t* const ctx,
-    const tiledb_query_condition_t* const cond,
-    tiledb_query_condition_t** const negated_cond) {
-  return api::tiledb_query_condition_combine(
-      ctx, cond, nullptr, TILEDB_NOT, negated_cond);
-}
-
-capi_return_t tiledb_query_condition_set_use_enumeration(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_condition_t* cond,
-    int use_enumeration) {
-  if (sanity_check(ctx, cond) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  cond->query_condition_->set_use_enumeration(
-      use_enumeration != 0 ? true : false);
   return TILEDB_OK;
 }
 
@@ -1545,9 +677,7 @@ int32_t tiledb_serialize_array_schema_evolution(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_handle_is_valid(array_schema_evolution);
 
   auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
@@ -1555,7 +685,7 @@ int32_t tiledb_serialize_array_schema_evolution(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_serialize(
-              array_schema_evolution->array_schema_evolution_,
+              array_schema_evolution->array_schema_evolution().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
@@ -1574,34 +704,26 @@ int32_t tiledb_deserialize_array_schema_evolution(
     tiledb_serialization_type_t serialize_type,
     int32_t,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
-  // Sanity check
-
   api::ensure_buffer_is_valid(buffer);
-
-  // Create array schema struct
-  *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
-  if (*array_schema_evolution == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  ensure_output_pointer_is_valid(array_schema_evolution);
 
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
+  tiledb::sm::ArraySchemaEvolution* ase_raw = nullptr;
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_deserialize(
-              &((*array_schema_evolution)->array_schema_evolution_),
+              &ase_raw,
               ctx->config(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer(),
               memory_tracker))) {
-    delete *array_schema_evolution;
-    *array_schema_evolution = nullptr;
     return TILEDB_ERR;
   }
+
+  tdb_unique_ptr<tiledb::sm::ArraySchemaEvolution> owned_ase(ase_raw);
+  *array_schema_evolution = make_handle<tiledb_array_schema_evolution_t>(
+      shared_ptr<tiledb::sm::ArraySchemaEvolution>(std::move(owned_ase)));
 
   return TILEDB_OK;
 }
@@ -1623,7 +745,7 @@ int32_t tiledb_serialize_query(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::query_serialize(
-              query->query_,
+              query->query(),
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               (*buffer_list)->buffer_list()))) {
@@ -1651,7 +773,7 @@ int32_t tiledb_deserialize_query(
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       nullptr,
-      query->query_,
+      query->query(),
       &ctx->resources().compute_tp(),
       ctx->resources().serialization_memory_tracker()));
 
@@ -1690,29 +812,12 @@ int32_t tiledb_deserialize_query_and_array(
     throw;
   }
 
-  // Create query struct
-  *query = new (std::nothrow) tiledb_query_t;
-  if (*query == nullptr) {
-    break_handle(*array);
-    throw CAPIException(
-        "Failed to deserialize query and array; "
-        "TileDB query object allocation failed.");
-  }
-
   // Create query
-  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
+  *query = make_handle<tiledb_query_handle_t>(
       ctx->resources(),
       ctx->cancellation_source(),
       ctx->storage_manager(),
       (*array)->array());
-  if ((*query)->query_ == nullptr) {
-    delete *query;
-    *query = nullptr;
-    break_handle(*array);
-    throw CAPIException(
-        "Failed to deserialize query and array; "
-        "TileDB query object allocation failed.");
-  }
 
   try {
     throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
@@ -1720,12 +825,11 @@ int32_t tiledb_deserialize_query_and_array(
         (tiledb::sm::SerializationType)serialize_type,
         client_side == 1,
         nullptr,
-        (*query)->query_,
+        (*query)->query(),
         &ctx->resources().compute_tp(),
         ctx->resources().serialization_memory_tracker()));
   } catch (...) {
-    delete *query;
-    *query = nullptr;
+    break_handle(*query);
     break_handle(*array);
     throw;
   }
@@ -1954,7 +1058,7 @@ int32_t tiledb_serialize_query_est_result_sizes(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::query_est_result_size_serialize(
-              query->query_,
+              query->query(),
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               buf->buffer()))) {
@@ -1980,7 +1084,7 @@ int32_t tiledb_deserialize_query_est_result_sizes(
   api::ensure_buffer_is_valid(buffer);
 
   throw_if_not_ok(tiledb::sm::serialization::query_est_result_size_deserialize(
-      query->query_,
+      query->query(),
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       buffer->buffer()));
@@ -2294,128 +1398,70 @@ int32_t tiledb_query_get_status_details(
 
   // Currently only one detailed reason. Retrieve it and set to user struct.
   tiledb_query_status_details_reason_t incomplete_reason =
-      (tiledb_query_status_details_reason_t)
-          query->query_->status_incomplete_reason();
+      (tiledb_query_status_details_reason_t)query->query()
+          ->status_incomplete_reason();
   status->incomplete_reason = incomplete_reason;
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_create_with_mbr(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
   ensure_array_is_valid(array);
+  ensure_output_pointer_is_valid(consolidation_plan);
 
-  // Create consolidation plan struct
-  *consolidation_plan = new (std::nothrow) tiledb_consolidation_plan_t;
-  if (*consolidation_plan == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB consolidation plan object; Memory allocation "
-        "error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Allocate a consolidation plan object
-  try {
-    (*consolidation_plan)->consolidation_plan_ =
-        make_shared<tiledb::sm::ConsolidationPlan>(
-            HERE(), array->array(), fragment_size);
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB consolidation plan object; Memory allocation "
-        "error");
-    delete *consolidation_plan;
-    *consolidation_plan = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  *consolidation_plan = make_handle<tiledb_consolidation_plan_handle_t>(
+      std::in_place, array->array(), fragment_size);
 
   return TILEDB_OK;
 }
 
 void tiledb_consolidation_plan_free(
     tiledb_consolidation_plan_t** consolidation_plan) {
-  if (consolidation_plan != nullptr && *consolidation_plan != nullptr) {
-    delete *consolidation_plan;
-    *consolidation_plan = nullptr;
-  }
+  break_handle(*consolidation_plan);
 }
 
 int32_t tiledb_consolidation_plan_get_num_nodes(
-    tiledb_ctx_t* ctx,
-    tiledb_consolidation_plan_t* consolidation_plan,
-    uint64_t* num_nodes) {
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+    tiledb_consolidation_plan_t* consolidation_plan, uint64_t* num_nodes) {
+  ensure_handle_is_valid(consolidation_plan);
 
-  *num_nodes = consolidation_plan->consolidation_plan_->get_num_nodes();
+  *num_nodes = consolidation_plan->consolidation_plan().get_num_nodes();
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_get_num_fragments(
-    tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t* num_fragments) {
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  ensure_handle_is_valid(consolidation_plan);
 
-  try {
-    *num_fragments =
-        consolidation_plan->consolidation_plan_->get_num_fragments(node_index);
-  } catch (StatusException& e) {
-    auto st = Status_Error(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  *num_fragments =
+      consolidation_plan->consolidation_plan().get_num_fragments(node_index);
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_get_fragment_uri(
-    tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t fragment_index,
     const char** uri) {
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  ensure_handle_is_valid(consolidation_plan);
 
-  try {
-    *uri = consolidation_plan->consolidation_plan_->get_fragment_uri(
-        node_index, fragment_index);
-  } catch (StatusException& e) {
-    auto st = Status_Error(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  *uri = consolidation_plan->consolidation_plan().get_fragment_uri(
+      node_index, fragment_index);
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_consolidation_plan_dump_json_str(
-    tiledb_ctx_t* ctx,
-    const tiledb_consolidation_plan_t* consolidation_plan,
-    char** out) {
-  if (out == nullptr) {
-    return TILEDB_ERR;
-  }
+    const tiledb_consolidation_plan_t* consolidation_plan, char** out) {
+  ensure_handle_is_valid(consolidation_plan);
+  ensure_output_pointer_is_valid(out);
 
-  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  std::string str = consolidation_plan->consolidation_plan_->dump();
+  std::string str = consolidation_plan->consolidation_plan().dump();
 
   *out = static_cast<char*>(std::malloc(str.size() + 1));
   if (*out == nullptr) {
@@ -2548,457 +1594,6 @@ CAPI_INTERFACE(log_warn, tiledb_ctx_t* ctx, const char* message) {
 /* ********************************* */
 CAPI_INTERFACE(as_built_dump, tiledb_string_t** out) {
   return api_entry_plain<tiledb::api::tiledb_as_built_dump>(out);
-}
-
-/* ********************************* */
-/*            SCHEMA EVOLUTION       */
-/* ********************************* */
-
-CAPI_INTERFACE(
-    array_schema_evolution_alloc,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t** array_schema_evolution) {
-  return api_entry<tiledb::api::tiledb_array_schema_evolution_alloc>(
-      ctx, array_schema_evolution);
-}
-
-CAPI_INTERFACE_VOID(
-    array_schema_evolution_free,
-    tiledb_array_schema_evolution_t** array_schema_evolution) {
-  return api_entry_void<tiledb::api::tiledb_array_schema_evolution_free>(
-      array_schema_evolution);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_add_attribute,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_attribute_t* attr) {
-  return api_entry<tiledb::api::tiledb_array_schema_evolution_add_attribute>(
-      ctx, array_schema_evolution, attr);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_drop_attribute,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* attribute_name) {
-  return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_attribute>(
-      ctx, array_schema_evolution, attribute_name);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_add_enumeration,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_enumeration_t* enmr) {
-  return api_entry<tiledb::api::tiledb_array_schema_evolution_add_enumeration>(
-      ctx, array_schema_evolution, enmr);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_extend_enumeration,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_enumeration_t* enmr) {
-  return api_entry<
-      tiledb::api::tiledb_array_schema_evolution_extend_enumeration>(
-      ctx, array_schema_evolution, enmr);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_drop_enumeration,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* enumeration_name) {
-  return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_enumeration>(
-      ctx, array_schema_evolution, enumeration_name);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_expand_current_domain,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_current_domain_t* expanded_domain) {
-  return api_entry<
-      tiledb::api::tiledb_array_schema_evolution_expand_current_domain>(
-      ctx, array_schema_evolution, expanded_domain);
-}
-
-CAPI_INTERFACE(
-    array_schema_evolution_set_timestamp_range,
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t* array_schema_evolution,
-    uint64_t lo,
-    uint64_t hi) {
-  return api_entry<
-      tiledb::api::tiledb_array_schema_evolution_set_timestamp_range>(
-      ctx, array_schema_evolution, lo, hi);
-}
-
-/* ****************************** */
-/*              QUERY             */
-/* ****************************** */
-
-CAPI_INTERFACE(
-    query_alloc,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_query_t** query) {
-  return api_entry<tiledb::api::tiledb_query_alloc>(
-      ctx, array, query_type, query);
-}
-
-CAPI_INTERFACE(
-    query_get_stats,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    char** stats_json) {
-  return api_entry<tiledb::api::tiledb_query_get_stats>(ctx, query, stats_json);
-}
-
-CAPI_INTERFACE(
-    query_set_config,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_config_t* config) {
-  return api_entry<tiledb::api::tiledb_query_set_config>(ctx, query, config);
-}
-
-CAPI_INTERFACE(
-    query_get_config,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_config_t** config) {
-  return api_entry<tiledb::api::tiledb_query_get_config>(ctx, query, config);
-}
-
-CAPI_INTERFACE(
-    query_set_subarray_t,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_subarray_t* subarray) {
-  return api_entry<tiledb::api::tiledb_query_set_subarray_t>(
-      ctx, query, subarray);
-}
-
-CAPI_INTERFACE(
-    query_set_data_buffer,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void* buffer,
-    uint64_t* buffer_size) {
-  return api_entry<tiledb::api::tiledb_query_set_data_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-CAPI_INTERFACE(
-    query_set_offsets_buffer,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* buffer_offsets,
-    uint64_t* buffer_offsets_size) {
-  return api_entry<tiledb::api::tiledb_query_set_offsets_buffer>(
-      ctx, query, name, buffer_offsets, buffer_offsets_size);
-}
-
-CAPI_INTERFACE(
-    query_set_validity_buffer,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint8_t* buffer_validity,
-    uint64_t* buffer_validity_size) {
-  return api_entry<tiledb::api::tiledb_query_set_validity_buffer>(
-      ctx, query, name, buffer_validity, buffer_validity_size);
-}
-
-CAPI_INTERFACE(
-    query_get_data_buffer,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size) {
-  return api_entry<tiledb::api::tiledb_query_get_data_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-CAPI_INTERFACE(
-    query_get_offsets_buffer,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t** buffer,
-    uint64_t** buffer_size) {
-  return api_entry<tiledb::api::tiledb_query_get_offsets_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-CAPI_INTERFACE(
-    query_get_validity_buffer,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint8_t** buffer,
-    uint64_t** buffer_size) {
-  return api_entry<tiledb::api::tiledb_query_get_validity_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-CAPI_INTERFACE(
-    query_set_layout,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_layout_t layout) {
-  return api_entry<tiledb::api::tiledb_query_set_layout>(ctx, query, layout);
-}
-
-CAPI_INTERFACE(
-    query_set_condition,
-    tiledb_ctx_t* const ctx,
-    tiledb_query_t* const query,
-    const tiledb_query_condition_t* const cond) {
-  return api_entry<tiledb::api::tiledb_query_set_condition>(ctx, query, cond);
-}
-
-CAPI_INTERFACE(query_finalize, tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  return api_entry<tiledb::api::tiledb_query_finalize>(ctx, query);
-}
-
-CAPI_INTERFACE(
-    query_submit_and_finalize, tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  return api_entry<tiledb::api::tiledb_query_submit_and_finalize>(ctx, query);
-}
-
-CAPI_INTERFACE_VOID(query_free, tiledb_query_t** query) {
-  return api_entry_void<tiledb::api::tiledb_query_free>(query);
-}
-
-CAPI_INTERFACE(query_submit, tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  return api_entry<tiledb::api::tiledb_query_submit>(ctx, query);
-}
-
-CAPI_INTERFACE(
-    query_has_results,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    int32_t* has_results) {
-  return api_entry<tiledb::api::tiledb_query_has_results>(
-      ctx, query, has_results);
-}
-
-CAPI_INTERFACE(
-    query_get_status,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_query_status_t* status) {
-  return api_entry<tiledb::api::tiledb_query_get_status>(ctx, query, status);
-}
-
-CAPI_INTERFACE(
-    query_get_type,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_query_type_t* query_type) {
-  return api_entry<tiledb::api::tiledb_query_get_type>(ctx, query, query_type);
-}
-
-CAPI_INTERFACE(
-    query_get_layout,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_layout_t* query_layout) {
-  return api_entry<tiledb::api::tiledb_query_get_layout>(
-      ctx, query, query_layout);
-}
-
-CAPI_INTERFACE(
-    query_get_array,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_array_t** array) {
-  return api_entry<tiledb::api::tiledb_query_get_array>(ctx, query, array);
-}
-
-CAPI_INTERFACE(
-    query_get_est_result_size,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size) {
-  return api_entry<tiledb::api::tiledb_query_get_est_result_size>(
-      ctx, query, name, size);
-}
-
-CAPI_INTERFACE(
-    query_get_est_result_size_var,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val) {
-  return api_entry<tiledb::api::tiledb_query_get_est_result_size_var>(
-      ctx, query, name, size_off, size_val);
-}
-
-CAPI_INTERFACE(
-    query_get_est_result_size_nullable,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_val,
-    uint64_t* size_validity) {
-  return api_entry<tiledb::api::tiledb_query_get_est_result_size_nullable>(
-      ctx, query, name, size_val, size_validity);
-}
-
-CAPI_INTERFACE(
-    query_get_est_result_size_var_nullable,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    uint64_t* size_validity) {
-  return api_entry<tiledb::api::tiledb_query_get_est_result_size_var_nullable>(
-      ctx, query, name, size_off, size_val, size_validity);
-}
-
-CAPI_INTERFACE(
-    query_get_fragment_num,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint32_t* num) {
-  return api_entry<tiledb::api::tiledb_query_get_fragment_num>(ctx, query, num);
-}
-
-CAPI_INTERFACE(
-    query_get_fragment_uri,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint64_t idx,
-    const char** uri) {
-  return api_entry<tiledb::api::tiledb_query_get_fragment_uri>(
-      ctx, query, idx, uri);
-}
-
-CAPI_INTERFACE(
-    query_get_fragment_timestamp_range,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint64_t idx,
-    uint64_t* t1,
-    uint64_t* t2) {
-  return api_entry<tiledb::api::tiledb_query_get_fragment_timestamp_range>(
-      ctx, query, idx, t1, t2);
-}
-
-CAPI_INTERFACE(
-    query_get_subarray_t,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    tiledb_subarray_t** subarray) {
-  return api_entry<tiledb::api::tiledb_query_get_subarray_t>(
-      ctx, query, subarray);
-}
-
-CAPI_INTERFACE(
-    query_get_relevant_fragment_num,
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint64_t* relevant_fragment_num) {
-  return api_entry<tiledb::api::tiledb_query_get_relevant_fragment_num>(
-      ctx, query, relevant_fragment_num);
-}
-
-/* ****************************** */
-/*          QUERY CONDITION       */
-/* ****************************** */
-
-CAPI_INTERFACE(
-    query_condition_alloc,
-    tiledb_ctx_t* const ctx,
-    tiledb_query_condition_t** const cond) {
-  return api_entry<tiledb::api::tiledb_query_condition_alloc>(ctx, cond);
-}
-
-CAPI_INTERFACE(
-    query_condition_alloc_set_membership,
-    tiledb_ctx_t* ctx,
-    const char* field_name,
-    const void* data,
-    uint64_t data_size,
-    const void* offsets,
-    uint64_t offsets_size,
-    tiledb_query_condition_op_t op,
-    tiledb_query_condition_t** cond) {
-  return api_entry_context<
-      tiledb::api::tiledb_query_condition_alloc_set_membership>(
-      ctx, field_name, data, data_size, offsets, offsets_size, op, cond);
-}
-
-CAPI_INTERFACE_VOID(query_condition_free, tiledb_query_condition_t** cond) {
-  return api_entry_void<tiledb::api::tiledb_query_condition_free>(cond);
-}
-
-CAPI_INTERFACE(
-    query_condition_init,
-    tiledb_ctx_t* const ctx,
-    tiledb_query_condition_t* const cond,
-    const char* const attribute_name,
-    const void* const condition_value,
-    const uint64_t condition_value_size,
-    const tiledb_query_condition_op_t op) {
-  return api_entry<tiledb::api::tiledb_query_condition_init>(
-      ctx, cond, attribute_name, condition_value, condition_value_size, op);
-}
-
-CAPI_INTERFACE(
-    query_condition_combine,
-    tiledb_ctx_t* const ctx,
-    const tiledb_query_condition_t* const left_cond,
-    const tiledb_query_condition_t* const right_cond,
-    const tiledb_query_condition_combination_op_t combination_op,
-    tiledb_query_condition_t** const combined_cond) {
-  return api_entry<tiledb::api::tiledb_query_condition_combine>(
-      ctx, left_cond, right_cond, combination_op, combined_cond);
-}
-
-CAPI_INTERFACE(
-    query_condition_negate,
-    tiledb_ctx_t* const ctx,
-    const tiledb_query_condition_t* const cond,
-    tiledb_query_condition_t** const negated_cond) {
-  return api_entry<tiledb::api::tiledb_query_condition_negate>(
-      ctx, cond, negated_cond);
-}
-
-CAPI_INTERFACE(
-    query_condition_set_use_enumeration,
-    tiledb_ctx_t* const ctx,
-    const tiledb_query_condition_t* const cond,
-    int use_enumeration) {
-  return api_entry<tiledb::api::tiledb_query_condition_set_use_enumeration>(
-      ctx, cond, use_enumeration);
-}
-
-/* ****************************** */
-/*         UPDATE CONDITION       */
-/* ****************************** */
-
-CAPI_INTERFACE(
-    query_add_update_value,
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* field_name,
-    const void* update_value,
-    uint64_t update_value_size) {
-  return api_entry<tiledb::api::tiledb_query_add_update_value>(
-      ctx, query, field_name, update_value, update_value_size);
 }
 
 /* ****************************** */
@@ -3556,7 +2151,8 @@ CAPI_INTERFACE(
     tiledb_array_t* array,
     uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_create_with_mbr>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_create_with_mbr>(
       ctx, array, fragment_size, consolidation_plan);
 }
 
@@ -3571,7 +2167,8 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t* num_nodes) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_nodes>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_get_num_nodes>(
       ctx, consolidation_plan, num_nodes);
 }
 
@@ -3581,7 +2178,8 @@ CAPI_INTERFACE(
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t* num_fragments) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_fragments>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_get_num_fragments>(
       ctx, consolidation_plan, node_index, num_fragments);
 }
 
@@ -3592,7 +2190,8 @@ CAPI_INTERFACE(
     uint64_t node_index,
     uint64_t fragment_index,
     const char** uri) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
       ctx, consolidation_plan, node_index, fragment_index, uri);
 }
 
@@ -3601,7 +2200,8 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     const tiledb_consolidation_plan_t* consolidation_plan,
     char** out) {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_dump_json_str>(
+  return api_entry_context<
+      tiledb::api::tiledb_consolidation_plan_dump_json_str>(
       ctx, consolidation_plan, out);
 }
 

@@ -37,43 +37,35 @@
 
 #include "array_schema_evolution_api_experimental.h"
 
-#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 
 /** Handle `struct` for API array schema evolution objects. */
-struct tiledb_array_schema_evolution_t {
-  tiledb::sm::ArraySchemaEvolution* array_schema_evolution_ = nullptr;
+struct tiledb_array_schema_evolution_t : public tiledb::api::CAPIHandle {
+  /** Type name */
+  static constexpr std::string_view object_type_name{"array_schema_evolution"};
+
+ private:
+  shared_ptr<tiledb::sm::ArraySchemaEvolution> array_schema_evolution_;
+
+ public:
+  explicit tiledb_array_schema_evolution_t(
+      shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : array_schema_evolution_(
+            make_shared<tiledb::sm::ArraySchemaEvolution>(
+                HERE(), memory_tracker)) {
+  }
+
+  explicit tiledb_array_schema_evolution_t(
+      shared_ptr<tiledb::sm::ArraySchemaEvolution> ase)
+      : array_schema_evolution_(ase) {
+  }
+
+  [[nodiscard]] shared_ptr<tiledb::sm::ArraySchemaEvolution>
+  array_schema_evolution() const {
+    return array_schema_evolution_;
+  }
 };
-
-namespace tiledb::api {
-
-inline int32_t sanity_check(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_evolution_t* schema_evolution) {
-  if (schema_evolution == nullptr ||
-      schema_evolution->array_schema_evolution_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-/**
- * Returns after successfully validating an array schema evolution.
- *
- * @param schema_evolution Possibly-valid pointer to an array schema evolution
- */
-inline void ensure_array_schema_evolution_is_valid(
-    const tiledb_array_schema_evolution_t* schema_evolution) {
-  if (schema_evolution == nullptr ||
-      schema_evolution->array_schema_evolution_ == nullptr) {
-    throw CAPIException("Invalid TileDB array schema evolution object");
-  }
-}
-
-}  // namespace tiledb::api
 
 #endif  // TILEDB_CAPI_ARRAY_SCHEMA_EVOLUTION_INTERNAL_H

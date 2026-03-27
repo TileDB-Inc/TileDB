@@ -1,9 +1,9 @@
 #
-# tiledb/api/c_api/filesystem/test/CMakeLists.txt
+# tiledb/api/c_api/array_schema_evolution/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022-2024 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,19 @@
 # THE SOFTWARE.
 #
 
-include(unit_test)
+include(common NO_POLICY_SCOPE)
+include(object_library)
 
-commence(unit_test capi_query_type)
-  this_target_sources(unit_capi_query_type.cc)
-  # We link to the test support library to get TILEDB_CORE_OBJECTS.
-  # TODO: Remove when query gets componentized into its own object library.
-  this_target_link_libraries(tiledb_test_support_lib)
-  this_target_object_libraries(capi_query)
-conclude(unit_test)
+list(APPEND SOURCES
+  array_schema_evolution_api.cc
+)
+gather_sources(${SOURCES})
+
+commence(object_library capi_array_schema_evolution_stub)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(array_schema capi_context_stub capi_attribute_stub capi_enumeration_stub capi_current_domain capi_buffer_stub)
+conclude(object_library)
+
+# TODO: Add array schema evolution C API tests.
+# add_test_subdirectory()

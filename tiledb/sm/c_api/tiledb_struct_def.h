@@ -35,26 +35,29 @@
 #define TILEDB_C_API_STRUCT_DEF_H
 
 #include "tiledb/api/c_api_support/handle/handle.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
-#include "tiledb/sm/filesystem/vfs_file_handle.h"
-#include "tiledb/sm/group/group.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/update_value.h"
-#include "tiledb/sm/storage_manager/context.h"
 
-struct tiledb_query_t {
-  tiledb::sm::Query* query_ = nullptr;
-};
+struct tiledb_consolidation_plan_handle_t : public tiledb::api::CAPIHandle {
+  /** Type name */
+  static constexpr std::string_view object_type_name{"consolidation_plan"};
 
-struct tiledb_query_condition_t {
-  tiledb::sm::QueryCondition* query_condition_ = nullptr;
-};
-
-struct tiledb_consolidation_plan_t {
+ private:
   shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
+
+ public:
+  tiledb_consolidation_plan_handle_t(
+      shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan)
+      : consolidation_plan_(consolidation_plan) {
+  }
+
+  tiledb_consolidation_plan_handle_t(std::in_place_t, auto&&... args)
+      : consolidation_plan_(make_shared<tiledb::sm::ConsolidationPlan>(
+            HERE(), std::forward<decltype(args)>(args)...)) {
+  }
+
+  const tiledb::sm::ConsolidationPlan& consolidation_plan() const {
+    return *consolidation_plan_;
+  }
 };
 
 #endif

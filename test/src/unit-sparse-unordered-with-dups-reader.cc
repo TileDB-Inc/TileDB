@@ -32,10 +32,10 @@
 
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
@@ -1029,7 +1029,7 @@ TEST_CASE_METHOD(
   // This is needed to simulate the remote server environment where updating
   // the config of a query that has already been submitted is only allowed.
   // This is set during deserialization on the remote server.
-  query->query_->set_remote_query();
+  query->query()->set_remote_query();
 
   rc = tiledb_query_set_config(ctx_, query, config);
   REQUIRE(rc == TILEDB_OK);
@@ -1157,7 +1157,7 @@ TEST_CASE_METHOD(
 
     // Check the internal loop count against expected value.
     auto stats =
-        ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
+        ((SparseUnorderedWithDupsReader<uint8_t>*)query->query()->strategy())
             ->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
@@ -1271,7 +1271,7 @@ TEST_CASE_METHOD(
 
   // Check the internal loop count against expected value.
   auto stats =
-      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
+      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query()->strategy())
           ->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();

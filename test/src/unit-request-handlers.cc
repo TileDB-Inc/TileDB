@@ -38,10 +38,10 @@
 #include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_internal.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -302,7 +302,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_query_get_plan(ctx, query, &query_plan) == TILEDB_OK);
 
   // Call handler to get query plan via serialized req/deserialized response
-  auto query_plan_ser_deser = call_handler(stype, *query->query_);
+  auto query_plan_ser_deser = call_handler(stype, *query->query());
 
   // Compare the two query plans
   REQUIRE(query_plan->view() == query_plan_ser_deser.dump_json());
@@ -482,12 +482,12 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::schema_add_attribute(
   auto attr = tiledb::Attribute::create<int32_t>(ctx, attr_name);
   ase.add_attribute(attr);
   // Evolve and update the original schema member variable.
-  schema_ = ase.ptr()->array_schema_evolution_->evolve_schema(schema_);
+  schema_ = ase.ptr()->array_schema_evolution()->evolve_schema(schema_);
   // Apply the schema evolution.
   Array::evolve_array_schema(
       this->ctx_.resources(),
       this->uri_,
-      ase.ptr()->array_schema_evolution_,
+      ase.ptr()->array_schema_evolution().get(),
       this->enc_key_);
 
   // Return the new evolved schema for validation.

@@ -162,7 +162,7 @@ capi_return_t tiledb_query_get_default_channel(
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(channel);
   *channel = make_handle<tiledb_query_channel_handle_t>(
-      query->query_->default_channel());
+      query->query()->default_channel());
 
   return TILEDB_OK;
 }
@@ -179,7 +179,7 @@ capi_return_t tiledb_create_unary_aggregate(
   ensure_output_pointer_is_valid(operation);
   ensure_input_field_is_valid(input_field_name, op->name());
   std::string field_name(input_field_name);
-  auto& schema = query->query_->array_schema();
+  auto& schema = query->query()->array_schema();
 
   // Getting the field errors if there is no input_field_name associated with
   // the query.

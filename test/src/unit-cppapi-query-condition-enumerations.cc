@@ -38,7 +38,7 @@
 #include "test/support/src/ast_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/query_condition/query_condition_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/serialization/query.h"
@@ -546,7 +546,7 @@ TEST_CASE_METHOD(
 
   auto qc =
       QueryCondition::create(ctx_, "cell_type", std::string("fish"), TILEDB_NE);
-  auto core_qc = qc.ptr().get()->query_condition_;
+  auto core_qc = qc.ptr().get()->query_condition();
   core_qc->rewrite_for_schema(core_array->array_schema_latest());
 
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -569,7 +569,7 @@ TEST_CASE_METHOD(
 
   auto qc =
       QueryCondition::create(ctx_, "cell_type", std::string("fish"), TILEDB_EQ);
-  auto core_qc = qc.ptr().get()->query_condition_;
+  auto core_qc = qc.ptr().get()->query_condition();
   core_qc->rewrite_for_schema(core_array->array_schema_latest());
 
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -1120,10 +1120,10 @@ QueryCondition CPPQueryConditionEnumerationFx::serialize_deserialize_qc(
   using namespace tiledb::sm::serialization;
   using Condition = tiledb::sm::serialization::capnp::Condition;
 
-  auto qc_ptr = qc.ptr().get()->query_condition_;
+  auto qc_ptr = qc.ptr().get()->query_condition();
 
   QueryCondition ret(ctx_);
-  auto ret_ptr = ret.ptr().get()->query_condition_;
+  auto ret_ptr = ret.ptr().get()->query_condition();
 
   // Serialize the query condition.
   ::capnp::MallocMessageBuilder message;
@@ -1163,7 +1163,7 @@ void CPPQueryConditionEnumerationFx::validate_query_condition(
   core_array->load_all_enumerations();
 
   auto qc = creator(ctx_);
-  auto core_qc = qc.ptr().get()->query_condition_;
+  auto core_qc = qc.ptr().get()->query_condition();
   core_qc->rewrite_for_schema(core_array->array_schema_latest());
 
   REQUIRE(core_qc->check(core_array->array_schema_latest()).ok());

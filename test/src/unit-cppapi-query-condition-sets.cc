@@ -34,7 +34,7 @@
 #include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/query_condition/query_condition_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/serialization/query.h"
@@ -763,7 +763,7 @@ void CPPQueryConditionFx::check_read(
     qc = serialize_deserialize_qc(qc);
   }
 
-  auto core_qc = qc.ptr().get()->query_condition_;
+  auto core_qc = qc.ptr().get()->query_condition();
   throw_if_not_ok(core_qc->check(array.ptr().get()->array_schema_latest()));
 
   query.set_condition(qc)
@@ -947,10 +947,10 @@ QueryCondition CPPQueryConditionFx::serialize_deserialize_qc(
   using namespace tiledb::sm::serialization;
   using Condition = tiledb::sm::serialization::capnp::Condition;
 
-  auto qc_ptr = qc.ptr().get()->query_condition_;
+  auto qc_ptr = qc.ptr().get()->query_condition();
 
   QueryCondition ret(ctx_);
-  auto ret_ptr = ret.ptr().get()->query_condition_;
+  auto ret_ptr = ret.ptr().get()->query_condition();
 
   // Serialize the query condition.
   ::capnp::MallocMessageBuilder message;

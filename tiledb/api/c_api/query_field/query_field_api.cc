@@ -51,7 +51,7 @@ tiledb_field_origin_t FieldFromAggregate::origin() {
 
 tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     tiledb_query_t* query, const char* field_name)
-    : query_(query->query_)
+    : query_(query->query())
     , field_name_(field_name) {
   bool is_aggregate{false};
   if (field_name_ == tiledb::sm::constants::coords) {
