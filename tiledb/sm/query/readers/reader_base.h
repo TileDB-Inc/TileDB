@@ -35,6 +35,7 @@
 
 #include "../strategy_base.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/coroutine/task.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -50,6 +51,8 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 namespace tiledb::sm {
+
+using tiledb::common::Task;
 
 class Array;
 class ArraySchema;
@@ -321,6 +324,9 @@ class ReaderBase : public StrategyBase {
   /** The minimum number of bytes in a batched read operation. */
   uint64_t min_batch_size_;
 
+  /** Whether to use the coroutine-based async pipeline. */
+  bool use_coroutine_pipeline_;
+
   /** Default channel aggregates, stored by field name. */
   std::unordered_map<std::string, std::vector<shared_ptr<IAggregator>>>
       aggregates_;
@@ -526,6 +532,21 @@ class ReaderBase : public StrategyBase {
       const std::vector<std::string>& names);
 
   /**
+   * Loads tile var sizes, tile offsets, and tile metadata concurrently
+   * by dispatching each to the I/O thread pool. Each function internally
+   * uses parallel_for across fragments; running them concurrently overlaps
+   * the three rounds of metadata I/O.
+   *
+   * @param relevant_fragments The relevant fragments.
+   * @param names The field names for offsets and metadata.
+   * @param var_names The field names for var sizes.
+   */
+  void load_tile_metadata_all(
+      const RelevantFragments& relevant_fragments,
+      const std::vector<std::string>& names,
+      const std::vector<std::string>& var_names);
+
+  /**
    * Loads processed conditions from fragment metadata.
    *
    * @param subarray The subarray to load processed conditions for.
@@ -556,6 +577,38 @@ class ReaderBase : public StrategyBase {
   Status read_and_unfilter_coordinate_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles);
+
+  /**
+   * Per-tile async version of read+unfilter using coroutines.
+   *
+   * Each tile flows through load_chunk_data → unfilter → post_process
+   * independently as soon as its containing block's I/O completes.
+   * This removes both inter-attribute and intra-attribute barriers.
+   *
+   * @param names The attribute/dimension names.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @return Status.
+   */
+  Status read_and_unfilter_tiles_per_tile_async(
+      const std::vector<NameToLoad>& names,
+      const std::vector<ResultTile*>& result_tiles);
+
+  /**
+   * Per-tile coroutine: awaits block I/O events, then runs
+   * load_chunk_data → unfilter → post_process on the compute pool.
+   */
+  Task<void> process_tile_coroutine(
+      FilteredData& fd,
+      size_t tile_result_idx,
+      bool has_fixed,
+      bool has_var,
+      bool has_nullable,
+      std::string name,
+      bool validity_only,
+      ResultTile* tile,
+      bool var_size,
+      bool nullable);
 
   /**
    * Concurrently executes across each name in `names` and each result tile

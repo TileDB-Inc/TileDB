@@ -1,5 +1,5 @@
 /**
- * @file   bench_dense_read_large_tile.cc
+ * @file   bench_dense_read_incomplete.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed dense 2D read performance with a single large tile.
+ * Benchmark dense 1D read using intentionally small buffers that force
+ * multiple submit() calls via the INCOMPLETE status loop. Measures the
+ * overhead of iterative query processing.
+ *
+ * For large-scale runs, increase num_cells to 800000000.
  */
 
 #include <tiledb/tiledb>
@@ -43,28 +47,24 @@ class Benchmark : public BenchmarkBase {
     ArraySchema schema(ctx_, TILEDB_DENSE);
     Domain domain(ctx_);
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
-    domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}, array_cols));
+        Dimension::create<uint64_t>(ctx_, "d1", {{1, num_cells}}, tile_extent));
     schema.set_domain(domain);
     FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
+    filters.add_filter({ctx_, TILEDB_FILTER_LZ4});
     schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
-    data_.resize(array_rows * array_cols);
-    for (uint64_t i = 0; i < data_.size(); i++) {
-      data_[i] = i;
-    }
+    std::vector<int32_t> data(num_cells);
+    for (uint64_t i = 0; i < num_cells; i++)
+      data[i] = i;
 
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array, TILEDB_WRITE);
     query
-        .set_subarray(Subarray(ctx_, array)
-                          .set_subarray({1u, array_rows, 1u, array_cols}))
+        .set_subarray(
+            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, num_cells}))
         .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data_);
+        .set_data_buffer("a", data);
     query.submit();
     array.close();
   }
@@ -74,27 +74,39 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    data_.resize(array_rows * array_cols);
+    // Small buffer: only holds a fraction of total cells
+    data_.resize(batch_size);
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
     query
-        .set_subarray(Subarray(ctx_, array)
-                          .set_subarray({1u, array_rows, 1u, array_cols}))
+        .set_subarray(
+            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, num_cells}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_);
-    query.submit();
+
+    Query::Status status;
+    do {
+      query.submit();
+      status = query.query_status();
+      // Re-set the buffer for the next batch
+      query.set_data_buffer("a", data_);
+    } while (status == Query::Status::INCOMPLETE);
+
     array.close();
   }
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-  const unsigned array_rows = 10000, array_cols = 10000;
+  const uint64_t num_cells = 100000000;
+  const uint64_t tile_extent = 1000000;
+  // ~1% of total cells per batch, forcing ~100 iterations
+  const uint64_t batch_size = 1000000;
 
   Context ctx_{bench_config()};
-  std::vector<int> data_;
+  std::vector<int32_t> data_;
 };
 
 int main(int argc, char** argv) {

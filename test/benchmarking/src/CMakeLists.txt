@@ -50,21 +50,58 @@ add_library(benchmark_core OBJECT
   benchmark.cc
 )
 
-# List of benchmarks
-set(BENCHMARKS
-  bench_dense_attribute_filtering
+# Coroutine benchmark suite — the default suite run by benchmark.py.
+# All sparse read benchmarks default to TILEDB_UNORDERED layout so they
+# route to refactored readers that support the coroutine pipeline. Set
+# BENCH_SPARSE_READ_LAYOUT=row_major to test the legacy Reader path.
+set(COROUTINE_SUITE
+  # Targeted coroutine benchmarks (worst/best/avg case)
+  bench_coroutine_worst_case
+  bench_coroutine_best_case
+  bench_coroutine_average_case
+
+  # Dense read benchmarks (DenseReader)
+  bench_dense_3d_read
+  bench_dense_multi_attr
+  bench_dense_multi_fragment_read
+  bench_dense_read_col_major
+  bench_dense_read_incomplete
   bench_dense_read_large_tile
+  bench_dense_read_nullable
+  bench_dense_read_qc_combined
   bench_dense_read_small_tile
+  bench_dense_read_varlen
+
+  # Sparse read benchmarks (default UNORDERED → refactored readers)
+  bench_sparse_multi_attr
+  bench_sparse_multi_fragment_read
+  bench_sparse_read_incomplete
+  bench_sparse_read_large_tile
+  bench_sparse_read_nullable
+  bench_sparse_read_qc_combined
+  bench_sparse_read_query_condition
+  bench_sparse_read_small_tile
+  bench_sparse_read_unordered
+  bench_sparse_read_varlen
+  bench_sparse_string_dim_read
+)
+
+# Other benchmarks (writes, caches, misc)
+set(OTHER_BENCHMARKS
+  bench_dense_attribute_filtering
   bench_dense_tile_cache
   bench_dense_write_large_tile
   bench_dense_write_small_tile
   bench_large_io
   bench_reader_base_unfilter_tile
-  bench_sparse_read_large_tile
-  bench_sparse_read_small_tile
   bench_sparse_tile_cache
   bench_sparse_write_large_tile
   bench_sparse_write_small_tile
+)
+
+set(BENCHMARKS
+  ${COROUTINE_SUITE}
+  ${OTHER_BENCHMARKS}
 )
 
 foreach(NAME IN LISTS BENCHMARKS)

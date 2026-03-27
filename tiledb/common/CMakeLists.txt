@@ -44,6 +44,7 @@ endif ()
 # Subdirectories
 #
 add_subdirectory(algorithm)
+add_subdirectory(coroutine)
 add_subdirectory(dynamic_memory)
 add_subdirectory(evaluator)
 add_subdirectory(exception)

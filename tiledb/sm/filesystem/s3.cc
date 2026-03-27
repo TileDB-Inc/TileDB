@@ -565,6 +565,57 @@ uint64_t S3::read(
       get_object_outcome.GetResult().GetContentLength());
 }
 
+Task<uint64_t> S3::read_async(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+  throw_if_not_ok(init_client());
+
+  Aws::Http::URI aws_uri = uri.c_str();
+  Aws::S3::Model::GetObjectRequest get_object_request;
+  get_object_request.WithBucket(aws_uri.GetAuthority())
+      .WithKey(aws_uri.GetPath());
+  get_object_request.SetRange(Aws::String(
+      "bytes=" + std::to_string(offset) + "-" +
+      std::to_string(offset + nbytes - 1)));
+  get_object_request.SetResponseStreamFactory([buffer, nbytes]() {
+    return Aws::New<PreallocatedIOStream>(
+        constants::s3_allocation_tag.c_str(), buffer, nbytes);
+  });
+
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    get_object_request.SetRequestPayer(request_payer_);
+
+  // Create a completion event on the coroutine frame.
+  // The SDK callback will signal it when the async read finishes.
+  auto completion = std::make_shared<IoCompletionEvent>();
+
+  auto uri_str = uri.to_string();
+  client_->GetObjectAsync(
+      get_object_request,
+      [completion, uri_str](
+          const Aws::S3::S3Client*,
+          const Aws::S3::Model::GetObjectRequest&,
+          Aws::S3::Model::GetObjectOutcome outcome,
+          const std::shared_ptr<const Aws::Client::AsyncCallerContext>&) {
+        if (!outcome.IsSuccess()) {
+          try {
+            throw S3Exception(std::string(
+                std::string("Failed to read S3 object ") + uri_str +
+                outcome_error_message(outcome)));
+          } catch (...) {
+            completion->signal_error(std::current_exception());
+            return;
+          }
+        }
+        auto bytes =
+            static_cast<uint64_t>(outcome.GetResult().GetContentLength());
+        completion->signal(bytes);
+      });
+
+  // Suspend until the callback fires.
+  auto bytes_read = co_await *completion;
+  co_return bytes_read;
+}
+
 void S3::remove_bucket(const URI& bucket) const {
   throw_if_not_ok(init_client());
 

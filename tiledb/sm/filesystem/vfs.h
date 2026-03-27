@@ -43,6 +43,8 @@
 #include "ls_scanner.h"
 #include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/coroutine/schedule_on.h"
+#include "tiledb/common/coroutine/task.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
@@ -171,6 +173,10 @@ struct VFSParameters {
       , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value())
       , log_operations_(
             config.get<bool>("vfs.log_operations", Config::must_find))
+      , s3_use_async_reads_(
+            config.get<bool>("vfs.s3.use_async_reads").value_or(false))
+      , s3_max_async_reads_(
+            config.get<uint64_t>("vfs.s3.max_async_reads").value_or(64))
       , read_logging_mode_(ReadLoggingMode::DISABLED) {
     auto log_mode =
         config.get<std::string_view>("vfs.read_logging_mode").value();
@@ -209,6 +215,12 @@ struct VFSParameters {
 
   /** Whether to log all VFS operations. */
   bool log_operations_;
+
+  /** Enable non-blocking async S3 reads via GetObjectAsync(). */
+  bool s3_use_async_reads_;
+
+  /** Maximum concurrent async S3 read operations. */
+  uint64_t s3_max_async_reads_;
 
   /** The read logging mode to use. */
   ReadLoggingMode read_logging_mode_;
@@ -726,6 +738,27 @@ class VFS : FilesystemBase,
    * @return Status
    */
   Status read_exactly(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+
+  /**
+   * Async coroutine read. For S3 with async reads enabled, uses
+   * GetObjectAsync() (non-blocking). For all other backends, schedules
+   * a blocking read on the I/O thread pool via ScheduleOn.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @return The number of bytes read.
+   */
+  Task<uint64_t> read_async(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+
+  /**
+   * Async coroutine version of read_exactly. Throws if fewer than nbytes
+   * are read.
+   */
+  Task<void> read_exactly_async(
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
   /** Checks if a given filesystem is supported. */

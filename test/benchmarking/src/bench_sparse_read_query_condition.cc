@@ -1,5 +1,5 @@
 /**
- * @file   bench_sparse_write_large_tile.cc
+ * @file   bench_sparse_read_query_condition.cc
  *
  * @section LICENSE
  *
@@ -27,8 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed sparse 2D read performance with a large data tile
- * capacity, and reasonable sized space tile.
+ * Benchmark sparse 2D read with a simple GE query condition that filters
+ * approximately 50% of cells.
+ *
+ * For large-scale runs, increase max_row and max_col to 20000.
  */
 
 #include <tiledb/tiledb>
@@ -46,23 +48,18 @@ class Benchmark : public BenchmarkBase {
     domain.add_dimension(Dimension::create<uint32_t>(
         ctx_,
         "d1",
-        {{1, std::numeric_limits<uint32_t>::max() - tile_rows}},
-        tile_rows));
+        {{1, std::numeric_limits<uint32_t>::max() - tile_extent}},
+        tile_extent));
     domain.add_dimension(Dimension::create<uint32_t>(
         ctx_,
         "d2",
-        {{1, std::numeric_limits<uint32_t>::max() - tile_cols}},
-        tile_cols));
+        {{1, std::numeric_limits<uint32_t>::max() - tile_extent}},
+        tile_extent));
     schema.set_domain(domain);
     schema.set_capacity(capacity);
-    FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
-    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a"));
     Array::create(array_uri_, schema);
 
-    // RNG coords are expensive to generate. Just make the data "sparse"
-    // by skipping a few cells between each nonempty cell.
     const unsigned skip = 2;
     for (uint32_t i = 1; i < max_row; i += skip) {
       for (uint32_t j = 1; j < max_col; j += skip) {
@@ -97,16 +94,23 @@ class Benchmark : public BenchmarkBase {
         non_empty[0].second.second,
         non_empty[1].second.first,
         non_empty[1].second.second};
+
+    uint64_t num_cells =
+        ((max_row - 1) / 2) * static_cast<uint64_t>((max_col - 1) / 2);
+    data_.resize(num_cells);
+    d1_.resize(num_cells);
+    d2_.resize(num_cells);
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
-    data_.resize(query.est_result_size("a"));
-    d1_.resize(query.est_result_size("d1"));
-    d2_.resize(query.est_result_size("d2"));
+    const int32_t cmp_value = static_cast<int32_t>(data_.size() / 2);
+    QueryCondition condition =
+        QueryCondition::create(ctx_, "a", cmp_value, TILEDB_GE);
     query.set_subarray(Subarray(ctx_, array).set_subarray(subarray_))
         .set_layout(bench_sparse_read_layout())
+        .set_condition(condition)
         .set_data_buffer("a", data_)
         .set_data_buffer("d1", d1_)
         .set_data_buffer("d2", d2_);
@@ -116,12 +120,12 @@ class Benchmark : public BenchmarkBase {
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-  const unsigned tile_rows = 300, tile_cols = 300;
-  const unsigned capacity = 100000000;
+  const unsigned tile_extent = 300;
+  const unsigned capacity = 100000;
   const unsigned max_row = 5000, max_col = 5000;
 
   Context ctx_{bench_config()};
-  std::vector<int> data_;
+  std::vector<int32_t> data_;
   std::vector<uint32_t> subarray_, d1_, d2_;
 };
 

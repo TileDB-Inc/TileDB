@@ -283,6 +283,9 @@ class Config {
   /** How to evaluate query conditions */
   static const std::string SM_QUERY_CONDITION_EVALUATOR;
 
+  /** Enable coroutine pipeline for read query I/O and unfiltering. */
+  static const std::string SM_QUERY_READER_USE_COROUTINE_PIPELINE;
+
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
 
@@ -686,6 +689,12 @@ class Config {
    * from config files with support for web tokens, commonly used by EKS/ECS).
    */
   static const std::string VFS_S3_CONFIG_SOURCE;
+
+  /** Enable non-blocking async S3 reads via GetObjectAsync(). */
+  static const std::string VFS_S3_USE_ASYNC_READS;
+
+  /** Maximum number of concurrent async S3 read operations. */
+  static const std::string VFS_S3_MAX_ASYNC_READS;
 
   /**
    * Specifies the size in bytes of the internal buffers used in the filestore

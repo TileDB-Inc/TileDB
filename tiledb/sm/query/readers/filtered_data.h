@@ -34,6 +34,7 @@
 #define TILEDB_FILTERED_DATA_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/coroutine/batch_ready_event.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -41,6 +42,12 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+/** Tag type to select the async constructor of FilteredData. */
+struct AsyncTag {};
+
+/** Convenience constant for constructing FilteredData in async mode. */
+inline constexpr AsyncTag async_tag{};
 
 /**
  * A filtered data block containing filtered data for multiple tiles. The block
@@ -308,6 +315,189 @@ class FilteredData {
     current_nullable_data_block_ = nullable_data_blocks_.begin();
   }
 
+  /**
+   * Async constructor with per-block events for per-tile coroutine pipeline.
+   *
+   * Instead of pushing to a read_tasks vector and waiting for all via
+   * wait_all_status, each FilteredDataBlock gets its own BatchReadyEvent
+   * that is signaled when that block's I/O completes. Tile coroutines
+   * await their block's event to start processing immediately.
+   *
+   * @param tag Tag to select async constructor.
+   * @param resources The context resources.
+   * @param reader Reader object used to know which tile to skip.
+   * @param min_batch_size Minimum batch size.
+   * @param max_batch_size Maximum batch size.
+   * @param min_batch_gap Min gap between tiles.
+   * @param fragment_metadata Fragment metadata.
+   * @param result_tiles Sorted list of result tiles.
+   * @param name Name of the field.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
+   * @param validity_only Is the field read for validity only?
+   * @param memory_tracker Memory tracker.
+   */
+  FilteredData(
+      AsyncTag,
+      ContextResources& resources,
+      const ReaderBase& reader,
+      const uint64_t min_batch_size,
+      const uint64_t max_batch_size,
+      const uint64_t min_batch_gap,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<ResultTile*>& result_tiles,
+      const std::string& name,
+      const bool var_sized,
+      const bool nullable,
+      const bool validity_only,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : resources_(resources)
+      , memory_tracker_(memory_tracker)
+      , fixed_data_blocks_(
+            memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
+      , var_data_blocks_(
+            memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
+      , nullable_data_blocks_(
+            memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
+      , name_(name)
+      , fragment_metadata_(fragment_metadata)
+      , var_sized_(var_sized)
+      , nullable_(nullable)
+      , read_tasks_(dummy_read_tasks_)
+      , is_async_(true) {
+    if (result_tiles.size() == 0) {
+      return;
+    }
+
+    // Resize tile-to-block mappings.
+    tile_block_fixed_.resize(result_tiles.size(), SIZE_MAX);
+    if (var_sized && !validity_only)
+      tile_block_var_.resize(result_tiles.size(), SIZE_MAX);
+    if (nullable)
+      tile_block_nullable_.resize(result_tiles.size(), SIZE_MAX);
+
+    uint64_t tiles_allocated = 0;
+    auto* block_resource =
+        memory_tracker_->get_resource(MemoryType::FILTERED_DATA_BLOCK);
+
+    // Track block counts before each tile to detect new blocks.
+    std::optional<unsigned> current_frag_idx{nullopt};
+    storage_size_t current_fixed_offset{0};
+    storage_size_t current_fixed_size{0};
+    storage_size_t current_var_offset{0};
+    storage_size_t current_var_size{0};
+    storage_size_t current_nullable_offset{0};
+    storage_size_t current_nullable_size{0};
+
+    // Process each tile, building blocks and tile-to-block mappings.
+    // A tile always maps to the "current pending" block for its type.
+    // That block's event index = block_events_X_.size() (the index it
+    // will get when eventually pushed). When make_new_block_if_required
+    // pushes the OLD pending block, an event is created for it, and the
+    // tile belongs to the NEW pending block.
+    for (size_t ti = 0; ti < result_tiles.size(); ti++) {
+      auto rt = result_tiles[ti];
+      if (reader.skip_field(rt->frag_idx(), name)) {
+        continue;
+      }
+
+      auto fragment{fragment_metadata[rt->frag_idx()].get()};
+      if (!validity_only) {
+        tiles_allocated++;
+        size_t blocks_before = fixed_data_blocks_.size();
+        make_new_block_if_required(
+            fragment,
+            min_batch_size,
+            max_batch_size,
+            min_batch_gap,
+            current_frag_idx,
+            current_fixed_offset,
+            current_fixed_size,
+            rt,
+            TileType::FIXED);
+        if (fixed_data_blocks_.size() > blocks_before) {
+          create_block_event_and_queue_read(TileType::FIXED);
+        }
+        // Tile maps to pending block's future event index.
+        tile_block_fixed_[ti] = block_events_fixed_.size();
+      }
+
+      if (var_sized && !validity_only) {
+        tiles_allocated++;
+        size_t blocks_before = var_data_blocks_.size();
+        make_new_block_if_required(
+            fragment,
+            min_batch_size,
+            max_batch_size,
+            min_batch_gap,
+            current_frag_idx,
+            current_var_offset,
+            current_var_size,
+            rt,
+            TileType::VAR);
+        if (var_data_blocks_.size() > blocks_before) {
+          create_block_event_and_queue_read(TileType::VAR);
+        }
+        tile_block_var_[ti] = block_events_var_.size();
+      }
+
+      if (nullable) {
+        tiles_allocated++;
+        size_t blocks_before = nullable_data_blocks_.size();
+        make_new_block_if_required(
+            fragment,
+            min_batch_size,
+            max_batch_size,
+            min_batch_gap,
+            current_frag_idx,
+            current_nullable_offset,
+            current_nullable_size,
+            rt,
+            TileType::NULLABLE);
+        if (nullable_data_blocks_.size() > blocks_before) {
+          create_block_event_and_queue_read(TileType::NULLABLE);
+        }
+        tile_block_nullable_[ti] = block_events_nullable_.size();
+      }
+
+      current_frag_idx = rt->frag_idx();
+    }
+
+    // Push and queue the last pending blocks.
+    if (current_fixed_size != 0) {
+      fixed_data_blocks_.emplace_back(
+          *current_frag_idx,
+          current_fixed_offset,
+          current_fixed_size,
+          block_resource);
+      create_block_event_and_queue_read(TileType::FIXED);
+    }
+
+    if (current_var_size != 0) {
+      var_data_blocks_.emplace_back(
+          *current_frag_idx,
+          current_var_offset,
+          current_var_size,
+          block_resource);
+      create_block_event_and_queue_read(TileType::VAR);
+    }
+
+    if (current_nullable_size != 0) {
+      nullable_data_blocks_.emplace_back(
+          *current_frag_idx,
+          current_nullable_offset,
+          current_nullable_size,
+          block_resource);
+      create_block_event_and_queue_read(TileType::NULLABLE);
+    }
+
+    reader.stats()->add_counter("tiles_allocated", tiles_allocated);
+
+    current_fixed_data_block_ = fixed_data_blocks_.begin();
+    current_var_data_block_ = var_data_blocks_.begin();
+    current_nullable_data_block_ = nullable_data_blocks_.begin();
+  }
+
   DISABLE_COPY_AND_COPY_ASSIGN(FilteredData);
   DISABLE_MOVE_AND_MOVE_ASSIGN(FilteredData);
 
@@ -371,6 +561,38 @@ class FilteredData {
     return current_data_block(TileType::NULLABLE)->data_at(offset);
   }
 
+  /**
+   * Get the block event for a tile's fixed data.
+   * The event is signaled when the block containing this tile's fixed data
+   * has been read from storage.
+   *
+   * @param tile_result_idx Index into the result_tiles vector.
+   * @return Reference to the BatchReadyEvent.
+   */
+  BatchReadyEvent& block_event_fixed(size_t tile_result_idx) {
+    return *block_events_fixed_[tile_block_fixed_[tile_result_idx]];
+  }
+
+  /**
+   * Get the block event for a tile's var data.
+   *
+   * @param tile_result_idx Index into the result_tiles vector.
+   * @return Reference to the BatchReadyEvent.
+   */
+  BatchReadyEvent& block_event_var(size_t tile_result_idx) {
+    return *block_events_var_[tile_block_var_[tile_result_idx]];
+  }
+
+  /**
+   * Get the block event for a tile's nullable data.
+   *
+   * @param tile_result_idx Index into the result_tiles vector.
+   * @return Reference to the BatchReadyEvent.
+   */
+  BatchReadyEvent& block_event_nullable(size_t tile_result_idx) {
+    return *block_events_nullable_[tile_block_nullable_[tile_result_idx]];
+  }
+
  private:
   /* ********************************* */
   /*           PRIVATE ENUMS           */
@@ -389,6 +611,12 @@ class FilteredData {
    * @param type Tile type.
    */
   void queue_last_block_for_read(TileType type) {
+    // In async mode, I/O is queued via create_block_event_and_queue_read
+    // with per-block BatchReadyEvent signaling. Skip the duplicate read.
+    if (is_async_) {
+      return;
+    }
+
     auto& block{data_blocks(type).back()};
     auto offset{block.offset()};
     auto data{block.data()};
@@ -399,6 +627,50 @@ class FilteredData {
       return Status::Ok();
     });
     read_tasks_.push_back(std::move(task));
+  }
+
+  /**
+   * Create a BatchReadyEvent for the last block of the given type,
+   * and queue the I/O. On completion, the event is signaled.
+   *
+   * @param type Tile type.
+   */
+  void create_block_event_and_queue_read(TileType type) {
+    auto& block{data_blocks(type).back()};
+    auto offset{block.offset()};
+    auto data{block.data()};
+    auto size{block.size()};
+    URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
+
+    auto& events = block_events(type);
+    events.push_back(std::make_unique<BatchReadyEvent>());
+    auto* event = events.back().get();
+
+    // Queue the I/O. On completion, signal this block's event.
+    resources_.io_tp().execute([this, offset, data, size, uri, event]() {
+      try {
+        throw_if_not_ok(resources_.vfs().read_exactly(uri, offset, data, size));
+        event->signal();
+      } catch (...) {
+        event->signal_error(std::current_exception());
+      }
+      return Status::Ok();
+    });
+  }
+
+  /** @return Block events vector for the given tile type. */
+  inline std::vector<std::unique_ptr<BatchReadyEvent>>& block_events(
+      const TileType type) {
+    switch (type) {
+      case TileType::FIXED:
+        return block_events_fixed_;
+      case TileType::VAR:
+        return block_events_var_;
+      case TileType::NULLABLE:
+        return block_events_nullable_;
+      default:
+        throw std::logic_error("Unexpected");
+    }
   }
 
   /** @return Data blocks corresponding to the tile type. */
@@ -635,8 +907,24 @@ class FilteredData {
   /** Is the attribute nullable? */
   const bool nullable_;
 
-  /** Read tasks. */
+  /** Read tasks (sync mode only). */
   std::vector<ThreadPool::Task>& read_tasks_;
+
+  /** Whether this is async mode (per-block events). */
+  bool is_async_{false};
+
+  /** Dummy read_tasks for async constructor (not used). */
+  std::vector<ThreadPool::Task> dummy_read_tasks_;
+
+  /** Per-block ready events per tile type (async mode). */
+  std::vector<std::unique_ptr<BatchReadyEvent>> block_events_fixed_;
+  std::vector<std::unique_ptr<BatchReadyEvent>> block_events_var_;
+  std::vector<std::unique_ptr<BatchReadyEvent>> block_events_nullable_;
+
+  /** Tile-to-block index mappings (indices into block_events_X_). */
+  std::vector<size_t> tile_block_fixed_;
+  std::vector<size_t> tile_block_var_;
+  std::vector<size_t> tile_block_nullable_;
 };
 
 }  // namespace tiledb::sm

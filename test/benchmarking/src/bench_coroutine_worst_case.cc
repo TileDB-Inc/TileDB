@@ -1,11 +1,11 @@
 /**
- * @file   bench_dense_read_large_tile.cc
+ * @file   bench_coroutine_worst_case.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,23 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed dense 2D read performance with a single large tile.
+ * Coroutine pipeline benchmark — WORST CASE scenario.
+ *
+ * Worst case: single attribute with light compression. The coroutine pipeline
+ * has no benefit here because:
+ *   - Only 1 attribute means no inter-attribute pipelining opportunity
+ *   - LZ4 is fast to decompress, so unfilter time is small
+ *   - The async path adds minor overhead (coroutine creation, event signaling)
+ *
+ * This benchmark verifies that the coroutine overhead is negligible — the
+ * async path should be roughly equal to or within noise of the sync path.
+ *
+ * Run comparison:
+ *   ./bench_coroutine_worst_case setup
+ *   ./bench_coroutine_worst_case run                 # sync baseline
+ *   TILEDB_SM_QUERY_READER_USE_COROUTINE_PIPELINE=true \
+ *     ./bench_coroutine_worst_case run               # coroutine pipeline
+ *   ./bench_coroutine_worst_case teardown
  */
 
 #include <tiledb/tiledb>
@@ -43,26 +59,29 @@ class Benchmark : public BenchmarkBase {
     ArraySchema schema(ctx_, TILEDB_DENSE);
     Domain domain(ctx_);
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
+        Dimension::create<uint32_t>(ctx_, "d1", {{1, nrows_}}, tile_extent_));
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}, array_cols));
+        Dimension::create<uint32_t>(ctx_, "d2", {{1, ncols_}}, tile_extent_));
     schema.set_domain(domain);
+
+    // Light compression — fast unfiltering, I/O dominates.
     FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
+    filters.add_filter({ctx_, TILEDB_FILTER_LZ4});
     schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+
     Array::create(array_uri_, schema);
 
-    data_.resize(array_rows * array_cols);
-    for (uint64_t i = 0; i < data_.size(); i++) {
-      data_[i] = i;
+    uint64_t ncells = static_cast<uint64_t>(nrows_) * ncols_;
+    data_.resize(ncells);
+    for (uint64_t i = 0; i < ncells; i++) {
+      data_[i] = static_cast<int32_t>(i);
     }
 
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array, TILEDB_WRITE);
     query
-        .set_subarray(Subarray(ctx_, array)
-                          .set_subarray({1u, array_rows, 1u, array_cols}))
+        .set_subarray(
+            Subarray(ctx_, array).set_subarray({1u, nrows_, 1u, ncols_}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_);
     query.submit();
@@ -74,15 +93,16 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    data_.resize(array_rows * array_cols);
+    uint64_t ncells = static_cast<uint64_t>(nrows_) * ncols_;
+    data_.resize(ncells);
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
     query
-        .set_subarray(Subarray(ctx_, array)
-                          .set_subarray({1u, array_rows, 1u, array_cols}))
+        .set_subarray(
+            Subarray(ctx_, array).set_subarray({1u, nrows_, 1u, ncols_}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_);
     query.submit();
@@ -91,10 +111,12 @@ class Benchmark : public BenchmarkBase {
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-  const unsigned array_rows = 10000, array_cols = 10000;
+  static constexpr unsigned nrows_ = 10000;
+  static constexpr unsigned ncols_ = 10000;
+  static constexpr unsigned tile_extent_ = 1000;
 
   Context ctx_{bench_config()};
-  std::vector<int> data_;
+  std::vector<int32_t> data_;
 };
 
 int main(int argc, char** argv) {

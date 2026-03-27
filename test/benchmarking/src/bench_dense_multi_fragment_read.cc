@@ -1,5 +1,5 @@
 /**
- * @file   bench_sparse_write_large_tile.cc
+ * @file   bench_dense_multi_fragment_read.cc
  *
  * @section LICENSE
  *
@@ -27,8 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed sparse 2D read performance with a large data tile
- * capacity, and reasonable sized space tile.
+ * Benchmark dense 2D read performance across multiple unconsolidated
+ * fragments. Setup writes 10 overlapping fragments, run reads the full array.
+ *
+ * For large-scale runs, increase array_rows/array_cols to 20000 and
+ * num_fragments to 50.
  */
 
 #include <tiledb/tiledb>
@@ -41,48 +44,35 @@ using namespace tiledb;
 class Benchmark : public BenchmarkBase {
  protected:
   virtual void setup() {
-    ArraySchema schema(ctx_, TILEDB_SPARSE);
+    ArraySchema schema(ctx_, TILEDB_DENSE);
     Domain domain(ctx_);
     domain.add_dimension(Dimension::create<uint32_t>(
-        ctx_,
-        "d1",
-        {{1, std::numeric_limits<uint32_t>::max() - tile_rows}},
-        tile_rows));
+        ctx_, "d1", {{1, array_rows}}, tile_extent));
     domain.add_dimension(Dimension::create<uint32_t>(
-        ctx_,
-        "d2",
-        {{1, std::numeric_limits<uint32_t>::max() - tile_cols}},
-        tile_cols));
+        ctx_, "d2", {{1, array_cols}}, tile_extent));
     schema.set_domain(domain);
-    schema.set_capacity(capacity);
     FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
+    filters.add_filter({ctx_, TILEDB_FILTER_LZ4});
     schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
-    // RNG coords are expensive to generate. Just make the data "sparse"
-    // by skipping a few cells between each nonempty cell.
-    const unsigned skip = 2;
-    for (uint32_t i = 1; i < max_row; i += skip) {
-      for (uint32_t j = 1; j < max_col; j += skip) {
-        d1_.push_back(i);
-        d2_.push_back(j);
-      }
+    // Write num_fragments overlapping fragments, each covering the full domain
+    uint64_t ncells = array_rows * array_cols;
+    std::vector<int> data(ncells);
+    for (unsigned f = 0; f < num_fragments; f++) {
+      for (uint64_t i = 0; i < ncells; i++)
+        data[i] = f * ncells + i;
+
+      Array array(ctx_, array_uri_, TILEDB_WRITE);
+      Query query(ctx_, array, TILEDB_WRITE);
+      query
+          .set_subarray(Subarray(ctx_, array)
+                            .set_subarray({1u, array_rows, 1u, array_cols}))
+          .set_layout(TILEDB_ROW_MAJOR)
+          .set_data_buffer("a", data);
+      query.submit();
+      array.close();
     }
-
-    data_.resize(d1_.size());
-    for (uint64_t i = 0; i < data_.size(); i++)
-      data_[i] = i;
-
-    Array array(ctx_, array_uri_, TILEDB_WRITE);
-    Query query(ctx_, array);
-    query.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a", data_)
-        .set_data_buffer("d1", d1_)
-        .set_data_buffer("d2", d2_);
-    query.submit();
-    array.close();
   }
 
   virtual void teardown() {
@@ -90,39 +80,29 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void pre_run() {
-    Array array(ctx_, array_uri_, TILEDB_READ);
-    auto non_empty = array.non_empty_domain<uint32_t>();
-    subarray_ = {
-        non_empty[0].second.first,
-        non_empty[0].second.second,
-        non_empty[1].second.first,
-        non_empty[1].second.second};
+    data_.resize(array_rows * array_cols);
   }
 
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
-    data_.resize(query.est_result_size("a"));
-    d1_.resize(query.est_result_size("d1"));
-    d2_.resize(query.est_result_size("d2"));
-    query.set_subarray(Subarray(ctx_, array).set_subarray(subarray_))
-        .set_layout(bench_sparse_read_layout())
-        .set_data_buffer("a", data_)
-        .set_data_buffer("d1", d1_)
-        .set_data_buffer("d2", d2_);
+    query
+        .set_subarray(Subarray(ctx_, array)
+                          .set_subarray({1u, array_rows, 1u, array_cols}))
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a", data_);
     query.submit();
     array.close();
   }
 
  private:
   const std::string array_uri_ = bench_uri("bench_array");
-  const unsigned tile_rows = 300, tile_cols = 300;
-  const unsigned capacity = 100000000;
-  const unsigned max_row = 5000, max_col = 5000;
+  const unsigned array_rows = 5000, array_cols = 5000;
+  const unsigned tile_extent = 500;
+  const unsigned num_fragments = 10;
 
   Context ctx_{bench_config()};
   std::vector<int> data_;
-  std::vector<uint32_t> subarray_, d1_, d2_;
 };
 
 int main(int argc, char** argv) {

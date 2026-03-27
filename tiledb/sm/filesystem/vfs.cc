@@ -589,6 +589,34 @@ Status VFS::read_exactly(
   return Status::Ok();
 }
 
+Task<uint64_t> VFS::read_async(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+  stats_->add_counter("read_byte_num", nbytes);
+
+#ifdef HAVE_S3
+  if (uri.is_s3() && vfs_params_.s3_use_async_reads_) {
+    co_return co_await s3().read_async(uri, offset, buffer, nbytes);
+  }
+#endif
+
+  // Fallback for non-S3 backends (or S3 with async disabled):
+  // schedule a blocking read on the I/O thread pool.
+  co_await ScheduleOn{*io_tp_};
+  auto& fs = get_fs(uri);
+  co_return fs.read(uri, offset, buffer, nbytes);
+}
+
+Task<void> VFS::read_exactly_async(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+  uint64_t length_read = co_await read_async(uri, offset, buffer, nbytes);
+  if (length_read < nbytes) {
+    throw VFSException(
+        "Async read did not return the correct number of bytes. Expected: " +
+        std::to_string(nbytes) + " Actual: " + std::to_string(length_read));
+  }
+  co_return;
+}
+
 uint64_t VFS::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   stats_->add_counter("read_byte_num", nbytes);

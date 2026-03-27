@@ -35,6 +35,7 @@
 
 #include "producer_consumer_queue.h"
 
+#include <coroutine>
 #include <functional>
 #include <future>
 
@@ -333,6 +334,24 @@ class ThreadPool {
         yield();
       }
     }
+  }
+
+  /**
+   * Schedule a coroutine handle for resumption on this thread pool.
+   * The coroutine will be resumed on one of the pool's worker threads.
+   *
+   * @param h The coroutine handle to resume.
+   */
+  void schedule_resume(std::coroutine_handle<> h) {
+    if (concurrency_level_ == 0) {
+      LOG_ERROR("Cannot schedule coroutine; thread pool uninitialized.");
+      return;
+    }
+    auto task = make_shared<std::packaged_task<Status()>>(HERE(), [h]() {
+      h.resume();
+      return Status{};
+    });
+    task_queue_.push(task);
   }
 
   /* ********************************* */

@@ -109,6 +109,14 @@ Reader::Reader(
     StrategyParams& params,
     bool remote_query)
     : ReaderBase(stats, logger->clone("Reader", ++logger_id_), params) {
+  // The coroutine pipeline is designed for the refactored readers
+  // (DenseReader, SparseGlobalOrderReader, SparseUnorderedWithDupsReader).
+  // The legacy Reader has a different tile lifecycle — it reads attributes
+  // one-at-a-time in process_tiles() and uses SubarrayPartitioner for
+  // INCOMPLETE handling — which is incompatible with the async pipeline.
+  // Force the sync path here regardless of config.
+  use_coroutine_pipeline_ = false;
+
   // Sanity checks
   if (!params.default_channel_aggregates().empty()) {
     throw ReaderException(

@@ -35,6 +35,7 @@
 #include <tiledb/tiledb>
 
 #include "benchmark.h"
+#include "benchmark_config.h"
 
 using namespace tiledb;
 
@@ -71,10 +72,7 @@ class Benchmark : public BenchmarkBase {
   }
 
   virtual void teardown() {
-    VFS vfs(ctx_);
-    if (vfs.is_dir(uri_)) {
-      vfs.remove_dir(uri_);
-    }
+    bench_teardown(ctx_, uri_);
   }
 
   virtual void pre_run() {
@@ -103,10 +101,10 @@ class Benchmark : public BenchmarkBase {
   }
 
  private:
-  const std::string uri_ = "bench_reader_base_unfilter_tiles";
+  const std::string uri_ = bench_uri("bench_reader_base_unfilter_tiles");
   const uint32_t max_rows_ = 5000;
 
-  Context ctx_;
+  Context ctx_{bench_config()};
 
   std::vector<uint32_t> dim_data_;
   std::vector<uint32_t> attr_data_;

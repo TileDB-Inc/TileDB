@@ -38,6 +38,8 @@
 #include "filesystem_base.h"
 #include "ls_scanner.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/coroutine/io_completion_event.h"
+#include "tiledb/common/coroutine/task.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
@@ -660,6 +662,19 @@ class S3 : public FilesystemBase {
    */
   uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
       const override;
+
+  /**
+   * Non-blocking async read using GetObjectAsync(). The coroutine suspends
+   * until the SDK callback fires, freeing the calling thread to do other work.
+   *
+   * @param uri The URI of the S3 object.
+   * @param offset The byte offset to start reading from.
+   * @param buffer The buffer to read into (must remain valid until co_return).
+   * @param nbytes Number of bytes to read.
+   * @return The number of bytes actually read.
+   */
+  Task<uint64_t> read_async(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
   /**
    * Deletes a bucket.
