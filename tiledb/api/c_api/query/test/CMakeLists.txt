@@ -28,5 +28,8 @@ include(unit_test)
 
 commence(unit_test capi_query_type)
   this_target_sources(unit_capi_query_type.cc)
+  # We link to the test support library to get TILEDB_CORE_OBJECTS.
+  # TODO: Remove when query gets componentized into its own object library.
+  this_target_link_libraries(tiledb_test_support_lib)
   this_target_object_libraries(capi_query)
 conclude(unit_test)

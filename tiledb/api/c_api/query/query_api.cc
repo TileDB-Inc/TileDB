@@ -30,7 +30,7 @@
  * This file defines the query section of the C API for TileDB.
  */
 
-#include "query_api_external.h"
+#include "query_api_external_experimental.h"
 #include "query_api_internal.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
