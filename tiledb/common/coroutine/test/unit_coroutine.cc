@@ -202,6 +202,34 @@ TEST_CASE("when_all: tasks on thread pool", "[coroutine][when_all]") {
   CHECK(counter.load() == 111);
 }
 
+// Explicitly tests the synchronous path where all tasks complete without
+// ever suspending. This exercises the symmetric-transfer branch in
+// WhenAllAwaitable::await_suspend (counter hits zero during the for-loop,
+// continuation is resumed via tail-call rather than inline).
+TEST_CASE(
+    "when_all: all tasks synchronous (no suspension)",
+    "[coroutine][when_all]") {
+  std::atomic<int> counter{0};
+
+  // Tasks that complete without any co_await — they run to completion
+  // synchronously inside the when_all_task wrappers during await_suspend.
+  auto sync_task = [&]() -> Task<void> {
+    counter.fetch_add(1);
+    co_return;
+  };
+
+  auto coro = [&]() -> Task<void> {
+    std::vector<Task<void>> tasks;
+    for (int i = 0; i < 5; ++i) {
+      tasks.push_back(sync_task());
+    }
+    co_await when_all(std::move(tasks));
+  };
+
+  sync_wait(coro());
+  CHECK(counter.load() == 5);
+}
+
 TEST_CASE("when_all: exception from one task", "[coroutine][when_all]") {
   auto ok_task = []() -> Task<void> { co_return; };
   auto bad_task = []() -> Task<void> {

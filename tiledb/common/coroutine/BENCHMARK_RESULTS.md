@@ -414,13 +414,137 @@ bench_sparse_string_dim_read:     389, 422, 393 -> min 389
 
 ---
 
-## Step 4 — Dense Reader Conversion
+## Phase 2.4 + 3.1 — Lightweight Scheduling & Adaptive Tile Batching
 
-_Pending. Results will be added after implementation._
+### What changed
 
-## Step 5 — Sparse Reader Conversion
+**Phase 2.4 — Zero-allocation coroutine scheduling**
 
-_Pending. Results will be added after implementation._
+Replaced the per-resume `shared_ptr<packaged_task<Status()>>` allocation in
+`schedule_resume` with a dedicated `coroutine_handle<>` queue in `ThreadPool`.
+Each coroutine resumption now costs 2 queue pushes (one to `coroutine_queue_`,
+one null sentinel to `task_queue_` to wake a sleeping worker) instead of a
+heap allocation + task queue entry. Workers drain `coroutine_queue_` before
+blocking on `task_queue_`, giving coroutine continuations lower latency.
+
+**Phase 3.1 — Adaptive tile batching**
+
+Instead of one coroutine frame per tile, tiles are grouped into batches and
+processed sequentially within a single frame. The batch size auto-computes as:
+
+```
+batch_size = max(1, valid_tiles / (compute_threads × 4))
+```
+
+This keeps `4× compute_threads` batches in flight — enough parallelism to
+saturate all workers and absorb I/O stalls, without the per-tile frame
+allocation cost. The formula adapts: 8 threads + 6 250 tiles → batch=195
+(32 frames), 8 threads + 10 tiles → batch=1 (full per-tile concurrency).
+The config key `sm.query.reader.coroutine_tile_batch_size` overrides auto
+(`0` = auto, `>0` = explicit).
+
+**Config key:** `sm.query.reader.coroutine_tile_batch_size` (default: `0` = auto)
+
+---
+
+### Pre-batching S3 baseline (Phase 2.4 only, 5 trials, local machine)
+
+| Benchmark | Sync (ms) | Coro (ms) | Change |
+|-----------|-----------|-----------|--------|
+| bench_coroutine_worst_case | 760 | 728 | **-4.2%** |
+| bench_coroutine_best_case | 1045 | 1114 | +6.6% |
+| bench_coroutine_average_case | 652 | 605 | **-7.2%** |
+| bench_dense_multi_attr | 1085 | 1008 | **-7.1%** |
+| bench_sparse_multi_attr | 329 | 302 | **-8.2%** |
+| bench_sparse_read_qc_combined | 380 | 332 | **-12.6%** |
+| bench_sparse_read_varlen | 528 | 437 | **-17.2%** |
+| bench_sparse_read_small_tile | 623 | 706 | +13.3% ← overhead |
+| bench_sparse_string_dim_read | 271 | 317 | +17.0% ← overhead |
+| bench_sparse_read_incomplete | 3676 | 4021 | +9.4% ← overhead |
+| **TOTAL (24)** | **26231** | **26567** | **+1.3%** |
+
+The per-tile coroutine overhead dominates for workloads with few or small tiles
+(small_tile, string_dim, incomplete). This is the motivation for Phase 3.1.
+
+---
+
+### Final S3 results (Phase 2.4 + 3.1, 3 trials, 2026-03-27)
+
+> EC2 us-east-1, Debug build, S3 bucket `s3://tiledb-ypatia-east-1/hackathon/per_tile/`.
+> Minimum of 3 trials reported.
+
+| Benchmark | Sync (ms) | Coro (ms) | Change |
+|-----------|-----------|-----------|--------|
+| bench_coroutine_worst_case | 757 | 733 | **-3.2%** |
+| bench_coroutine_best_case | 1073 | 1185 | +10.4% |
+| bench_coroutine_average_case | 642 | 593 | **-7.6%** |
+| bench_dense_3d_read | 301 | 336 | +11.6% |
+| bench_dense_multi_attr | 1070 | 860 | **-19.6%** |
+| bench_dense_multi_fragment_read | 477 | 399 | **-16.4%** |
+| bench_dense_read_col_major | 372 | 363 | -2.4% |
+| bench_dense_read_incomplete | 11662 | 10143 | **-13.0%** |
+| bench_dense_read_large_tile | 339 | 338 | ~0% |
+| bench_dense_read_nullable | 1087 | 1094 | ~0% |
+| bench_dense_read_qc_combined | 1354 | 1369 | ~0% |
+| bench_dense_read_small_tile | 619 | 655 | +5.8% |
+| bench_dense_read_varlen | 475 | 469 | ~0% |
+| bench_sparse_multi_attr | 327 | 311 | **-4.9%** |
+| bench_sparse_multi_fragment_read | 284 | 223 | **-21.5%** |
+| bench_sparse_read_incomplete | 3559 | 3641 | +2.3% |
+| bench_sparse_read_large_tile | 376 | 402 | +6.9% |
+| bench_sparse_read_nullable | 325 | 319 | ~0% |
+| bench_sparse_read_qc_combined | 347 | 341 | ~0% |
+| bench_sparse_read_query_condition | 391 | 378 | -3.3% |
+| bench_sparse_read_small_tile | 612 | 562 | **-8.2%** |
+| bench_sparse_read_unordered | 385 | 379 | ~0% |
+| bench_sparse_read_varlen | 462 | 419 | **-9.3%** |
+| bench_sparse_string_dim_read | 293 | 320 | +9.2% |
+| **TOTAL (24)** | **27589** | **25832** | **-6.4%** |
+
+### Analysis
+
+**Net improvement: -6.4% across 24 benchmarks on S3.** The biggest wins are in
+workloads with multiple independent I/O streams:
+
+- `bench_sparse_multi_fragment_read` **-21.5%**: Multiple fragments → multiple
+  independent attribute read streams; the pipeline overlaps I/O and unfilter
+  across all of them simultaneously.
+- `bench_dense_multi_attr` **-19.6%**, `bench_dense_multi_fragment_read`
+  **-16.4%**: Same mechanism for dense reads.
+- `bench_dense_read_incomplete` **-13.0%**: Multi-round reads amortize pipeline
+  setup cost over many rounds.
+
+**Adaptive batching validated:** `bench_sparse_read_small_tile` flipped from
+**+13.3% → -8.2%** (21pp improvement). The auto formula correctly computes a
+large batch size for this workload (6250 tiles / 32 = ~195 tiles per frame),
+reducing frame count from ~18750 to ~32 while preserving concurrency.
+
+**Remaining regressions:**
+
+- `bench_coroutine_best_case` +10.4% and `bench_dense_3d_read` +11.6%: These
+  benchmarks have moderate tile counts with single or few fragments. The
+  coroutine pipeline adds scheduling overhead that is not yet offset by
+  I/O/compute overlap on this hardware. Worth investigating whether a
+  minimum-tile-count threshold would help.
+
+- `bench_sparse_string_dim_read` +9.2%: Only ~10-20 tiles in the result; auto
+  batch size computes to 1 (no batching applies). The per-invocation overhead of
+  `FilteredData` construction + `sync_wait` is significant for this tiny
+  workload. A threshold to skip the async path for very small queries would fix
+  this.
+
+- `bench_sparse_read_large_tile` +6.9%: Similar — few large tiles, pipeline
+  setup overhead is proportionally large relative to I/O time.
+
+**Progression across optimizations (total vs sync baseline):**
+
+| State | Total change vs sync |
+|-------|----------------------|
+| Phase 1 (per-tile coroutines only) | +2.4% |
+| + Phase 2.4 (lightweight scheduling) | -1.0% |
+| + Phase 3.1 (adaptive tile batching) | **-6.4%** |
+
+---
 
 ## Phase 2 — Async VFS Layer (Non-Blocking I/O)
 

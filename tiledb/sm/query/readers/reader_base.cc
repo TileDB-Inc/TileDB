@@ -105,6 +105,9 @@ ReaderBase::ReaderBase(
     , use_coroutine_pipeline_(
           config_.get<bool>("sm.query.reader.use_coroutine_pipeline")
               .value_or(false))
+    , coroutine_tile_batch_size_(
+          config_.get<uint64_t>("sm.query.reader.coroutine_tile_batch_size")
+              .value_or(0))
     , aggregate_buffers_(params.aggregate_buffers()) {
   if (params.array() != nullptr)
     fragment_metadata_ = params.array()->fragment_metadata();
@@ -774,7 +777,12 @@ Status ReaderBase::read_and_unfilter_tiles_per_tile_async(
         memory_tracker_);
     auto& fd = all_filtered_data.back();
 
-    // Initialize tiles and create per-tile coroutines.
+    // Initialize tiles and collect valid indices for batch coroutine creation.
+    const bool has_fixed = !val_only;
+    const bool has_var = var_sized && !val_only;
+    const bool has_nullable = nullable;
+
+    std::vector<size_t> valid_indices;
     for (size_t i = 0; i < result_tiles.size(); i++) {
       auto tile = result_tiles[i];
       auto const fragment = fragment_metadata_[tile->frag_idx()];
@@ -811,16 +819,32 @@ Status ReaderBase::read_and_unfilter_tiles_per_tile_async(
             format_version, array_schema_, name, tile_sizes, tile_data);
       }
 
-      // Create per-tile coroutine.
-      tasks.push_back(process_tile_coroutine(
+      valid_indices.push_back(i);
+    }
+
+    // Group valid tiles into batches; one coroutine frame per batch.
+    // batch_size=0 (default) → auto: enough batches to keep all compute
+    // threads busy with ~4x slack for I/O overlap.
+    const size_t ntiles = valid_indices.size();
+    const size_t workers = resources_.compute_tp().concurrency_level();
+    // Guard against division by zero if the pool is uninitialized (workers==0).
+    const size_t bsz =
+        (coroutine_tile_batch_size_ > 0) ?
+            coroutine_tile_batch_size_ :
+            (workers > 0 ? std::max(size_t{1}, ntiles / (workers * 4)) :
+                           ntiles);
+    for (size_t b = 0; b < ntiles; b += bsz) {
+      const size_t bend = std::min(b + bsz, ntiles);
+      tasks.push_back(process_tile_batch_coroutine(
           fd,
-          i,
-          !val_only,               // has_fixed
-          var_sized && !val_only,  // has_var
-          nullable,                // has_nullable
+          std::vector<size_t>(
+              valid_indices.begin() + b, valid_indices.begin() + bend),
+          has_fixed,
+          has_var,
+          has_nullable,
           name,
           val_only,
-          tile,
+          result_tiles,
           var_sized,
           nullable));
     }
@@ -835,60 +859,65 @@ Status ReaderBase::read_and_unfilter_tiles_per_tile_async(
   return Status::Ok();
 }
 
-Task<void> ReaderBase::process_tile_coroutine(
+Task<void> ReaderBase::process_tile_batch_coroutine(
     FilteredData& fd,
-    size_t tile_result_idx,
+    std::vector<size_t> tile_indices,
     bool has_fixed,
     bool has_var,
     bool has_nullable,
     std::string name,
     bool validity_only,
-    ResultTile* tile,
+    const std::vector<ResultTile*>& result_tiles,
     bool var_size,
     bool nullable) {
-  // Await all blocks this tile depends on (no-op if already signaled).
-  if (has_fixed)
-    co_await fd.block_event_fixed(tile_result_idx);
-  if (has_var)
-    co_await fd.block_event_var(tile_result_idx);
-  if (has_nullable)
-    co_await fd.block_event_nullable(tile_result_idx);
+  for (size_t i : tile_indices) {
+    // Await all blocks this tile depends on (no-op if already signaled).
+    if (has_fixed)
+      co_await fd.block_event_fixed(i);
+    if (has_var)
+      co_await fd.block_event_var(i);
+    if (has_nullable)
+      co_await fd.block_event_nullable(i);
 
-  // Hop to compute pool.
-  co_await ScheduleOn{resources_.compute_tp()};
+    // Hop to compute pool (ensures we're on the right thread even when
+    // block events were already signaled and resumed inline).
+    co_await ScheduleOn{resources_.compute_tp()};
 
-  // ChunkData lives in coroutine frame — no external storage needed.
-  ChunkData chunk_data, chunk_var_data, chunk_validity_data;
+    // ChunkData lives in coroutine frame — no external storage needed.
+    ChunkData chunk_data, chunk_var_data, chunk_validity_data;
 
-  // Load chunk metadata.
-  auto&& [st, ts, tvs, tvls] = load_tile_chunk_data(
-      name,
-      validity_only,
-      tile,
-      var_size,
-      nullable,
-      chunk_data,
-      chunk_var_data,
-      chunk_validity_data);
-  throw_if_not_ok(st);
+    ResultTile* tile = result_tiles[i];
 
-  // Unfilter all chunks for this tile (single thread per tile;
-  // inter-tile concurrency provides thread utilization).
-  throw_if_not_ok(unfilter_tile(
-      name,
-      validity_only,
-      tile,
-      var_size,
-      nullable,
-      0,
-      1,
-      chunk_data,
-      chunk_var_data,
-      chunk_validity_data));
+    // Load chunk metadata.
+    auto&& [st, ts, tvs, tvls] = load_tile_chunk_data(
+        name,
+        validity_only,
+        tile,
+        var_size,
+        nullable,
+        chunk_data,
+        chunk_var_data,
+        chunk_validity_data);
+    throw_if_not_ok(st);
 
-  // Post-process.
-  throw_if_not_ok(post_process_unfiltered_tile(
-      name, validity_only, tile, var_size, nullable));
+    // Unfilter all chunks for this tile (single thread per tile;
+    // inter-tile concurrency provides thread utilization).
+    throw_if_not_ok(unfilter_tile(
+        name,
+        validity_only,
+        tile,
+        var_size,
+        nullable,
+        0,
+        1,
+        chunk_data,
+        chunk_var_data,
+        chunk_validity_data));
+
+    // Post-process.
+    throw_if_not_ok(post_process_unfiltered_tile(
+        name, validity_only, tile, var_size, nullable));
+  }
 }
 
 std::list<FilteredData> ReaderBase::read_attribute_tiles(

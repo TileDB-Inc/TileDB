@@ -286,6 +286,12 @@ class Config {
   /** Enable coroutine pipeline for read query I/O and unfiltering. */
   static const std::string SM_QUERY_READER_USE_COROUTINE_PIPELINE;
 
+  /**
+   * Number of tiles per coroutine frame in the async pipeline.
+   * 0 = auto (max(1, num_tiles / (compute_threads * 4))), >0 = explicit.
+   */
+  static const std::string SM_QUERY_READER_COROUTINE_TILE_BATCH_SIZE;
+
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
 

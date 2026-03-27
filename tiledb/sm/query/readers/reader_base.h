@@ -327,6 +327,13 @@ class ReaderBase : public StrategyBase {
   /** Whether to use the coroutine-based async pipeline. */
   bool use_coroutine_pipeline_;
 
+  /**
+   * Number of tiles per coroutine frame in the async pipeline.
+   * 0 (default) = auto: max(1, num_tiles / (compute_threads * 4)).
+   * >0 = explicit override.
+   */
+  size_t coroutine_tile_batch_size_;
+
   /** Default channel aggregates, stored by field name. */
   std::unordered_map<std::string, std::vector<shared_ptr<IAggregator>>>
       aggregates_;
@@ -595,18 +602,25 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Per-tile coroutine: awaits block I/O events, then runs
+   * Batch coroutine: processes a sequence of tiles sequentially within one
+   * coroutine frame, awaiting each tile's block I/O events then running
    * load_chunk_data → unfilter → post_process on the compute pool.
+   * Reduces frame allocations by coroutine_tile_batch_size_ × vs per-tile.
+   *
+   * @param result_tiles  Reference to the caller's vector. LIFETIME: the
+   *   caller MUST keep this vector alive until all coroutine frames produced
+   *   from it have completed. In practice this is guaranteed by the
+   *   sync_wait() call that follows in read_and_unfilter_tiles_per_tile_async.
    */
-  Task<void> process_tile_coroutine(
+  Task<void> process_tile_batch_coroutine(
       FilteredData& fd,
-      size_t tile_result_idx,
+      std::vector<size_t> tile_indices,
       bool has_fixed,
       bool has_var,
       bool has_nullable,
       std::string name,
       bool validity_only,
-      ResultTile* tile,
+      const std::vector<ResultTile*>& result_tiles,
       bool var_size,
       bool nullable);
 

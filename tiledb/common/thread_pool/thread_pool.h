@@ -338,20 +338,29 @@ class ThreadPool {
 
   /**
    * Schedule a coroutine handle for resumption on this thread pool.
-   * The coroutine will be resumed on one of the pool's worker threads.
+   *
+   * Zero-allocation fast path: the handle is pushed directly onto a dedicated
+   * coroutine queue (no shared_ptr, no packaged_task). A null sentinel is
+   * posted to the regular task_queue_ to wake any sleeping worker threads;
+   * workers drain the coroutine queue before going back to sleep.
    *
    * @param h The coroutine handle to resume.
    */
-  void schedule_resume(std::coroutine_handle<> h) {
+  void schedule_coroutine(std::coroutine_handle<> h) {
     if (concurrency_level_ == 0) {
       LOG_ERROR("Cannot schedule coroutine; thread pool uninitialized.");
       return;
     }
-    auto task = make_shared<std::packaged_task<Status()>>(HERE(), [h]() {
-      h.resume();
-      return Status{};
-    });
-    task_queue_.push(task);
+    // Push handle first, then wake a worker via a null sentinel.
+    coroutine_queue_.push(h);
+    task_queue_.push(shared_ptr<std::packaged_task<Status()>>{});
+  }
+
+  /**
+   * Alias for schedule_coroutine().
+   */
+  void schedule_resume(std::coroutine_handle<> h) {
+    schedule_coroutine(h);
   }
 
   /* ********************************* */
@@ -361,11 +370,18 @@ class ThreadPool {
  private:
   /**
    * Attempt to do useful work to avoid deadlock, or yield the current thread.
+   * Coroutine continuations are drained first (they are short-lived and
+   * should complete quickly, reducing latency for waiting coroutines).
    */
   void yield() {
-    // Try to do useful work to avoid deadlock
+    if (auto h = coroutine_queue_.try_pop()) {
+      h->resume();
+      return;
+    }
     if (auto val = task_queue_.try_pop()) {
-      (*(*val))();
+      if (*val) {
+        (*(*val))();
+      }
     } else {
       std::this_thread::yield();
     }
@@ -419,6 +435,16 @@ class ThreadPool {
       shared_ptr<std::packaged_task<Status()>>,
       std::deque<shared_ptr<std::packaged_task<Status()>>>>
       task_queue_;
+
+  /**
+   * Zero-allocation queue for coroutine resumptions.
+   * Coroutine handles (8 bytes each) are pushed here by schedule_coroutine()
+   * and drained by workers before blocking on task_queue_.
+   */
+  ProducerConsumerQueue<
+      std::coroutine_handle<>,
+      std::deque<std::coroutine_handle<>>>
+      coroutine_queue_;
 
   /** The worker threads */
   std::vector<std::thread> threads_;

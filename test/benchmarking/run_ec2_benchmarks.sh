@@ -63,7 +63,21 @@ cd "${BENCH_DIR}"
 echo "--- Building benchmarks ---"
 mkdir -p build
 cd build
-cmake -DCMAKE_PREFIX_PATH="${INSTALL_DIR}" ../src
+
+# Locate TileDBConfig.cmake. On some distros (e.g., Amazon Linux) CMake
+# installs to lib64/ rather than lib/, so we search rather than hard-code.
+TILEDB_CMAKE_DIR=$(find "${INSTALL_DIR}" -name "TileDBConfig.cmake" 2>/dev/null | head -1)
+if [ -z "${TILEDB_CMAKE_DIR}" ]; then
+    echo "ERROR: TileDBConfig.cmake not found under ${INSTALL_DIR}" >&2
+    echo "Did 'make install' complete successfully?" >&2
+    exit 1
+fi
+TILEDB_CMAKE_DIR=$(dirname "${TILEDB_CMAKE_DIR}")
+
+cmake \
+    -DCMAKE_PREFIX_PATH="${INSTALL_DIR}" \
+    -DTileDB_DIR="${TILEDB_CMAKE_DIR}" \
+    ../src
 make -j"$(nproc)"
 cd "${BENCH_DIR}"
 

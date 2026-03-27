@@ -46,6 +46,10 @@ namespace tiledb::common {
 /**
  * Awaitable that, when co_awaited, suspends the current coroutine and
  * schedules its resumption on the given ThreadPool.
+ *
+ * If tp is uninitialized (concurrency_level == 0), schedule_resume logs an
+ * error and drops the handle — the coroutine is permanently suspended and
+ * its resources are leaked. Callers must ensure tp is initialized.
  */
 struct ScheduleOn {
   ThreadPool& tp;

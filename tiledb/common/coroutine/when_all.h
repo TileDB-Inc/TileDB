@@ -83,6 +83,10 @@ class WhenAllCounter {
  * This avoids the memory leak where detached Task<void> wrappers stay
  * suspended at final_suspend forever, and avoids the use-after-free from
  * trying to destroy them externally while the last wrapper is still running.
+ *
+ * NOTE: unhandled_exception calls std::terminate(). Exceptions from child
+ * tasks must be caught INSIDE when_all_task (they are — the try/catch around
+ * co_await captures them). Do NOT let exceptions escape when_all_task.
  */
 struct WhenAllTaskHandle {
   struct promise_type {
@@ -124,8 +128,14 @@ inline WhenAllTaskHandle when_all_task(
       *first_exception = std::current_exception();
     }
   }
+  // Copy the continuation handle before notify_complete(). If this is the
+  // last task, resume() will run the parent coroutine which destroys the
+  // WhenAllAwaitable (and its counter_ unique_ptr) before resume() returns.
+  // Copying the handle first ensures we never touch `counter` after it may
+  // have been freed.
+  auto cont = counter->continuation();
   if (counter->notify_complete()) {
-    counter->continuation().resume();
+    cont.resume();
   }
 }
 
@@ -153,7 +163,14 @@ class WhenAllAwaitable {
     return tasks_.empty();
   }
 
-  void await_suspend(std::coroutine_handle<> continuation) {
+  // Symmetric transfer: returns the coroutine to resume next (or
+  // noop_coroutine if tasks are still running). This avoids calling
+  // continuation.resume() from inside await_suspend — which is valid per
+  // C++20 but fragile and can cause stack depth issues when many tasks
+  // complete synchronously. The compiler performs the resume as a tail-call
+  // after await_suspend returns, so WhenAllAwaitable members are no longer
+  // reachable when the continuation executes.
+  std::coroutine_handle<> await_suspend(std::coroutine_handle<> continuation) {
     counter_ =
         std::make_unique<detail::WhenAllCounter>(tasks_.size(), continuation);
 
@@ -170,11 +187,12 @@ class WhenAllAwaitable {
     tasks_.clear();
 
     // Account for the +1 in the counter constructor. If all tasks already
-    // completed synchronously during the when_all_task calls above, this
-    // will cause the continuation to be resumed.
+    // completed synchronously during the when_all_task calls above, the
+    // counter hits zero here and we tail-call the continuation directly.
     if (counter_->notify_complete()) {
-      continuation.resume();
+      return continuation;
     }
+    return std::noop_coroutine();
   }
 
   void await_resume() {

@@ -47,11 +47,25 @@
 #include <exception>
 #include <mutex>
 
+#include "tiledb/common/thread_pool/thread_pool.h"
+
 namespace tiledb::common {
 
 class BatchReadyEvent {
  public:
-  BatchReadyEvent() noexcept = default;
+  /**
+   * @param tp Optional thread pool. When non-null, signal() resumes waiters
+   *   via tp->schedule_resume() — posted as tasks on the pool, not inline on
+   *   the calling thread. This prevents unbounded stack growth when signal()
+   *   is called from a deep call stack (e.g., an I/O completion callback) and
+   *   many tiles are waiting on the same block.
+   *
+   *   When null, signal() resumes waiters inline on the calling thread. Only
+   *   safe when the caller has a shallow stack and few waiters per event.
+   */
+  explicit BatchReadyEvent(ThreadPool* tp = nullptr) noexcept
+      : tp_(tp) {
+  }
 
   // Non-copyable, non-movable.
   BatchReadyEvent(const BatchReadyEvent&) = delete;
@@ -60,6 +74,10 @@ class BatchReadyEvent {
   /**
    * Signal the event, resuming all waiting coroutines.
    * Can only be called once.
+   *
+   * If a ThreadPool was provided at construction, waiters are resumed via
+   * schedule_resume (posted to the pool). Otherwise they are resumed inline
+   * on the calling thread.
    */
   void signal() noexcept {
     Waiter* waiters = nullptr;
@@ -69,12 +87,7 @@ class BatchReadyEvent {
       waiters = waiters_;
       waiters_ = nullptr;
     }
-    // Resume all waiters outside the lock.
-    while (waiters) {
-      auto* next = waiters->next;
-      waiters->handle.resume();
-      waiters = next;
-    }
+    resume_waiters(waiters);
   }
 
   /**
@@ -90,11 +103,7 @@ class BatchReadyEvent {
       waiters = waiters_;
       waiters_ = nullptr;
     }
-    while (waiters) {
-      auto* next = waiters->next;
-      waiters->handle.resume();
-      waiters = next;
-    }
+    resume_waiters(waiters);
   }
 
   /**
@@ -142,10 +151,23 @@ class BatchReadyEvent {
   }
 
  private:
+  void resume_waiters(Waiter* waiters) noexcept {
+    while (waiters) {
+      auto* next = waiters->next;
+      if (tp_) {
+        tp_->schedule_resume(waiters->handle);
+      } else {
+        waiters->handle.resume();
+      }
+      waiters = next;
+    }
+  }
+
   mutable std::mutex mutex_;
   bool signaled_{false};
   std::exception_ptr exception_;
   Waiter* waiters_{nullptr};
+  ThreadPool* tp_{nullptr};
 };
 
 }  // namespace tiledb::common

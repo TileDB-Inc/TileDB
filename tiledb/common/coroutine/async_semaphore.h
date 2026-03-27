@@ -102,6 +102,12 @@ class AsyncSemaphore {
   /**
    * Increment the semaphore count. If there are suspended waiters,
    * resumes one of them instead.
+   *
+   * NOTE: The waiter is resumed inline on the calling thread (direct
+   * handle.resume()). This is acceptable when release() is called from
+   * within a thread-pool worker that has a shallow stack. If release() could
+   * be called from a deep call stack (e.g., an I/O completion callback),
+   * consider posting the resumption to a thread pool instead.
    */
   void release() {
     AcquireAwaiter* to_resume = nullptr;

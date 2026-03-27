@@ -33,6 +33,8 @@
 #ifndef TILEDB_FILTERED_DATA_H
 #define TILEDB_FILTERED_DATA_H
 
+#include <cassert>
+
 #include "tiledb/common/common.h"
 #include "tiledb/common/coroutine/batch_ready_event.h"
 #include "tiledb/common/memory_tracker.h"
@@ -570,6 +572,9 @@ class FilteredData {
    * @return Reference to the BatchReadyEvent.
    */
   BatchReadyEvent& block_event_fixed(size_t tile_result_idx) {
+    assert(
+        tile_block_fixed_[tile_result_idx] != SIZE_MAX &&
+        "tile has no fixed block assignment");
     return *block_events_fixed_[tile_block_fixed_[tile_result_idx]];
   }
 
@@ -580,6 +585,9 @@ class FilteredData {
    * @return Reference to the BatchReadyEvent.
    */
   BatchReadyEvent& block_event_var(size_t tile_result_idx) {
+    assert(
+        tile_block_var_[tile_result_idx] != SIZE_MAX &&
+        "tile has no var block assignment");
     return *block_events_var_[tile_block_var_[tile_result_idx]];
   }
 
@@ -590,6 +598,9 @@ class FilteredData {
    * @return Reference to the BatchReadyEvent.
    */
   BatchReadyEvent& block_event_nullable(size_t tile_result_idx) {
+    assert(
+        tile_block_nullable_[tile_result_idx] != SIZE_MAX &&
+        "tile has no nullable block assignment");
     return *block_events_nullable_[tile_block_nullable_[tile_result_idx]];
   }
 
@@ -643,19 +654,32 @@ class FilteredData {
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
 
     auto& events = block_events(type);
-    events.push_back(std::make_unique<BatchReadyEvent>());
+    // Pass compute_tp so waiters are resumed via schedule_resume (posted to
+    // the pool) rather than inline on the I/O callback thread.
+    events.push_back(
+        std::make_unique<BatchReadyEvent>(&resources_.compute_tp()));
     auto* event = events.back().get();
 
     // Queue the I/O. On completion, signal this block's event.
-    resources_.io_tp().execute([this, offset, data, size, uri, event]() {
-      try {
-        throw_if_not_ok(resources_.vfs().read_exactly(uri, offset, data, size));
-        event->signal();
-      } catch (...) {
-        event->signal_error(std::current_exception());
-      }
-      return Status::Ok();
-    });
+    auto task =
+        resources_.io_tp().execute([this, offset, data, size, uri, event]() {
+          try {
+            throw_if_not_ok(
+                resources_.vfs().read_exactly(uri, offset, data, size));
+            event->signal();
+          } catch (...) {
+            event->signal_error(std::current_exception());
+          }
+          return Status::Ok();
+        });
+
+    // If the I/O pool is uninitialized, execute() returns an invalid task and
+    // the lambda is never called — signal the error immediately so waiting
+    // coroutines are not stuck.
+    if (!task.valid()) {
+      event->signal_error(std::make_exception_ptr(
+          std::runtime_error("I/O thread pool uninitialized")));
+    }
   }
 
   /** @return Block events vector for the given tile type. */

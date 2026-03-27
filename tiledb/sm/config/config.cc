@@ -110,6 +110,7 @@ const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_QUERY_CONDITION_EVALUATOR = "ast";
 const std::string Config::SM_QUERY_READER_USE_COROUTINE_PIPELINE = "false";
+const std::string Config::SM_QUERY_READER_COROUTINE_TILE_BATCH_SIZE = "0";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
@@ -319,6 +320,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.query.reader.use_coroutine_pipeline",
         Config::SM_QUERY_READER_USE_COROUTINE_PIPELINE),
+    std::make_pair(
+        "sm.query.reader.coroutine_tile_batch_size",
+        Config::SM_QUERY_READER_COROUTINE_TILE_BATCH_SIZE),
     std::make_pair("sm.mem.malloc_trim", Config::SM_MEM_MALLOC_TRIM),
     std::make_pair(
         "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),
@@ -888,6 +892,8 @@ Status Config::sanity_check(
     }
   } else if (param == "sm.query.reader.use_coroutine_pipeline") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "sm.query.reader.coroutine_tile_batch_size") {
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.s3.use_async_reads") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.max_async_reads") {

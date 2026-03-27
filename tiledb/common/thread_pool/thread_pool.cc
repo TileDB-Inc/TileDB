@@ -105,12 +105,24 @@ ThreadPool::ThreadPool(size_t n)
 
 void ThreadPool::worker() {
   while (true) {
-    auto val = task_queue_.pop();
-    if (val) {
-      (*(*val))();
-    } else {
-      break;
+    // Drain coroutine continuations first — they are zero-allocation and
+    // typically complete quickly. Prioritizing them reduces latency for
+    // coroutines waiting on I/O or other coroutines.
+    while (auto h = coroutine_queue_.try_pop()) {
+      h->resume();
     }
+
+    // Block until a regular task (or null sentinel wakeup) arrives.
+    auto val = task_queue_.pop();
+    if (!val) {
+      break;  // Queue drained and closed — shutdown.
+    }
+    if (*val) {
+      (*(*val))();  // Regular task.
+    }
+    // Null shared_ptr = sentinel posted by schedule_coroutine() to wake this
+    // worker. The coroutine was already pushed to coroutine_queue_ before the
+    // sentinel; it will be drained at the top of the next loop iteration.
   }
 }
 
@@ -118,6 +130,13 @@ void ThreadPool::worker() {
 // shutdown won't be called from multiple threads.
 void ThreadPool::shutdown() {
   concurrency_level_.store(0);
+  // Destroy any coroutine handles still in the queue. Unlike packaged_task
+  // (which is ref-counted and auto-freed), coroutine_handle<> does not
+  // manage its frame lifetime — dropping without destroy() leaks the frame.
+  while (auto h = coroutine_queue_.try_pop()) {
+    h->destroy();
+  }
+  coroutine_queue_.drain();
   task_queue_.drain();
   for (auto&& t : threads_) {
     t.join();
