@@ -25,12 +25,16 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
+
 list(APPEND SOURCES
     handle.cc
 )
 gather_sources(${SOURCES})
 
-add_library(handle OBJECT EXCLUDE_FROM_ALL handle.cc)
-target_link_libraries(handle PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+commence(object_library handle)
+  this_target_sources(handle.cc)
+  this_target_object_libraries(baseline)
+conclude(object_library)
 
 add_test_subdirectory()

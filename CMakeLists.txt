@@ -483,31 +483,12 @@ if(TILEDB_TESTS)
 endif()
 
 # -------------------------------------------------------
-# Accumulators for object libraries and unit tests
+# Accumulators for unit tests
 # -------------------------------------------------------
 #
-# All link-completeness targets from object libraries are aggregated onto a
-# single target.
-#
-# 1. Before any subdirectories are added:
-#    a) Declare a target for all link-completeness checks. It's a phantom target
-#       having only dependencies and with no build actions of its own.
-#    b) Declare an accumulator for link-completeness targets.
-# 2. For each object library within the various subdirectories, add a
-#    link-completeness target, either
-#    a) manually, as an explicit dependency of the `all_link_complete` target.
-#    b) automatically, as an implicit part of an object library environment.
-#       The environment puts the link-completess target into the accumulator.
-# 3. After all the subdirectories are added:
-#    a) The list of all targets from the accumulator is added as a dependency
-#       of `all_link_complete`.
-#
-# All unit tests are similarly aggregated onto the target `all_unit_tests`.
+# All unit tests are aggregated onto the target `all_unit_tests`.
 #
 include(accumulator)
-
-add_custom_target(all_link_complete)
-define_accumulator(object_library_compile_targets)
 
 define_accumulator(unit_test_targets)
 #
@@ -591,14 +572,6 @@ if (TILEDB_TESTS)
     USES_TERMINAL
   )
 endif()
-
-# -------------------------------------------------------
-#
-# All the compile-targets from object library definitions are dependencies of
-# the `all_link_complete` phantom target.
-#
-retrieve_from(Compile_Targets ACCUMULATOR object_library_compile_targets)
-add_dependencies(all_link_complete ${Compile_Targets})
 
 ###########################################################
 # Uninstall

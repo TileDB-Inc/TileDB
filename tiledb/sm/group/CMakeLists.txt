@@ -25,29 +25,12 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `group` object library
 #
-# This object library does not support independent linkage at present. It has
-# a dependency on `StorageManager`, which at present is incapable of being
-# linked standalone. As a result, this library is not defined with
-# `commence(object_library)`, since that mandates a link-completeness test.
-#
-add_library(group OBJECT EXCLUDE_FROM_ALL group_directory.cc group.cc group_details.cc group_details_v1.cc group_details_v2.cc group_member.cc group_member_v1.cc group_member_v2.cc)
-target_link_libraries(group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(group PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(group PUBLIC object $<TARGET_OBJECTS:object>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_group EXCLUDE_FROM_ALL)
-
-# TODO: fix linkage of compile_group
-#add_dependencies(all_link_complete compile_group)
-
-target_link_libraries(compile_group PRIVATE group)
-target_sources(compile_group PRIVATE
-    test/compile_group_main.cc $<TARGET_OBJECTS:group>
-)
+commence(object_library group)
+    this_target_sources(group_directory.cc group.cc group_details.cc group_details_v1.cc group_details_v2.cc group_member.cc group_member_v1.cc group_member_v2.cc)
+    this_target_object_libraries(baseline buffer object)
+conclude(object_library)

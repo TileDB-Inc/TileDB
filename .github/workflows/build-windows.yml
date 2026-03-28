@@ -227,7 +227,7 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete --config $CMakeBuildType
+          cmake --build $env:BUILD_BUILDDIRECTORY -j --target tiledb_unit unit_vfs tiledb_regression --config $CMakeBuildType
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {

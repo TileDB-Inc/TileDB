@@ -24,17 +24,14 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # Object library for query plan
 #
-# Maturity:
-#   This library cannot link standalone because it depends upon `class Query`.
-#   This class is at present unable to be part of a standalone object library.
-#   Note that the unit test for this module links in the whole library.
-#
-add_library(query_plan OBJECT EXCLUDE_FROM_ALL query_plan.cc)
-target_link_libraries(query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(query_plan PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+commence(object_library query_plan)
+    this_target_sources(query_plan.cc)
+    this_target_object_libraries(baseline buffer)
+conclude(object_library)
 
 add_test_subdirectory()
