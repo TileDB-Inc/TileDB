@@ -73,11 +73,6 @@ class S3SSLConfig : public SSLConfig {
   S3SSLConfig(const Config& cfg);
 };
 
-class RestSSLConfig : public SSLConfig {
- public:
-  RestSSLConfig(const Config& cfg);
-};
-
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_SSL_CONFIG_H
