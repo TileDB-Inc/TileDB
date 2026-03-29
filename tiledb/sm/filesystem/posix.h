@@ -41,7 +41,9 @@
 #include <unistd.h>
 
 #include <functional>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/status.h"
@@ -79,8 +81,8 @@ class Posix : public LocalFilesystem {
   /** Constructor. */
   explicit Posix(const Config& config);
 
-  /** Destructor. */
-  ~Posix() override = default;
+  /** Destructor. Closes any cached file descriptors. */
+  ~Posix() override;
 
   /* ********************************* */
   /*                 API               */
@@ -299,6 +301,25 @@ class Posix : public LocalFilesystem {
 
  private:
   uint32_t file_permissions_, directory_permissions_;
+
+  /**
+   * Closes and removes cached fds whose path equals or is under the given
+   * prefix. Called from const removal/move methods to keep the cache
+   * consistent.
+   */
+  void evict_cached_fds(const std::string& path_prefix) const;
+
+  /** State for a file descriptor kept open between write() and flush(). */
+  struct OpenFile {
+    int fd;
+    uint64_t offset;
+  };
+
+  /** Maps path -> cached file descriptor and current write offset. */
+  mutable std::unordered_map<std::string, OpenFile> open_files_;
+
+  /** Protects open_files_. */
+  mutable std::mutex open_files_mtx_;
 };
 
 }  // namespace sm
