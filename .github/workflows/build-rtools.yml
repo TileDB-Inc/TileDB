@@ -37,6 +37,7 @@ jobs:
           r-version: '4.3'
       - name: Install RTools dependencies
         run: |
+          pacman-key --refresh-keys
           pacman -Sy --noconfirm base-devel
         shell: c:\rtools43\usr\bin\bash.exe --login {0}
       - name: Build TileDB
