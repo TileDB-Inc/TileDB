@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -126,11 +126,9 @@ TEST_CASE(
   read_array(array_name, {1, 3}, {1, 2, 3});
 
   Context ctx;
-  Config config;
-  config["sm.consolidation.buffer_size"] = "4";
-  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
-  REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, &config));
+  REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 1);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
@@ -222,9 +220,7 @@ TEST_CASE(
   read_array(array_name, {1, 3}, {1, 2, 3});
 
   Context ctx;
-  Config config;
-  config["sm.consolidation.buffer_size"] = "4";
-  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
@@ -246,8 +242,6 @@ TEST_CASE(
   read_array(array_name, {1, 3}, {1, 2, 3});
 
   Context ctx;
-  Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
@@ -262,7 +256,7 @@ TEST_CASE(
       short_fragment_name1.c_str(), short_fragment_name2.c_str()};
 
   REQUIRE_NOTHROW(
-      Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
+      Array::consolidate(ctx, array_name, fragment_uris, 2, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
@@ -422,10 +416,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test consolidation with timestamp and max domain",
     "[cppapi][consolidation][timestamp][maxdomain]") {
-  Config cfg;
-  cfg["sm.consolidation.buffer_size"] = "10000";
-
-  Context ctx(cfg);
+  Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "consolidate_timestamp_max_domain";
 

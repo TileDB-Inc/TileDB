@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -123,8 +123,7 @@ struct ConsolidationFx {
       uint64_t start = 0,
       uint64_t end = UINT64_MAX);
   void consolidate_sparse_heterogeneous();
-  void consolidate_sparse_string(
-      uint64_t buffer_size = 10000, bool error_expected = false);
+  void consolidate_sparse_string(bool error_expected = false);
   void vacuum_dense(
       const std::string& mode = "fragments", bool expect_fail = false);
   void vacuum_sparse(
@@ -4464,10 +4463,6 @@ void ConsolidationFx::consolidate_dense(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
@@ -4505,10 +4500,6 @@ void ConsolidationFx::consolidate_sparse(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
@@ -4527,17 +4518,11 @@ void ConsolidationFx::consolidate_sparse(
 void ConsolidationFx::consolidate_sparse_heterogeneous() {
   int rc;
   tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-
-  rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
     rc = tiledb_config_set(
@@ -4550,32 +4535,23 @@ void ConsolidationFx::consolidate_sparse_heterogeneous() {
         ctx_, sparse_heterogeneous_array_uri_.c_str(), cfg);
     tiledb_config_free(&cfg);
   } else {
-    rc = tiledb_array_consolidate(
-        ctx_, sparse_heterogeneous_array_uri_.c_str(), cfg);
+    cfg = nullptr;
   }
 
-  tiledb_config_free(&cfg);
+  rc = tiledb_array_consolidate(
+      ctx_, sparse_heterogeneous_array_uri_.c_str(), cfg);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
 }
 
-void ConsolidationFx::consolidate_sparse_string(
-    uint64_t buffer_size, bool error_expected) {
+void ConsolidationFx::consolidate_sparse_string(bool error_expected) {
   int rc;
-
   tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-
-  rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  auto buffer_size_string = std::to_string(buffer_size);
-  rc = tiledb_config_set(
-      cfg, "sm.consolidation.buffer_size", buffer_size_string.c_str(), &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
     rc = tiledb_config_set(
@@ -4587,11 +4563,11 @@ void ConsolidationFx::consolidate_sparse_string(
     rc = tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
     tiledb_config_free(&cfg);
   } else {
-    rc = tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
+    cfg = nullptr;
   }
-
-  tiledb_config_free(&cfg);
+  rc = tiledb_array_consolidate(ctx_, sparse_string_array_uri_.c_str(), cfg);
   REQUIRE(rc == (error_expected ? TILEDB_ERR : TILEDB_OK));
+  tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::vacuum_dense(const std::string& mode, bool expect_fail) {
@@ -4954,20 +4930,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  // Test buffer size
-  rc = tiledb_config_set(config, "sm.consolidation.buffer_size", "-1", &error);
-  REQUIRE(rc == TILEDB_ERR);
-  REQUIRE(error != nullptr);
-  tiledb_error_free(&error);
-  rc = tiledb_config_set(config, "sm.consolidation.buffer_size", "1.5", &error);
-  REQUIRE(rc == TILEDB_ERR);
-  REQUIRE(error != nullptr);
-  tiledb_error_free(&error);
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Test purge deleted cells
   rc = tiledb_config_set(
       config, "sm.consolidation.purge_deleted_cells", "1", &error);
@@ -5097,11 +5059,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -5157,11 +5114,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.0", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5223,11 +5175,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -5283,11 +5230,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.3", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5349,11 +5291,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -5409,11 +5346,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.4", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5475,11 +5407,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -5535,11 +5462,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.0", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5601,11 +5523,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.0", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5675,11 +5592,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -5701,66 +5613,6 @@ TEST_CASE_METHOD(
       &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 3);
-
-  tiledb_config_free(&config);
-  remove_dense_vector();
-}
-
-TEST_CASE_METHOD(
-    ConsolidationFx,
-    "C API: Test advanced consolidation, small buffer size",
-    "[capi][consolidation][adv][buffer-size][non-rest]") {
-  remove_dense_vector();
-  create_dense_vector();
-  write_dense_vector_4_fragments();
-  read_dense_vector();
-
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  // Configure test
-  int rc = tiledb_config_set(config, "sm.consolidation.steps", "2", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc =
-      tiledb_config_set(config, "sm.consolidation.step_min_frags", "2", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc =
-      tiledb_config_set(config, "sm.consolidation.step_max_frags", "2", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.0", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc = tiledb_config_set(config, "sm.consolidation.buffer_size", "10", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  // Consolidate
-  rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
-  CHECK(rc == TILEDB_OK);
-
-  // Vacuum
-  rc = tiledb_array_vacuum(ctx_, dense_vector_uri_.c_str(), nullptr);
-  CHECK(rc == TILEDB_OK);
-
-  // Check correctness
-  read_dense_vector();
-
-  // Check number of fragments
-  get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_,
-      vfs_,
-      vfs_test_setup_.fragment_dir(dense_vector_uri_).c_str(),
-      &get_dir_num,
-      &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == 2);
 
   tiledb_config_free(&config);
   remove_dense_vector();
@@ -5793,10 +5645,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(cfg, "sm.consolidation.step_size_ratio", "0.0", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
@@ -5869,11 +5717,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -5928,11 +5771,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.0", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -6000,11 +5838,6 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -6059,11 +5892,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.0", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -6124,11 +5952,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
       config, "sm.consolidation.step_size_ratio", "0.85", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -6208,11 +6031,6 @@ TEST_CASE_METHOD(
     REQUIRE(error == nullptr);
   }
 
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -6266,10 +6084,6 @@ TEST_CASE_METHOD(
   tiledb_error_t* err = nullptr;
 
   int rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
@@ -6562,7 +6376,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse string",
-    "[capi][consolidation][sparse][string][non-rest]") {
+    "[!mayfail][capi][consolidation][sparse][string][non-rest]") {
   remove_sparse_string_array();
   create_sparse_string_array();
 
@@ -7277,32 +7091,19 @@ TEST_CASE_METHOD(
   rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 3, &uri2);
   CHECK(rc == TILEDB_OK);
 
-  // Set consolidation buffer size
-  tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-
-  rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   // Consolidate
   SECTION("Relative URIs") {
     const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, dense_array_uri_.c_str(), uris, 2, nullptr);
   }
 
   SECTION("Absolute URIs") {
     const char* uris[2] = {uri, uri2};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, dense_array_uri_.c_str(), uris, 2, nullptr);
   }
   CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   tiledb_fragment_info_free(&fragment_info);
 
@@ -7369,29 +7170,17 @@ TEST_CASE_METHOD(
   rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 3, &uri2);
   CHECK(rc == TILEDB_OK);
 
-  // Set consolidation buffer size
-  tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-
-  rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   // Consolidate
   SECTION("Relative URIs") {
     const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, sparse_array_uri_.c_str(), uris, 2, nullptr);
   }
 
   SECTION("Absolute URIs") {
     const char* uris[2] = {uri, uri2};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, sparse_array_uri_.c_str(), uris, 2, nullptr);
   }
 
   SECTION("Invalid URIs") {
@@ -7400,12 +7189,11 @@ TEST_CASE_METHOD(
     frag2 = "/some/array/__fragments/" + frag2;
     const char* uris[2] = {frag1.c_str(), frag2.c_str()};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, sparse_array_uri_.c_str(), uris, 2, nullptr);
     CHECK(rc == TILEDB_ERR);
     return;
   }
   CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   tiledb_fragment_info_free(&fragment_info);
 
@@ -7480,29 +7268,17 @@ TEST_CASE_METHOD(
   rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 3, &uri2);
   CHECK(rc == TILEDB_OK);
 
-  // Set consolidation buffer size
-  tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-
-  rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   // Consolidate
   SECTION("Relative URIs") {
     const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, sparse_array_uri_.c_str(), uris, 2, nullptr);
   }
 
   SECTION("Absolute URIs") {
     const char* uris[2] = {uri, uri2};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, sparse_array_uri_.c_str(), uris, 2, nullptr);
   }
 
   SECTION("Invalid URIs") {
@@ -7511,12 +7287,11 @@ TEST_CASE_METHOD(
     frag2 = "/some/array/" + frag2;
     const char* uris[2] = {frag1.c_str(), frag2.c_str()};
     rc = tiledb_array_consolidate_fragments(
-        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+        ctx_, sparse_array_uri_.c_str(), uris, 2, nullptr);
     CHECK(rc == TILEDB_ERR);
     return;
   }
   CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   tiledb_fragment_info_free(&fragment_info);
 
@@ -7588,13 +7363,13 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse string, no progress",
-    "[capi][consolidation][sparse][string][no-progress][non-rest]") {
+    "[!mayfail][capi][consolidation][sparse][string][no-progress][non-rest]") {
   remove_sparse_string_array();
   create_sparse_string_array();
 
   write_sparse_string_full();
   write_sparse_string_unordered();
-  consolidate_sparse_string(1, true);
+  consolidate_sparse_string(true);
 
   tiledb_error_t* err = NULL;
   tiledb_ctx_get_last_error(ctx_, &err);

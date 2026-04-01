@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1680,21 +1680,10 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(dirs.num == 2);
 
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  rc = tiledb_config_set(
-      config, "sm.consolidation.buffer_size", "10000", &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   // Consolidate
-  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_vacuum(ctx_, array_name.c_str(), nullptr);
-  tiledb_config_free(&config);
 
   // Check number of fragments
   dirs = {ctx_, vfs_, 0};

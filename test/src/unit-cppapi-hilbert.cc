@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -701,10 +701,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, consolidation",
     "[cppapi][hilbert][consolidation][non-rest]") {
-  Config cfg;
-  cfg["sm.consolidation.buffer_size"] = "10000";
-
-  Context ctx(cfg);
+  Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -1053,10 +1050,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, consolidation",
     "[cppapi][hilbert][2d][int32][negative][consolidation]") {
-  Config cfg;
-  cfg["sm.consolidation.buffer_size"] = "10000";
-
-  Context ctx(cfg);
+  Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -1460,10 +1454,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, consolidation",
     "[cppapi][hilbert][2d][float32][consolidation][non-rest]") {
-  Config cfg;
-  cfg["sm.consolidation.buffer_size"] = "10000";
-
-  Context ctx(cfg);
+  Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
