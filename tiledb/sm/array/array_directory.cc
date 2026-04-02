@@ -725,6 +725,21 @@ ArrayDirectory::load_consolidated_commit_uris(
   // Load the commit URIs to ignore. This is done in serial for now as it can be
   // optimized by vacuuming.
   std::unordered_set<std::string> ignore_set;
+
+  // Helper lambda to advance the stream past binary delete payloads.
+  // Assumes the caller has already verified this is a delete commit.
+  auto skip_delete_payload = [](std::stringstream& stream,
+                                uint64_t* out_payload_offset = nullptr) {
+    storage_size_t size = 0;
+    stream.read(reinterpret_cast<char*>(&size), sizeof(storage_size_t));
+
+    if (out_payload_offset) {
+      *out_payload_offset = static_cast<uint64_t>(stream.tellg());
+    }
+
+    stream.seekg(size, std::ios_base::cur);
+  };
+
   for (auto& uri : commits_dir_uris) {
     if (uri.to_string().ends_with(constants::ignore_file_suffix)) {
       uint64_t size = resources_.get().vfs().file_size(uri);
@@ -765,11 +780,8 @@ ArrayDirectory::load_consolidated_commit_uris(
 
         // If we have a delete, process the condition tile
         if (condition_marker.ends_with(constants::delete_file_suffix)) {
-          storage_size_t size = 0;
-          ss.read(
-              static_cast<char*>(static_cast<void*>(&size)),
-              sizeof(storage_size_t));
-          auto pos = ss.tellg();
+          uint64_t payload_pos = 0;
+          skip_delete_payload(ss, &payload_pos);
 
           // Get the start and end timestamp for this delete
           FragmentID fragment_id{URI(condition_marker)};
@@ -779,10 +791,8 @@ ArrayDirectory::load_consolidated_commit_uris(
           // times
           if (timestamps_overlap(delete_timestamp_range, false)) {
             delete_and_update_tiles_location_.emplace_back(
-                uri, condition_marker, pos);
+                uri, condition_marker, payload_pos);
           }
-          pos += size;
-          ss.seekg(pos);
         }
       }
     }
@@ -808,6 +818,10 @@ ArrayDirectory::load_consolidated_commit_uris(
         } else {
           all_in_set = false;
           break;
+        }
+        // Skip the binary payload if it's a delete file
+        if (uri_str.ends_with(constants::delete_file_suffix)) {
+          skip_delete_payload(ss);
         }
       }
 
@@ -920,6 +934,13 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
         uri.to_string().ends_with(constants::delete_file_suffix)) {
       if (consolidated_uris_set.count(uri) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
+        if (static_cast<std::string_view>(uri).ends_with(
+                constants::delete_file_suffix)) {
+          const auto base_uri_size = uri_.to_string().size();
+          // 0 offset because it is a raw file
+          delete_and_update_tiles_location_.emplace_back(
+              uri, uri.to_string().substr(base_uri_size), 0);
+        }
       }
     }
   }
