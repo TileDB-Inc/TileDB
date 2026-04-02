@@ -99,16 +99,6 @@ conclude(object_library)
 #
 # `webp_filter` object library.
 #
-#add_library(webp_filter OBJECT EXCLUDE_FROM_ALL webp_filter.cc)
-#target_link_libraries(webp_filter PUBLIC filter $<TARGET_OBJECTS:filter>)
-#target_link_libraries(webp_filter PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
-#target_link_libraries(webp_filter PUBLIC tile $<TARGET_OBJECTS:tile>)
-#if(TILEDB_WEBP)
-#    target_compile_definitions(webp_filter PUBLIC -DTILEDB_WEBP)
-#    find_package(WebP REQUIRED)
-#    target_link_libraries(webp_filter PRIVATE WebP::webp)
-#endif()
-
 commence(object_library webp_filter)
     this_target_sources(webp_filter.cc)
     this_target_object_libraries(filter misc_types tile)
@@ -118,13 +108,6 @@ commence(object_library webp_filter)
         this_target_link_libraries(WebP::webp)
     endif()
 conclude(object_library)
-
-#
-# Test-compile of object library ensures link-completeness.
-#
-#add_executable(compile_webp_filter EXCLUDE_FROM_ALL)
-#target_link_libraries(compile_webp_filter PRIVATE webp_filter)
-#target_sources(compile_webp_filter PRIVATE test/compile_webp_filter_main.cc)
 
 #
 # `all_filters` object library

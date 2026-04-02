@@ -49,6 +49,7 @@ namespace tiledb::api {
 
 capi_return_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) {
+  ensure_output_pointer_is_valid(str);
   const auto& strval =
       tiledb::sm::array_type_str((tiledb::sm::ArrayType)array_type);
   *str = strval.c_str();
@@ -57,6 +58,7 @@ capi_return_t tiledb_array_type_to_str(
 
 capi_return_t tiledb_array_type_from_str(
     const char* str, tiledb_array_type_t* array_type) {
+  ensure_output_pointer_is_valid(array_type);
   tiledb::sm::ArrayType val = tiledb::sm::ArrayType::DENSE;
   if (!tiledb::sm::array_type_enum(str, &val).ok()) {
     return TILEDB_ERR;
@@ -66,12 +68,14 @@ capi_return_t tiledb_array_type_from_str(
 }
 
 capi_return_t tiledb_layout_to_str(tiledb_layout_t layout, const char** str) {
+  ensure_output_pointer_is_valid(str);
   const auto& strval = tiledb::sm::layout_str((tiledb::sm::Layout)layout);
   *str = strval.c_str();
   return strval.empty() ? TILEDB_ERR : TILEDB_OK;
 }
 
 capi_return_t tiledb_layout_from_str(const char* str, tiledb_layout_t* layout) {
+  ensure_output_pointer_is_valid(layout);
   tiledb::sm::Layout val = tiledb::sm::Layout::ROW_MAJOR;
   if (!tiledb::sm::layout_enum(str, &val).ok()) {
     return TILEDB_ERR;

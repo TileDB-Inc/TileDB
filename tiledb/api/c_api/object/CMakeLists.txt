@@ -25,6 +25,7 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   object_api.cc
@@ -32,20 +33,12 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Incomplete object library for object APIs. Moving the rest of
-# the object API implementations over is blocked by the dependency
-# on StorageManager that would require us to link the entire library
-# for this to work.
+# Object library for object APIs.
 #
-# Maturity Warning: `capi_object` can't be a full object library unit the
-# `StorageManager` dependency is removed. Note that the test-compile is
-# absent. This is the reason that it hasn't been converted to use the
-# `object_library` environment for CMake.
-#
-add_library(capi_object OBJECT EXCLUDE_FROM_ALL ${SOURCES})
-target_link_libraries(capi_object PUBLIC export)
-target_link_libraries(capi_object PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_object PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(capi_object PUBLIC exception_wrapper $<TARGET_OBJECTS:exception_wrapper>)
+commence(object_library capi_object)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline constants exception_wrapper)
+conclude(object_library)
 
 add_test_subdirectory()

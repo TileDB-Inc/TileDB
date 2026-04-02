@@ -25,6 +25,7 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   group_api.cc
@@ -34,9 +35,8 @@ gather_sources(${SOURCES})
 #
 # Object library for other units to depend upon
 #
-# Maturity Note: We can't make a proper group unit library until we've
-# removed its dependence on StorageManager.
-#
-add_library(capi_group OBJECT EXCLUDE_FROM_ALL ${SOURCES})
-target_link_libraries(capi_group PUBLIC export)
-target_link_libraries(capi_group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+commence(object_library capi_group)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline)
+conclude(object_library)

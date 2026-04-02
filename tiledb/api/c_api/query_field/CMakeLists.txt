@@ -24,16 +24,8 @@
 # THE SOFTWARE.
 #
 
-# The object library `capi_query_field` cannot be linked standalone at the
-# present time. It depends upon member functions of `class Query`, which does
-# not yet have a standalone object library of its own. Without such a
-# dependency, `capi_query_field` would have to link (essentially) the whole 
-# library to get a complete executable.
-# 
-# It is against policy to use the `object_library` environment to define object
-# libraries that cannot stand alone. Therefore this definition is directly in
-# CMake and does not include a link-completeness target.
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   query_field_api.cc
@@ -43,11 +35,10 @@ gather_sources(${SOURCES})
 #
 # Object library for C API query_field
 #
-# Maturity Note: object library `capi_query_field` cannot be linked stand-alone
-#   at present.
-#
-add_library(capi_query_field OBJECT EXCLUDE_FROM_ALL ${SOURCES})
-target_link_libraries(capi_query_field PUBLIC export)
-target_link_libraries(capi_query_field PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+commence(object_library capi_query_field)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline)
+conclude(object_library)
 
 add_test_subdirectory()
