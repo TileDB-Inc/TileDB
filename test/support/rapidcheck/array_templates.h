@@ -62,17 +62,15 @@ Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
     std::tuple<query_buffers<typename Att::cell_type>...> atts;
 
     std::apply(
-        [&](std::vector<D> tup_d1, auto... tup_atts) {
+        [&](std::vector<D> tup_d1,
+            std::vector<typename Att::cell_type>... tup_atts) {
           if constexpr (std::is_same_v<D, StringDimensionCoordType>) {
             coords = query_buffers<D>(tup_d1);
           } else {
             coords.values_ = tup_d1;
           }
-          atts = std::apply(
-              [&]<typename... Ts>(std::vector<Ts>... att) {
-                return std::make_tuple(query_buffers<Ts>(att)...);
-              },
-              std::forward_as_tuple(tup_atts...));
+          atts = std::make_tuple(
+              query_buffers<typename Att::cell_type>(tup_atts)...);
         },
         stdx::transpose(cells));
 
@@ -120,7 +118,9 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
     std::tuple<std::vector<Att>...> atts;
 
     std::apply(
-        [&](std::vector<D1> tup_d1, std::vector<D2> tup_d2, auto... tup_atts) {
+        [&](std::vector<D1> tup_d1,
+            std::vector<D2> tup_d2,
+            std::vector<Att>... tup_atts) {
           coords_d1 = tup_d1;
           coords_d2 = tup_d2;
           atts = std::make_tuple(tup_atts...);
@@ -173,7 +173,7 @@ Gen<Fragment3D<D1, D2, D3, Att...>> make_fragment_3d(
         [&](std::vector<D1> tup_d1,
             std::vector<D2> tup_d2,
             std::vector<D3> tup_d3,
-            auto... tup_atts) {
+            std::vector<Att>... tup_atts) {
           coords_d1 = tup_d1;
           coords_d2 = tup_d2;
           coords_d3 = tup_d3;
