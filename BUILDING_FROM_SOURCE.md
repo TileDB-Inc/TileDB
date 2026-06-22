@@ -130,7 +130,7 @@ To **build** after configuration, run the following:
 To **install**, run the following:
 
 ```bash
-> cmake --build . --target install-tiledb --config Release
+> cmake --build . --target install --config Release
 ```
 
 Other helpful build targets are as follows:

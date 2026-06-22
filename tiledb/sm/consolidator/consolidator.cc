@@ -255,6 +255,16 @@ void Consolidator::write_consolidated_commits_file(
     const ArrayDirectory& array_dir,
     const std::vector<URI>& commit_uris,
     ContextResources& resources) {
+  // Map relative URIs to their actual physical locations on disk (either raw
+  // .del files or embedded in .con files)
+  std::unordered_map<
+      std::string,
+      const ArrayDirectory::DeleteAndUpdateTileLocation*>
+      location_map;
+  for (const auto& loc : array_dir.delete_and_update_tiles_location()) {
+    location_map[loc.condition_marker()] = &loc;
+  }
+
   // Compute the file name.
   auto name = storage_format::generate_consolidated_fragment_name(
       commit_uris.front(), commit_uris.back(), write_version);
@@ -266,14 +276,36 @@ void Consolidator::write_consolidated_commits_file(
   std::vector<storage_size_t> file_sizes(commit_uris.size());
   for (uint64_t i = 0; i < commit_uris.size(); i++) {
     const auto& uri = commit_uris[i];
-    total_size += uri.to_string().size() - base_uri_size + 1;
+    std::string relative_uri = uri.to_string().substr(base_uri_size);
+    // +1 for the newline character
+    total_size += relative_uri.size() + 1;
 
-    // If the file is a delete, add the file size to the count and the size of
-    // the size variable.
-    if (uri.to_string().ends_with(constants::delete_file_suffix)) {
-      file_sizes[i] = resources.vfs().file_size(uri);
-      total_size += file_sizes[i];
-      total_size += sizeof(storage_size_t);
+    // If the file is a delete, find its physical payload size.
+    if (relative_uri.ends_with(constants::delete_file_suffix)) {
+      auto it = location_map.find(relative_uri);
+      if (it == location_map.end()) {
+        throw ConsolidatorException(
+            "Delete commit physical location not found in ArrayDirectory "
+            "ledger.");
+      }
+
+      const auto* loc = it->second;
+
+      if (loc->offset() == 0) {
+        // It's a raw .del file still sitting on disk
+        file_sizes[i] = resources.vfs().file_size(loc->uri());
+      } else {
+        // It's already embedded in an older .con file.
+        // Read the size bytes stored immediately before the payload offset.
+        storage_size_t payload_size = 0;
+        throw_if_not_ok(resources.vfs().read_exactly(
+            loc->uri(),
+            loc->offset() - sizeof(storage_size_t),
+            &payload_size,
+            sizeof(storage_size_t)));
+        file_sizes[i] = payload_size;
+      }
+      total_size += file_sizes[i] + sizeof(storage_size_t);
     }
   }
 
@@ -283,16 +315,22 @@ void Consolidator::write_consolidated_commits_file(
   for (uint64_t i = 0; i < commit_uris.size(); i++) {
     // Add the uri.
     const auto& uri = commit_uris[i];
-    std::string relative_uri = uri.to_string().substr(base_uri_size) + "\n";
+    std::string relative_uri = uri.to_string().substr(base_uri_size);
     memcpy(&data[file_index], relative_uri.data(), relative_uri.size());
     file_index += relative_uri.size();
 
-    // For deletes, read the delete condition to the output file.
-    if (uri.to_string().ends_with(constants::delete_file_suffix)) {
+    // Directly append the newline character to the buffer
+    data[file_index++] = '\n';
+
+    // For deletes, read the delete condition payload from its mapped physical
+    // location.
+    if (relative_uri.ends_with(constants::delete_file_suffix)) {
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
+
+      const auto* loc = location_map[relative_uri];
       throw_if_not_ok(resources.vfs().read_exactly(
-          uri, 0, &data[file_index], file_sizes[i]));
+          loc->uri(), loc->offset(), &data[file_index], file_sizes[i]));
       file_index += file_sizes[i];
     }
   }
