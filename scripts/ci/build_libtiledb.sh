@@ -35,4 +35,4 @@ cmake --build . -j4 --target install
 
 ls -la
 
-cmake --build . -j4 --target tiledb_unit unit_vfs tiledb_regression -- -k 0
+cmake --build . -j4 --target tiledb_unit unit_vfs tiledb_regression
