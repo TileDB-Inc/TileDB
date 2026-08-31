@@ -500,12 +500,24 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual Status post_consolidation_to_rest(const URI&, const Config&) {
+  inline virtual Status post_array_consolidation_to_rest(
+      const URI&, const Config&) {
     throw RestClientDisabledException();
   }
 
   /// Operation disabled in base class.
-  inline virtual Status post_vacuum_to_rest(const URI&, const Config&) {
+  inline virtual Status post_group_consolidation_to_rest(
+      const URI&, const Config&) {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual Status post_array_vacuum_to_rest(const URI&, const Config&) {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual Status post_group_vacuum_to_rest(const URI&, const Config&) {
     throw RestClientDisabledException();
   }
 

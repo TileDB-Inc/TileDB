@@ -276,13 +276,6 @@ class Consolidator {
   explicit Consolidator(
       ContextResources& resources, StorageManager* storage_manager);
 
-  /**
-   * Checks if the array is remote.
-   *
-   * @param array_name Name of the array to check.
-   */
-  void check_array_uri(const char* array_name);
-
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
