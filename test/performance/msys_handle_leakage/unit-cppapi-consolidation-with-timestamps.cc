@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -104,12 +104,8 @@ struct ConsolidationWithTimestampsFx {
 };
 
 ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
-    : vfs_(ctx_) {
-  Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
-  ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->storage_manager();
-  vfs_ = VFS(ctx_);
+    : vfs_(ctx_)
+    , sm_(ctx_.ptr().get()->storage_manager()) {
 }
 
 ConsolidationWithTimestampsFx::~ConsolidationWithTimestampsFx() {
@@ -117,7 +113,6 @@ ConsolidationWithTimestampsFx::~ConsolidationWithTimestampsFx() {
 
 void ConsolidationWithTimestampsFx::set_legacy() {
   Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.query.sparse_global_order.reader", "legacy");
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
 

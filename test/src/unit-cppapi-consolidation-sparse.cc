@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -108,11 +108,9 @@ TEST_CASE(
   read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
   Context ctx;
-  Config config;
-  config["sm.consolidation.buffer_size"] = "8";
-  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
-  REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, &config));
+  REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 1);
 
   read_array(array_name, {1, 2, 3}, {1, 2, 3});
@@ -142,9 +140,7 @@ TEST_CASE(
   read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
   Context ctx;
-  Config config;
-  config["sm.consolidation.buffer_size"] = "8";
-  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, nullptr));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
   read_array(array_name, {1, 2, 3}, {1, 2, 3});

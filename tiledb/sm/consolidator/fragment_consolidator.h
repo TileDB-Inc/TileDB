@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -78,8 +78,6 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
    * (since the resulting fragments is dense).
    */
   float amplification_;
-  /** Attribute buffer size. */
-  uint64_t buffer_size_;
   /** Total memory budget for consolidation operation. */
   uint64_t total_budget_;
   /** Consolidation buffers weight used to partition total budget. */
