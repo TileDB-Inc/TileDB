@@ -38,4 +38,4 @@ jobs:
         with:
           name: Nightly Dev Build
           label: CI,nightly
-          assignee: ihnorton,ypatia,teo-tsirpanis
+          assignee: ypatia,teo-tsirpanis
