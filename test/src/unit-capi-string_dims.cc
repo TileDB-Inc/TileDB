@@ -943,7 +943,7 @@ TEST_CASE_METHOD(
   // Create dimension
   tiledb_domain_t* domain;
   tiledb_dimension_t* d;
-  char tmp;
+  char tmp = '\0';
   int rc =
       tiledb_dimension_alloc(ctx_, "d", TILEDB_STRING_ASCII, &tmp, nullptr, &d);
   REQUIRE(rc == TILEDB_ERR);
