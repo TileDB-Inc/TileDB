@@ -36,7 +36,9 @@
 #ifdef _WIN32
 
 #include <sys/types.h>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/status.h"
@@ -86,6 +88,9 @@ class Win : public LocalFilesystem {
    */
   Win(const Config&) {
   }
+
+  /** Destructor. Cleans up any HANDLEs still in the cache. */
+  ~Win() override;
 
   /* ********************************* */
   /*                 API               */
@@ -280,6 +285,22 @@ class Win : public LocalFilesystem {
       uint64_t file_offset,
       const void* buffer,
       uint64_t buffer_size);
+
+  /**
+   * Closes and removes cached HANDLEs whose path equals or is under the given
+   * prefix. Called from const removal/move methods to keep the cache
+   * consistent.
+   */
+  void evict_cached_handles(const std::string& path_prefix) const;
+
+  /** Cached HANDLE + write offset for a file that's still being written to. */
+  struct OpenFile {
+    HANDLE handle;
+    uint64_t offset;
+  };
+
+  mutable std::unordered_map<std::string, OpenFile> open_files_;
+  mutable std::mutex open_files_mtx_;
 };
 
 }  // namespace tiledb::sm

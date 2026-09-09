@@ -66,6 +66,14 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+Win::~Win() {
+  std::lock_guard<std::mutex> lock(open_files_mtx_);
+  for (auto& [path, of] : open_files_) {
+    CloseHandle(of.handle);
+  }
+  open_files_.clear();
+}
+
 namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
@@ -279,9 +287,23 @@ err:
       get_last_error_msg(gle, offender.c_str()))));
 }
 
+void Win::evict_cached_handles(const std::string& path_prefix) const {
+  std::lock_guard<std::mutex> lock(open_files_mtx_);
+  for (auto it = open_files_.begin(); it != open_files_.end();) {
+    if (it->first == path_prefix ||
+        it->first.compare(0, path_prefix.size() + 1, path_prefix + "\\") == 0) {
+      CloseHandle(it->second.handle);
+      it = open_files_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void Win::remove_dir(const URI& uri) const {
   auto path = uri.to_path();
   if (is_dir(uri)) {
+    evict_cached_handles(path);
     throw_if_not_ok(recursively_remove_directory(path));
   } else {
     throw WindowsException(
@@ -304,6 +326,7 @@ bool Win::remove_dir_if_empty(const std::string& path) const {
 
 void Win::remove_file(const URI& uri) const {
   auto path = uri.to_path();
+  evict_cached_handles(path);
   if (!DeleteFile(path.c_str())) {
     throw WindowsException(std::string(
         "Failed to delete file '" + path + "' " +
@@ -418,6 +441,7 @@ err:
 
 void Win::move_path(const URI& old_uri, const URI& new_uri) const {
   auto old_path = old_uri.to_path();
+  evict_cached_handles(old_path);
   auto new_path = new_uri.to_path();
   if (MoveFileEx(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
@@ -503,7 +527,36 @@ uint64_t Win::read(
 }
 
 void Win::flush(const URI& uri, bool) {
-  sync(uri);
+  auto path = uri.to_path();
+  HANDLE file_h = INVALID_HANDLE_VALUE;
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    auto it = open_files_.find(path);
+    if (it != open_files_.end()) {
+      file_h = it->second.handle;
+      open_files_.erase(it);
+    }
+  }
+
+  if (file_h != INVALID_HANDLE_VALUE) {
+    // Flush and close the cached HANDLE.
+    if (FlushFileBuffers(file_h) == 0) {
+      auto gle = GetLastError();
+      CloseHandle(file_h);
+      throw WindowsException(
+          "Cannot sync file '" + path + "'; " +
+          get_last_error_msg(gle, "FlushFileBuffers"));
+    }
+    if (CloseHandle(file_h) == 0) {
+      throw WindowsException(
+          "Cannot close file '" + path + "'; " +
+          get_last_error_msg("CloseHandle"));
+    }
+  } else {
+    // No cached handle (e.g. directory sync or file not written through us).
+    sync(uri);
+  }
 }
 
 void Win::sync(const URI& uri) const {
@@ -546,39 +599,56 @@ void Win::sync(const URI& uri) const {
 void Win::write(
     const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
   auto path = uri.to_path();
-  throw_if_not_ok(ensure_directory(path));
-  // Open the file for appending, creating it if it doesn't exist.
-  HANDLE file_h = CreateFile(
-      path.c_str(),
-      GENERIC_WRITE,
-      0,
-      NULL,
-      OPEN_ALWAYS,
-      FILE_ATTRIBUTE_NORMAL,
-      NULL);
-  if (file_h == INVALID_HANDLE_VALUE) {
-    throw WindowsException(
-        "Cannot write to file '" + path + "'; File opening error " +
-        get_last_error_msg("CreateFile"));
+
+  HANDLE file_h;
+  uint64_t file_offset;
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    auto it = open_files_.find(path);
+    if (it != open_files_.end()) {
+      // Reuse the cached HANDLE.
+      file_h = it->second.handle;
+      file_offset = it->second.offset;
+    } else {
+      // First write to this path: open HANDLE and cache it.
+      throw_if_not_ok(ensure_directory(path));
+      file_h = CreateFile(
+          path.c_str(),
+          GENERIC_WRITE,
+          FILE_SHARE_READ | FILE_SHARE_DELETE,
+          NULL,
+          OPEN_ALWAYS,
+          FILE_ATTRIBUTE_NORMAL,
+          NULL);
+      if (file_h == INVALID_HANDLE_VALUE) {
+        throw WindowsException(
+            "Cannot write to file '" + path + "'; File opening error " +
+            get_last_error_msg("CreateFile"));
+      }
+      // Determine current file size for append semantics.
+      LARGE_INTEGER file_size_lg_int;
+      if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
+        auto gle = GetLastError();
+        CloseHandle(file_h);
+        throw WindowsException(
+            "Cannot write to file '" + path + "'; File size error " +
+            get_last_error_msg(gle, "GetFileSizeEx"));
+      }
+      file_offset = file_size_lg_int.QuadPart;
+      open_files_.emplace(path, OpenFile{file_h, file_offset});
+    }
   }
-  // Get the current file size.
-  LARGE_INTEGER file_size_lg_int;
-  if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
+
+  auto st = write_at(file_h, file_offset, buffer, buffer_size);
+  if (!st.ok()) {
     throw WindowsException(
-        "Cannot write to file '" + path + "'; File size error " +
-        get_last_error_msg(gle, "GetFileSizeEx"));
+        "Cannot write to file '" + path + "'; " + st.message());
   }
-  uint64_t file_offset = file_size_lg_int.QuadPart;
-  if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
-    CloseHandle(file_h);
-    throw WindowsException("Cannot write to file '" + path);
-  }
-  // Always close the handle.
-  if (CloseHandle(file_h) == 0) {
-    throw WindowsException(
-        "Cannot write to file '" + path + "'; File closing error");
+
+  {
+    std::lock_guard<std::mutex> lock(open_files_mtx_);
+    open_files_[path].offset = file_offset + buffer_size;
   }
 }
 
