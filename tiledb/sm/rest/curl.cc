@@ -280,7 +280,7 @@ Status Curl::init(
     return LOG_STATUS(Status_RestError(
         "Error initializing libcurl; failed to set CURLOPT_HEADERDATA"));
 
-  SSLConfig ssl_cfg = RestSSLConfig(*config_);
+  SSLConfig ssl_cfg(*config_);
 
   if (ssl_cfg.verify() == false) {
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYHOST, 0);
