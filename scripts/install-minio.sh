@@ -45,14 +45,7 @@ install_yum_pkgs() {
 }
 
 install_brew_pkgs() {
-  # use minio repo rather than cask,
-  # as recommended by minio
-  #brew install minio/stable/minio
-
-  # Use direct installation due to failed download from homebrew
-  curl -O https://dl.min.io/server/minio/release/darwin-amd64/minio
-  chmod +x ./minio
-  sudo mv ./minio /usr/local/bin/
+  brew install minio/stable/minio
 }
 
 install_deps() {
