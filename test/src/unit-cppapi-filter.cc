@@ -89,7 +89,7 @@ TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
   REQUIRE(wrong_type_u == 4);
 
   // Unsupported option
-  uint32_t window;
+  uint32_t window = 1;
   REQUIRE_THROWS_AS(
       f.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
   REQUIRE_THROWS_AS(

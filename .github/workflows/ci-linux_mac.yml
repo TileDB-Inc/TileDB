@@ -153,6 +153,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
         run: |
           set -e pipefail
+          brew update
           brew install automake
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 

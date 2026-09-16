@@ -91,7 +91,7 @@ TEST_CASE(
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
-  int value;
+  int value = 0;
   SECTION("null context") {
     rc = tiledb_filter_set_option(
         nullptr, filter, TILEDB_COMPRESSION_LEVEL, &value);
