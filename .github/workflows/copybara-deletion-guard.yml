@@ -1,0 +1,38 @@
+name: Copybara deletion guard
+
+# A copybara export PR built from a stale monorepo snapshot can propose
+# deleting this repository's newest work. This guard fails any copybara/* PR
+# that deletes files until a reviewer confirms each deletion is intended and
+# applies the 'deletions-approved' label.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  guard:
+    if: ${{ startsWith(github.head_ref, 'copybara/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse unreviewed deletions in sync PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          removed=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files?per_page=100" \
+            --jq '[.[] | select(.status=="removed") | .filename] | join(", ")')
+          if [ -z "$removed" ]; then
+            echo "No deletions in this sync PR."
+            exit 0
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '.[].name' | grep -qx 'deletions-approved'; then
+            echo "Deletions approved by label: $removed"
+            exit 0
+          fi
+          echo "::error::This export PR deletes files: $removed. A stale-snapshot export deletes destination work. Verify each deletion is intended, then add the 'deletions-approved' label."
+          exit 1

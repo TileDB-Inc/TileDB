@@ -1,0 +1,66 @@
+name: Sync to monorepo
+
+# After a merge to main, ask the TileDB monorepo to import this repository into
+# its TileDB subtree. The monorepo's copybara pull-sync workflow receives
+# this repository_dispatch (type: upstream-merged) and opens a review-gated
+# import PR; nothing lands in the monorepo without review.
+#
+# Requires two repository secrets:
+#   MONOREPO_SYNC_TOKEN - sends a repository_dispatch to
+#     TileDB-Inc/tiledb-monorepo (fine-grained PAT with Contents: write there,
+#     or a classic PAT with repo). Prefer a shared service-account / GitHub App.
+#   ORG_READ_TOKEN - reads org team membership for the gate below (fine-grained
+#     PAT with org "Members: read", or a classic PAT with read:org). The default
+#     GITHUB_TOKEN cannot read org membership, so a dedicated token is required.
+#
+# Public-repo hardening: the gate job refuses to sync unless the pusher is an
+# active member of the org team below. This is only meaningful if the workflow
+# file itself cannot be edited by non-members - protect .github/** on main with
+# a ruleset / branch protection requiring org-member review.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: sync-to-monorepo
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    # Skip the monorepo's own exports coming back: a squash-exported commit
+    # carries a Monorepo-RevId trailer. The monorepo pull would NO_OP on it
+    # anyway; skipping just avoids the round-trip churn.
+    if: ${{ !contains(github.event.head_commit.message, 'Monorepo-RevId:') }}
+    steps:
+      - name: Require the pusher to be an active org-team member
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          ORG: ${{ github.repository_owner }}
+          TEAM: tiledb-inc-employees
+          ACTOR: ${{ github.actor }}
+        run: |
+          # Values come from env, never interpolated into the shell. Fail
+          # closed: any non-active result (404, error, rate-limit, pending
+          # invite) blocks the sync.
+          state=$(gh api "orgs/$ORG/teams/$TEAM/memberships/$ACTOR" --jq .state 2>/dev/null || true)
+          if [ "$state" != "active" ]; then
+            echo "::error::$ACTOR is not an active member of $ORG/$TEAM (state='${state:-none}') - refusing to sync."
+            exit 1
+          fi
+          echo "$ACTOR is an active member of $ORG/$TEAM; proceeding."
+
+  notify:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request a TileDB subtree import
+        env:
+          GH_TOKEN: ${{ secrets.MONOREPO_SYNC_TOKEN }}
+        run: |
+          gh api repos/TileDB-Inc/tiledb-monorepo/dispatches --method POST --input - <<PAYLOAD
+          {"event_type":"upstream-merged","client_payload":{"subtree":"TileDB","sha":"$GITHUB_SHA"}}
+          PAYLOAD

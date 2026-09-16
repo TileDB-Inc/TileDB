@@ -1,0 +1,55 @@
+name: Copybara sync gate
+
+# Block a PR here while the monorepo has changes to the TileDB subtree that
+# are not yet exported and merged back (the crossing-changes hazard). Two
+# unsynced states are checked: an open export PR here, and monorepo TileDB/
+# commits after the hub's last-export ref. Copybara's own export PRs are exempt.
+# Enforce as a branch-protection required check.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gate:
+    if: ${{ !startsWith(github.head_ref, 'copybara/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require monorepo exports to be current
+        env:
+          GH_TOKEN: ${{ secrets.MONOREPO_SYNC_TOKEN }}
+        run: |
+          open=$(gh pr list -R "$GITHUB_REPOSITORY" --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("copybara/from-monorepo-"))] | length')
+          if [ "$open" != 0 ]; then
+            echo "::error::A pending export PR from the monorepo is open; merge it before merging other work (crossing changes)."
+            exit 1
+          fi
+          umask 077
+          printf 'https://x-access-token:%s@github.com\n' "$GH_TOKEN" > "$RUNNER_TEMP/git-credentials"
+          git config --global credential.helper "store --file=$RUNNER_TEMP/git-credentials"
+          HUB=https://github.com/TileDB-Inc/tiledb-monorepo.git
+          # Commit/tree only (no blobs): enough to walk history for the count.
+          git clone -q --filter=blob:none --no-checkout "$HUB" hub
+          cd hub
+          LASTREV=$(git ls-remote origin refs/heads/copybara/last-rev-TileDB | awk '{print $1}')
+          if [ -z "$LASTREV" ]; then
+            echo "::error::No hub last-rev-TileDB ref yet; failing closed."
+            exit 1
+          fi
+          git fetch -q --filter=blob:none origin main "$LASTREV"
+          n=$(git rev-list --count "$LASTREV..FETCH_HEAD" -- TileDB/ 2>/dev/null) \
+            || n=$(git rev-list --count "$LASTREV..origin/main" -- TileDB/)
+          if [ "$n" = 0 ]; then
+            echo "Monorepo exports are current (last export $LASTREV)."
+          else
+            echo "::error::The monorepo has $n unexported TileDB commit(s) after the last export; wait for the export PR and merge it first."
+            exit 1
+          fi
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/git-credentials"
