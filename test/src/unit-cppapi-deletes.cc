@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB Inc.
+ * @copyright Copyright (c) 2023-2026 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -120,16 +120,12 @@ DeletesFx::DeletesFx()
     , array_name_(vfs_test_setup_.array_uri(SPARSE_ARRAY_NAME))
     , vfs_array_name_(vfs_test_setup_.array_uri(SPARSE_ARRAY_NAME, true))
     , group_name_(vfs_test_setup_.array_uri(GROUP_NAME)) {
-  Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
-  vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
   vfs_ = VFS(ctx_);
 }
 
 void DeletesFx::set_purge_deleted_cells() {
   Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.consolidation.purge_deleted_cells", "true");
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
@@ -138,7 +134,6 @@ void DeletesFx::set_purge_deleted_cells() {
 
 void DeletesFx::set_legacy() {
   Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.query.sparse_global_order.reader", "legacy");
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   vfs_test_setup_.update_config(config.ptr().get());
@@ -170,14 +165,13 @@ void DeletesFx::create_simple_array(const std::string& path) {
 }
 
 void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
-  Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
   if (encrypt) {
+    Config config;
     config["sm.encryption_type"] = enc_type_str_.c_str();
     config["sm.encryption_key"] = key_;
+    vfs_test_setup_.update_config(config.ptr().get());
   }
 
-  vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
   vfs_ = VFS(ctx_);
 

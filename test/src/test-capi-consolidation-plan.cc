@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2026 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -68,9 +68,6 @@ struct ConsolidationPlanFx {
 };
 
 ConsolidationPlanFx::ConsolidationPlanFx() {
-  Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
-  vfs_test_setup_.update_config(config.ptr().get());
   ctx_c_ = vfs_test_setup_.ctx_c;
   ctx_ = vfs_test_setup_.ctx();
   array_name_ = vfs_test_setup_.array_uri("test_consolidation_plan_array");
