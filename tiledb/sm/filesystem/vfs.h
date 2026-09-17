@@ -69,6 +69,10 @@
 #include "tiledb/sm/filesystem/s3.h"
 #endif  // HAVE_S3
 
+#ifdef HAVE_TILE_AI
+#include "tiledb/sm/filesystem/tile_ai.h"
+#endif  // HAVE_TILE_AI
+
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -133,6 +137,12 @@ static constexpr bool s3_enabled = true;
 #else
 static constexpr bool s3_enabled = false;
 #endif  // HAVE_S3
+
+#ifdef HAVE_TILE_AI
+static constexpr bool tile_ai_enabled = true;
+#else
+static constexpr bool tile_ai_enabled = false;
+#endif  // HAVE_TILE_AI
 
 #ifdef HAVE_AZURE
 static constexpr bool azure_enabled = true;
@@ -1015,6 +1025,10 @@ class VFS : FilesystemBase,
 
 #if HAVE_S3
   tdb_unique_ptr<FilesystemBase> tiledbfs_;
+#endif
+
+#ifdef HAVE_TILE_AI
+  TileAi tile_ai_;
 #endif
 
   /** The in-memory filesystem which is always supported */

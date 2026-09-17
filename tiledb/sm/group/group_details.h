@@ -283,6 +283,28 @@ class GroupDetails {
 
   /** Invalidate the built lookup tables. */
   void invalidate_lookups();
+
+ private:
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * Enforces the tile.ai backend's relative-members policy at member
+   * registration: on a tile:// group, a member must be a relative plain
+   * path under the group prefix or a tile:// cross-reference. Throws
+   * GroupDetailsException for anything else; no-op for non-tile groups.
+   *
+   * Registration-time only, deliberately: groups that already carry
+   * offending members still enumerate, and each such member fails when
+   * opened instead.
+   */
+  static void ensure_tile_member_relative(
+      const URI& group_uri,
+      const URI& member_uri,
+      bool relative,
+      const std::optional<std::string>& name);
+
 };
 
 }  // namespace tiledb::sm

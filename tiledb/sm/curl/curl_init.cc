@@ -35,12 +35,17 @@
 #include "curl_init.h"
 #include "tiledb/common/exception/exception.h"
 
-#ifdef TILEDB_SERIALIZATION
+#if defined(TILEDB_SERIALIZATION) || defined(HAVE_TILE_AI)
 #include <curl/curl.h>
 // This ifdef'ed definition of LIBCURL_INIT only exists
 // because the preprocessor is unable to parse
 // CURL_GLOBAL_DEFAULT properly inside a constexpr block
 // when the curl.h header hasn't been included.
+//
+// libcurl is needed both by the serialization-driven REST client
+// (`tiledb/sm/rest/curl.cc`) and by the tile.ai backend
+// (`tiledb/sm/rest/tile_ai_client.cc`); either enabling the build
+// flag triggers a real curl_global_init via LibCurlInitializer.
 #define LIBCURL_INIT curl_global_init(CURL_GLOBAL_DEFAULT)
 #else
 #define LIBCURL_INIT 0

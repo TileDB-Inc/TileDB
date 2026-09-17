@@ -38,6 +38,8 @@
 #include "tiledb/sm/filesystem/ls_scanner.h"
 #include "uri.h"
 
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace tiledb::sm {
@@ -317,6 +319,7 @@ class FilesystemBase {
    * @param uri The name of the bucket to be emptied.
    */
   virtual void empty_bucket(const URI& uri) const;
+
 };
 
 }  // namespace tiledb::sm

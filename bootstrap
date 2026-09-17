@@ -58,6 +58,7 @@ Configuration:
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
     --enable-s3                     enables the s3 storage backend
+    --enable-tile-ai           enables the tile.ai filesystem backend
     --enable-azure                  enables the azure storage backend
     --enable-gcs                    enables the gcs storage backend
     --enable-serialization          enables query serialization support
@@ -91,6 +92,7 @@ build_type="Release"
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
+tiledb_tile_ai="OFF"
 tiledb_azure="OFF"
 tiledb_gcs="OFF"
 tiledb_werror="ON"
@@ -136,6 +138,7 @@ while test $# != 0; do
     # TODO: Completely remove the switch. Let's keep it for a while to cause configuration failures that will let users know that HDFS is no longer supported.
     --enable-hdfs) tiledb_hdfs="ON";;
     --enable-s3) tiledb_s3="ON";;
+    --enable-tile-ai) tiledb_tile_ai="ON";;
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
@@ -165,6 +168,7 @@ for en in "${enables[@]}"; do
     coverage) build_type="Coverage";;
     verbose) tiledb_verbose="ON";;
     s3) tiledb_s3="ON";;
+    tile-ai) tiledb_tile_ai="ON";;
     azure) tiledb_azure="ON";;
     gcs) tiledb_gcs="ON";;
     serialization) tiledb_serialization="ON";;
@@ -206,6 +210,7 @@ cmake -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
     -DTILEDB_S3=${tiledb_s3} \
+    -DTILEDB_TILE_AI=${tiledb_tile_ai} \
     -DTILEDB_AZURE=${tiledb_azure} \
     -DTILEDB_GCS=${tiledb_gcs} \
     -DTILEDB_SERIALIZATION=${tiledb_serialization} \

@@ -49,6 +49,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/tile_ai_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -100,8 +101,34 @@ void Group::create(ContextResources& resources, const URI& uri) {
     return;
   }
 
-  // Create group directory
-  resources.vfs().create_dir(uri);
+  // For tile:// URIs the group is registered against the tile.ai
+  // catalog via TileAiClient (peer of `rest_client()`). For
+  // everything else (local FS, S3, GCS, Azure) the storage layout is
+  // the source of truth, so a plain `create_dir` suffices. The
+  // tile.ai branch is gated on `tile_ai_enabled` because
+  // `tile_ai::create_group` lives in `tile_ai_client.cc`, which is
+  // removed from TILEDB_CORE_SOURCES when TILEDB_TILE_AI=OFF — the
+  // `if constexpr` discards the branch so the OFF link doesn't
+  // ODR-use the symbol.
+  if constexpr (filesystem::tile_ai_enabled) {
+    if (uri.is_tile()) {
+      auto* client = resources.tile_ai_client();
+      if (client == nullptr) {
+        throw GroupException(
+            "Cannot create tile:// group; tile.ai client not "
+            "configured (set vfs.tile.server_url and vfs.tile.api_key)");
+      }
+      auto storage_uri = std::string(
+          resources.config()
+              .get<std::string_view>("vfs.tile.create_storage_uri")
+              .value_or(""));
+      tile_ai::create_group(*client, uri, storage_uri);
+    } else {
+      resources.vfs().create_dir(uri);
+    }
+  } else {
+    resources.vfs().create_dir(uri);
+  }
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
@@ -291,6 +318,65 @@ void Group::close() {
         throw GroupException(
             std::string(exc.what()) +
             " : Was storage for the group moved or deleted before closing?");
+      }
+
+      // For tile:// groups, push the canonical membership through the
+      // tile_ai_client (peer of rest_client). Mirrors the `remote_`
+      // branch above structurally:
+      //   remote_   -> RestClient::patch_group_to_rest
+      //   tile://   -> TileAiClient::put_members
+      //   other     -> storage layout is the source of truth, no push.
+      //
+      // The PUT is a full-sync replacement, so the snapshot reflects
+      // the FULL intended membership at close time, not a diff.
+      // Mirrors `GroupDetailsV2::members_to_serialize`: start from
+      // `members()` (already committed) and overlay
+      // `members_to_modify()` (this session's adds and removes).
+      // Without the overlay, a fresh group's adds wouldn't be in
+      // `members()` yet; they only land there after a successful
+      // re-load.
+      // Gated on `tile_ai_enabled` because `tile_ai::put_members` and
+      // `tile_ai::GroupMember` live in `tile_ai_client.cc` /.h, the
+      // .cc removed from TILEDB_CORE_SOURCES when TILEDB_TILE_AI=OFF
+      // — `if constexpr` discards this branch so the OFF link doesn't
+      // ODR-use the symbol.
+      if constexpr (filesystem::tile_ai_enabled) {
+        if (group_uri_.is_tile() && !members_to_modify().empty()) {
+          auto* client = resources_.tile_ai_client();
+          if (client == nullptr) {
+            throw GroupException(
+                "Cannot commit tile:// group members; tile.ai client "
+                "not configured (set vfs.tile.server_url and "
+                "vfs.tile.api_key)");
+          }
+          auto snapshot = members();
+          for (const auto& gm : members_to_modify()) {
+            snapshot[gm->key()] = gm;
+          }
+          std::vector<tile_ai::GroupMember> member_snapshot;
+          for (const auto& [_, gm] : snapshot) {
+            if (gm->deleted()) {
+              continue;
+            }
+            tile_ai::GroupMember m;
+            m.uri = gm->uri().to_string();
+            m.name = gm->name();
+            switch (gm->type()) {
+              case ObjectType::ARRAY:
+                m.type = "array";
+                break;
+              case ObjectType::GROUP:
+                m.type = "group";
+                break;
+              default:
+                m.type = "unknown";
+                break;
+            }
+            m.relative = gm->relative();
+            member_snapshot.push_back(std::move(m));
+          }
+          tile_ai::put_members(*client, group_uri_, member_snapshot);
+        }
       }
     }
   }

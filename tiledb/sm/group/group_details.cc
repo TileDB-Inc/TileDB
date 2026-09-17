@@ -81,6 +81,57 @@ void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   invalidate_lookups();
 }
 
+void GroupDetails::ensure_tile_member_relative(
+    const URI& group_uri,
+    const URI& member_uri,
+    bool relative,
+    const std::optional<std::string>& name) {
+  if (!group_uri.is_tile()) {
+    return;
+  }
+  const std::string label = name.has_value() ?
+                                "'" + name.value() + "' ('" +
+                                    member_uri.to_string() + "')" :
+                                "'" + member_uri.to_string() + "'";
+  if (!relative && !member_uri.is_tile()) {
+    throw GroupDetailsException(
+        "Absolute group member " + label +
+        " is not supported; group members must be relative to the group "
+        "prefix.");
+  }
+  // A member flagged relative must be a plain path under the group prefix:
+  // scheme-carrying or rooted URIs would join into a garbage path at
+  // resolution time, an empty URI (an unrecognized scheme collapses to one
+  // in the URI constructor) would alias the group itself, and dot segments
+  // would alias or escape the prefix. Scan path segments (one trailing
+  // slash tolerated): every segment must be non-empty and not "." / "..".
+  if (relative) {
+    std::string member_str = member_uri.to_string();
+    if (!member_str.empty() && member_str.back() == '/') {
+      member_str.pop_back();
+    }
+    bool plain = !member_str.empty() &&
+                 member_str.find("://") == std::string::npos &&
+                 member_str.front() != '/';
+    for (size_t pos = 0; plain;) {
+      const size_t next = member_str.find('/', pos);
+      const std::string seg = member_str.substr(
+          pos, next == std::string::npos ? std::string::npos : next - pos);
+      plain = !seg.empty() && seg != "." && seg != "..";
+      if (next == std::string::npos) {
+        break;
+      }
+      pos = next + 1;
+    }
+    if (!plain) {
+      throw GroupDetailsException(
+          "Relative group member " + label +
+          " must be a plain path under the group prefix; group members "
+          "must be relative to the group prefix.");
+    }
+  }
+}
+
 void GroupDetails::mark_member_for_addition(
     ContextResources& resources,
     const URI& group_member_uri,
@@ -88,6 +139,7 @@ void GroupDetails::mark_member_for_addition(
     std::optional<std::string>& name,
     std::optional<ObjectType> type) {
   std::lock_guard<std::mutex> lck(mtx_);
+  ensure_tile_member_relative(group_uri_, group_member_uri, relative, name);
   ObjectType obj_type = ObjectType::INVALID;
   if (type.has_value()) {
     obj_type = type.value();

@@ -319,6 +319,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc
 )
+
+if (TILEDB_TILE_AI)
+  list(APPEND TILEDB_CORE_SOURCES
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/tile_ai.cc
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/tile_ai_client.cc
+  )
+endif()
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
@@ -511,7 +518,7 @@ if (TILEDB_GCS)
 endif()
 
 # Libcurl
-if (TILEDB_SERIALIZATION)
+if (TILEDB_SERIALIZATION OR TILEDB_TILE_AI)
   find_package(CURL REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
