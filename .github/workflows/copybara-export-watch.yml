@@ -1,0 +1,50 @@
+# Closes the stale-green gate window (no merge queue available). The gate
+# check on an open PR is point-in-time: it does not re-run when a
+# monorepo->upstream export PR later opens, so a PR whose gate went green
+# earlier could be merged while an export is pending (crossing changes).
+# When an export PR (copybara/from-monorepo-*) opens, updates, or closes,
+# re-run the gate on every other open non-sync PR so its result reflects
+# the current export state. Uses this repo's own token; no cross-repo call.
+name: Sync export watch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+    branches: [main]
+
+permissions:
+  actions: write
+  pull-requests: read
+
+jobs:
+  retrigger:
+    if: ${{ startsWith(github.head_ref, 'copybara/from-monorepo-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-run the gate on other open PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Do not let one PR's failure abort the rest of the loop.
+          set +e
+          prs=$(gh pr list -R "$GITHUB_REPOSITORY" --state open \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("copybara/") | not) | .headRefName')
+          [ -z "$prs" ] && { echo "No open non-sync PRs to re-check."; exit 0; }
+          while IFS= read -r branch; do
+            [ -n "$branch" ] || continue
+            echo "considering $branch"
+            run=$(gh run list -R "$GITHUB_REPOSITORY" \
+              --workflow copybara-sync-gate.yml --branch "$branch" --event pull_request \
+              --limit 1 --json databaseId --jq '.[0].databaseId')
+            if [ -z "$run" ]; then
+              echo "  no gate run found for $branch"
+              continue
+            fi
+            if gh run rerun "$run" -R "$GITHUB_REPOSITORY"; then
+              echo "  re-ran gate for $branch (run $run)"
+            else
+              echo "  rerun failed for $branch (run $run) - continuing"
+            fi
+          done <<< "$prs"
+          exit 0
