@@ -16,10 +16,22 @@ permissions:
 
 jobs:
   gate:
-    if: ${{ !startsWith(github.head_ref, 'copybara/') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Exempt copybara sync PRs
+        id: exempt
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          # Sync PRs (copybara/*) are exempt. Pass explicitly rather than
+          # skipping the job, so a required-check branch rule still gets a
+          # green result and the export PR stays mergeable.
+          case "$HEAD_REF" in
+            copybara/*) echo "run=false" >> "$GITHUB_OUTPUT"; echo "Sync PR ($HEAD_REF): gate not applicable; passing." ;;
+            *) echo "run=true" >> "$GITHUB_OUTPUT" ;;
+          esac
       - name: Require monorepo exports to be current
+        if: steps.exempt.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ secrets.MONOREPO_SYNC_TOKEN }}
         run: |
