@@ -35,10 +35,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MONOREPO_SYNC_TOKEN }}
         run: |
-          open=$(gh pr list -R "$GITHUB_REPOSITORY" --json headRefName \
-            --jq '[.[] | select(.headRefName | startswith("copybara/from-monorepo-"))] | length')
-          if [ "$open" != 0 ]; then
-            echo "::error::A pending export PR from the monorepo is open; merge it before merging other work (crossing changes)."
+          export_prs=$(gh pr list -R "$GITHUB_REPOSITORY" --json headRefName,url \
+            --jq '[.[] | select(.headRefName | startswith("copybara/from-monorepo-")) | .url] | join(" ")')
+          if [ -n "$export_prs" ]; then
+            echo "::error::A pending export PR from the monorepo is open ($export_prs); merge it before merging other work (crossing changes)."
             exit 1
           fi
           umask 077
