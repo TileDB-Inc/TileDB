@@ -89,10 +89,10 @@ void GroupDetails::ensure_tile_member_relative(
   if (!group_uri.is_tile()) {
     return;
   }
-  const std::string label = name.has_value() ?
-                                "'" + name.value() + "' ('" +
-                                    member_uri.to_string() + "')" :
-                                "'" + member_uri.to_string() + "'";
+  const std::string label =
+      name.has_value() ?
+          "'" + name.value() + "' ('" + member_uri.to_string() + "')" :
+          "'" + member_uri.to_string() + "'";
   if (!relative && !member_uri.is_tile()) {
     throw GroupDetailsException(
         "Absolute group member " + label +

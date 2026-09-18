@@ -319,7 +319,6 @@ class FilesystemBase {
    * @param uri The name of the bucket to be emptied.
    */
   virtual void empty_bucket(const URI& uri) const;
-
 };
 
 }  // namespace tiledb::sm

@@ -699,7 +699,8 @@ class Config {
   /** Storage URI consulted when creating a tile.ai-backed array or group. */
   static const std::string VFS_TILE_CREATE_STORAGE_URI;
 
-  /** tile.ai upload size in bytes at or above which multipart upload is used. */
+  /** tile.ai upload size in bytes at or above which multipart upload is used.
+   */
   static const std::string VFS_TILE_MULTIPART_THRESHOLD_BYTES;
 
   /** tile.ai multipart upload part size in bytes. */

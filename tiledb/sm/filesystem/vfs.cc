@@ -248,9 +248,8 @@ Config VFS::config() const {
 }
 
 void VFS::create_dir(const URI& uri) const {
-  if (!(
-          uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_tiledb() ||
-          uri.is_tile())) {
+  if (!(uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_tiledb() ||
+        uri.is_tile())) {
     if (this->is_dir(uri))
       return;
   }

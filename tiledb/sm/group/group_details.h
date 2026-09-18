@@ -304,7 +304,6 @@ class GroupDetails {
       const URI& member_uri,
       bool relative,
       const std::optional<std::string>& name);
-
 };
 
 }  // namespace tiledb::sm

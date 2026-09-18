@@ -35,7 +35,8 @@ static size_t curl_write_to_buffer(
     char* ptr, size_t size, size_t nmemb, void* userdata) {
   auto* rb = static_cast<ReadBuffer*>(userdata);
   size_t total = size * nmemb;
-  size_t to_copy = std::min(total, static_cast<size_t>(rb->max_bytes - rb->written));
+  size_t to_copy =
+      std::min(total, static_cast<size_t>(rb->max_bytes - rb->written));
   if (to_copy > 0) {
     std::memcpy(static_cast<char*>(rb->dest) + rb->written, ptr, to_copy);
     rb->written += to_copy;
@@ -149,8 +150,7 @@ void TileAi::init(const Config& config) {
         "equal to vfs.tile.multipart_part_size_bytes");
   }
 
-  client_ = std::make_unique<TileAiClient>(
-      server_url_, api_key_, workspace_);
+  client_ = std::make_unique<TileAiClient>(server_url_, api_key_, workspace_);
   initialized_ = true;
 }
 
@@ -167,13 +167,15 @@ TileAi::ParsedUri TileAi::parse_uri(const URI& uri) {
   std::string path = uri.to_string();
   const std::string prefix = "tile://";
   if (path.rfind(prefix, 0) != 0) {
-    throw TileAiException(
-        "TileAi: URI must start with tile://");
+    throw TileAiException("TileAi: URI must start with tile://");
   }
   // Two URI shapes share this parser:
-  //   id-form        tile://{id}                                  — zero slashes
-  //                                                                 after scheme
-  //   hierarchical   tile://{teamspace_ref}/{name}[/rel]           — one or more
+  //   id-form        tile://{id}                                  — zero
+  //   slashes
+  //                                                                 after
+  //                                                                 scheme
+  //   hierarchical   tile://{teamspace_ref}/{name}[/rel]           — one or
+  //   more
   //                                                                 slashes
   //
   // `teamspace_ref` is either the canonical teamspace id (`{label}-{uuid}`)
@@ -237,8 +239,7 @@ TileAi::ParsedUri TileAi::parse_uri(const URI& uri) {
 TileAi::ParsedUri TileAi::canonicalize_resource(
     TileAi::ParsedUri parsed) const {
   if (client_ == nullptr) {
-    throw TileAiException(
-        "TileAi: cannot canonicalize URI before init");
+    throw TileAiException("TileAi: cannot canonicalize URI before init");
   }
 
   // Two paths into the catalog: by id (single-segment URI) or by name
@@ -249,8 +250,7 @@ TileAi::ParsedUri TileAi::canonicalize_resource(
   // hierarchical lookups for the same resource are stored separately
   // (they're effectively two different access keys; the cost of an
   // extra HTTP per form on first use is fine).
-  const std::string cache_key =
-      parsed.id_form ? parsed.id : parsed.array_id;
+  const std::string cache_key = parsed.id_form ? parsed.id : parsed.array_id;
 
   ResourceLocator loc;
   {
@@ -279,7 +279,8 @@ TileAi::ParsedUri TileAi::canonicalize_resource(
       try {
         loc = client_->lookup_resource_by_name(ts, nm);
       } catch (const TileAiException& e) {
-        if (e.http_status() != 404) throw;
+        if (e.http_status() != 404)
+          throw;
         // Fall back to id-form: maybe `ts` is actually a stable resource
         // id and `nm` (plus any parsed relative_key) is the full
         // in-array path. Tile ids and teamspace ids share the same
@@ -317,9 +318,9 @@ TileAi::ParsedUri TileAi::canonicalize_resource(
     const std::string parsed_ts = parsed.array_id.substr(0, slash);
     if (parsed_ts != loc.teamspace_id) {
       const std::string extra = parsed.array_id.substr(slash + 1);
-      parsed.relative_key = parsed.relative_key.empty()
-                                ? extra
-                                : (extra + "/" + parsed.relative_key);
+      parsed.relative_key = parsed.relative_key.empty() ?
+                                extra :
+                                (extra + "/" + parsed.relative_key);
     }
   }
 
@@ -365,7 +366,8 @@ std::string TileAi::get_read_url(
   // (freshly written fragment), fall back to a single-key request.
   std::vector<std::string> keys_to_presign;
   auto collect = [&](const std::vector<ObjectEntry>& entries) {
-    for (auto& e : entries) keys_to_presign.push_back(e.key);
+    for (auto& e : entries)
+      keys_to_presign.push_back(e.key);
   };
   {
     std::lock_guard<std::mutex> lock(components_cache_mutex_);
@@ -414,7 +416,8 @@ std::string TileAi::get_read_url(
     std::lock_guard<std::mutex> lock(url_cache_mutex_);
     for (auto& u : urls) {
       url_cache_[cache_key(array_id, u.key)] = {u.url, u.expires_at};
-      if (u.key == relative_key) result = u.url;
+      if (u.key == relative_key)
+        result = u.url;
     }
   }
 
@@ -433,7 +436,8 @@ void TileAi::do_http_get(
     long* http_status,
     uint64_t* bytes_read) const {
   CURL* curl = curl_easy_init();
-  if (!curl) throw TileAiException("Failed to initialize libcurl");
+  if (!curl)
+    throw TileAiException("Failed to initialize libcurl");
 
   ReadBuffer rb{buffer, 0, nbytes};
 
@@ -443,8 +447,8 @@ void TileAi::do_http_get(
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
-  std::string range = std::to_string(offset) + "-" +
-                      std::to_string(offset + nbytes - 1);
+  std::string range =
+      std::to_string(offset) + "-" + std::to_string(offset + nbytes - 1);
   curl_easy_setopt(curl, CURLOPT_RANGE, range.c_str());
 
   CURLcode res = curl_easy_perform(curl);
@@ -466,7 +470,8 @@ void TileAi::do_http_put(
     std::string* etag,
     long* http_status) const {
   CURL* curl = curl_easy_init();
-  if (!curl) throw TileAiException("Failed to initialize libcurl");
+  if (!curl)
+    throw TileAiException("Failed to initialize libcurl");
 
   WriteSource ws{static_cast<const char*>(buffer), nbytes, 0};
   HeaderCapture hcap{"etag", ""};
@@ -475,7 +480,8 @@ void TileAi::do_http_put(
   curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
   curl_easy_setopt(curl, CURLOPT_READFUNCTION, curl_read_from_buffer);
   curl_easy_setopt(curl, CURLOPT_READDATA, &ws);
-  curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(nbytes));
+  curl_easy_setopt(
+      curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(nbytes));
   curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curl_header_cb);
   curl_easy_setopt(curl, CURLOPT_HEADERDATA, &hcap);
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
@@ -500,7 +506,8 @@ void TileAi::do_http_put(
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, http_status);
   curl_easy_cleanup(curl);
 
-  if (etag) *etag = hcap.value;
+  if (etag)
+    *etag = hcap.value;
 }
 
 uint64_t TileAi::read_impl(
@@ -555,13 +562,15 @@ std::vector<std::string> TileAi::ls_impl(const URI& uri) const {
     {
       std::lock_guard<std::mutex> lock(components_cache_mutex_);
       auto it = group_components_cache_.find(parsed.array_id);
-      if (it != group_components_cache_.end()) components = it->second;
+      if (it != group_components_cache_.end())
+        components = it->second;
     }
     if (components.group_id.empty()) {
       try {
         components = client_->list_group_components(parsed.array_id);
       } catch (const TileAiException& e) {
-        if (e.http_status() == 404) return {};
+        if (e.http_status() == 404)
+          return {};
         throw;
       }
       std::lock_guard<std::mutex> lock(components_cache_mutex_);
@@ -576,13 +585,15 @@ std::vector<std::string> TileAi::ls_impl(const URI& uri) const {
     {
       std::lock_guard<std::mutex> lock(components_cache_mutex_);
       auto it = components_cache_.find(parsed.array_id);
-      if (it != components_cache_.end()) components = it->second;
+      if (it != components_cache_.end())
+        components = it->second;
     }
     if (components.array_id.empty()) {
       try {
         components = client_->list_array_components(parsed.array_id);
       } catch (const TileAiException& e) {
-        if (e.http_status() == 404) return {};
+        if (e.http_status() == 404)
+          return {};
         throw;
       }
       std::lock_guard<std::mutex> lock(components_cache_mutex_);
@@ -623,7 +634,8 @@ uint64_t TileAi::file_size_impl(const URI& uri) const {
     {
       std::lock_guard<std::mutex> lock(components_cache_mutex_);
       auto it = group_components_cache_.find(parsed.array_id);
-      if (it != group_components_cache_.end()) components = it->second;
+      if (it != group_components_cache_.end())
+        components = it->second;
     }
     if (components.group_id.empty()) {
       try {
@@ -631,8 +643,7 @@ uint64_t TileAi::file_size_impl(const URI& uri) const {
       } catch (const TileAiException& e) {
         if (e.http_status() == 404) {
           throw TileAiException(
-              "TileAi: file not found in components: " +
-                  parsed.relative_key,
+              "TileAi: file not found in components: " + parsed.relative_key,
               404);
         }
         throw;
@@ -640,20 +651,24 @@ uint64_t TileAi::file_size_impl(const URI& uri) const {
       std::lock_guard<std::mutex> lock(components_cache_mutex_);
       group_components_cache_[parsed.array_id] = components;
     }
-    if (search(components.marker)) return size;
-    if (search(components.commits)) return size;
-    if (search(components.group_metadata)) return size;
-    if (search(components.other)) return size;
+    if (search(components.marker))
+      return size;
+    if (search(components.commits))
+      return size;
+    if (search(components.group_metadata))
+      return size;
+    if (search(components.other))
+      return size;
     throw TileAiException(
-        "TileAi: file not found in components: " + parsed.relative_key,
-        404);
+        "TileAi: file not found in components: " + parsed.relative_key, 404);
   }
 
   ArrayComponents components;
   {
     std::lock_guard<std::mutex> lock(components_cache_mutex_);
     auto it = components_cache_.find(parsed.array_id);
-    if (it != components_cache_.end()) components = it->second;
+    if (it != components_cache_.end())
+      components = it->second;
   }
 
   if (components.array_id.empty()) {
@@ -662,8 +677,7 @@ uint64_t TileAi::file_size_impl(const URI& uri) const {
     } catch (const TileAiException& e) {
       if (e.http_status() == 404) {
         throw TileAiException(
-            "TileAi: file not found in components: " +
-                parsed.relative_key,
+            "TileAi: file not found in components: " + parsed.relative_key,
             404);
       }
       throw;
@@ -672,20 +686,24 @@ uint64_t TileAi::file_size_impl(const URI& uri) const {
     components_cache_[parsed.array_id] = components;
   }
 
-  if (search(components.schema)) return size;
-  if (search(components.array_metadata)) return size;
-  if (search(components.commits)) return size;
-  if (search(components.other)) return size;
+  if (search(components.schema))
+    return size;
+  if (search(components.array_metadata))
+    return size;
+  if (search(components.commits))
+    return size;
+  if (search(components.other))
+    return size;
   for (auto& frag : components.fragments) {
-    if (search(frag.objects)) return size;
+    if (search(frag.objects))
+      return size;
   }
 
   throw TileAiException(
       "TileAi: file not found in components: " + parsed.relative_key, 404);
 }
 
-void TileAi::write_impl(
-    const URI& uri, const void* buffer, uint64_t nbytes) {
+void TileAi::write_impl(const URI& uri, const void* buffer, uint64_t nbytes) {
   ensure_initialized();
   auto parsed = canonicalize_resource(parse_uri(uri));
 
@@ -705,9 +723,7 @@ void TileAi::write_impl(
 
     if (state.part_buffer.size() >= multipart_threshold_bytes_) {
       auto create_result = client_->multipart_create(
-          parsed.effective_entity_type,
-          parsed.array_id,
-          parsed.relative_key);
+          parsed.effective_entity_type, parsed.array_id, parsed.relative_key);
 
       state.upload_id = std::move(create_result.upload_id);
       state.next_part_url = std::move(create_result.parts[0]);
@@ -733,9 +749,7 @@ void TileAi::write_impl(
   if (state.upload_id.empty() &&
       state.part_buffer.size() >= multipart_threshold_bytes_) {
     auto create_result = client_->multipart_create(
-        parsed.effective_entity_type,
-        parsed.array_id,
-        parsed.relative_key);
+        parsed.effective_entity_type, parsed.array_id, parsed.relative_key);
     state.upload_id = std::move(create_result.upload_id);
     state.next_part_url = std::move(create_result.parts[0]);
     state.next_part_number = 2;
@@ -769,9 +783,9 @@ void TileAi::flush_part(MultipartState& state) {
     part_url = state.next_part_url.url;
     part_number = state.next_part_url.part_number;
   } else {
-    int pn = state.completed_parts.empty()
-                 ? 1
-                 : state.completed_parts.back().part_number + 1;
+    int pn = state.completed_parts.empty() ?
+                 1 :
+                 state.completed_parts.back().part_number + 1;
     auto parts = client_->multipart_parts(
         state.entity_type,
         state.array_id,
@@ -790,8 +804,9 @@ void TileAi::flush_part(MultipartState& state) {
       part_url, state.part_buffer.data(), part_size, &etag, &http_status);
 
   if (http_status == 403) {
-    LOG_WARN("Presigned upload URL expired for part " +
-             std::to_string(part_number) + ", retrying");
+    LOG_WARN(
+        "Presigned upload URL expired for part " + std::to_string(part_number) +
+        ", retrying");
     auto parts = client_->multipart_parts(
         state.entity_type,
         state.array_id,
@@ -842,28 +857,30 @@ void TileAi::flush_impl(const URI& uri) {
   std::lock_guard<std::mutex> lock(write_state_mutex_);
 
   auto it = multipart_state_.find(ck);
-  if (it == multipart_state_.end()) return;
+  if (it == multipart_state_.end())
+    return;
 
   auto& state = it->second;
 
   if (state.upload_id.empty()) {
     auto write_result = client_->presign_write(
-        parsed.effective_entity_type,
-        parsed.array_id,
-        {parsed.relative_key});
+        parsed.effective_entity_type, parsed.array_id, {parsed.relative_key});
     if (write_result.urls.empty())
-      throw TileAiException(
-          "Server returned no presigned URL for simple PUT");
+      throw TileAiException("Server returned no presigned URL for simple PUT");
 
     std::string etag;
     long http_status = 0;
     do_http_put(
-        write_result.urls[0].url, state.part_buffer.data(),
-        state.part_buffer.size(), &etag, &http_status);
+        write_result.urls[0].url,
+        state.part_buffer.data(),
+        state.part_buffer.size(),
+        &etag,
+        &http_status);
 
     if (http_status != 200)
       throw TileAiException(
-          "S3 PUT failed with HTTP " + std::to_string(http_status), http_status);
+          "S3 PUT failed with HTTP " + std::to_string(http_status),
+          http_status);
 
     client_->commit_write_session(
         parsed.effective_entity_type,
@@ -947,7 +964,8 @@ bool TileAi::is_dir(const URI& uri) const {
     return false;
   }
   if (parsed.relative_key.empty()) {
-    if (client_ == nullptr) return false;
+    if (client_ == nullptr)
+      return false;
     try {
       if (parsed.effective_entity_type == "group") {
         client_->list_group_components(parsed.array_id);
@@ -1021,16 +1039,17 @@ std::vector<directory_entry> TileAi::ls_with_sizes(const URI& parent) const {
       }
     }
 
-    const auto remainder = normalized_prefix.empty() ? path :
-                                                       path.substr(normalized_prefix.size());
+    const auto remainder = normalized_prefix.empty() ?
+                               path :
+                               path.substr(normalized_prefix.size());
     if (remainder.empty()) {
       continue;
     }
 
     const auto slash = remainder.find('/');
     if (slash == std::string::npos) {
-      const auto full_path = normalized_prefix.empty() ? path :
-                                                         normalized_prefix + remainder;
+      const auto full_path =
+          normalized_prefix.empty() ? path : normalized_prefix + remainder;
       const auto file_uri = "tile://" + parsed.array_id + "/" + full_path;
       if (auto size = try_file_size(URI(file_uri)); size.has_value()) {
         entries.emplace_back(file_uri, *size, false);
@@ -1054,10 +1073,7 @@ uint64_t TileAi::read(
 }
 
 void TileAi::write(
-    const URI& uri,
-    const void* buffer,
-    uint64_t buffer_size,
-    bool) {
+    const URI& uri, const void* buffer, uint64_t buffer_size, bool) {
   write_impl(uri, buffer, buffer_size);
 }
 

@@ -927,9 +927,12 @@ namespace {
 // so one env-var set drives every consumer. Returns nullptr for keys
 // without an SDK alias.
 const char* tile_ai_sdk_env_alias(std::string_view param) {
-  if (param == "vfs.tile.server_url") return "TILE_API_URL";
-  if (param == "vfs.tile.api_key") return "TILE_API_KEY";
-  if (param == "vfs.tile.workspace") return "TILE_API_WORKSPACE";
+  if (param == "vfs.tile.server_url")
+    return "TILE_API_URL";
+  if (param == "vfs.tile.api_key")
+    return "TILE_API_KEY";
+  if (param == "vfs.tile.workspace")
+    return "TILE_API_WORKSPACE";
   return nullptr;
 }
 

@@ -32,7 +32,8 @@ class TileAiException : public common::StatusException {
       , http_status_(http_status) {
   }
 
-  /** The HTTP status code associated with the error, or -1 if not applicable. */
+  /** The HTTP status code associated with the error, or -1 if not applicable.
+   */
   long http_status() const {
     return http_status_;
   }
@@ -67,7 +68,8 @@ struct TileInfo {
   std::string updated_at;
 };
 
-/** Server-returned record for one teamspace accessible to the API-key caller. */
+/** Server-returned record for one teamspace accessible to the API-key caller.
+ */
 struct TeamspaceInfo {
   /** Stable id used in `tile://{id}/{name}` URIs. */
   std::string id;
@@ -131,7 +133,7 @@ struct GroupComponents {
  */
 struct ResourceLocator {
   std::string id;
-  std::string type;          // "array" | "group"
+  std::string type;  // "array" | "group"
   std::string teamspace_id;
   std::string name;
   std::string storage_uri;
@@ -144,8 +146,8 @@ struct ResourceLocator {
  */
 struct MemberEntry {
   std::string uri;
-  std::string name;      // optional alias; empty if not set
-  std::string type;      // "array" | "group" | "unknown"
+  std::string name;  // optional alias; empty if not set
+  std::string type;  // "array" | "group" | "unknown"
   bool relative = false;
 };
 
@@ -435,9 +437,7 @@ class TileAiClient {
    *   part URL (typically part 1).
    */
   MultipartCreateResult multipart_create(
-      EntityType entity_type,
-      const std::string& base,
-      const std::string& key);
+      EntityType entity_type, const std::string& base, const std::string& key);
   MultipartCreateResult multipart_create(
       std::string_view entity_type,
       const std::string& base,

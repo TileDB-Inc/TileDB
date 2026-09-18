@@ -55,7 +55,8 @@ struct CurlHandle {
       : handle(curl_easy_init()) {
   }
   ~CurlHandle() {
-    if (handle) curl_easy_cleanup(handle);
+    if (handle)
+      curl_easy_cleanup(handle);
   }
   CurlHandle(const CurlHandle&) = delete;
   CurlHandle& operator=(const CurlHandle&) = delete;
@@ -73,8 +74,10 @@ static CURL* thread_local_curl() {
 // rather than as an opaque 404 from the server. Used by the
 // string-taking convenience overloads below.
 EntityType entity_type_from_string(std::string_view type) {
-  if (type == "array") return EntityType::Array;
-  if (type == "group") return EntityType::Group;
+  if (type == "array")
+    return EntityType::Array;
+  if (type == "group")
+    return EntityType::Group;
   throw TileAiException(
       "Invalid entity type: '" + std::string(type) +
       "' (expected \"array\" or \"group\")");
@@ -98,8 +101,7 @@ std::string TileAiClient::base_path(EntityType entity_type) {
   return entity_type == EntityType::Group ? "/api/v1/groups" : "/api/v1/tiles";
 }
 
-std::string TileAiClient::with_workspace_query(
-    const std::string& path) const {
+std::string TileAiClient::with_workspace_query(const std::string& path) const {
   if (workspace_.empty())
     return path;
   CURL* curl = thread_local_curl();
@@ -160,8 +162,7 @@ std::string TileAiClient::http_request(
   if (res != CURLE_OK) {
     std::string err = curl_easy_strerror(res);
     curl_slist_free_all(headers);
-    throw TileAiException(
-        method + " " + path + " failed: " + err);
+    throw TileAiException(method + " " + path + " failed: " + err);
   }
 
   long status_code = 0;
@@ -171,8 +172,7 @@ std::string TileAiClient::http_request(
 
   if (status_code != expected_status) {
     throw TileAiException(
-        method + " " + path + " failed: HTTP " +
-            std::to_string(status_code),
+        method + " " + path + " failed: HTTP " + std::to_string(status_code),
         status_code);
   }
 
@@ -218,9 +218,9 @@ ResourceLocator TileAiClient::lookup_resource(const std::string& id) {
   // we fall through. Any non-404 error (auth, permission, transport)
   // propagates immediately — those aren't disambiguated by retrying the
   // other family.
-  auto try_endpoint = [&](const std::string& path,
-                          const std::string& expected_type)
-      -> std::optional<ResourceLocator> {
+  auto try_endpoint =
+      [&](const std::string& path,
+          const std::string& expected_type) -> std::optional<ResourceLocator> {
     try {
       auto j = json::parse(http_request("GET", path));
       ResourceLocator loc;
@@ -315,7 +315,8 @@ TileInfo TileAiClient::create_resource(
     std::string_view entity_type,
     const std::string& base,
     const std::string& storage_uri) {
-  return create_resource(entity_type_from_string(entity_type), base, storage_uri);
+  return create_resource(
+      entity_type_from_string(entity_type), base, storage_uri);
 }
 
 TileInfo TileAiClient::create_resource(
@@ -504,7 +505,8 @@ MultipartCreateResult TileAiClient::multipart_create(
     std::string_view entity_type,
     const std::string& resource_id,
     const std::string& key) {
-  return multipart_create(entity_type_from_string(entity_type), resource_id, key);
+  return multipart_create(
+      entity_type_from_string(entity_type), resource_id, key);
 }
 
 MultipartCreateResult TileAiClient::multipart_create(
@@ -552,7 +554,8 @@ std::vector<PresignedPartUrl> TileAiClient::multipart_parts(
     const std::vector<int>& part_numbers) {
   std::string path =
       base_path(entity_type) + "/" + resource_id + "/presign/multipart/parts";
-  json req = {{"key", key}, {"upload_id", upload_id}, {"part_numbers", part_numbers}};
+  json req = {
+      {"key", key}, {"upload_id", upload_id}, {"part_numbers", part_numbers}};
   auto j = json::parse(http_request("POST", path, req.dump()));
 
   std::vector<PresignedPartUrl> parts;
@@ -573,11 +576,7 @@ void TileAiClient::multipart_complete(
     const std::string& upload_id,
     const std::vector<CompletedPart>& parts) {
   multipart_complete(
-      entity_type_from_string(entity_type),
-      resource_id,
-      key,
-      upload_id,
-      parts);
+      entity_type_from_string(entity_type), resource_id, key, upload_id, parts);
 }
 
 void TileAiClient::multipart_complete(

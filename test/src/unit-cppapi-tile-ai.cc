@@ -105,9 +105,10 @@ Config make_presigned_config() {
   SmConfig sm_config;
   if (config_string(sm_config, "vfs.tile.server_url").empty() ||
       config_string(sm_config, "vfs.tile.api_key").empty()) {
-    SKIP("tile:// C++ tests require vfs.tile.{server_url,api_key} "
-         "(set via TILEDB_VFS_TILE_* or the SDK env vars TILE_API_URL / "
-         "TILE_API_KEY)");
+    SKIP(
+        "tile:// C++ tests require vfs.tile.{server_url,api_key} "
+        "(set via TILEDB_VFS_TILE_* or the SDK env vars TILE_API_URL / "
+        "TILE_API_KEY)");
   }
 
   // All other tile.ai config keys (vfs.tile.workspace,
@@ -154,9 +155,8 @@ struct TileAiCppApiFx {
     REQUIRE(!api_url.empty());
     REQUIRE(!api_key.empty());
 
-    const auto target_name =
-        env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
-            .value_or(kDefaultTeamspaceName);
+    const auto target_name = env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
+                                 .value_or(kDefaultTeamspaceName);
 
     tiledb::sm::TileAiClient client(api_url, api_key);
     auto teamspaces = client.list_teamspaces();
@@ -325,7 +325,8 @@ struct TileAiCppApiFx {
 
 TEST_CASE_METHOD(
     TileAiCppApiFx,
-    "C++ API: TileAi registered dense arrays round-trip through create and read",
+    "C++ API: TileAi registered dense arrays round-trip through create and "
+    "read",
     "[cppapi][tile][dense]") {
   const auto uri = array_uri("dense");
   auto data = make_random_int_data(kSeedBase + 1, 12);
@@ -435,7 +436,8 @@ TEST_CASE_METHOD(
   // Negative assertion: the group must NOT show up under /api/v1/tiles
   // (would mean the routing fell through to the array path).
   auto array_client = make_tile_ai_client();
-  auto array_resources = array_client.list_resources(tiledb::sm::EntityType::Array);
+  auto array_resources =
+      array_client.list_resources(tiledb::sm::EntityType::Array);
   bool spurious_in_tiles = false;
   for (const auto& r : array_resources) {
     if (r.base.size() >= expected_suffix.size() &&
@@ -461,7 +463,8 @@ TEST_CASE_METHOD(
 // `examples/tiledb-presigned/tests/test_groups.py`.
 TEST_CASE_METHOD(
     TileAiCppApiFx,
-    "C++ API: TileAi group with absolute array member round-trips through close+reopen",
+    "C++ API: TileAi group with absolute array member round-trips through "
+    "close+reopen",
     "[cppapi][tile][group][members]") {
   // First materialize an array to use as the group's member.
   const auto member_array_uri = array_uri("phase2-group-member");
@@ -629,8 +632,7 @@ TEST_CASE_METHOD(
     tiledb_datatype_t type = TILEDB_ANY;
     uint32_t value_num = 0;
     const void* value = nullptr;
-    g.get_metadata(
-        "seeded-group-metadata", &type, &value_num, &value);
+    g.get_metadata("seeded-group-metadata", &type, &value_num, &value);
 
     REQUIRE(type == TILEDB_INT32);
     REQUIRE(value_num == values.size());
@@ -690,13 +692,14 @@ TEST_CASE(
     CHECK(p.relative_key == "__schema/0.tdb");
   }
 
-  SECTION("three+ slashes → relative_key captures the full tail past slash #2") {
+  SECTION(
+      "three+ slashes → relative_key captures the full tail past slash #2") {
     // The parser doesn't cap relative key depth; everything after the
     // second slash is preserved verbatim so the libtiledb caller can
     // address fragment objects nested arbitrarily deep
     // (e.g. `__fragments/<frag-uuid>/a0.tdb` is the common shape).
-    auto p = tiledb::sm::TileAi::parse_uri(
-        tiledb::sm::URI("tile://teamspace/my-array/__fragments/abc-uuid/a0.tdb"));
+    auto p = tiledb::sm::TileAi::parse_uri(tiledb::sm::URI(
+        "tile://teamspace/my-array/__fragments/abc-uuid/a0.tdb"));
     CHECK(p.id_form == false);
     CHECK(p.array_id == "teamspace/my-array");
     CHECK(p.relative_key == "__fragments/abc-uuid/a0.tdb");
@@ -857,7 +860,8 @@ TEST_CASE_METHOD(
   {
     REQUIRE(array_uri_str.rfind("tile://", 0) == 0);
     const std::string expected_base = array_uri_str.substr(7);
-    for (const auto& r : array_client.list_resources(tiledb::sm::EntityType::Array)) {
+    for (const auto& r :
+         array_client.list_resources(tiledb::sm::EntityType::Array)) {
       if (r.base == expected_base) {
         array_id = r.id;
         break;
@@ -872,7 +876,8 @@ TEST_CASE_METHOD(
   {
     REQUIRE(group_uri_str.rfind("tile://", 0) == 0);
     const std::string expected_base = group_uri_str.substr(7);
-    for (const auto& r : group_client.list_resources(tiledb::sm::EntityType::Group)) {
+    for (const auto& r :
+         group_client.list_resources(tiledb::sm::EntityType::Group)) {
       if (r.base == expected_base) {
         group_id = r.id;
         break;
@@ -888,9 +893,8 @@ TEST_CASE_METHOD(
     CHECK(loc.type == "array");
     CHECK(loc.teamspace_id == teamspace_id_);
     CHECK(
-        loc.name ==
-        array_uri_str.substr(
-            std::string("tile://" + teamspace_id_ + "/").size()));
+        loc.name == array_uri_str.substr(
+                        std::string("tile://" + teamspace_id_ + "/").size()));
     CHECK(loc.storage_uri.rfind("s3://", 0) == 0);
   }
 
@@ -903,9 +907,8 @@ TEST_CASE_METHOD(
     CHECK(loc.type == "group");
     CHECK(loc.teamspace_id == teamspace_id_);
     CHECK(
-        loc.name ==
-        group_uri_str.substr(
-            std::string("tile://" + teamspace_id_ + "/").size()));
+        loc.name == group_uri_str.substr(
+                        std::string("tile://" + teamspace_id_ + "/").size()));
   }
 
   // Unknown id surfaces HTTP 404 — both with the `tiledb-` prefix and
@@ -1436,9 +1439,8 @@ TEST_CASE(
   auto lookup = make_tile_ai_client();
   auto teamspaces = lookup.list_teamspaces();
   REQUIRE(!teamspaces.empty());
-  const auto target_name =
-      env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
-          .value_or(TileAiCppApiFx::kDefaultTeamspaceName);
+  const auto target_name = env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
+                               .value_or(TileAiCppApiFx::kDefaultTeamspaceName);
   std::string expected_id;
   for (const auto& ts : teamspaces) {
     if (ts.name == target_name) {
@@ -1452,8 +1454,7 @@ TEST_CASE(
 
   // Use the NAME (not the id) as the URI's teamspace segment. Server-side
   // resolution should look it up by name and return the canonical id.
-  const std::string base =
-      target_name + "/" + test_run_id() + "-by-name";
+  const std::string base = target_name + "/" + test_run_id() + "-by-name";
   tiledb::sm::TileInfo created;
   REQUIRE_NOTHROW(
       created = client.create_resource(tiledb::sm::EntityType::Array, base));
@@ -1478,8 +1479,7 @@ TEST_CASE(
 // auth round-trip end-to-end against a live tile:// service.
 
 TEST_CASE(
-    "C++ API: tile:// backend credential resolution",
-    "[cppapi][tile][env]") {
+    "C++ API: tile:// backend credential resolution", "[cppapi][tile][env]") {
   using tiledb::sm::TileAi;
   using tiledb::sm::TileAiException;
   // Disambiguate from the public `tiledb::Config` brought in by the
@@ -1508,7 +1508,8 @@ TEST_CASE(
   }
 
   SECTION("init succeeds with TILEDB_VFS_TILE_* env (canonical TileDB)") {
-    auto u = setenv_local("TILEDB_VFS_TILE_SERVER_URL", "http://localhost:3000");
+    auto u =
+        setenv_local("TILEDB_VFS_TILE_SERVER_URL", "http://localhost:3000");
     auto k = setenv_local("TILEDB_VFS_TILE_API_KEY", "tla_test");
     TileAi backend;
     SmConfig config;
@@ -1528,8 +1529,7 @@ TEST_CASE(
     TileAi backend;
     SmConfig config;
     REQUIRE_THROWS_WITH(
-        backend.init(config),
-        Catch::Matchers::ContainsSubstring("api_key"));
+        backend.init(config), Catch::Matchers::ContainsSubstring("api_key"));
   }
 
   SECTION("init throws when TILE_API_KEY is set but no server_url anywhere") {
@@ -1537,8 +1537,7 @@ TEST_CASE(
     TileAi backend;
     SmConfig config;
     REQUIRE_THROWS_WITH(
-        backend.init(config),
-        Catch::Matchers::ContainsSubstring("server_url"));
+        backend.init(config), Catch::Matchers::ContainsSubstring("server_url"));
   }
 
   SECTION("error message names TILE_API_URL when server_url missing") {

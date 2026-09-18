@@ -31,8 +31,8 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
-#include "tiledb/sm/rest/tile_ai_client.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/rest/tile_ai_client.h"
 
 namespace tiledb::sm {
 
@@ -155,8 +155,8 @@ class TileAi : public FilesystemBase {
    * @return Number of bytes actually written into `buffer`. May be less than
    *   `nbytes` near EOF.
    */
-  uint64_t read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const override;
+  uint64_t read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
+      const override;
 
   /**
    * Buffers `buffer` in memory keyed on `uri`. When the accumulated buffer
@@ -273,7 +273,6 @@ class TileAi : public FilesystemBase {
   ParsedUri canonicalize_resource(ParsedUri parsed) const;
 
  private:
-
   std::string server_url_;
   std::string api_key_;
   // Workspace context resolved from `vfs.tile.workspace` at init.
