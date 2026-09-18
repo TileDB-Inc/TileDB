@@ -352,6 +352,8 @@ void check_save_to_file() {
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
   ss << "vfs.s3.verify_ssl true\n";
+  ss << "vfs.tile.multipart_part_size_bytes 5242880\n";
+  ss << "vfs.tile.multipart_threshold_bytes 5242880\n";
 
   std::ifstream ifs("test_config.txt");
   std::stringstream ss_file;
@@ -773,6 +775,12 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.config_source"] = "auto";
+  all_param_values["vfs.tile.server_url"] = "";
+  all_param_values["vfs.tile.api_key"] = "";
+  all_param_values["vfs.tile.workspace"] = "";
+  all_param_values["vfs.tile.create_storage_uri"] = "";
+  all_param_values["vfs.tile.multipart_threshold_bytes"] = "5242880";
+  all_param_values["vfs.tile.multipart_part_size_bytes"] = "5242880";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["max_batch_size"] = "104857600";
@@ -845,6 +853,12 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.config_source"] = "auto";
   vfs_param_values["s3.install_sigpipe_handler"] = "true";
+  vfs_param_values["tile.server_url"] = "";
+  vfs_param_values["tile.api_key"] = "";
+  vfs_param_values["tile.workspace"] = "";
+  vfs_param_values["tile.create_storage_uri"] = "";
+  vfs_param_values["tile.multipart_threshold_bytes"] = "5242880";
+  vfs_param_values["tile.multipart_part_size_bytes"] = "5242880";
 
   std::map<std::string, std::string> gcs_param_values;
   gcs_param_values["endpoint"] = "";
