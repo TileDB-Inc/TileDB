@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "tiledb/common/filesystem/directory_entry.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -288,7 +289,7 @@ class TileAi : public FilesystemBase {
   // catalog stamps via `canonicalize_resource`). Create paths pass
   // the type directly from the call site (`create_dir` → Array,
   // `create_group_dir` → Group).
-  std::unique_ptr<TileAiClient> client_;
+  tdb_unique_ptr<TileAiClient> client_;
 
   struct CachedUrl {
     std::string url;

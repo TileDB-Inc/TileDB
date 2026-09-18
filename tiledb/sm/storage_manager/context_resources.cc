@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rest/tile_ai_client.h"
@@ -83,8 +84,8 @@ ContextResources::ContextResources(
     if (!tile_server_url.empty() && !tile_api_key.empty()) {
       auto tile_workspace = std::string(
           config_.get<std::string_view>("vfs.tile.workspace").value_or(""));
-      tile_ai_client_ = std::make_unique<TileAiClient>(
-          tile_server_url, tile_api_key, tile_workspace);
+      tile_ai_client_ = tdb_unique_ptr<TileAiClient>(
+          tdb_new(TileAiClient, tile_server_url, tile_api_key, tile_workspace));
     }
   }
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);

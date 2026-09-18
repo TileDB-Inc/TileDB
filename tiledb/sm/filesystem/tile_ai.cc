@@ -9,12 +9,12 @@
 #include <curl/curl.h>
 
 #include <algorithm>
-#include <cassert>
 #include <cstring>
 #include <optional>
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 
 namespace tiledb::sm {
@@ -150,7 +150,8 @@ void TileAi::init(const Config& config) {
         "equal to vfs.tile.multipart_part_size_bytes");
   }
 
-  client_ = std::make_unique<TileAiClient>(server_url_, api_key_, workspace_);
+  client_ = tdb_unique_ptr<TileAiClient>(
+      tdb_new(TileAiClient, server_url_, api_key_, workspace_));
   initialized_ = true;
 }
 
@@ -764,8 +765,8 @@ void TileAi::write_impl(const URI& uri, const void* buffer, uint64_t nbytes) {
 }
 
 void TileAi::flush_part(MultipartState& state) {
-  assert(!state.upload_id.empty());
-  assert(!state.part_buffer.empty());
+  iassert(!state.upload_id.empty());
+  iassert(!state.part_buffer.empty());
 
   uint64_t part_size = std::min(
       static_cast<uint64_t>(state.part_buffer.size()),
