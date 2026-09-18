@@ -687,6 +687,24 @@ class Config {
    */
   static const std::string VFS_S3_CONFIG_SOURCE;
 
+  /** tile.ai backend REST API server URL. */
+  static const std::string VFS_TILE_SERVER_URL;
+
+  /** tile.ai backend API key (bearer token for the REST API). */
+  static const std::string VFS_TILE_API_KEY;
+
+  /** tile.ai backend workspace id, disambiguating a multi-workspace API key. */
+  static const std::string VFS_TILE_WORKSPACE;
+
+  /** Storage URI consulted when creating a tile.ai-backed array or group. */
+  static const std::string VFS_TILE_CREATE_STORAGE_URI;
+
+  /** tile.ai upload size in bytes at or above which multipart upload is used. */
+  static const std::string VFS_TILE_MULTIPART_THRESHOLD_BYTES;
+
+  /** tile.ai multipart upload part size in bytes. */
+  static const std::string VFS_TILE_MULTIPART_PART_SIZE_BYTES;
+
   /**
    * Specifies the size in bytes of the internal buffers used in the filestore
    * API. The size should be bigger than the minimum tile size filestore

@@ -280,7 +280,6 @@ class TileAi : public FilesystemBase {
   // Empty string when the user didn't set it (server-side handling: 400
   // on creates, accept-and-skip-validation on reads/writes).
   std::string workspace_;
-  std::string create_storage_uri_;
   uint64_t multipart_threshold_bytes_;
   uint64_t multipart_part_size_bytes_;
   bool initialized_ = false;

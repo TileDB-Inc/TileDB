@@ -129,10 +129,6 @@ void TileAi::init(const Config& config) {
   workspace_ = std::string(
       config.get<std::string_view>("vfs.tile.workspace").value_or(""));
 
-  create_storage_uri_ = std::string(
-      config.get<std::string_view>("vfs.tile.create_storage_uri")
-          .value_or(""));
-
   multipart_threshold_bytes_ =
       config.get<uint64_t>("vfs.tile.multipart_threshold_bytes")
           .value_or(5ULL * 1024 * 1024);
