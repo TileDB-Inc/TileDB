@@ -56,6 +56,7 @@
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/tile_ai_client.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
@@ -202,8 +203,36 @@ void Array::create(
         array_schema->shared_domain());
   }
 
-  // Create array directory
-  resources.vfs().create_dir(array_uri);
+  // Create array directory. For tile:// URIs, register with the
+  // tile.ai catalog via TileAiClient (peer of RestClient); for
+  // storage-layout-as-truth backends, just create the directory in
+  // the backing store. Mirrors the same dispatch shape used for
+  // groups in Group::create. The tile.ai branch is gated on
+  // `tile_ai_enabled` because `tile_ai::create_array` lives in
+  // `tile_ai_client.cc`, which is removed from TILEDB_CORE_SOURCES
+  // when TILEDB_TILE_AI=OFF — `if constexpr` discards the branch so
+  // the OFF link doesn't ODR-use the symbol. When the backend is
+  // unbuilt, tile:// URIs hit the VFS dispatcher and surface
+  // `BuiltWithout` from `vfs.cc`.
+  if constexpr (filesystem::tile_ai_enabled) {
+    if (array_uri.is_tile()) {
+      auto* client = resources.tile_ai_client();
+      if (client == nullptr) {
+        throw ArrayException(
+            "Cannot create tile:// array; tile.ai client not "
+            "configured (set vfs.tile.server_url and vfs.tile.api_key)");
+      }
+      auto storage_uri =
+          std::string(resources.config()
+                          .get<std::string_view>("vfs.tile.create_storage_uri")
+                          .value_or(""));
+      tile_ai::create_array(*client, array_uri, storage_uri);
+    } else {
+      resources.vfs().create_dir(array_uri);
+    }
+  } else {
+    resources.vfs().create_dir(array_uri);
+  }
 
   // Create array schema directory
   URI array_schema_dir_uri =
@@ -269,7 +298,10 @@ void Array::create(
       store_array_schema(resources, array_schema, encryption_key);
     }
   } catch (...) {
-    resources.vfs().remove_dir(array_uri);
+    try {
+      resources.vfs().remove_dir(array_uri);
+    } catch (...) {
+    }
     throw;
   }
 }

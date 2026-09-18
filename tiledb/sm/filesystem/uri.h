@@ -227,6 +227,21 @@ class URI {
   bool is_tiledb() const;
 
   /**
+   * Checks if the input path is tile.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
+  static bool is_tile(std::string_view path);
+
+  /**
+   * Checks if the URI is tile.
+   *
+   * @return The result of the check.
+   */
+  bool is_tile() const;
+
+  /**
    * Checks if the last part of the URI is a valid timestamped name.
    * This method does not validate file extensions. Only the timestamps, UUID,
    * and version will be validated for the current URI.

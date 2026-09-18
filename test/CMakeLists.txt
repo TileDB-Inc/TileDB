@@ -190,6 +190,12 @@ if (TILEDB_CPP_API)
   )
 endif()
 
+if (TILEDB_TILE_AI)
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/unit-cppapi-tile-ai.cc
+  )
+endif()
+
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc

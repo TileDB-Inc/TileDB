@@ -38,6 +38,8 @@
 #include "tiledb/sm/filesystem/ls_scanner.h"
 #include "uri.h"
 
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace tiledb::sm {

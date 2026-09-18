@@ -28,6 +28,7 @@ option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" ON
 option(TILEDB_RUST "If true, enables building Rust components" OFF)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 option(TILEDB_DISABLE_AUTO_VCPKG "Do not automatically download vcpkg. Ignored if CMAKE_TOOLCHAIN_FILE or ENV{VCPKG_ROOT} is set." OFF)
+option(TILEDB_TILE_AI "Enable the tile.ai filesystem backend" OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
