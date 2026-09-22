@@ -91,17 +91,15 @@ tiledb::sm::TileAiClient make_tile_ai_client() {
   auto key = config_string(config, "vfs.tile.api_key");
   REQUIRE(!url.empty());
   REQUIRE(!key.empty());
-  return tiledb::sm::TileAiClient(
-      url, key, config_string(config, "vfs.tile.workspace"));
+  return tiledb::sm::TileAiClient(url, key);
 }
 
 Config make_presigned_config() {
   // Walk the library's credential resolution chain so the test inherits
   // every fallback `TileAi::init` would use at runtime (Config + Config's
   // TILEDB_VFS_TILE_* env, plus the SDK env-var convention TILE_API_URL /
-  // TILE_API_KEY / TILE_API_WORKSPACE shared with the tile.ai Python SDK
-  // and tile-fuse). Tests no longer hardcode SDK env-var names — those
-  // live entirely in the library.
+  // TILE_API_KEY shared with the tile.ai Python SDK and tile-fuse). Tests no
+  // longer hardcode SDK env-var names — those live entirely in the library.
   SmConfig sm_config;
   if (config_string(sm_config, "vfs.tile.server_url").empty() ||
       config_string(sm_config, "vfs.tile.api_key").empty()) {
@@ -111,11 +109,6 @@ Config make_presigned_config() {
         "TILE_API_KEY)");
   }
 
-  // All other tile.ai config keys (vfs.tile.workspace,
-  // vfs.tile.create_storage_uri, vfs.tile.multipart_threshold_bytes,
-  // vfs.tile.multipart_part_size_bytes) are picked up by Config's
-  // built-in env-var mechanism on access, so we don't forward them
-  // through a test-only namespace.
   return Config{};
 }
 
@@ -1350,81 +1343,11 @@ TEST_CASE_METHOD(
   }
 }
 
-// ── workspace query parameter (?workspaceId=) ────────────────────────────────
-//
-// These exercise the server-side three-tier `resolveWorkspace` policy that
-// the libtiledb client speaks to via the `?workspaceId=` query parameter
-// appended in `TileAiClient::with_workspace_query`. The bootstrap
-// fixture (`tile-ai/scripts/bootstrap-test-fixtures.ts`) sets the API key's
-// user up in exactly one workspace; both cases below assume that
-// single-membership shape.
-
-TEST_CASE(
-    "TileAiClient: create rejects an explicit non-member workspace",
-    "[tile_ai][workspace]") {
-  SmConfig config;
-  auto api_url = config_string(config, "vfs.tile.server_url");
-  auto api_key = config_string(config, "vfs.tile.api_key");
-  if (api_url.empty() || api_key.empty()) {
-    SKIP("tile:// C++ tests require vfs.tile.{server_url,api_key}");
-  }
-
-  // A real teamspace id is needed so the server proceeds past the
-  // teamspace-existence check and reaches the workspace-membership check.
-  auto lookup = make_tile_ai_client();
-  auto teamspaces = lookup.list_teamspaces();
-  REQUIRE(!teamspaces.empty());
-  const std::string teamspace_id = teamspaces.front().id;
-
-  // Declare a workspace the API key user is not a member of. The server's
-  // `resolveWorkspace` tier-1 finds no matching `workspace_members` row
-  // and returns 403. Constructed inline because this test's whole purpose
-  // is to exercise a workspace value the helper would not pick.
-  tiledb::sm::TileAiClient client(
-      api_url, api_key, "home-not-a-real-workspace-id-0000000000");
-
-  const std::string base =
-      teamspace_id + "/" + test_run_id() + "-non-member-workspace";
-
-  try {
-    client.create_resource(tiledb::sm::EntityType::Array, base);
-    FAIL("create_resource succeeded; expected HTTP 403");
-  } catch (const tiledb::sm::TileAiException& e) {
-    CHECK(e.http_status() == 403);
-  }
-}
-
-TEST_CASE(
-    "TileAiClient: absent workspace falls through to server resolution",
-    "[tile_ai][workspace]") {
-  SmConfig config;
-  auto api_url = config_string(config, "vfs.tile.server_url");
-  auto api_key = config_string(config, "vfs.tile.api_key");
-  if (api_url.empty() || api_key.empty()) {
-    SKIP("tile:// C++ tests require vfs.tile.{server_url,api_key}");
-  }
-
-  auto lookup = make_tile_ai_client();
-  auto teamspaces = lookup.list_teamspaces();
-  REQUIRE(!teamspaces.empty());
-  const std::string teamspace_id = teamspaces.front().id;
-
-  // Empty workspace argument → `with_workspace_query` returns the path
-  // unchanged, so no `?workspaceId=` is sent. The server applies tier-2
-  // of `resolveWorkspace` (single-membership auto-resolve) — or tier-3
-  // (derive from the `base`'s teamspace) if the fixture user is ever
-  // set up in multiple workspaces. Constructed inline because this test
-  // pins the workspace argument to exactly the empty string.
-  tiledb::sm::TileAiClient client(api_url, api_key, "");
-
-  const std::string base =
-      teamspace_id + "/" + test_run_id() + "-tier-fallback";
-  REQUIRE_NOTHROW(client.create_resource(tiledb::sm::EntityType::Array, base));
-}
+// ── teamspace name resolution ─────────────────────────────────────────────
 
 TEST_CASE(
     "TileAiClient: name-based teamspace reference resolves server-side",
-    "[tile_ai][workspace]") {
+    "[tile_ai][teamspace]") {
   SmConfig config;
   auto api_url = config_string(config, "vfs.tile.server_url");
   auto api_key = config_string(config, "vfs.tile.api_key");
@@ -1450,7 +1373,7 @@ TEST_CASE(
   }
   REQUIRE(!expected_id.empty());
 
-  tiledb::sm::TileAiClient client(api_url, api_key, "");
+  tiledb::sm::TileAiClient client(api_url, api_key);
 
   // Use the NAME (not the id) as the URI's teamspace segment. Server-side
   // resolution should look it up by name and return the canonical id.
@@ -1591,8 +1514,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: tile:// config resolution precedence (Config + SDK env alias)",
     "[cppapi][tile][env]") {
-  // The SDK env-var aliases (TILE_API_URL / TILE_API_KEY /
-  // TILE_API_WORKSPACE) live inside `Config::get_from_env`, so the
+  // The SDK env-var aliases (TILE_API_URL / TILE_API_KEY) live inside
+  // `Config::get_from_env`, so the
   // resolution chain for `vfs.tile.*` keys is whatever Config provides
   // out of the box. These tests pin that contract.
 

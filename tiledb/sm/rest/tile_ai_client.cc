@@ -86,12 +86,9 @@ EntityType entity_type_from_string(std::string_view type) {
 }  // namespace
 
 TileAiClient::TileAiClient(
-    const std::string& server_url,
-    const std::string& api_key,
-    const std::string& workspace)
+    const std::string& server_url, const std::string& api_key)
     : server_url_(server_url)
-    , api_key_(api_key)
-    , workspace_(workspace) {
+    , api_key_(api_key) {
   if (!server_url_.empty() && server_url_.back() == '/') {
     server_url_.pop_back();
   }
@@ -99,22 +96,6 @@ TileAiClient::TileAiClient(
 
 std::string TileAiClient::base_path(EntityType entity_type) {
   return entity_type == EntityType::Group ? "/api/v1/groups" : "/api/v1/tiles";
-}
-
-std::string TileAiClient::with_workspace_query(const std::string& path) const {
-  if (workspace_.empty())
-    return path;
-  CURL* curl = thread_local_curl();
-  char* escaped =
-      curl ?
-          curl_easy_escape(
-              curl, workspace_.c_str(), static_cast<int>(workspace_.size())) :
-          nullptr;
-  std::string value = escaped ? std::string(escaped) : workspace_;
-  if (escaped)
-    curl_free(escaped);
-  const char sep = (path.find('?') == std::string::npos) ? '?' : '&';
-  return path + sep + "workspaceId=" + value;
 }
 
 std::string TileAiClient::http_request(
@@ -130,7 +111,7 @@ std::string TileAiClient::http_request(
   // connection pool survives the reset, so keep-alive carries across calls.
   curl_easy_reset(curl);
 
-  std::string url = server_url_ + with_workspace_query(path);
+  std::string url = server_url_ + path;
   std::string resp_buf;
 
   struct curl_slist* headers = nullptr;
@@ -670,16 +651,9 @@ std::string base_from_uri(const URI& uri) {
 // already exists at @p base. Idempotency wrapper used by both
 // create_array and create_group.
 void register_resource(
-    TileAiClient& client,
-    EntityType entity_type,
-    const std::string& base,
-    const std::string& create_storage_uri) {
+    TileAiClient& client, EntityType entity_type, const std::string& base) {
   try {
-    if (create_storage_uri.empty()) {
-      client.create_resource(entity_type, base);
-    } else {
-      client.create_resource(entity_type, base, create_storage_uri);
-    }
+    client.create_resource(entity_type, base);
   } catch (const TileAiException&) {
     auto existing = client.list_resources(entity_type);
     for (const auto& e : existing) {
@@ -693,20 +667,12 @@ void register_resource(
 
 }  // namespace
 
-void create_array(
-    TileAiClient& client,
-    const URI& uri,
-    const std::string& create_storage_uri) {
-  register_resource(
-      client, EntityType::Array, base_from_uri(uri), create_storage_uri);
+void create_array(TileAiClient& client, const URI& uri) {
+  register_resource(client, EntityType::Array, base_from_uri(uri));
 }
 
-void create_group(
-    TileAiClient& client,
-    const URI& uri,
-    const std::string& create_storage_uri) {
-  register_resource(
-      client, EntityType::Group, base_from_uri(uri), create_storage_uri);
+void create_group(TileAiClient& client, const URI& uri) {
+  register_resource(client, EntityType::Group, base_from_uri(uri));
 }
 
 void put_members(

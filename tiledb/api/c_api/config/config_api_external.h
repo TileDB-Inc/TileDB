@@ -704,21 +704,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The tile.ai API key (bearer token) used to authenticate requests. <br>
  *    May also be set via the `TILE_API_KEY` environment variable. <br>
  *    **Default**: ""
- * - `vfs.tile.workspace` <br>
- *    The tile.ai workspace id, disambiguating a multi-workspace API key. <br>
- *    May also be set via the `TILE_API_WORKSPACE` environment variable. <br>
- *    **Default**: ""
- * - `vfs.tile.create_storage_uri` <br>
- *    Optional storage URI consulted when creating a `tile://` array or
- *    group. <br>
- *    **Default**: ""
- * - `vfs.tile.multipart_threshold_bytes` <br>
- *    Upload size in bytes at or above which the `tile://` backend switches
- *    to multipart upload. <br>
- *    **Default**: "5242880"
- * - `vfs.tile.multipart_part_size_bytes` <br>
- *    Size in bytes of each part in a `tile://` multipart upload. <br>
- *    **Default**: "5242880"
  * - `config.env_var_prefix` <br>
  *    Prefix of environment variables for reading configuration
  *    parameters. <br>

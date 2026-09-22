@@ -221,21 +221,8 @@ class TileAiClient {
    *   The client appends `/api/v1/...` paths automatically; do not include
    *   that prefix here. A trailing slash is stripped.
    * @param api_key Bearer token sent on every request.
-   * @param workspace Optional workspace identifier supplied at connect
-   *   time via `vfs.tile.workspace`. A workspace id (`home-…`). When
-   *   non-empty, the client appends `?workspaceId=<urlencoded>` (or
-   *   `&workspaceId=…`) to every request URL; the server validates
-   *   membership and, on routes that operate on a specific tile,
-   *   verifies the resolved workspace matches the tile's actual
-   *   workspace. Empty string omits the query parameter — the server
-   *   falls back to its documented three-tier resolution (single-
-   *   workspace auto-resolve, then derive from entity ids in the
-   *   request).
    */
-  TileAiClient(
-      const std::string& server_url,
-      const std::string& api_key,
-      const std::string& workspace = "");
+  TileAiClient(const std::string& server_url, const std::string& api_key);
   ~TileAiClient() = default;
 
   TileAiClient(const TileAiClient&) = delete;
@@ -543,11 +530,6 @@ class TileAiClient {
  private:
   std::string server_url_;
   std::string api_key_;
-  // Workspace identifier set via `vfs.tile.workspace`. Appended as
-  // `?workspaceId=<urlencoded>` (or `&workspaceId=…` when the path
-  // already contains a query string) on every request when non-empty;
-  // omitted entirely when empty.
-  std::string workspace_;
 
   /**
    * Returns the route prefix for per-resource calls — `/api/v1/tiles` for
@@ -557,14 +539,6 @@ class TileAiClient {
    * `/api/v1/{tiles,groups}/{id}` lookup) bypass this.
    */
   static std::string base_path(EntityType entity_type);
-
-  /**
-   * Return @p path with `?workspaceId=<urlencoded value>` (or
-   * `&workspaceId=…`) appended when `workspace_` is non-empty; unchanged
-   * otherwise. Used by `http_request` so every server call carries the
-   * workspace context the user supplied via `vfs.tile.workspace`.
-   */
-  std::string with_workspace_query(const std::string& path) const;
 
   /**
    * Perform an HTTP request and return the response body. Supports GET,
@@ -615,13 +589,8 @@ struct GroupMember {
  *
  * @param client A TileAiClient.
  * @param uri A `tile://{teamspace}/{name}` URI.
- * @param create_storage_uri Optional storage URI hint; empty lets
- *   the server pick.
  */
-void create_array(
-    TileAiClient& client,
-    const URI& uri,
-    const std::string& create_storage_uri = "");
+void create_array(TileAiClient& client, const URI& uri);
 
 /**
  * Register a group with the tile.ai catalog. Same idempotency
@@ -629,12 +598,8 @@ void create_array(
  *
  * @param client A TileAiClient.
  * @param uri A `tile://{teamspace}/{name}` URI.
- * @param create_storage_uri Optional storage URI hint.
  */
-void create_group(
-    TileAiClient& client,
-    const URI& uri,
-    const std::string& create_storage_uri = "");
+void create_group(TileAiClient& client, const URI& uri);
 
 /**
  * Replace a group's membership list. Wraps the wire-level

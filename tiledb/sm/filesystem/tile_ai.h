@@ -42,11 +42,9 @@ namespace tiledb::sm {
  * tile.ai tile.ai server. Accepts URIs of the form
  * `tile://{teamspace_ref}/{name}[/{relative_key}]`, where `teamspace_ref`
  * is either the canonical teamspace id (`{name-slug}-{uuid}` PK) or the
- * human-readable teamspace name. Name resolution is scoped by the
- * caller's workspace memberships server-side; ambiguous names on a
- * multi-workspace API key require `vfs.tile.workspace` to disambiguate.
- * The id-form `tile://{id}` is also accepted for direct lookups by
- * resource id.
+ * human-readable teamspace name. Name resolution is scoped server-side
+ * to the workspace the API key belongs to. The id-form `tile://{id}` is also
+ * accepted for direct lookups by resource id.
  *
  * Most methods throw TileAiException on transport errors or unexpected
  * HTTP statuses, and FilesystemException for unsupported operations (notably
@@ -69,25 +67,6 @@ class TileAi : public FilesystemBase {
    *    the standard Config chain (user set, `TILEDB_VFS_TILE_*` env,
    *    SDK env alias `TILE_API_URL` / `TILE_API_KEY`, profile, default);
    *    the SDK alias step lives in `Config::get_from_env`.
-   *  - `vfs.tile.workspace`. Same chain, with SDK alias
-   *    `TILE_API_WORKSPACE`. Optional in the common case: when empty
-   *    the client omits `?workspaceId=` and the server applies its
-   *    three-tier resolution (single-workspace auto-resolve, then
-   *    derive from entity ids in the URL path or request body).
-   *    Required only when the API key has memberships in two or more
-   *    workspaces and the URI uses a teamspace NAME that exists in
-   *    more than one of those workspaces; without a pin the server
-   *    returns 400 "Ambiguous teamspace name 'X'".
-   *  - `vfs.tile.create_storage_uri` — optional storage URI consulted
-   *    by `TileAiClient` (peer of `RestClient`) when it registers a
-   *    new array or group with the tile.ai catalog. This VFS reads
-   *    the key only for parity with the catalog client; it does not
-   *    perform catalog registration itself.
-   *  - `vfs.tile.multipart_threshold_bytes` (default 5 MiB) — switch from
-   *    simple PUT to multipart upload once the buffered write reaches this
-   *    size.
-   *  - `vfs.tile.multipart_part_size_bytes` (default 5 MiB) — size of each
-   *    multipart part; must be >= 5 MiB (S3 minimum).
    *
    * Type routing for reads is resolved via the catalog:
    * `canonicalize_resource` calls `lookup_resource{,_by_name}` and stamps
@@ -99,9 +78,7 @@ class TileAi : public FilesystemBase {
    * I/O for `tile://` URIs.
    *
    * @param config TileDB config consulted for the keys above.
-   * @throws TileAiException if `server_url` or `api_key` resolves empty,
-   *   if `multipart_part_size_bytes` is below the 5 MiB S3 minimum, or if
-   *   `multipart_threshold_bytes` is less than `multipart_part_size_bytes`.
+   * @throws TileAiException if `server_url` or `api_key` resolves empty.
    */
   void init(const Config& config);
 
@@ -161,10 +138,9 @@ class TileAi : public FilesystemBase {
 
   /**
    * Buffers `buffer` in memory keyed on `uri`. When the accumulated buffer
-   * for that URI reaches `multipart_threshold_bytes`, the backend creates a
-   * server-side multipart upload and starts uploading parts of size
-   * `multipart_part_size_bytes`. Below threshold, no network I/O happens
-   * until `flush`.
+   * for that URI reaches the multipart threshold (5 MiB), the backend
+   * creates a server-side multipart upload and starts uploading 5 MiB
+   * parts. Below threshold, no network I/O happens until `flush`.
    *
    * @param remote_global_order_write Ignored — applies only to the S3 backend.
    */
@@ -276,12 +252,6 @@ class TileAi : public FilesystemBase {
  private:
   std::string server_url_;
   std::string api_key_;
-  // Workspace context resolved from `vfs.tile.workspace` at init.
-  // Empty string when the user didn't set it (server-side handling: 400
-  // on creates, accept-and-skip-validation on reads/writes).
-  std::string workspace_;
-  uint64_t multipart_threshold_bytes_;
-  uint64_t multipart_part_size_bytes_;
   bool initialized_ = false;
 
   // Single HTTP client; per-resource ops pass an EntityType arg at

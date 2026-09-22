@@ -118,11 +118,7 @@ void Group::create(ContextResources& resources, const URI& uri) {
             "Cannot create tile:// group; tile.ai client not "
             "configured (set vfs.tile.server_url and vfs.tile.api_key)");
       }
-      auto storage_uri =
-          std::string(resources.config()
-                          .get<std::string_view>("vfs.tile.create_storage_uri")
-                          .value_or(""));
-      tile_ai::create_group(*client, uri, storage_uri);
+      tile_ai::create_group(*client, uri);
     } else {
       resources.vfs().create_dir(uri);
     }

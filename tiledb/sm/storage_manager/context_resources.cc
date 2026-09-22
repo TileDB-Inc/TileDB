@@ -82,10 +82,8 @@ ContextResources::ContextResources(
     auto tile_api_key = std::string(
         config_.get<std::string_view>("vfs.tile.api_key").value_or(""));
     if (!tile_server_url.empty() && !tile_api_key.empty()) {
-      auto tile_workspace = std::string(
-          config_.get<std::string_view>("vfs.tile.workspace").value_or(""));
       tile_ai_client_ = tdb_unique_ptr<TileAiClient>(
-          tdb_new(TileAiClient, tile_server_url, tile_api_key, tile_workspace));
+          tdb_new(TileAiClient, tile_server_url, tile_api_key));
     }
   }
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);

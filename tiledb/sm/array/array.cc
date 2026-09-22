@@ -222,11 +222,7 @@ void Array::create(
             "Cannot create tile:// array; tile.ai client not "
             "configured (set vfs.tile.server_url and vfs.tile.api_key)");
       }
-      auto storage_uri =
-          std::string(resources.config()
-                          .get<std::string_view>("vfs.tile.create_storage_uri")
-                          .value_or(""));
-      tile_ai::create_array(*client, array_uri, storage_uri);
+      tile_ai::create_array(*client, array_uri);
     } else {
       resources.vfs().create_dir(array_uri);
     }

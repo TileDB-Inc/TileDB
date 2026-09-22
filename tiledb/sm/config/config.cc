@@ -231,10 +231,6 @@ const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::VFS_TILE_SERVER_URL = "";
 const std::string Config::VFS_TILE_API_KEY = "";
-const std::string Config::VFS_TILE_WORKSPACE = "";
-const std::string Config::VFS_TILE_CREATE_STORAGE_URI = "";
-const std::string Config::VFS_TILE_MULTIPART_THRESHOLD_BYTES = "5242880";
-const std::string Config::VFS_TILE_MULTIPART_PART_SIZE_BYTES = "5242880";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
@@ -418,15 +414,6 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.read_ahead_cache_size", Config::VFS_READ_AHEAD_CACHE_SIZE),
     std::make_pair("vfs.tile.server_url", Config::VFS_TILE_SERVER_URL),
     std::make_pair("vfs.tile.api_key", Config::VFS_TILE_API_KEY),
-    std::make_pair("vfs.tile.workspace", Config::VFS_TILE_WORKSPACE),
-    std::make_pair(
-        "vfs.tile.create_storage_uri", Config::VFS_TILE_CREATE_STORAGE_URI),
-    std::make_pair(
-        "vfs.tile.multipart_threshold_bytes",
-        Config::VFS_TILE_MULTIPART_THRESHOLD_BYTES),
-    std::make_pair(
-        "vfs.tile.multipart_part_size_bytes",
-        Config::VFS_TILE_MULTIPART_PART_SIZE_BYTES),
     std::make_pair(
         "vfs.file.posix_file_permissions",
         Config::VFS_FILE_POSIX_FILE_PERMISSIONS),
@@ -931,8 +918,6 @@ const char* tile_ai_sdk_env_alias(std::string_view param) {
     return "TILE_API_URL";
   if (param == "vfs.tile.api_key")
     return "TILE_API_KEY";
-  if (param == "vfs.tile.workspace")
-    return "TILE_API_WORKSPACE";
   return nullptr;
 }
 

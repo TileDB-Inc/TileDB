@@ -23,7 +23,10 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
-constexpr uint64_t kMinS3MultipartPartSize = 5ULL * 1024 * 1024;
+// Multipart uploads start once a buffered write reaches the threshold and
+// proceed in parts of this size. Both sit at the S3 minimum part size.
+constexpr uint64_t kMultipartThresholdBytes = 5ULL * 1024 * 1024;
+constexpr uint64_t kMultipartPartSizeBytes = 5ULL * 1024 * 1024;
 
 struct ReadBuffer {
   void* dest;
@@ -121,37 +124,8 @@ void TileAi::init(const Config& config) {
         "(or set the TILE_API_KEY environment variable)");
   }
 
-  // Workspace context. Optional at init time — when absent the server
-  // applies its documented three-tier resolution (single-workspace
-  // auto-resolve, then derive from entity ids in the request). When
-  // set, the client appends `?workspaceId=<value>` to every request
-  // URL and the server validates membership plus, on per-tile routes,
-  // that the resource lives in the named workspace.
-  workspace_ = std::string(
-      config.get<std::string_view>("vfs.tile.workspace").value_or(""));
-
-  multipart_threshold_bytes_ =
-      config.get<uint64_t>("vfs.tile.multipart_threshold_bytes")
-          .value_or(5ULL * 1024 * 1024);
-
-  multipart_part_size_bytes_ =
-      config.get<uint64_t>("vfs.tile.multipart_part_size_bytes")
-          .value_or(5ULL * 1024 * 1024);
-
-  if (multipart_part_size_bytes_ < kMinS3MultipartPartSize) {
-    throw TileAiException(
-        "vfs.tile.multipart_part_size_bytes must be at least 5242880 "
-        "bytes for S3-compatible multipart uploads");
-  }
-
-  if (multipart_threshold_bytes_ < multipart_part_size_bytes_) {
-    throw TileAiException(
-        "vfs.tile.multipart_threshold_bytes must be greater than or "
-        "equal to vfs.tile.multipart_part_size_bytes");
-  }
-
   client_ = tdb_unique_ptr<TileAiClient>(
-      tdb_new(TileAiClient, server_url_, api_key_, workspace_));
+      tdb_new(TileAiClient, server_url_, api_key_));
   initialized_ = true;
 }
 
@@ -181,9 +155,7 @@ TileAi::ParsedUri TileAi::parse_uri(const URI& uri) {
   //
   // `teamspace_ref` is either the canonical teamspace id (`{label}-{uuid}`)
   // or the human-readable teamspace name. The server resolves either form;
-  // name lookups are scoped by the caller's workspace memberships and 400
-  // on ambiguity (multi-workspace API key, same teamspace name in two
-  // workspaces, no `vfs.tile.workspace` pin).
+  // name lookups are scoped to the API key's workspace.
   //
   // Path structure alone disambiguates id-form from hierarchical. No
   // prefix check on the id segment: tile IDs, teamspace IDs, and
@@ -722,7 +694,7 @@ void TileAi::write_impl(const URI& uri, const void* buffer, uint64_t nbytes) {
     const auto* src = static_cast<const uint8_t*>(buffer);
     state.part_buffer.insert(state.part_buffer.end(), src, src + nbytes);
 
-    if (state.part_buffer.size() >= multipart_threshold_bytes_) {
+    if (state.part_buffer.size() >= kMultipartThresholdBytes) {
       auto create_result = client_->multipart_create(
           parsed.effective_entity_type, parsed.array_id, parsed.relative_key);
 
@@ -733,7 +705,7 @@ void TileAi::write_impl(const URI& uri, const void* buffer, uint64_t nbytes) {
 
       multipart_state_[ck] = std::move(state);
       auto& ms = multipart_state_[ck];
-      while (ms.part_buffer.size() >= multipart_part_size_bytes_) {
+      while (ms.part_buffer.size() >= kMultipartPartSizeBytes) {
         flush_part(ms);
       }
     } else {
@@ -748,7 +720,7 @@ void TileAi::write_impl(const URI& uri, const void* buffer, uint64_t nbytes) {
   state.part_buffer.insert(state.part_buffer.end(), src, src + nbytes);
 
   if (state.upload_id.empty() &&
-      state.part_buffer.size() >= multipart_threshold_bytes_) {
+      state.part_buffer.size() >= kMultipartThresholdBytes) {
     auto create_result = client_->multipart_create(
         parsed.effective_entity_type, parsed.array_id, parsed.relative_key);
     state.upload_id = std::move(create_result.upload_id);
@@ -758,7 +730,7 @@ void TileAi::write_impl(const URI& uri, const void* buffer, uint64_t nbytes) {
   }
 
   if (!state.upload_id.empty()) {
-    while (state.part_buffer.size() >= multipart_part_size_bytes_) {
+    while (state.part_buffer.size() >= kMultipartPartSizeBytes) {
       flush_part(state);
     }
   }
@@ -769,8 +741,7 @@ void TileAi::flush_part(MultipartState& state) {
   iassert(!state.part_buffer.empty());
 
   uint64_t part_size = std::min(
-      static_cast<uint64_t>(state.part_buffer.size()),
-      multipart_part_size_bytes_);
+      static_cast<uint64_t>(state.part_buffer.size()), kMultipartPartSizeBytes);
 
   auto now = std::chrono::system_clock::now();
   // Refresh cached presigned URLs this many seconds before they expire.
