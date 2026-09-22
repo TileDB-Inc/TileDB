@@ -16,24 +16,24 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/tile_ai.h"
+#include "tiledb/sm/rest/rest_profile.h"
 
 using namespace tiledb;
 // Disambiguate from `tiledb::Config` (the public C++ API class). The
-// internal `tiledb::sm::Config` is what implements the env-var
-// resolution chain we test below.
+// internal `tiledb::sm::Config` is what `TileAi::resolve_credentials`
+// reads.
 using SmConfig = tiledb::sm::Config;
 
 namespace {
 
-// Read a tile.ai credential / config key as a string, returning empty
-// when no source provides a value. Trusts `Config::get_from_env` to
-// walk the full chain (user set, TILEDB_VFS_TILE_* env, TILE_API_*
-// SDK env alias, profile, default).
-std::string config_string(const SmConfig& config, std::string_view key) {
-  return std::string(
-      config.get<std::string_view>(std::string(key)).value_or(""));
+// Credentials as the library itself would resolve them from a default
+// config: `rest.*` parameters, `TILEDB_REST_*` env, the `TILE_API_*` SDK
+// env vars, then the REST profile.
+tiledb::sm::TileAiCredentials resolve_test_credentials() {
+  return tiledb::sm::TileAi::resolve_credentials(SmConfig{});
 }
 
 std::optional<std::string> env_string(const char* name) {
@@ -82,30 +82,24 @@ std::vector<float> make_random_float_data(uint64_t seed, size_t count) {
 }
 
 // Build a standalone TileAiClient for in-test server-side assertions,
-// drawing credentials from the library's resolution chain. Use this
-// instead of constructing TileAiClient inline with `env_string("TILE_API_*")`
-// reads — the test code does not need to know the SDK env-var names.
+// drawing credentials from the library's resolution chain so the test
+// code never needs to know the env-var names.
 tiledb::sm::TileAiClient make_tile_ai_client() {
-  SmConfig config;
-  auto url = config_string(config, "vfs.tile.server_url");
-  auto key = config_string(config, "vfs.tile.api_key");
-  REQUIRE(!url.empty());
-  REQUIRE(!key.empty());
-  return tiledb::sm::TileAiClient(url, key);
+  auto credentials = resolve_test_credentials();
+  REQUIRE(!credentials.server_url.empty());
+  REQUIRE(!credentials.api_key.empty());
+  return tiledb::sm::TileAiClient(credentials.server_url, credentials.api_key);
 }
 
 Config make_presigned_config() {
-  // Walk the library's credential resolution chain so the test inherits
-  // every fallback `TileAi::init` would use at runtime (Config + Config's
-  // TILEDB_VFS_TILE_* env, plus the SDK env-var convention TILE_API_URL /
-  // TILE_API_KEY shared with the tile.ai Python SDK and tile-fuse). Tests no
-  // longer hardcode SDK env-var names — those live entirely in the library.
-  SmConfig sm_config;
-  if (config_string(sm_config, "vfs.tile.server_url").empty() ||
-      config_string(sm_config, "vfs.tile.api_key").empty()) {
+  // The context built from this config resolves credentials exactly as
+  // `TileAi::init` does at runtime, so nothing is forwarded here; the
+  // test only checks that a token is available and skips otherwise.
+  auto credentials = resolve_test_credentials();
+  if (credentials.server_url.empty() || credentials.api_key.empty()) {
     SKIP(
-        "tile:// C++ tests require vfs.tile.{server_url,api_key} "
-        "(set via TILEDB_VFS_TILE_* or the SDK env vars TILE_API_URL / "
+        "tile:// C++ tests require rest.server_address and rest.token "
+        "(set via TILEDB_REST_* or the SDK env vars TILE_API_URL / "
         "TILE_API_KEY)");
   }
 
@@ -135,23 +129,21 @@ struct TileAiCppApiFx {
 
   // Resolves the teamspace to use for test arrays by hitting the live
   // /api/v1/teamspaces endpoint with credentials drawn from the library's
-  // resolution chain (Config + TILEDB_VFS_TILE_* env + SDK env-var
-  // fallback). Defaults to looking for a teamspace literally named
+  // resolution chain. Defaults to looking for a teamspace literally named
   // "unit-teamspace" so developers don't have to look up server-side ids;
   // override via TILEDB_TEST_TILE_TEAMSPACE_NAME if your dev workspace uses
   // a different name. Errors loudly if zero or multiple teamspaces match
   // — name is not unique across workspaces.
   static std::string resolve_teamspace_id() {
-    SmConfig config;
-    auto api_url = config_string(config, "vfs.tile.server_url");
-    auto api_key = config_string(config, "vfs.tile.api_key");
-    REQUIRE(!api_url.empty());
-    REQUIRE(!api_key.empty());
+    auto credentials = resolve_test_credentials();
+    REQUIRE(!credentials.server_url.empty());
+    REQUIRE(!credentials.api_key.empty());
 
     const auto target_name = env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
                                  .value_or(kDefaultTeamspaceName);
 
-    tiledb::sm::TileAiClient client(api_url, api_key);
+    tiledb::sm::TileAiClient client(
+        credentials.server_url, credentials.api_key);
     auto teamspaces = client.list_teamspaces();
 
     std::vector<std::string> matched_ids;
@@ -1348,11 +1340,9 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "TileAiClient: name-based teamspace reference resolves server-side",
     "[tile_ai][teamspace]") {
-  SmConfig config;
-  auto api_url = config_string(config, "vfs.tile.server_url");
-  auto api_key = config_string(config, "vfs.tile.api_key");
-  if (api_url.empty() || api_key.empty()) {
-    SKIP("tile:// C++ tests require vfs.tile.{server_url,api_key}");
+  auto credentials = resolve_test_credentials();
+  if (credentials.server_url.empty() || credentials.api_key.empty()) {
+    SKIP("tile:// C++ tests require rest.server_address and rest.token");
   }
 
   // Look up the canonical teamspace id by name so we can both (a) pass
@@ -1373,7 +1363,7 @@ TEST_CASE(
   }
   REQUIRE(!expected_id.empty());
 
-  tiledb::sm::TileAiClient client(api_url, api_key);
+  tiledb::sm::TileAiClient client(credentials.server_url, credentials.api_key);
 
   // Use the NAME (not the id) as the URI's teamspace segment. Server-side
   // resolution should look it up by name and return the canonical id.
@@ -1392,174 +1382,118 @@ TEST_CASE(
 
 // ── tile:// credential resolution (no server required) ────────────────────
 //
-// These tests directly exercise `tiledb::sm::TileAi::init()` to verify
-// the credential lookup chain.  They are deterministic, independent of the
-// host's env state (all relevant vars are masked at the top), and run in
-// every CI configuration (no SKIP).  A network call is never made — init()
-// only stores the resolved server_url/api_key into the backend instance.
+// These tests exercise `TileAi::resolve_credentials` and `TileAi::init`
+// directly. They are deterministic (every relevant env var is masked at
+// the top), never touch the network, and run in every CI configuration.
 //
-// The integration tests above (gated on TILEDB_TEST_TILE_*) cover the full
-// auth round-trip end-to-end against a live tile:// service.
+// The integration tests above cover the full auth round-trip end-to-end
+// against a live tile.ai service.
 
 TEST_CASE(
     "C++ API: tile:// backend credential resolution", "[cppapi][tile][env]") {
   using tiledb::sm::TileAi;
   using tiledb::sm::TileAiException;
-  // Disambiguate from the public `tiledb::Config` brought in by the
-  // file-level `using namespace tiledb;` at the top.
-  using SmConfig = tiledb::sm::Config;
 
-  // Mask any inherited credential env vars so each SECTION starts from a
+  // Clear any inherited credential env vars so each SECTION starts from a
   // clean slate regardless of host environment.
-  auto _vfs_tile_url = setenv_local("TILEDB_VFS_TILE_SERVER_URL", "");
-  auto _vfs_tile_key = setenv_local("TILEDB_VFS_TILE_API_KEY", "");
-  auto _tile_url = setenv_local("TILE_API_URL", "");
-  auto _tile_key = setenv_local("TILE_API_KEY", "");
+  auto _rest_url = unsetenv_local("TILEDB_REST_SERVER_ADDRESS");
+  auto _rest_token = unsetenv_local("TILEDB_REST_TOKEN");
+  auto _tile_url = unsetenv_local("TILE_API_URL");
+  auto _tile_key = unsetenv_local("TILE_API_KEY");
 
-  SECTION("init throws when no credentials are set anywhere") {
-    TileAi backend;
+  SECTION("no token anywhere: init throws and names TILE_API_KEY") {
     SmConfig config;
-    REQUIRE_THROWS_AS(backend.init(config), TileAiException);
-  }
-
-  SECTION("init succeeds with explicit vfs.tile.* config") {
+    CHECK(TileAi::resolve_credentials(config).api_key.empty());
     TileAi backend;
-    SmConfig config;
-    REQUIRE(config.set("vfs.tile.server_url", "http://localhost:3000").ok());
-    REQUIRE(config.set("vfs.tile.api_key", "tla_test").ok());
-    REQUIRE_NOTHROW(backend.init(config));
-  }
-
-  SECTION("init succeeds with TILEDB_VFS_TILE_* env (canonical TileDB)") {
-    auto u =
-        setenv_local("TILEDB_VFS_TILE_SERVER_URL", "http://localhost:3000");
-    auto k = setenv_local("TILEDB_VFS_TILE_API_KEY", "tla_test");
-    TileAi backend;
-    SmConfig config;
-    REQUIRE_NOTHROW(backend.init(config));
-  }
-
-  SECTION("init succeeds with TILE_API_URL + TILE_API_KEY (SDK convention)") {
-    auto u = setenv_local("TILE_API_URL", "http://localhost:3000");
-    auto k = setenv_local("TILE_API_KEY", "tla_test");
-    TileAi backend;
-    SmConfig config;
-    REQUIRE_NOTHROW(backend.init(config));
-  }
-
-  SECTION("init throws when TILE_API_URL is set but no api_key anywhere") {
-    auto u = setenv_local("TILE_API_URL", "http://localhost:3000");
-    TileAi backend;
-    SmConfig config;
-    REQUIRE_THROWS_WITH(
-        backend.init(config), Catch::Matchers::ContainsSubstring("api_key"));
-  }
-
-  SECTION("init throws when TILE_API_KEY is set but no server_url anywhere") {
-    auto k = setenv_local("TILE_API_KEY", "tla_test");
-    TileAi backend;
-    SmConfig config;
-    REQUIRE_THROWS_WITH(
-        backend.init(config), Catch::Matchers::ContainsSubstring("server_url"));
-  }
-
-  SECTION("error message names TILE_API_URL when server_url missing") {
-    TileAi backend;
-    SmConfig config;
-    REQUIRE(config.set("vfs.tile.api_key", "tla_test").ok());
-    REQUIRE_THROWS_WITH(
-        backend.init(config),
-        Catch::Matchers::ContainsSubstring("TILE_API_URL"));
-  }
-
-  SECTION("error message names TILE_API_KEY when api_key missing") {
-    TileAi backend;
-    SmConfig config;
-    REQUIRE(config.set("vfs.tile.server_url", "http://localhost:3000").ok());
     REQUIRE_THROWS_WITH(
         backend.init(config),
         Catch::Matchers::ContainsSubstring("TILE_API_KEY"));
   }
 
-  SECTION("partial fallback: explicit url + TILE_API_KEY env") {
-    // server_url from explicit config, api_key from SDK env — both lookup
-    // paths exercised in a single init() call.
-    auto k = setenv_local("TILE_API_KEY", "tla_test");
-    TileAi backend;
+  SECTION("rest.server_address and rest.token set on the config") {
     SmConfig config;
-    REQUIRE(config.set("vfs.tile.server_url", "http://localhost:3000").ok());
+    REQUIRE(config.set("rest.server_address", "http://localhost:3000").ok());
+    REQUIRE(config.set("rest.token", "tla_test").ok());
+    auto credentials = TileAi::resolve_credentials(config);
+    CHECK(credentials.server_url == "http://localhost:3000");
+    CHECK(credentials.api_key == "tla_test");
+    TileAi backend;
     REQUIRE_NOTHROW(backend.init(config));
   }
 
-  SECTION("partial fallback: TILE_API_URL env + explicit api_key") {
-    auto u = setenv_local("TILE_API_URL", "http://localhost:3000");
-    TileAi backend;
+  SECTION("TILEDB_REST_* env, Config's standard lookup") {
+    auto u = setenv_local("TILEDB_REST_SERVER_ADDRESS", "http://env-url");
+    auto k = setenv_local("TILEDB_REST_TOKEN", "env-token");
+    auto credentials = TileAi::resolve_credentials(SmConfig{});
+    CHECK(credentials.server_url == "http://env-url");
+    CHECK(credentials.api_key == "env-token");
+  }
+
+  SECTION("TILE_API_URL and TILE_API_KEY, the SDK convention") {
+    auto u = setenv_local("TILE_API_URL", "http://sdk-url");
+    auto k = setenv_local("TILE_API_KEY", "sdk-key");
     SmConfig config;
-    REQUIRE(config.set("vfs.tile.api_key", "tla_test").ok());
+    auto credentials = TileAi::resolve_credentials(config);
+    CHECK(credentials.server_url == "http://sdk-url");
+    CHECK(credentials.api_key == "sdk-key");
+    TileAi backend;
     REQUIRE_NOTHROW(backend.init(config));
   }
 
-  SECTION("explicit config + TILE_API_* env both present, init succeeds") {
-    auto u = setenv_local("TILE_API_URL", "http://env-url");
-    auto k = setenv_local("TILE_API_KEY", "env-key");
-    TileAi backend;
+  SECTION("server address falls back to the rest.server_address default") {
+    auto k = setenv_local("TILE_API_KEY", "sdk-key");
     SmConfig config;
-    REQUIRE(config.set("vfs.tile.server_url", "http://config-url").ok());
-    REQUIRE(config.set("vfs.tile.api_key", "config-key").ok());
-    REQUIRE_NOTHROW(backend.init(config));
-    // Precedence is verified directly below via Config::get.
-  }
-}
-
-TEST_CASE(
-    "C++ API: tile:// config resolution precedence (Config + SDK env alias)",
-    "[cppapi][tile][env]") {
-  // The SDK env-var aliases (TILE_API_URL / TILE_API_KEY) live inside
-  // `Config::get_from_env`, so the
-  // resolution chain for `vfs.tile.*` keys is whatever Config provides
-  // out of the box. These tests pin that contract.
-
-  // Mask all relevant env vars so the test starts deterministic.
-  auto _vfs_tile = setenv_local("TILEDB_VFS_TILE_API_KEY", "");
-  auto _tile = setenv_local("TILE_API_KEY", "");
-
-  SECTION("returns empty when nothing is set") {
-    SmConfig config;
-    CHECK(config_string(config, "vfs.tile.api_key") == "");
+    auto credentials = TileAi::resolve_credentials(config);
+    CHECK(
+        credentials.server_url ==
+        config.get<std::string_view>(
+            "rest.server_address", SmConfig::must_find));
+    CHECK(credentials.api_key == "sdk-key");
   }
 
-  SECTION("explicit config wins over both envs") {
-    auto vfs = setenv_local("TILEDB_VFS_TILE_API_KEY", "config-env-value");
-    auto sdk = setenv_local("TILE_API_KEY", "sdk-env-value");
+  SECTION("a user-set value wins over both env conventions") {
+    auto e = setenv_local("TILEDB_REST_TOKEN", "env-token");
+    auto s = setenv_local("TILE_API_KEY", "sdk-key");
     SmConfig config;
-    REQUIRE(config.set("vfs.tile.api_key", "user-set-value").ok());
-    CHECK(config_string(config, "vfs.tile.api_key") == "user-set-value");
+    REQUIRE(config.set("rest.token", "user-token").ok());
+    CHECK(TileAi::resolve_credentials(config).api_key == "user-token");
   }
 
-  SECTION("TILEDB_VFS_TILE_* env wins over SDK env") {
-    auto vfs = setenv_local("TILEDB_VFS_TILE_API_KEY", "config-env-value");
-    auto sdk = setenv_local("TILE_API_KEY", "sdk-env-value");
-    SmConfig config;
-    CHECK(config_string(config, "vfs.tile.api_key") == "config-env-value");
+  SECTION("TILEDB_REST_TOKEN wins over TILE_API_KEY") {
+    auto e = setenv_local("TILEDB_REST_TOKEN", "env-token");
+    auto s = setenv_local("TILE_API_KEY", "sdk-key");
+    CHECK(TileAi::resolve_credentials(SmConfig{}).api_key == "env-token");
   }
 
-  SECTION("SDK env (TILE_API_KEY) used when no TILEDB_VFS_TILE_* env is set") {
-    auto sdk = setenv_local("TILE_API_KEY", "sdk-env-value");
-    SmConfig config;
-    CHECK(config_string(config, "vfs.tile.api_key") == "sdk-env-value");
+  SECTION("an empty TILEDB_REST_TOKEN is an empty token, as for tiledb://") {
+    auto e = setenv_local("TILEDB_REST_TOKEN", "");
+    auto s = setenv_local("TILE_API_KEY", "sdk-key");
+    CHECK(TileAi::resolve_credentials(SmConfig{}).api_key.empty());
   }
 
-  SECTION("SDK env is ignored when explicitly set to empty string") {
-    // setenv to "" is the standard way to mask an env var without
-    // unsetting; the alias check treats it as absent.
-    auto sdk = setenv_local("TILE_API_KEY", "");
-    SmConfig config;
-    CHECK(config_string(config, "vfs.tile.api_key") == "");
+  SECTION("an empty TILE_API_KEY is treated as absent") {
+    auto s = setenv_local("TILE_API_KEY", "");
+    CHECK(TileAi::resolve_credentials(SmConfig{}).api_key.empty());
   }
 
-  SECTION("server_url variant: TILE_API_URL fallback works the same") {
-    auto sdk = setenv_local("TILE_API_URL", "http://sdk-server");
+  SECTION("REST profile supplies the token; TILE_API_KEY outranks it") {
+    tiledb::sm::TemporaryLocalDirectory tempdir("tile_ai_profile_");
+    tiledb::sm::RestProfile profile("tile-ai-test", tempdir.path());
+    profile.set_param("rest.token", "profile-token");
+    profile.set_param("rest.server_address", "http://profile-url");
+    profile.save_to_file(true);
+
     SmConfig config;
-    CHECK(config_string(config, "vfs.tile.server_url") == "http://sdk-server");
+    REQUIRE(config.set("profile_name", "tile-ai-test").ok());
+    REQUIRE(config.set("profile_dir", tempdir.path()).ok());
+
+    auto from_profile = TileAi::resolve_credentials(config);
+    CHECK(from_profile.server_url == "http://profile-url");
+    CHECK(from_profile.api_key == "profile-token");
+
+    auto s = setenv_local("TILE_API_KEY", "sdk-key");
+    auto with_sdk_env = TileAi::resolve_credentials(config);
+    CHECK(with_sdk_env.server_url == "http://profile-url");
+    CHECK(with_sdk_env.api_key == "sdk-key");
   }
 }

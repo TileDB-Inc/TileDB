@@ -773,8 +773,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.config_source"] = "auto";
-  all_param_values["vfs.tile.server_url"] = "";
-  all_param_values["vfs.tile.api_key"] = "";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["max_batch_size"] = "104857600";
@@ -847,8 +845,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.config_source"] = "auto";
   vfs_param_values["s3.install_sigpipe_handler"] = "true";
-  vfs_param_values["tile.server_url"] = "";
-  vfs_param_values["tile.api_key"] = "";
 
   std::map<std::string, std::string> gcs_param_values;
   gcs_param_values["endpoint"] = "";

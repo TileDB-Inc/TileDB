@@ -131,18 +131,11 @@ VFS::VFS(
   }
 
 #ifdef HAVE_TILE_AI
-  {
-    // Gate `TileAi::init` on credentials being resolvable through the
-    // standard Config chain (user set, TILEDB_VFS_TILE_* env,
-    // TILE_API_* SDK env alias, profile, default). Without this guard,
-    // env-only test/dev setups would silently skip init here but fail
-    // later with a backend-not-initialized error from
-    // `ensure_initialized`.
-    auto server_url = std::string(
-        config.get<std::string_view>("vfs.tile.server_url").value_or(""));
-    if (!server_url.empty()) {
-      tile_ai_.init(config);
-    }
+  // Initialize the tile.ai backend only when a token resolves. Without one
+  // it stays uninitialized and says so on first use, instead of failing
+  // every context that never touches a tile:// URI.
+  if (!TileAi::resolve_credentials(config).api_key.empty()) {
+    tile_ai_.init(config);
   }
 #endif
 

@@ -229,8 +229,6 @@ const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
-const std::string Config::VFS_TILE_SERVER_URL = "";
-const std::string Config::VFS_TILE_API_KEY = "";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
@@ -412,8 +410,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.log_operations", Config::VFS_LOG_OPERATIONS),
     std::make_pair(
         "vfs.read_ahead_cache_size", Config::VFS_READ_AHEAD_CACHE_SIZE),
-    std::make_pair("vfs.tile.server_url", Config::VFS_TILE_SERVER_URL),
-    std::make_pair("vfs.tile.api_key", Config::VFS_TILE_API_KEY),
     std::make_pair(
         "vfs.file.posix_file_permissions",
         Config::VFS_FILE_POSIX_FILE_PERMISSIONS),
@@ -905,24 +901,6 @@ std::string Config::convert_to_env_param(const std::string& param) const {
   return ss.str();
 }
 
-namespace {
-
-// SDK env-var alias for a tile.ai config key. The tile.ai Python SDK,
-// the Go tile-fuse tool, and tile-ai-spawned containers all use the
-// unprefixed TILE_API_* env-var convention; libtiledb honours the same
-// names as a fallback for the corresponding `vfs.tile.*` config keys
-// so one env-var set drives every consumer. Returns nullptr for keys
-// without an SDK alias.
-const char* tile_ai_sdk_env_alias(std::string_view param) {
-  if (param == "vfs.tile.server_url")
-    return "TILE_API_URL";
-  if (param == "vfs.tile.api_key")
-    return "TILE_API_KEY";
-  return nullptr;
-}
-
-}  // namespace
-
 std::optional<std::string_view> Config::get_from_env(
     const std::string& param) const {
   std::string env_param = convert_to_env_param(param);
@@ -934,28 +912,14 @@ std::optional<std::string_view> Config::get_from_env(
     env_param = std::string(maybe_env_prefix.value()) + env_param;
   }
 
-  const char* sdk_env_name = tile_ai_sdk_env_alias(param);
-
-  if (const char* value = std::getenv(env_param.c_str()); value != nullptr) {
-    // For keys with an SDK env-var alias (currently the `vfs.tile.*`
-    // family), treat an empty canonical env as absent so the alias
-    // can take over. Without this, `TILEDB_VFS_TILE_API_KEY=""`
-    // (a common way to mask an env var without unsetting it) would
-    // shadow `TILE_API_KEY=foo`. Keys without an alias keep their
-    // existing semantics: empty env returns an empty value.
-    if (sdk_env_name == nullptr || value[0] != '\0') {
-      return std::string_view(value);
-    }
+  char* value = std::getenv(env_param.c_str());
+  if (value == nullptr) {
+    return std::nullopt;
+  } else {
+    return std::string_view(value);
   }
 
-  if (sdk_env_name != nullptr) {
-    if (const char* value = std::getenv(sdk_env_name);
-        value != nullptr && value[0] != '\0') {
-      return std::string_view(value);
-    }
-  }
-
-  return std::nullopt;
+  return value;
 }
 
 std::optional<std::string_view> Config::get_from_config(

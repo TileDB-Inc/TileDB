@@ -124,7 +124,7 @@ class ContextResources {
    * One instance handles both arrays and groups; per-call sites pass
    * an `EntityType` argument to select the endpoint family.
    *
-   * May be null when `vfs.tile.{server_url, api_key}` are unset.
+   * May be null when `rest.server_address` or `rest.token` is unset.
    * Call sites guard on `uri.is_tile()` and null-check the pointer
    * before dispatching.
    */
@@ -208,7 +208,7 @@ class ContextResources {
 
   /**
    * Catalog client for the tile.ai server. May be null when
-   * `vfs.tile.{server_url, api_key}` are unset; call sites guard on
+   * `rest.server_address` or `rest.token` is unset; call sites guard on
    * `uri.is_tile()` and null-check before dispatching.
    */
   tdb_unique_ptr<TileAiClient> tile_ai_client_;

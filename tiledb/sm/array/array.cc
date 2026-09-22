@@ -220,7 +220,7 @@ void Array::create(
       if (client == nullptr) {
         throw ArrayException(
             "Cannot create tile:// array; tile.ai client not "
-            "configured (set vfs.tile.server_url and vfs.tile.api_key)");
+            "configured (set rest.server_address and rest.token)");
       }
       tile_ai::create_array(*client, array_uri);
     } else {

@@ -9,6 +9,7 @@
 #include <curl/curl.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <optional>
 #include <sstream>
@@ -27,6 +28,23 @@ namespace {
 // proceed in parts of this size. Both sit at the S3 minimum part size.
 constexpr uint64_t kMultipartThresholdBytes = 5ULL * 1024 * 1024;
 constexpr uint64_t kMultipartPartSizeBytes = 5ULL * 1024 * 1024;
+
+// Resolve one credential. A value the user set on the config, or one
+// Config found in the environment, stands exactly as Config reports it.
+// Otherwise the tile.ai SDK env var takes over, so it outranks the REST
+// profile and the default but never an explicit TileDB setting.
+std::string resolve_credential(
+    const Config& config, const std::string& param, const char* sdk_env) {
+  auto [source, value] = config.get_with_source(param);
+  if (source == ConfigSource::USER_SET || source == ConfigSource::ENVIRONMENT) {
+    return std::string(value);
+  }
+  if (const char* env = std::getenv(sdk_env);
+      env != nullptr && env[0] != '\0') {
+    return env;
+  }
+  return std::string(value);
+}
 
 struct ReadBuffer {
   void* dest;
@@ -103,24 +121,25 @@ static size_t curl_write_string(
 TileAi::TileAi() = default;
 TileAi::~TileAi() = default;
 
+TileAiCredentials TileAi::resolve_credentials(const Config& config) {
+  return {
+      resolve_credential(config, "rest.server_address", "TILE_API_URL"),
+      resolve_credential(config, "rest.token", "TILE_API_KEY")};
+}
+
 void TileAi::init(const Config& config) {
-  // Credentials are resolved through the standard Config chain:
-  // user-set → TILEDB_VFS_TILE_* env → TILE_API_* SDK env alias →
-  // profile → default. The SDK alias step lives in Config::get_from_env
-  // so this code is just a config read.
-  server_url_ = std::string(
-      config.get<std::string_view>("vfs.tile.server_url").value_or(""));
+  auto credentials = resolve_credentials(config);
+  server_url_ = std::move(credentials.server_url);
   if (server_url_.empty()) {
     throw TileAiException(
-        "vfs.tile.server_url must be set to use tile:// backend "
+        "rest.server_address must be set to use the tile:// backend "
         "(or set the TILE_API_URL environment variable)");
   }
 
-  api_key_ = std::string(
-      config.get<std::string_view>("vfs.tile.api_key").value_or(""));
+  api_key_ = std::move(credentials.api_key);
   if (api_key_.empty()) {
     throw TileAiException(
-        "vfs.tile.api_key must be set to use tile:// backend "
+        "rest.token must be set to use the tile:// backend "
         "(or set the TILE_API_KEY environment variable)");
   }
 
@@ -132,9 +151,8 @@ void TileAi::init(const Config& config) {
 void TileAi::ensure_initialized() const {
   if (!initialized_ || client_ == nullptr) {
     throw TileAiException(
-        "TileAi backend is not initialized; set "
-        "vfs.tile.server_url and vfs.tile.api_key and enable "
-        "TILEDB_TILE_AI");
+        "TileAi backend is not initialized; set rest.server_address "
+        "and rest.token and enable TILEDB_TILE_AI");
   }
 }
 

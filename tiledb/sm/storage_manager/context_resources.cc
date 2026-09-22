@@ -33,6 +33,7 @@
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/filesystem/tile_ai.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rest/tile_ai_client.h"
 
@@ -68,22 +69,18 @@ ContextResources::ContextResources(
           *logger_.get(),
           create_memory_tracker())} {
   // Construct the tile.ai catalog client (peer of rest_client) when
-  // credentials resolve via the standard Config chain (user set,
-  // TILEDB_VFS_TILE_* env, TILE_API_* SDK env alias, profile,
-  // default). When unset, the pointer stays null and is_tile() call
-  // sites null-check before dispatching. Gated on `tile_ai_enabled`
-  // because `TileAiClient`'s out-of-line constructor only ships in
-  // `tile_ai_client.cc`, which is removed from `TILEDB_CORE_SOURCES`
+  // `rest.server_address` and `rest.token` resolve; see
+  // `TileAi::resolve_credentials`. When unset, the pointer stays null
+  // and is_tile() call sites null-check before dispatching. Gated on
+  // `tile_ai_enabled` because `TileAiClient`'s out-of-line constructor only
+  // ships in `tile_ai_client.cc`, which is removed from `TILEDB_CORE_SOURCES`
   // when `TILEDB_TILE_AI=OFF` — `if constexpr` discards this branch
   // so the OFF link doesn't ODR-use the symbol.
   if constexpr (filesystem::tile_ai_enabled) {
-    auto tile_server_url = std::string(
-        config_.get<std::string_view>("vfs.tile.server_url").value_or(""));
-    auto tile_api_key = std::string(
-        config_.get<std::string_view>("vfs.tile.api_key").value_or(""));
-    if (!tile_server_url.empty() && !tile_api_key.empty()) {
+    auto credentials = TileAi::resolve_credentials(config_);
+    if (!credentials.server_url.empty() && !credentials.api_key.empty()) {
       tile_ai_client_ = tdb_unique_ptr<TileAiClient>(
-          tdb_new(TileAiClient, tile_server_url, tile_api_key));
+          tdb_new(TileAiClient, credentials.server_url, credentials.api_key));
     }
   }
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);

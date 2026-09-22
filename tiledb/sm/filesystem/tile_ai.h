@@ -4,17 +4,16 @@
  * TileDB VFS backend that routes all S3 access through presigned URLs.
  * URI format: tile://{array_id}/{relative_key}
  *
- * Credential resolution (highest precedence first). The `vfs.tile.*` config
- * is primary; the SDK env-var pair sits below it so a tile.ai-aware
- * environment is honored without users having to touch TileDB-specific
- * config:
- *   1. `vfs.tile.{server_url,api_key}` — config keys (user-set,
- *                                        `TILEDB_VFS_TILE_*` env, or profile).
- *   2. `TILE_API_URL` / `TILE_API_KEY` — tile.ai SDK env-var convention,
- *                                        shared with the tile.ai Python SDK,
- *                                        the Go `tile-fuse` tool, and the
- *                                        env vars that tile-ai injects into
- *                                        containers it spawns.
+ * The backend authenticates with the same `rest.server_address` and
+ * `rest.token` parameters as `tiledb://` URIs. Resolution, highest
+ * precedence first:
+ *   1. `rest.server_address` / `rest.token` set on the Config.
+ *   2. `TILEDB_REST_SERVER_ADDRESS` / `TILEDB_REST_TOKEN` env, Config's
+ *      standard environment lookup.
+ *   3. `TILE_API_URL` / `TILE_API_KEY`, the tile.ai SDK env-var
+ *      convention shared with the tile.ai Python SDK, the Go `tile-fuse`
+ *      tool, and the env vars tile.ai injects into containers it spawns.
+ *   4. The REST profile, then the Config default.
  */
 
 #ifndef TILEDB_TILE_AI_H
@@ -36,6 +35,12 @@
 #include "tiledb/sm/rest/tile_ai_client.h"
 
 namespace tiledb::sm {
+
+/** Server URL and bearer token the tile.ai backend authenticates with. */
+struct TileAiCredentials {
+  std::string server_url;
+  std::string api_key;
+};
 
 /**
  * VFS backend that mediates all S3 access through presigned URLs issued by the
@@ -62,11 +67,8 @@ class TileAi : public FilesystemBase {
    * Initializes the backend from config. Must be called before any other
    * method; subsequent calls overwrite prior state.
    *
-   * Reads:
-   *  - `vfs.tile.server_url` and `vfs.tile.api_key`. Resolved through
-   *    the standard Config chain (user set, `TILEDB_VFS_TILE_*` env,
-   *    SDK env alias `TILE_API_URL` / `TILE_API_KEY`, profile, default);
-   *    the SDK alias step lives in `Config::get_from_env`.
+   * Reads `rest.server_address` and `rest.token` through
+   * `resolve_credentials`.
    *
    * Type routing for reads is resolved via the catalog:
    * `canonicalize_resource` calls `lookup_resource{,_by_name}` and stamps
@@ -81,6 +83,15 @@ class TileAi : public FilesystemBase {
    * @throws TileAiException if `server_url` or `api_key` resolves empty.
    */
   void init(const Config& config);
+
+  /**
+   * Resolves the server URL and API key from `rest.server_address` and
+   * `rest.token`. A value the user set on the config, or one Config found
+   * in the environment, is used as-is. Otherwise the tile.ai SDK env vars
+   * `TILE_API_URL` and `TILE_API_KEY` take precedence over the REST
+   * profile and the Config default. An empty field means nothing resolved.
+   */
+  static TileAiCredentials resolve_credentials(const Config& config);
 
   /**
    * @return `true` for `tile://` URIs; `false` otherwise.

@@ -696,14 +696,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
  *    signals.
  *    **Default**: "true"
- * - `vfs.tile.server_url` <br>
- *    The tile.ai REST API server URL, used by the `tile://` backend. <br>
- *    May also be set via the `TILE_API_URL` environment variable. <br>
- *    **Default**: ""
- * - `vfs.tile.api_key` <br>
- *    The tile.ai API key (bearer token) used to authenticate requests. <br>
- *    May also be set via the `TILE_API_KEY` environment variable. <br>
- *    **Default**: ""
  * - `config.env_var_prefix` <br>
  *    Prefix of environment variables for reading configuration
  *    parameters. <br>
