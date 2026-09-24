@@ -211,8 +211,8 @@ void Array::create(
       auto* client = resources.tile_ai_client();
       if (client == nullptr) {
         throw ArrayException(
-            "Cannot create tile:// array; tile.ai client not "
-            "configured (set rest.server_address and rest.token)");
+            "Cannot create tile:// array; server not configured (set "
+            "rest.server_address and rest.token)");
       }
       tile_ai::create_array(*client, array_uri);
     } else {

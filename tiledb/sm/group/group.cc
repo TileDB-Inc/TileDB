@@ -109,8 +109,8 @@ void Group::create(ContextResources& resources, const URI& uri) {
       auto* client = resources.tile_ai_client();
       if (client == nullptr) {
         throw GroupException(
-            "Cannot create tile:// group; tile.ai client not "
-            "configured (set rest.server_address and rest.token)");
+            "Cannot create tile:// group; server not configured (set "
+            "rest.server_address and rest.token)");
       }
       tile_ai::create_group(*client, uri);
     } else {
@@ -332,8 +332,8 @@ void Group::close() {
           auto* client = resources_.tile_ai_client();
           if (client == nullptr) {
             throw GroupException(
-                "Cannot commit tile:// group members; tile.ai client "
-                "not configured (set rest.server_address and rest.token)");
+                "Cannot commit tile:// group members; server not "
+                "configured (set rest.server_address and rest.token)");
           }
           auto snapshot = members();
           for (const auto& gm : members_to_modify()) {
