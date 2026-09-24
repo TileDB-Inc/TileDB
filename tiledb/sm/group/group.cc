@@ -101,15 +101,9 @@ void Group::create(ContextResources& resources, const URI& uri) {
     return;
   }
 
-  // For tile:// URIs the group is registered against the tile.ai
-  // catalog via TileAiClient (peer of `rest_client()`). For
-  // everything else (local FS, S3, GCS, Azure) the storage layout is
-  // the source of truth, so a plain `create_dir` suffices. The
-  // tile.ai branch is gated on `tile_ai_enabled` because
-  // `tile_ai::create_group` lives in `tile_ai_client.cc`, which is
-  // removed from TILEDB_CORE_SOURCES when TILEDB_TILE_AI=OFF — the
-  // `if constexpr` discards the branch so the OFF link doesn't
-  // ODR-use the symbol.
+  // A tile:// group is registered with the catalog; any other backend
+  // just creates the directory. Compile-time gated because the catalog
+  // client only builds with TILEDB_TILE_AI.
   if constexpr (filesystem::tile_ai_enabled) {
     if (uri.is_tile()) {
       auto* client = resources.tile_ai_client();
@@ -331,11 +325,8 @@ void Group::close() {
       // Without the overlay, a fresh group's adds wouldn't be in
       // `members()` yet; they only land there after a successful
       // re-load.
-      // Gated on `tile_ai_enabled` because `tile_ai::put_members` and
-      // `tile_ai::GroupMember` live in `tile_ai_client.cc` /.h, the
-      // .cc removed from TILEDB_CORE_SOURCES when TILEDB_TILE_AI=OFF
-      // — `if constexpr` discards this branch so the OFF link doesn't
-      // ODR-use the symbol.
+      // Compile-time gated because the catalog client only builds with
+      // TILEDB_TILE_AI.
       if constexpr (filesystem::tile_ai_enabled) {
         if (group_uri_.is_tile() && !members_to_modify().empty()) {
           auto* client = resources_.tile_ai_client();

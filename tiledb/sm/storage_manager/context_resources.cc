@@ -71,11 +71,8 @@ ContextResources::ContextResources(
   // Construct the tile.ai catalog client (peer of rest_client) when
   // `rest.server_address` and `rest.token` resolve; see
   // `TileAi::resolve_credentials`. When unset, the pointer stays null
-  // and is_tile() call sites null-check before dispatching. Gated on
-  // `tile_ai_enabled` because `TileAiClient`'s out-of-line constructor only
-  // ships in `tile_ai_client.cc`, which is removed from `TILEDB_CORE_SOURCES`
-  // when `TILEDB_TILE_AI=OFF` — `if constexpr` discards this branch
-  // so the OFF link doesn't ODR-use the symbol.
+  // and is_tile() call sites null-check before dispatching. Compile-time
+  // gated because the client only builds with TILEDB_TILE_AI.
   if constexpr (filesystem::tile_ai_enabled) {
     auto credentials = TileAi::resolve_credentials(config_);
     if (!credentials.server_url.empty() && !credentials.api_key.empty()) {

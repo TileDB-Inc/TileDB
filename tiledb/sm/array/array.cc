@@ -203,17 +203,9 @@ void Array::create(
         array_schema->shared_domain());
   }
 
-  // Create array directory. For tile:// URIs, register with the
-  // tile.ai catalog via TileAiClient (peer of RestClient); for
-  // storage-layout-as-truth backends, just create the directory in
-  // the backing store. Mirrors the same dispatch shape used for
-  // groups in Group::create. The tile.ai branch is gated on
-  // `tile_ai_enabled` because `tile_ai::create_array` lives in
-  // `tile_ai_client.cc`, which is removed from TILEDB_CORE_SOURCES
-  // when TILEDB_TILE_AI=OFF — `if constexpr` discards the branch so
-  // the OFF link doesn't ODR-use the symbol. When the backend is
-  // unbuilt, tile:// URIs hit the VFS dispatcher and surface
-  // `BuiltWithout` from `vfs.cc`.
+  // A tile:// array is registered with the catalog; any other backend
+  // just creates the directory. Compile-time gated because the catalog
+  // client only builds with TILEDB_TILE_AI.
   if constexpr (filesystem::tile_ai_enabled) {
     if (array_uri.is_tile()) {
       auto* client = resources.tile_ai_client();
