@@ -166,8 +166,8 @@ struct PresignedPartUrl {
 };
 
 /**
- * Server response for `presign_write`: a presigned PUT URL per requested
- * key, plus a `write_session_id` that must be passed to
+ * Server response for `get_presigned_write_urls`: a presigned PUT URL per
+ * requested key, plus a `write_session_id` that must be passed to
  * `commit_write_session` to publish the upload.
  */
 struct WritePresignResult {
@@ -384,11 +384,11 @@ class TileAiClient {
    *   the response — callers should match by `PresignedUrl::key`.
    * @return One PresignedUrl per accessible key.
    */
-  std::vector<PresignedUrl> presign_read(
+  std::vector<PresignedUrl> get_presigned_read_urls(
       EntityType entity_type,
       const std::string& base,
       const std::vector<std::string>& keys);
-  std::vector<PresignedUrl> presign_read(
+  std::vector<PresignedUrl> get_presigned_read_urls(
       std::string_view entity_type,
       const std::string& base,
       const std::vector<std::string>& keys);
@@ -404,11 +404,11 @@ class TileAiClient {
    *   `write_session_id` to pass to `commit_write_session` after every PUT
    *   succeeds.
    */
-  WritePresignResult presign_write(
+  WritePresignResult get_presigned_write_urls(
       EntityType entity_type,
       const std::string& base,
       const std::vector<std::string>& keys);
-  WritePresignResult presign_write(
+  WritePresignResult get_presigned_write_urls(
       std::string_view entity_type,
       const std::string& base,
       const std::vector<std::string>& keys);
@@ -507,8 +507,8 @@ class TileAiClient {
    *
    * @param entity_type Selects the endpoint family.
    * @param base "{teamspace}/{name}".
-   * @param write_session_id Session id returned by `presign_write` or
-   *   `multipart_create`.
+   * @param write_session_id Session id returned by `get_presigned_write_urls`
+   * or `multipart_create`.
    * @param fragments_written Names of fragment directories produced by this
    *   session; passed through verbatim.
    * @param metadata_updated `true` if resource metadata was modified during
@@ -617,7 +617,7 @@ void put_members(
 
 /**
  * Publish one or more write sessions for an array. Each session_id
- * was previously returned by `presign_write` or `multipart_create`
+ * was previously returned by `get_presigned_write_urls` or `multipart_create`
  * during the actual data write (done by the `TileAi` VFS
  * backend). Passes `EntityType::Array` to the wire-level call.
  *

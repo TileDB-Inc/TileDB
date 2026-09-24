@@ -331,9 +331,9 @@ std::string TileAi::get_read_url(
 
   // Cache miss. If the components for this array are already cached (e.g.,
   // populated by an earlier `file_size` / `ls` probe), expand the request to
-  // every known key in one batch — the server's `presign_read` endpoint
-  // accepts arrays of keys. This turns N+1 per-key roundtrips into one.
-  // If components aren't cached, or the requested key isn't in them yet
+  // every known key in one batch — the server's `get_presigned_read_urls`
+  // endpoint accepts arrays of keys. This turns N+1 per-key roundtrips into
+  // one. If components aren't cached, or the requested key isn't in them yet
   // (freshly written fragment), fall back to a single-key request.
   std::vector<std::string> keys_to_presign;
   auto collect = [&](const std::vector<ObjectEntry>& entries) {
@@ -375,7 +375,7 @@ std::string TileAi::get_read_url(
     keys_to_presign = {relative_key};
   }
 
-  auto urls = client_->presign_read(type, array_id, keys_to_presign);
+  auto urls = client_->get_presigned_read_urls(type, array_id, keys_to_presign);
 
   if (urls.empty()) {
     throw TileAiException(
@@ -833,7 +833,7 @@ void TileAi::flush_impl(const URI& uri) {
   auto& state = it->second;
 
   if (state.upload_id.empty()) {
-    auto write_result = client_->presign_write(
+    auto write_result = client_->get_presigned_write_urls(
         parsed.effective_entity_type, parsed.array_id, {parsed.relative_key});
     if (write_result.urls.empty())
       throw TileAiException("Server returned no presigned URL for simple PUT");

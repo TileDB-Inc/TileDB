@@ -427,14 +427,15 @@ void TileAiClient::put_members(
   http_request("PUT", path, req.dump());
 }
 
-std::vector<PresignedUrl> TileAiClient::presign_read(
+std::vector<PresignedUrl> TileAiClient::get_presigned_read_urls(
     std::string_view entity_type,
     const std::string& resource_id,
     const std::vector<std::string>& keys) {
-  return presign_read(entity_type_from_string(entity_type), resource_id, keys);
+  return get_presigned_read_urls(
+      entity_type_from_string(entity_type), resource_id, keys);
 }
 
-std::vector<PresignedUrl> TileAiClient::presign_read(
+std::vector<PresignedUrl> TileAiClient::get_presigned_read_urls(
     EntityType entity_type,
     const std::string& resource_id,
     const std::vector<std::string>& keys) {
@@ -454,14 +455,15 @@ std::vector<PresignedUrl> TileAiClient::presign_read(
   return urls;
 }
 
-WritePresignResult TileAiClient::presign_write(
+WritePresignResult TileAiClient::get_presigned_write_urls(
     std::string_view entity_type,
     const std::string& resource_id,
     const std::vector<std::string>& keys) {
-  return presign_write(entity_type_from_string(entity_type), resource_id, keys);
+  return get_presigned_write_urls(
+      entity_type_from_string(entity_type), resource_id, keys);
 }
 
-WritePresignResult TileAiClient::presign_write(
+WritePresignResult TileAiClient::get_presigned_write_urls(
     EntityType entity_type,
     const std::string& resource_id,
     const std::vector<std::string>& keys) {
