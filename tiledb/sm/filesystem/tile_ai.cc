@@ -114,12 +114,13 @@ void TileAi::init(const Config& config) {
   server_url_ = std::move(credentials.server_url);
   if (server_url_.empty()) {
     throw TileAiException(
-        "rest.server_address must be set to use the tile:// backend");
+        "rest.server_address must be set to reach the tile:// server");
   }
 
   api_key_ = std::move(credentials.api_key);
   if (api_key_.empty()) {
-    throw TileAiException("rest.token must be set to use the tile:// backend");
+    throw TileAiException(
+        "rest.token must be set to authenticate with the tile:// server");
   }
 
   client_ = tdb_unique_ptr<TileAiClient>(
@@ -130,8 +131,8 @@ void TileAi::init(const Config& config) {
 void TileAi::ensure_initialized() const {
   if (!initialized_ || client_ == nullptr) {
     throw TileAiException(
-        "TileAi backend is not initialized; set rest.server_address "
-        "and rest.token and enable TILEDB_TILE_AI");
+        "tile:// server not configured (set rest.server_address and "
+        "rest.token)");
   }
 }
 
@@ -968,7 +969,7 @@ void TileAi::remove_dir(const URI&) const {
 
 void TileAi::remove_file(const URI&) const {
   throw FilesystemException(
-      "Removing files is not supported on the tile.ai filesystem backend.");
+      "Removing files is not supported for tile:// URIs.");
 }
 
 uint64_t TileAi::file_size(const URI& uri) const {
