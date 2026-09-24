@@ -5,15 +5,9 @@
  * URI format: tile://{array_id}/{relative_key}
  *
  * The backend authenticates with the same `rest.server_address` and
- * `rest.token` parameters as `tiledb://` URIs. Resolution, highest
- * precedence first:
- *   1. `rest.server_address` / `rest.token` set on the Config.
- *   2. `TILEDB_REST_SERVER_ADDRESS` / `TILEDB_REST_TOKEN` env, Config's
- *      standard environment lookup.
- *   3. `TILE_API_URL` / `TILE_API_KEY`, the tile.ai SDK env-var
- *      convention shared with the tile.ai Python SDK, the Go `tile-fuse`
- *      tool, and the env vars tile.ai injects into containers it spawns.
- *   4. The REST profile, then the Config default.
+ * `rest.token` parameters as `tiledb://` URIs, resolved through Config's
+ * usual chain: the value set on the Config, the `TILEDB_REST_*`
+ * environment, the REST profile, then the default.
  */
 
 #ifndef TILEDB_TILE_AI_H
@@ -86,10 +80,8 @@ class TileAi : public FilesystemBase {
 
   /**
    * Resolves the server URL and API key from `rest.server_address` and
-   * `rest.token`. A value the user set on the config, or one Config found
-   * in the environment, is used as-is. Otherwise the tile.ai SDK env vars
-   * `TILE_API_URL` and `TILE_API_KEY` take precedence over the REST
-   * profile and the Config default. An empty field means nothing resolved.
+   * `rest.token`, exactly as Config reports them. An empty field means
+   * nothing resolved.
    */
   static TileAiCredentials resolve_credentials(const Config& config);
 

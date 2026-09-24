@@ -30,8 +30,7 @@ using SmConfig = tiledb::sm::Config;
 namespace {
 
 // Credentials as the library itself would resolve them from a default
-// config: `rest.*` parameters, `TILEDB_REST_*` env, the `TILE_API_*` SDK
-// env vars, then the REST profile.
+// config: `rest.*` parameters, `TILEDB_REST_*` env, then the REST profile.
 tiledb::sm::TileAiCredentials resolve_test_credentials() {
   return tiledb::sm::TileAi::resolve_credentials(SmConfig{});
 }
@@ -99,8 +98,7 @@ Config make_presigned_config() {
   if (credentials.server_url.empty() || credentials.api_key.empty()) {
     SKIP(
         "tile:// C++ tests require rest.server_address and rest.token "
-        "(set via TILEDB_REST_* or the SDK env vars TILE_API_URL / "
-        "TILE_API_KEY)");
+        "(set via TILEDB_REST_* or a REST profile)");
   }
 
   return Config{};
@@ -1398,16 +1396,13 @@ TEST_CASE(
   // clean slate regardless of host environment.
   auto _rest_url = unsetenv_local("TILEDB_REST_SERVER_ADDRESS");
   auto _rest_token = unsetenv_local("TILEDB_REST_TOKEN");
-  auto _tile_url = unsetenv_local("TILE_API_URL");
-  auto _tile_key = unsetenv_local("TILE_API_KEY");
 
-  SECTION("no token anywhere: init throws and names TILE_API_KEY") {
+  SECTION("no token anywhere: init throws and names rest.token") {
     SmConfig config;
     CHECK(TileAi::resolve_credentials(config).api_key.empty());
     TileAi backend;
     REQUIRE_THROWS_WITH(
-        backend.init(config),
-        Catch::Matchers::ContainsSubstring("TILE_API_KEY"));
+        backend.init(config), Catch::Matchers::ContainsSubstring("rest.token"));
   }
 
   SECTION("rest.server_address and rest.token set on the config") {
@@ -1429,54 +1424,30 @@ TEST_CASE(
     CHECK(credentials.api_key == "env-token");
   }
 
-  SECTION("TILE_API_URL and TILE_API_KEY, the SDK convention") {
-    auto u = setenv_local("TILE_API_URL", "http://sdk-url");
-    auto k = setenv_local("TILE_API_KEY", "sdk-key");
-    SmConfig config;
-    auto credentials = TileAi::resolve_credentials(config);
-    CHECK(credentials.server_url == "http://sdk-url");
-    CHECK(credentials.api_key == "sdk-key");
-    TileAi backend;
-    REQUIRE_NOTHROW(backend.init(config));
-  }
-
   SECTION("server address falls back to the rest.server_address default") {
-    auto k = setenv_local("TILE_API_KEY", "sdk-key");
+    auto k = setenv_local("TILEDB_REST_TOKEN", "env-token");
     SmConfig config;
     auto credentials = TileAi::resolve_credentials(config);
     CHECK(
         credentials.server_url ==
         config.get<std::string_view>(
             "rest.server_address", SmConfig::must_find));
-    CHECK(credentials.api_key == "sdk-key");
+    CHECK(credentials.api_key == "env-token");
   }
 
-  SECTION("a user-set value wins over both env conventions") {
+  SECTION("a user-set value wins over the environment") {
     auto e = setenv_local("TILEDB_REST_TOKEN", "env-token");
-    auto s = setenv_local("TILE_API_KEY", "sdk-key");
     SmConfig config;
     REQUIRE(config.set("rest.token", "user-token").ok());
     CHECK(TileAi::resolve_credentials(config).api_key == "user-token");
   }
 
-  SECTION("TILEDB_REST_TOKEN wins over TILE_API_KEY") {
-    auto e = setenv_local("TILEDB_REST_TOKEN", "env-token");
-    auto s = setenv_local("TILE_API_KEY", "sdk-key");
-    CHECK(TileAi::resolve_credentials(SmConfig{}).api_key == "env-token");
-  }
-
   SECTION("an empty TILEDB_REST_TOKEN is an empty token, as for tiledb://") {
     auto e = setenv_local("TILEDB_REST_TOKEN", "");
-    auto s = setenv_local("TILE_API_KEY", "sdk-key");
     CHECK(TileAi::resolve_credentials(SmConfig{}).api_key.empty());
   }
 
-  SECTION("an empty TILE_API_KEY is treated as absent") {
-    auto s = setenv_local("TILE_API_KEY", "");
-    CHECK(TileAi::resolve_credentials(SmConfig{}).api_key.empty());
-  }
-
-  SECTION("REST profile supplies the token; TILE_API_KEY outranks it") {
+  SECTION("REST profile supplies the token") {
     tiledb::sm::TemporaryLocalDirectory tempdir("tile_ai_profile_");
     tiledb::sm::RestProfile profile("tile-ai-test", tempdir.path());
     profile.set_param("rest.token", "profile-token");
@@ -1490,10 +1461,5 @@ TEST_CASE(
     auto from_profile = TileAi::resolve_credentials(config);
     CHECK(from_profile.server_url == "http://profile-url");
     CHECK(from_profile.api_key == "profile-token");
-
-    auto s = setenv_local("TILE_API_KEY", "sdk-key");
-    auto with_sdk_env = TileAi::resolve_credentials(config);
-    CHECK(with_sdk_env.server_url == "http://profile-url");
-    CHECK(with_sdk_env.api_key == "sdk-key");
   }
 }
