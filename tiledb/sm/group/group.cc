@@ -102,20 +102,15 @@ void Group::create(ContextResources& resources, const URI& uri) {
   }
 
   // A tile:// group is registered with the catalog; any other backend
-  // just creates the directory. Compile-time gated because the catalog
-  // client only builds with TILEDB_TILE_AI.
-  if constexpr (filesystem::tile_ai_enabled) {
-    if (uri.is_tile()) {
-      auto* client = resources.tile_ai_client();
-      if (client == nullptr) {
-        throw GroupException(
-            "Cannot create tile:// group; server not configured (set "
-            "rest.server_address and rest.token)");
-      }
-      tile_ai::create_group(*client, uri);
-    } else {
-      resources.vfs().create_dir(uri);
+  // just creates the directory.
+  if (uri.is_tile()) {
+    auto* client = resources.tile_ai_client();
+    if (client == nullptr) {
+      throw GroupException(
+          "Cannot create tile:// group; server not configured (set "
+          "rest.server_address and rest.token)");
     }
+    tile_ai::create_group(*client, uri);
   } else {
     resources.vfs().create_dir(uri);
   }
@@ -325,44 +320,40 @@ void Group::close() {
       // Without the overlay, a fresh group's adds wouldn't be in
       // `members()` yet; they only land there after a successful
       // re-load.
-      // Compile-time gated because the catalog client only builds with
-      // TILEDB_TILE_AI.
-      if constexpr (filesystem::tile_ai_enabled) {
-        if (group_uri_.is_tile() && !members_to_modify().empty()) {
-          auto* client = resources_.tile_ai_client();
-          if (client == nullptr) {
-            throw GroupException(
-                "Cannot commit tile:// group members; server not "
-                "configured (set rest.server_address and rest.token)");
-          }
-          auto snapshot = members();
-          for (const auto& gm : members_to_modify()) {
-            snapshot[gm->key()] = gm;
-          }
-          std::vector<tile_ai::GroupMember> member_snapshot;
-          for (const auto& [_, gm] : snapshot) {
-            if (gm->deleted()) {
-              continue;
-            }
-            tile_ai::GroupMember m;
-            m.uri = gm->uri().to_string();
-            m.name = gm->name();
-            switch (gm->type()) {
-              case ObjectType::ARRAY:
-                m.type = "array";
-                break;
-              case ObjectType::GROUP:
-                m.type = "group";
-                break;
-              default:
-                m.type = "unknown";
-                break;
-            }
-            m.relative = gm->relative();
-            member_snapshot.push_back(std::move(m));
-          }
-          tile_ai::put_members(*client, group_uri_, member_snapshot);
+      if (group_uri_.is_tile() && !members_to_modify().empty()) {
+        auto* client = resources_.tile_ai_client();
+        if (client == nullptr) {
+          throw GroupException(
+              "Cannot commit tile:// group members; server not "
+              "configured (set rest.server_address and rest.token)");
         }
+        auto snapshot = members();
+        for (const auto& gm : members_to_modify()) {
+          snapshot[gm->key()] = gm;
+        }
+        std::vector<tile_ai::GroupMember> member_snapshot;
+        for (const auto& [_, gm] : snapshot) {
+          if (gm->deleted()) {
+            continue;
+          }
+          tile_ai::GroupMember m;
+          m.uri = gm->uri().to_string();
+          m.name = gm->name();
+          switch (gm->type()) {
+            case ObjectType::ARRAY:
+              m.type = "array";
+              break;
+            case ObjectType::GROUP:
+              m.type = "group";
+              break;
+            default:
+              m.type = "unknown";
+              break;
+          }
+          m.relative = gm->relative();
+          member_snapshot.push_back(std::move(m));
+        }
+        tile_ai::put_members(*client, group_uri_, member_snapshot);
       }
     }
   }

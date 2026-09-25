@@ -7,6 +7,8 @@
 
 #include "tiledb/sm/rest/tile_ai_client.h"
 
+#ifdef HAVE_TILE_AI
+
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -722,3 +724,51 @@ void commit_array_writes(
 }  // namespace tile_ai
 
 }  // namespace tiledb::sm
+
+#else  // HAVE_TILE_AI
+
+#include "tiledb/sm/filesystem/vfs.h"
+
+// Built without the backend. The client still exists so the shared code
+// that dispatches tile:// URIs links unchanged, and every catalog call
+// reports the missing backend the way the VFS does.
+
+namespace tiledb::sm {
+
+TileAiClient::TileAiClient(
+    stats::Stats*,
+    const Config&,
+    const std::shared_ptr<common::Logger>&,
+    std::shared_ptr<MemoryTracker>)
+    : stats_(nullptr)
+    , config_(nullptr) {
+}
+
+namespace tile_ai {
+
+void create_array(TileAiClient&, const URI&) {
+  throw filesystem::BuiltWithout("Tile.ai filesystem");
+}
+
+void create_group(TileAiClient&, const URI&) {
+  throw filesystem::BuiltWithout("Tile.ai filesystem");
+}
+
+void put_members(TileAiClient&, const URI&, const std::vector<GroupMember>&) {
+  throw filesystem::BuiltWithout("Tile.ai filesystem");
+}
+
+void commit_array_writes(
+    TileAiClient&,
+    const URI&,
+    const std::vector<std::string>&,
+    const std::vector<std::string>&,
+    bool) {
+  throw filesystem::BuiltWithout("Tile.ai filesystem");
+}
+
+}  // namespace tile_ai
+
+}  // namespace tiledb::sm
+
+#endif  // HAVE_TILE_AI

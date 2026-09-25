@@ -204,20 +204,15 @@ void Array::create(
   }
 
   // A tile:// array is registered with the catalog; any other backend
-  // just creates the directory. Compile-time gated because the catalog
-  // client only builds with TILEDB_TILE_AI.
-  if constexpr (filesystem::tile_ai_enabled) {
-    if (array_uri.is_tile()) {
-      auto* client = resources.tile_ai_client();
-      if (client == nullptr) {
-        throw ArrayException(
-            "Cannot create tile:// array; server not configured (set "
-            "rest.server_address and rest.token)");
-      }
-      tile_ai::create_array(*client, array_uri);
-    } else {
-      resources.vfs().create_dir(array_uri);
+  // just creates the directory.
+  if (array_uri.is_tile()) {
+    auto* client = resources.tile_ai_client();
+    if (client == nullptr) {
+      throw ArrayException(
+          "Cannot create tile:// array; server not configured (set "
+          "rest.server_address and rest.token)");
     }
+    tile_ai::create_array(*client, array_uri);
   } else {
     resources.vfs().create_dir(array_uri);
   }

@@ -4,6 +4,8 @@
  * Public C++ API smoke tests for the tile:// backend.
  */
 
+#ifdef HAVE_TILE_AI
+
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -1481,3 +1483,5 @@ TEST_CASE(
     CHECK(from_profile.api_key == "profile-token");
   }
 }
+
+#endif  // HAVE_TILE_AI

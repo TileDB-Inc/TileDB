@@ -193,6 +193,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSCredentialsProvider.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/tile_ai.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -281,6 +282,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_profile.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/tile_ai_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc
@@ -320,12 +322,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc
 )
 
-if (TILEDB_TILE_AI)
-  list(APPEND TILEDB_CORE_SOURCES
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/tile_ai.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/tile_ai_client.cc
-  )
-endif()
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 

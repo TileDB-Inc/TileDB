@@ -50,9 +50,9 @@ jobs:
   ci3:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
-      ci_option: SERIALIZATION
+      ci_option: SERIALIZATION_TILE_AI
       matrix_image: ubuntu-24.04
-      bootstrap_args: '--enable-serialization --enable-release-symbols'
+      bootstrap_args: '--enable-serialization --enable-tile-ai --enable-release-symbols'
 
   ci4:
     uses: ./.github/workflows/ci-linux_mac.yml

@@ -178,6 +178,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-schema-evolution.cc
     src/unit-cppapi-stats.cc
     src/unit-cppapi-string-dims.cc
+    src/unit-cppapi-tile-ai.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-update-queries.cc
@@ -187,12 +188,6 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-vfs.cc
     src/unit-cppapi-webp-filter.cc
     src/unit-cppapi-xor-filter.cc
-  )
-endif()
-
-if (TILEDB_TILE_AI)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-cppapi-tile-ai.cc
   )
 endif()
 
