@@ -8030,3 +8030,55 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
   }
 }
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation of already consolidated delete commits",
+    "[capi][consolidation][commits][deletes]") {
+  // Create a sparse array (Query Conditions require sparse arrays)
+  remove_sparse_array();
+  create_sparse_array();
+
+  tiledb_array_t* array;
+  REQUIRE(
+      tiledb_array_alloc(ctx_, sparse_array_uri_.c_str(), &array) == TILEDB_OK);
+
+  // Write initial data (Creates a .wrt file)
+  write_sparse_full();
+
+  // Submit a Delete Query Condition (Creates a .del file)
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_DELETE) == TILEDB_OK);
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_DELETE, &query) == TILEDB_OK);
+
+  tiledb_query_condition_t* qc;
+  REQUIRE(tiledb_query_condition_alloc(ctx_, &qc) == TILEDB_OK);
+  int32_t val = 3;
+  // "a1" is the int32 attribute created by create_sparse_array()
+  REQUIRE(
+      tiledb_query_condition_init(
+          ctx_, qc, "a1", &val, sizeof(int32_t), TILEDB_EQ) == TILEDB_OK);
+  REQUIRE(tiledb_query_set_condition(ctx_, query, qc) == TILEDB_OK);
+  REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
+
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_query_condition_free(&qc);
+  tiledb_query_free(&query);
+
+  // First Consolidation: Packs the .wrt and .del into a .con file
+  consolidate_sparse("commits");
+
+  // Vacuum: Destroys the physical .del file from disk
+  vacuum_sparse("commits");
+
+  // Write more data: Creates a new .wrt file so the consolidator has work to
+  // do
+  write_sparse_unordered();
+
+  // Second Consolidation
+  consolidate_sparse("commits");
+
+  // Clean up
+  tiledb_array_free(&array);
+  remove_sparse_array();
+}
