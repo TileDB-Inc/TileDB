@@ -107,6 +107,15 @@ jobs:
       timeout: 120
       bootstrap_args: '--enable-azure'
 
+  ci10:
+    uses: ./.github/workflows/ci-linux_mac.yml
+    with:
+      ci_option: TILE_AI
+      matrix_image: macos-latest
+      cmake_generator: 'Ninja' # Use Ninja due to performance issues.
+      timeout: 120
+      bootstrap_args: '--enable=serialization,tile-ai --enable-release-symbols'
+
   ci_manylinux:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
@@ -150,6 +159,7 @@ jobs:
         ci7,
         ci8,
         ci9,
+        ci10,
         ci_manylinux,
         ci_msvc,
         backward_compatibility,
