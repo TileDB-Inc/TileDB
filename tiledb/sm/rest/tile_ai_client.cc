@@ -169,8 +169,12 @@ std::chrono::system_clock::time_point TileAiClient::parse_timestamp(
   std::tm tm = {};
   std::istringstream ss(ts);
   ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
-  auto tp = std::chrono::system_clock::from_time_t(timegm(&tm));
-  return tp;
+#ifdef _WIN32
+  const std::time_t utc = _mkgmtime(&tm);
+#else
+  const std::time_t utc = timegm(&tm);
+#endif
+  return std::chrono::system_clock::from_time_t(utc);
 }
 
 std::vector<TileInfo> TileAiClient::list_resources(
