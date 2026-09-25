@@ -2,16 +2,21 @@
  * @file tile_ai_client.cc
  *
  * Implementation of the tile.ai HTTP client. Peer of `RestClient`.
- * Uses libcurl for HTTP and nlohmann/json for parsing.
+ * Sends HTTP through `Curl` and parses JSON with nlohmann/json.
  */
 
 #include "tiledb/sm/rest/tile_ai_client.h"
 
-#include "tiledb/sm/curl/curl_init.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/buffer_list.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filesystem/tile_ai.h"
 #include "tiledb/sm/filesystem/uri.h"
-
-#include <curl/curl.h>
+#include "tiledb/sm/rest/curl.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <ctime>
 #include <iomanip>
@@ -25,47 +30,7 @@ using json = nlohmann::json;
 
 namespace tiledb::sm {
 
-static size_t curl_write_cb(
-    char* ptr, size_t size, size_t nmemb, void* userdata) {
-  auto* buf = static_cast<std::string*>(userdata);
-  buf->append(ptr, size * nmemb);
-  return size * nmemb;
-}
-
 namespace {
-
-// RAII wrapper holding one persistent CURL handle for the calling thread.
-// The handle is reused across requests via `curl_easy_reset`, which keeps
-// the underlying TCP/TLS connection pool alive between calls — eliminating
-// the per-request connect handshake that dominates short HTTP calls to
-// tile-ai (~5-30ms per call on local-loopback).
-//
-// Thread-local because libcurl easy handles are not thread-safe. One handle
-// per thread means no locking and full keep-alive benefit per thread.
-//
-// The `tiledb::sm::curl::LibCurlInitializer` member ensures `curl_global_init`
-// has run before any easy handle is constructed; the LibCurlInitializer
-// uses `std::call_once` internally so multiple instances are safe.
-// `curl_init.cc` enables the real `curl_global_init` whenever
-// `TILEDB_SERIALIZATION` or `HAVE_TILE_AI` is defined.
-struct CurlHandle {
-  tiledb::sm::curl::LibCurlInitializer curl_inited_;
-  CURL* handle = nullptr;
-  CurlHandle()
-      : handle(curl_easy_init()) {
-  }
-  ~CurlHandle() {
-    if (handle)
-      curl_easy_cleanup(handle);
-  }
-  CurlHandle(const CurlHandle&) = delete;
-  CurlHandle& operator=(const CurlHandle&) = delete;
-};
-
-static CURL* thread_local_curl() {
-  thread_local CurlHandle tl;
-  return tl.handle;
-}
 
 // Convert the catalog's string entity-type (`"array"` or `"group"`,
 // as it travels in `parsed.effective_entity_type`, multipart
@@ -86,10 +51,26 @@ EntityType entity_type_from_string(std::string_view type) {
 }  // namespace
 
 TileAiClient::TileAiClient(
-    const std::string& server_url, const std::string& api_key)
-    : server_url_(server_url)
-    , api_key_(api_key) {
-  if (!server_url_.empty() && server_url_.back() == '/') {
+    stats::Stats* const parent_stats,
+    const Config& config,
+    const std::shared_ptr<common::Logger>& logger,
+    std::shared_ptr<MemoryTracker> memory_tracker)
+    : stats_(parent_stats->create_child("TileAiClient"))
+    , config_(&config)
+    , logger_(logger)
+    , memory_tracker_(std::move(memory_tracker)) {
+  memory_tracker_->set_type(MemoryTrackerType::REST_CLIENT);
+  auto credentials = TileAi::resolve_credentials(config);
+  if (credentials.server_url.empty()) {
+    throw TileAiException(
+        "rest.server_address must be set to reach the tile:// server");
+  }
+  if (credentials.api_key.empty()) {
+    throw TileAiException(
+        "rest.token must be set to authenticate with the tile:// server");
+  }
+  server_url_ = std::move(credentials.server_url);
+  if (server_url_.back() == '/') {
     server_url_.pop_back();
   }
 }
@@ -103,61 +84,82 @@ std::string TileAiClient::http_request(
     const std::string& path,
     const std::string& request_body,
     long expected_status) {
-  CURL* curl = thread_local_curl();
-  if (!curl) {
-    throw TileAiException("Failed to initialize libcurl");
+  Curl curlc(logger_);
+  throw_if_not_ok(
+      curlc.init(config_, {}, &redirect_meta_, &redirect_mtx_, false));
+  const std::string url = server_url_ + path;
+
+  BufferList body(memory_tracker_);
+  if (!request_body.empty()) {
+    body.emplace_buffer(
+        SerializationBuffer::NonOwned,
+        request_body.data(),
+        request_body.size());
   }
-  // Reset cached options from a prior request on this thread. The underlying
-  // connection pool survives the reset, so keep-alive carries across calls.
-  curl_easy_reset(curl);
+  Buffer returned_data;
 
-  std::string url = server_url_ + path;
-  std::string resp_buf;
-
-  struct curl_slist* headers = nullptr;
-  std::string auth_header = "Authorization: Bearer " + api_key_;
-  headers = curl_slist_append(headers, auth_header.c_str());
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-  headers = curl_slist_append(headers, "Accept: application/json");
-
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp_buf);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-  curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-
-  if (method == "POST") {
-    curl_easy_setopt(curl, CURLOPT_POST, 1L);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request_body.c_str());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)request_body.size());
-  } else if (method == "PUT") {
-    // CUSTOMREQUEST + POSTFIELDS carries an in-memory body for any verb.
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request_body.c_str());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)request_body.size());
-  }
-
-  CURLcode res = curl_easy_perform(curl);
-
-  if (res != CURLE_OK) {
-    std::string err = curl_easy_strerror(res);
-    curl_slist_free_all(headers);
-    throw TileAiException(method + " " + path + " failed: " + err);
+  // The transport verdict is held until the status is known: a status the
+  // caller expects, such as the 404 lookup fallthrough relies on, is not an
+  // error even though Curl reports every 4xx and 5xx as one.
+  Status st = Status::Ok();
+  try {
+    if (method == "GET") {
+      curlc.get_data(
+          stats_, url, SerializationType::JSON, &returned_data, path);
+    } else if (method == "POST") {
+      st = curlc.post_data(
+          stats_, url, SerializationType::JSON, &body, &returned_data, path);
+    } else if (method == "PUT") {
+      st = curlc.put_data(
+          stats_, url, SerializationType::JSON, &body, &returned_data, path);
+    } else {
+      throw TileAiException("Unsupported HTTP method " + method);
+    }
+  } catch (const CurlException& e) {
+    st = Status_RestError(e.what());
   }
 
-  long status_code = 0;
-  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
-
-  curl_slist_free_all(headers);
-
+  auto&& [status_st, http_code] = curlc.last_http_status_code();
+  throw_if_not_ok(status_st);
+  const long status_code = http_code.value_or(0);
+  if (status_code == 0) {
+    throw TileAiException(
+        method + " " + path +
+        " failed: " + (st.ok() ? std::string("no response") : st.message()));
+  }
   if (status_code != expected_status) {
     throw TileAiException(
         method + " " + path + " failed: HTTP " + std::to_string(status_code),
         status_code);
   }
 
-  return resp_buf;
+  return std::string(
+      static_cast<const char*>(returned_data.data()), returned_data.size());
+}
+
+long TileAiClient::download_range(
+    const std::string& url,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes,
+    uint64_t* bytes_read) {
+  Curl curlc(logger_);
+  throw_if_not_ok(
+      curlc.init(config_, {}, &redirect_meta_, &redirect_mtx_, false));
+  return curlc.get_range(stats_, url, offset, nbytes, buffer, bytes_read);
+}
+
+long TileAiClient::upload_bytes(
+    const std::string& url,
+    const void* data,
+    uint64_t nbytes,
+    std::string* etag) {
+  Curl curlc(logger_);
+  throw_if_not_ok(
+      curlc.init(config_, {}, &redirect_meta_, &redirect_mtx_, false));
+  BufferList body(memory_tracker_);
+  body.emplace_buffer(SerializationBuffer::NonOwned, data, nbytes);
+  return curlc.put_bytes(stats_, url, &body, etag);
 }
 
 std::chrono::system_clock::time_point TileAiClient::parse_timestamp(

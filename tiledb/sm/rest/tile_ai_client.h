@@ -13,17 +13,29 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/exception/exception.h"
 
+namespace tiledb::common {
+class Logger;
+}
+
 namespace tiledb::sm {
 
 class Config;
+class MemoryTracker;
 class URI;
+
+namespace stats {
+class Stats;
+}
 
 class TileAiException : public common::StatusException {
  public:
@@ -216,19 +228,65 @@ struct CompletedPart {
 class TileAiClient {
  public:
   /**
-   * @param server_url Base URL of the tile-ai deployment, e.g.
-   *   `https://app.tile.ai` or `http://localhost:3000` for local dev.
-   *   The client appends `/api/v1/...` paths automatically; do not include
-   *   that prefix here. A trailing slash is stripped.
-   * @param api_key Bearer token sent on every request.
+   * Every request goes through `Curl`, the same HTTP layer `RestClient`
+   * uses, so the `rest.*` retry, SSL and curl settings apply here too.
+   *
+   * @param parent_stats Stats to record request counters under
+   * @param config Supplies `rest.server_address` (the tile.ai deployment,
+   *   e.g. `https://app.tile.ai`; a trailing slash is stripped) and
+   *   `rest.token`, plus the `rest.*` curl settings. Must outlive the
+   *   client.
+   * @param logger Logger the per-request curl loggers clone from
+   * @param memory_tracker Tracker for request bodies
+   * @throws TileAiException if `rest.server_address` or `rest.token`
+   *   resolves empty.
    */
-  TileAiClient(const std::string& server_url, const std::string& api_key);
+  TileAiClient(
+      stats::Stats* parent_stats,
+      const Config& config,
+      const std::shared_ptr<common::Logger>& logger,
+      std::shared_ptr<MemoryTracker> memory_tracker);
   ~TileAiClient() = default;
 
   TileAiClient(const TileAiClient&) = delete;
   TileAiClient& operator=(const TileAiClient&) = delete;
-  TileAiClient(TileAiClient&&) = default;
-  TileAiClient& operator=(TileAiClient&&) = default;
+  TileAiClient(TileAiClient&&) = delete;
+  TileAiClient& operator=(TileAiClient&&) = delete;
+
+  /**
+   * GET a byte range through a presigned URL. Sends no TileDB auth; the
+   * URL carries its own. Transport failures throw; HTTP errors do not, so
+   * the caller can re-mint an expired URL on 403.
+   *
+   * @param url Presigned GET URL
+   * @param offset First byte of the range
+   * @param buffer Destination of at least `nbytes` bytes
+   * @param nbytes Length of the range
+   * @param bytes_read Set to the number of bytes stored in `buffer`
+   * @return The HTTP status code
+   */
+  long download_range(
+      const std::string& url,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes,
+      uint64_t* bytes_read);
+
+  /**
+   * PUT bytes through a presigned URL. Sends no TileDB auth; the URL
+   * carries its own. Transport failures throw; HTTP errors do not.
+   *
+   * @param url Presigned PUT URL
+   * @param data Bytes to send
+   * @param nbytes Number of bytes
+   * @param etag Set to the response's ETag header, if any
+   * @return The HTTP status code
+   */
+  long upload_bytes(
+      const std::string& url,
+      const void* data,
+      uint64_t nbytes,
+      std::string* etag);
 
   /**
    * `GET /api/v1/{tiles|groups}` — list every resource of the given
@@ -528,8 +586,15 @@ class TileAiClient {
       bool metadata_updated);
 
  private:
+  stats::Stats* stats_;
+  const Config* config_;
+  std::shared_ptr<common::Logger> logger_;
+  std::shared_ptr<MemoryTracker> memory_tracker_;
   std::string server_url_;
-  std::string api_key_;
+
+  /** Redirect cache `Curl::init` requires; redirects are not cached here. */
+  std::unordered_map<std::string, std::string> redirect_meta_;
+  mutable std::mutex redirect_mtx_;
 
   /**
    * Returns the route prefix for per-resource calls — `/api/v1/tiles` for
@@ -541,10 +606,11 @@ class TileAiClient {
   static std::string base_path(EntityType entity_type);
 
   /**
-   * Perform an HTTP request and return the response body. Supports GET,
-   * POST, and PUT. Throws TileAiException on transport-level errors
-   * or when the server returns an HTTP status other than @p expected_status;
-   * the exception message includes the method, path, and returned status.
+   * Perform a JSON request through `Curl` and return the response body.
+   * Supports GET, POST, and PUT. Throws TileAiException on transport-level
+   * errors or when the server returns an HTTP status other than
+   * @p expected_status; the exception message includes the method, path,
+   * and returned status.
    */
   std::string http_request(
       const std::string& method,

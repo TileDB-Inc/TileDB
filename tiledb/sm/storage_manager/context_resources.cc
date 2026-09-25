@@ -76,8 +76,9 @@ ContextResources::ContextResources(
   if constexpr (filesystem::tile_ai_enabled) {
     auto credentials = TileAi::resolve_credentials(config_);
     if (!credentials.server_url.empty() && !credentials.api_key.empty()) {
-      tile_ai_client_ = tdb_unique_ptr<TileAiClient>(
-          tdb_new(TileAiClient, credentials.server_url, credentials.api_key));
+      tile_ai_client_ = tdb::make_shared<TileAiClient>(
+          HERE(), stats_.get(), config_, logger_, create_memory_tracker());
+      vfs_.set_tile_ai_client(tile_ai_client_);
     }
   }
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);

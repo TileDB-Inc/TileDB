@@ -58,11 +58,8 @@ class TileAi : public FilesystemBase {
   TileAi& operator=(const TileAi&) = delete;
 
   /**
-   * Initializes the backend from config. Must be called before any other
-   * method; subsequent calls overwrite prior state.
-   *
-   * Reads `rest.server_address` and `rest.token` through
-   * `resolve_credentials`.
+   * Attaches the catalog client every server call goes through. Must be
+   * called before any other method; subsequent calls replace the client.
    *
    * Type routing for reads is resolved via the catalog:
    * `canonicalize_resource` calls `lookup_resource{,_by_name}` and stamps
@@ -73,10 +70,10 @@ class TileAi : public FilesystemBase {
    * not through the VFS. This backend handles only the presigned-URL
    * I/O for `tile://` URIs.
    *
-   * @param config TileDB config consulted for the keys above.
-   * @throws TileAiException if `server_url` or `api_key` resolves empty.
+   * @param client The context's tile.ai client, shared with the catalog
+   *   dispatch in `Array` and `Group`.
    */
-  void init(const Config& config);
+  void init(std::shared_ptr<TileAiClient> client);
 
   /**
    * Resolves the server URL and API key from `rest.server_address` and
@@ -253,8 +250,6 @@ class TileAi : public FilesystemBase {
   ParsedUri canonicalize_resource(ParsedUri parsed) const;
 
  private:
-  std::string server_url_;
-  std::string api_key_;
   bool initialized_ = false;
 
   // Single HTTP client; per-resource ops pass an EntityType arg at
@@ -262,7 +257,7 @@ class TileAi : public FilesystemBase {
   // catalog stamps via `canonicalize_resource`). Create paths pass
   // the type directly from the call site (`create_dir` → Array,
   // `create_group_dir` → Group).
-  tdb_unique_ptr<TileAiClient> client_;
+  std::shared_ptr<TileAiClient> client_;
 
   struct CachedUrl {
     std::string url;
@@ -322,27 +317,6 @@ class TileAi : public FilesystemBase {
       const std::string& array_id,
       const std::string& relative_key,
       const std::string& type) const;
-  /**
-   * Perform an HTTP GET for a byte range. Throws on transport-level errors;
-   * @p http_status returns the HTTP status so callers can branch on it.
-   */
-  void do_http_get(
-      const std::string& url,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      long* http_status,
-      uint64_t* bytes_read) const;
-  /**
-   * Perform an HTTP PUT. Throws on transport-level errors; @p http_status
-   * returns the HTTP status so callers can branch on it.
-   */
-  void do_http_put(
-      const std::string& url,
-      const void* buffer,
-      uint64_t nbytes,
-      std::string* etag,
-      long* http_status) const;
   void flush_part(MultipartState& state);
 };
 

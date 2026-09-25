@@ -6,10 +6,7 @@
 
 #include "tiledb/sm/filesystem/tile_ai.h"
 
-#include <curl/curl.h>
-
 #include <algorithm>
-#include <cstring>
 #include <optional>
 #include <sstream>
 #include <unordered_set>
@@ -28,76 +25,6 @@ namespace {
 constexpr uint64_t kMultipartThresholdBytes = 5ULL * 1024 * 1024;
 constexpr uint64_t kMultipartPartSizeBytes = 5ULL * 1024 * 1024;
 
-struct ReadBuffer {
-  void* dest;
-  uint64_t written;
-  uint64_t max_bytes;
-};
-
-static size_t curl_write_to_buffer(
-    char* ptr, size_t size, size_t nmemb, void* userdata) {
-  auto* rb = static_cast<ReadBuffer*>(userdata);
-  size_t total = size * nmemb;
-  size_t to_copy =
-      std::min(total, static_cast<size_t>(rb->max_bytes - rb->written));
-  if (to_copy > 0) {
-    std::memcpy(static_cast<char*>(rb->dest) + rb->written, ptr, to_copy);
-    rb->written += to_copy;
-  }
-  return total;
-}
-
-struct WriteSource {
-  const char* data;
-  uint64_t size;
-  uint64_t sent;
-};
-
-static size_t curl_read_from_buffer(
-    char* ptr, size_t size, size_t nmemb, void* userdata) {
-  auto* ws = static_cast<WriteSource*>(userdata);
-  size_t remaining = ws->size - ws->sent;
-  size_t to_send = std::min(remaining, size * nmemb);
-  if (to_send > 0) {
-    std::memcpy(ptr, ws->data + ws->sent, to_send);
-    ws->sent += to_send;
-  }
-  return to_send;
-}
-
-struct HeaderCapture {
-  std::string header_name;
-  std::string value;
-};
-
-static size_t curl_header_cb(
-    char* buffer, size_t size, size_t nitems, void* userdata) {
-  auto* cap = static_cast<HeaderCapture*>(userdata);
-  size_t total = size * nitems;
-  std::string line(buffer, total);
-  auto colon = line.find(':');
-  if (colon != std::string::npos) {
-    std::string name = line.substr(0, colon);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    if (name == cap->header_name) {
-      std::string val = line.substr(colon + 1);
-      auto start = val.find_first_not_of(" \t\r\n");
-      auto end = val.find_last_not_of(" \t\r\n");
-      if (start != std::string::npos) {
-        cap->value = val.substr(start, end - start + 1);
-      }
-    }
-  }
-  return total;
-}
-
-static size_t curl_write_string(
-    char* ptr, size_t size, size_t nmemb, void* userdata) {
-  auto* buf = static_cast<std::string*>(userdata);
-  buf->append(ptr, size * nmemb);
-  return size * nmemb;
-}
-
 }  // anonymous namespace
 
 TileAi::TileAi() = default;
@@ -109,23 +36,9 @@ TileAiCredentials TileAi::resolve_credentials(const Config& config) {
       std::string(config.get_with_source("rest.token").second)};
 }
 
-void TileAi::init(const Config& config) {
-  auto credentials = resolve_credentials(config);
-  server_url_ = std::move(credentials.server_url);
-  if (server_url_.empty()) {
-    throw TileAiException(
-        "rest.server_address must be set to reach the tile:// server");
-  }
-
-  api_key_ = std::move(credentials.api_key);
-  if (api_key_.empty()) {
-    throw TileAiException(
-        "rest.token must be set to authenticate with the tile:// server");
-  }
-
-  client_ = tdb_unique_ptr<TileAiClient>(
-      tdb_new(TileAiClient, server_url_, api_key_));
-  initialized_ = true;
+void TileAi::init(std::shared_ptr<TileAiClient> client) {
+  client_ = std::move(client);
+  initialized_ = client_ != nullptr;
 }
 
 void TileAi::ensure_initialized() const {
@@ -399,97 +312,15 @@ std::string TileAi::get_read_url(
   return result;
 }
 
-void TileAi::do_http_get(
-    const std::string& url,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes,
-    long* http_status,
-    uint64_t* bytes_read) const {
-  CURL* curl = curl_easy_init();
-  if (!curl)
-    throw TileAiException("Failed to initialize libcurl");
-
-  ReadBuffer rb{buffer, 0, nbytes};
-
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_to_buffer);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rb);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-
-  std::string range =
-      std::to_string(offset) + "-" + std::to_string(offset + nbytes - 1);
-  curl_easy_setopt(curl, CURLOPT_RANGE, range.c_str());
-
-  CURLcode res = curl_easy_perform(curl);
-  if (res != CURLE_OK) {
-    std::string err = curl_easy_strerror(res);
-    curl_easy_cleanup(curl);
-    throw TileAiException("S3 GET failed: " + err);
-  }
-
-  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, http_status);
-  curl_easy_cleanup(curl);
-  *bytes_read = rb.written;
-}
-
-void TileAi::do_http_put(
-    const std::string& url,
-    const void* buffer,
-    uint64_t nbytes,
-    std::string* etag,
-    long* http_status) const {
-  CURL* curl = curl_easy_init();
-  if (!curl)
-    throw TileAiException("Failed to initialize libcurl");
-
-  WriteSource ws{static_cast<const char*>(buffer), nbytes, 0};
-  HeaderCapture hcap{"etag", ""};
-
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-  curl_easy_setopt(curl, CURLOPT_READFUNCTION, curl_read_from_buffer);
-  curl_easy_setopt(curl, CURLOPT_READDATA, &ws);
-  curl_easy_setopt(
-      curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(nbytes));
-  curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curl_header_cb);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, &hcap);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
-
-  struct curl_slist* headers = nullptr;
-  headers = curl_slist_append(headers, "Expect:");
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-  std::string discard;
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_string);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &discard);
-
-  CURLcode res = curl_easy_perform(curl);
-  curl_slist_free_all(headers);
-
-  if (res != CURLE_OK) {
-    std::string err = curl_easy_strerror(res);
-    curl_easy_cleanup(curl);
-    throw TileAiException("S3 PUT failed: " + err);
-  }
-
-  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, http_status);
-  curl_easy_cleanup(curl);
-
-  if (etag)
-    *etag = hcap.value;
-}
-
 uint64_t TileAi::read_impl(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   auto parsed = canonicalize_resource(parse_uri(uri));
   auto url = get_read_url(
       parsed.array_id, parsed.relative_key, parsed.effective_entity_type);
 
-  long http_status = 0;
   uint64_t bytes_read = 0;
-  do_http_get(url, offset, buffer, nbytes, &http_status, &bytes_read);
+  long http_status =
+      client_->download_range(url, offset, buffer, nbytes, &bytes_read);
 
   if (http_status == 200 || http_status == 206) {
     return bytes_read;
@@ -503,7 +334,8 @@ uint64_t TileAi::read_impl(
     }
     url = get_read_url(
         parsed.array_id, parsed.relative_key, parsed.effective_entity_type);
-    do_http_get(url, offset, buffer, nbytes, &http_status, &bytes_read);
+    http_status =
+        client_->download_range(url, offset, buffer, nbytes, &bytes_read);
     if (http_status == 200 || http_status == 206) {
       return bytes_read;
     }
@@ -769,9 +601,8 @@ void TileAi::flush_part(MultipartState& state) {
   }
 
   std::string etag;
-  long http_status = 0;
-  do_http_put(
-      part_url, state.part_buffer.data(), part_size, &etag, &http_status);
+  long http_status = client_->upload_bytes(
+      part_url, state.part_buffer.data(), part_size, &etag);
 
   if (http_status == 403) {
     LOG_WARN(
@@ -785,8 +616,8 @@ void TileAi::flush_part(MultipartState& state) {
         {part_number});
     if (parts.empty())
       throw TileAiException("Server returned no presigned URL on retry");
-    do_http_put(
-        parts[0].url, state.part_buffer.data(), part_size, &etag, &http_status);
+    http_status = client_->upload_bytes(
+        parts[0].url, state.part_buffer.data(), part_size, &etag);
   }
 
   if (http_status != 200) {
@@ -839,13 +670,11 @@ void TileAi::flush_impl(const URI& uri) {
       throw TileAiException("Server returned no presigned URL for simple PUT");
 
     std::string etag;
-    long http_status = 0;
-    do_http_put(
+    long http_status = client_->upload_bytes(
         write_result.urls[0].url,
         state.part_buffer.data(),
         state.part_buffer.size(),
-        &etag,
-        &http_status);
+        &etag);
 
     if (http_status != 200)
       throw TileAiException(

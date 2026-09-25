@@ -33,7 +33,7 @@
 #ifndef TILEDB_CURL_H
 #define TILEDB_CURL_H
 
-#ifdef TILEDB_SERIALIZATION
+#if defined(TILEDB_SERIALIZATION) || defined(HAVE_TILE_AI)
 
 #if !defined(NOMINMAX)
 #define NOMINMAX  // curl may include windows headers
@@ -117,6 +117,9 @@ struct HeaderCbData {
 
   /** True if the uri should be stored in URI cache map, false if not */
   bool should_cache_redirect;
+
+  /** When non-null, receives the value of the response's ETag header. */
+  std::string* etag = nullptr;
 };
 
 /**
@@ -398,6 +401,49 @@ class Curl {
       const std::string& res_ns_uri);
 
   /**
+   * GET a byte range from a URL that carries its own authorization, such as
+   * a presigned object-store URL. Sends no TileDB auth headers.
+   *
+   * Transport failures throw; HTTP errors do not, so the caller can act on
+   * the status (a 403 on a presigned URL usually means it expired).
+   *
+   * @param stats The stats instance to record into
+   * @param url URL to get
+   * @param offset First byte of the range
+   * @param nbytes Length of the range; at most this many bytes are stored
+   * @param buffer Destination of at least `nbytes` bytes
+   * @param bytes_read Set to the number of bytes stored in `buffer`
+   * @return The HTTP status code
+   */
+  long get_range(
+      stats::Stats* stats,
+      const std::string& url,
+      uint64_t offset,
+      uint64_t nbytes,
+      void* buffer,
+      uint64_t* bytes_read);
+
+  /**
+   * PUT raw bytes to a URL that carries its own authorization, such as a
+   * presigned object-store URL. Sends no TileDB auth headers and no
+   * content type.
+   *
+   * Transport failures throw; HTTP errors do not, so the caller can act on
+   * the status.
+   *
+   * @param stats The stats instance to record into
+   * @param url URL to put to
+   * @param data Bytes to send
+   * @param etag Set to the response's ETag header, if any
+   * @return The HTTP status code
+   */
+  long put_bytes(
+      stats::Stats* stats,
+      const std::string& url,
+      BufferList* data,
+      std::string* etag);
+
+  /**
    * Get HTTP status code of last request
    *
    * @return tuple of status and last_request
@@ -621,6 +667,6 @@ class Curl {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_SERIALIZATION
+#endif  // TILEDB_SERIALIZATION || HAVE_TILE_AI
 
 #endif  // TILEDB_CURL_H

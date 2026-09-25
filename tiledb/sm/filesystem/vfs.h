@@ -86,6 +86,8 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+class TileAiClient;
+
 namespace filesystem {
 class VFSException : public StatusException {
  public:
@@ -399,6 +401,13 @@ class VFS : FilesystemBase,
 
   /** Destructor. */
   ~VFS() = default;
+
+  /**
+   * Attaches the context's tile.ai client to the `tile://` backend. Without
+   * one the backend stays uninitialized and says so on first use, instead
+   * of failing every context that never touches a `tile://` URI.
+   */
+  void set_tile_ai_client(std::shared_ptr<TileAiClient> client);
 
   DISABLE_COPY_AND_COPY_ASSIGN(VFS);
   DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);

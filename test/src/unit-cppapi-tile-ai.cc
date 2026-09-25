@@ -16,10 +16,14 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/tile_ai.h"
 #include "tiledb/sm/rest/rest_profile.h"
+#include "tiledb/sm/rest/tile_ai_client.h"
+#include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb;
 // Disambiguate from `tiledb::Config` (the public C++ API class). The
@@ -80,14 +84,30 @@ std::vector<float> make_random_float_data(uint64_t seed, size_t count) {
   return data;
 }
 
-// Build a standalone TileAiClient for in-test server-side assertions,
-// drawing credentials from the library's resolution chain so the test
-// code never needs to know the env-var names.
-tiledb::sm::TileAiClient make_tile_ai_client() {
-  auto credentials = resolve_test_credentials();
+// Build a standalone TileAiClient for in-test server-side assertions from
+// a config, with the stats and logger every client in this file shares.
+// The config must outlive the client.
+std::shared_ptr<tiledb::sm::TileAiClient> make_tile_ai_client(
+    const SmConfig& config) {
+  static tiledb::sm::stats::Stats stats("tile_ai_test");
+  static auto logger =
+      tdb::make_shared<tiledb::common::Logger>(HERE(), "tile_ai_test");
+  return tdb::make_shared<tiledb::sm::TileAiClient>(
+      HERE(),
+      &stats,
+      config,
+      logger,
+      tiledb::test::create_test_memory_tracker());
+}
+
+// The same, drawing credentials from the library's resolution chain so the
+// test code never needs to know the env-var names.
+std::shared_ptr<tiledb::sm::TileAiClient> make_tile_ai_client() {
+  static const SmConfig config;
+  auto credentials = tiledb::sm::TileAi::resolve_credentials(config);
   REQUIRE(!credentials.server_url.empty());
   REQUIRE(!credentials.api_key.empty());
-  return tiledb::sm::TileAiClient(credentials.server_url, credentials.api_key);
+  return make_tile_ai_client(config);
 }
 
 Config make_presigned_config() {
@@ -140,9 +160,8 @@ struct TileAiCppApiFx {
     const auto target_name = env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
                                  .value_or(kDefaultTeamspaceName);
 
-    tiledb::sm::TileAiClient client(
-        credentials.server_url, credentials.api_key);
-    auto teamspaces = client.list_teamspaces();
+    auto client = make_tile_ai_client();
+    auto teamspaces = client->list_teamspaces();
 
     std::vector<std::string> matched_ids;
     for (auto& ts : teamspaces) {
@@ -394,7 +413,7 @@ TEST_CASE_METHOD(
 
   // Verify by listing groups directly via the catalog client.
   auto group_client = make_tile_ai_client();
-  auto resources = group_client.list_resources(tiledb::sm::EntityType::Group);
+  auto resources = group_client->list_resources(tiledb::sm::EntityType::Group);
 
   // The URI's path component (everything after `tile://`) is the server
   // `base`. Match by suffix on `name` to avoid coupling the test to the
@@ -420,7 +439,7 @@ TEST_CASE_METHOD(
   // (would mean the routing fell through to the array path).
   auto array_client = make_tile_ai_client();
   auto array_resources =
-      array_client.list_resources(tiledb::sm::EntityType::Array);
+      array_client->list_resources(tiledb::sm::EntityType::Array);
   bool spurious_in_tiles = false;
   for (const auto& r : array_resources) {
     if (r.base.size() >= expected_suffix.size() &&
@@ -503,7 +522,7 @@ TEST_CASE_METHOD(
     // Strip "tile://" to get the server-side base.
     REQUIRE(group_uri_str.rfind("tile://", 0) == 0);
     const std::string base = group_uri_str.substr(7);
-    auto members = group_client.list_members(base);
+    auto members = group_client->list_members(base);
 
     REQUIRE(members.size() == 1);
     CHECK(members[0].uri == member_array_uri);
@@ -779,7 +798,7 @@ TEST_CASE_METHOD(
   REQUIRE(hierarchical.rfind("tile://", 0) == 0);
   const std::string expected_base = hierarchical.substr(7);
   std::string id;
-  for (const auto& r : client.list_resources(tiledb::sm::EntityType::Array)) {
+  for (const auto& r : client->list_resources(tiledb::sm::EntityType::Array)) {
     if (r.base == expected_base) {
       id = r.id;
       break;
@@ -844,7 +863,7 @@ TEST_CASE_METHOD(
     REQUIRE(array_uri_str.rfind("tile://", 0) == 0);
     const std::string expected_base = array_uri_str.substr(7);
     for (const auto& r :
-         array_client.list_resources(tiledb::sm::EntityType::Array)) {
+         array_client->list_resources(tiledb::sm::EntityType::Array)) {
       if (r.base == expected_base) {
         array_id = r.id;
         break;
@@ -860,7 +879,7 @@ TEST_CASE_METHOD(
     REQUIRE(group_uri_str.rfind("tile://", 0) == 0);
     const std::string expected_base = group_uri_str.substr(7);
     for (const auto& r :
-         group_client.list_resources(tiledb::sm::EntityType::Group)) {
+         group_client->list_resources(tiledb::sm::EntityType::Group)) {
       if (r.base == expected_base) {
         group_id = r.id;
         break;
@@ -871,7 +890,7 @@ TEST_CASE_METHOD(
 
   // Array lookup returns the correct hierarchical address and type.
   {
-    auto loc = array_client.lookup_resource(array_id);
+    auto loc = array_client->lookup_resource(array_id);
     CHECK(loc.id == array_id);
     CHECK(loc.type == "array");
     CHECK(loc.teamspace_id == teamspace_id_);
@@ -885,7 +904,7 @@ TEST_CASE_METHOD(
   // tries /tiles/{id} first and falls back to /groups/{id} on 404, so
   // running this against the array client proves the fall-through path.
   {
-    auto loc = array_client.lookup_resource(group_id);
+    auto loc = array_client->lookup_resource(group_id);
     CHECK(loc.id == group_id);
     CHECK(loc.type == "group");
     CHECK(loc.teamspace_id == teamspace_id_);
@@ -899,7 +918,7 @@ TEST_CASE_METHOD(
   for (const char* bogus :
        {"tiledb-doesnotexist-0000-0000-0000-000000", "foo"}) {
     try {
-      (void)array_client.lookup_resource(bogus);
+      (void)array_client->lookup_resource(bogus);
       FAIL(
           std::string("expected lookup_resource to throw on unknown id: ") +
           bogus);
@@ -933,7 +952,7 @@ TEST_CASE_METHOD(
   REQUIRE(array_uri_str.rfind("tile://", 0) == 0);
   const std::string expected_base = array_uri_str.substr(7);
   std::string id;
-  for (const auto& r : client.list_resources(tiledb::sm::EntityType::Array)) {
+  for (const auto& r : client->list_resources(tiledb::sm::EntityType::Array)) {
     if (r.base == expected_base) {
       id = r.id;
       break;
@@ -943,7 +962,7 @@ TEST_CASE_METHOD(
 
   // Resolve, build hierarchical URI, open + read. ctx_ is the
   // fixture's plain default context; no per-context type override.
-  auto loc = client.lookup_resource(id);
+  auto loc = client->lookup_resource(id);
   REQUIRE(loc.type == "array");
   const std::string hierarchical =
       "tile://" + loc.teamspace_id + "/" + loc.name;
@@ -1074,7 +1093,7 @@ TEST_CASE_METHOD(
 
     REQUIRE(parent_group_uri.rfind("tile://", 0) == 0);
     const std::string base = parent_group_uri.substr(7);
-    auto members = group_client.list_members(base);
+    auto members = group_client->list_members(base);
 
     REQUIRE(members.size() == 1);
     CHECK(members[0].uri == child_group_uri);
@@ -1205,7 +1224,7 @@ TEST_CASE_METHOD(
     g.close();
   }
 
-  // READ: each member resolves to the right type via name lookup.
+  // READ: each member resolves to the right type via name lookup->
   {
     auto gctx = group_ctx();
     tiledb::Group g(gctx, parent_uri, TILEDB_READ);
@@ -1231,7 +1250,7 @@ TEST_CASE_METHOD(
     auto group_client = make_tile_ai_client();
 
     REQUIRE(parent_uri.rfind("tile://", 0) == 0);
-    auto members = group_client.list_members(parent_uri.substr(7));
+    auto members = group_client->list_members(parent_uri.substr(7));
     REQUIRE(members.size() == 3);
 
     // Build a name → entry map so we can assert without depending on
@@ -1318,7 +1337,7 @@ TEST_CASE_METHOD(
     auto group_client = make_tile_ai_client();
 
     REQUIRE(parent_uri.rfind("tile://", 0) == 0);
-    auto members = group_client.list_members(parent_uri.substr(7));
+    auto members = group_client->list_members(parent_uri.substr(7));
     REQUIRE(members.size() == 1);
     CHECK(members[0].name == "keep");
   }
@@ -1348,7 +1367,7 @@ TEST_CASE(
   // server-side `resolveTeamspaceRef` name fallback) and (b) verify the
   // server responds with the canonical id, proving the lookup succeeded.
   auto lookup = make_tile_ai_client();
-  auto teamspaces = lookup.list_teamspaces();
+  auto teamspaces = lookup->list_teamspaces();
   REQUIRE(!teamspaces.empty());
   const auto target_name = env_string("TILEDB_TEST_TILE_TEAMSPACE_NAME")
                                .value_or(TileAiCppApiFx::kDefaultTeamspaceName);
@@ -1361,20 +1380,20 @@ TEST_CASE(
   }
   REQUIRE(!expected_id.empty());
 
-  tiledb::sm::TileAiClient client(credentials.server_url, credentials.api_key);
+  auto client = make_tile_ai_client();
 
   // Use the NAME (not the id) as the URI's teamspace segment. Server-side
   // resolution should look it up by name and return the canonical id.
   const std::string base = target_name + "/" + test_run_id() + "-by-name";
   tiledb::sm::TileInfo created;
   REQUIRE_NOTHROW(
-      created = client.create_resource(tiledb::sm::EntityType::Array, base));
+      created = client->create_resource(tiledb::sm::EntityType::Array, base));
   REQUIRE(!created.id.empty());
 
   // The server's response and any subsequent lookups should report the
   // canonical teamspace_id (the id PK), not the name we sent. This
   // confirms the name fallback in resolveTeamspaceRef found the right row.
-  auto loc = lookup.lookup_resource(created.id);
+  auto loc = lookup->lookup_resource(created.id);
   CHECK(loc.teamspace_id == expected_id);
 }
 
@@ -1397,12 +1416,12 @@ TEST_CASE(
   auto _rest_url = unsetenv_local("TILEDB_REST_SERVER_ADDRESS");
   auto _rest_token = unsetenv_local("TILEDB_REST_TOKEN");
 
-  SECTION("no token anywhere: init throws and names rest.token") {
+  SECTION("no token anywhere: the client refuses and names rest.token") {
     SmConfig config;
     CHECK(TileAi::resolve_credentials(config).api_key.empty());
-    TileAi backend;
     REQUIRE_THROWS_WITH(
-        backend.init(config), Catch::Matchers::ContainsSubstring("rest.token"));
+        make_tile_ai_client(config),
+        Catch::Matchers::ContainsSubstring("rest.token"));
   }
 
   SECTION("rest.server_address and rest.token set on the config") {
@@ -1412,8 +1431,7 @@ TEST_CASE(
     auto credentials = TileAi::resolve_credentials(config);
     CHECK(credentials.server_url == "http://localhost:3000");
     CHECK(credentials.api_key == "tla_test");
-    TileAi backend;
-    REQUIRE_NOTHROW(backend.init(config));
+    REQUIRE_NOTHROW(make_tile_ai_client(config));
   }
 
   SECTION("TILEDB_REST_* env, Config's standard lookup") {

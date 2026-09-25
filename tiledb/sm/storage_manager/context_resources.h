@@ -74,7 +74,7 @@ class ContextResources {
       std::string stats_name);
 
   /**
-   * Destructor declared out-of-line so the `tdb_unique_ptr<TileAiClient>`
+   * Destructor declared out-of-line so the `shared_ptr<TileAiClient>`
    * member can use the forward-declared `TileAiClient` here.
    */
   ~ContextResources();
@@ -211,7 +211,7 @@ class ContextResources {
    * `rest.server_address` or `rest.token` is unset; call sites guard on
    * `uri.is_tile()` and null-check before dispatching.
    */
-  tdb_unique_ptr<TileAiClient> tile_ai_client_;
+  shared_ptr<TileAiClient> tile_ai_client_;
 };
 
 }  // namespace tiledb::sm

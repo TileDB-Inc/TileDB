@@ -130,15 +130,6 @@ VFS::VFS(
     supported_fs_.insert(Filesystem::TILEDBFS);
   }
 
-#ifdef HAVE_TILE_AI
-  // Initialize the tile.ai backend only when a token resolves. Without one
-  // it stays uninitialized and says so on first use, instead of failing
-  // every context that never touches a tile:// URI.
-  if (!TileAi::resolve_credentials(config).api_key.empty()) {
-    tile_ai_.init(config);
-  }
-#endif
-
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
 #endif
@@ -148,6 +139,14 @@ VFS::VFS(
 #endif
 
   supported_fs_.insert(Filesystem::MEMFS);
+}
+
+void VFS::set_tile_ai_client(std::shared_ptr<TileAiClient> client) {
+#ifdef HAVE_TILE_AI
+  tile_ai_.init(std::move(client));
+#else
+  (void)client;
+#endif
 }
 
 /* ********************************* */
