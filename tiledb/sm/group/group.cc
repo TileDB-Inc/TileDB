@@ -49,6 +49,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/tile_ai_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -100,8 +101,19 @@ void Group::create(ContextResources& resources, const URI& uri) {
     return;
   }
 
-  // Create group directory
-  resources.vfs().create_dir(uri);
+  // A tile:// group is registered with the catalog; any other backend
+  // just creates the directory.
+  if (uri.is_tile()) {
+    auto* client = resources.tile_ai_client();
+    if (client == nullptr) {
+      throw GroupException(
+          "Cannot create tile:// group; server not configured (set "
+          "rest.server_address and rest.token)");
+    }
+    tile_ai::create_group(*client, uri);
+  } else {
+    resources.vfs().create_dir(uri);
+  }
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
@@ -291,6 +303,57 @@ void Group::close() {
         throw GroupException(
             std::string(exc.what()) +
             " : Was storage for the group moved or deleted before closing?");
+      }
+
+      // For tile:// groups, push the canonical membership through the
+      // tile_ai_client (peer of rest_client). Mirrors the `remote_`
+      // branch above structurally:
+      //   remote_   -> RestClient::patch_group_to_rest
+      //   tile://   -> TileAiClient::put_members
+      //   other     -> storage layout is the source of truth, no push.
+      //
+      // The PUT is a full-sync replacement, so the snapshot reflects
+      // the FULL intended membership at close time, not a diff.
+      // Mirrors `GroupDetailsV2::members_to_serialize`: start from
+      // `members()` (already committed) and overlay
+      // `members_to_modify()` (this session's adds and removes).
+      // Without the overlay, a fresh group's adds wouldn't be in
+      // `members()` yet; they only land there after a successful
+      // re-load.
+      if (group_uri_.is_tile() && !members_to_modify().empty()) {
+        auto* client = resources_.tile_ai_client();
+        if (client == nullptr) {
+          throw GroupException(
+              "Cannot commit tile:// group members; server not "
+              "configured (set rest.server_address and rest.token)");
+        }
+        auto snapshot = members();
+        for (const auto& gm : members_to_modify()) {
+          snapshot[gm->key()] = gm;
+        }
+        std::vector<tile_ai::GroupMember> member_snapshot;
+        for (const auto& [_, gm] : snapshot) {
+          if (gm->deleted()) {
+            continue;
+          }
+          tile_ai::GroupMember m;
+          m.uri = gm->uri().to_string();
+          m.name = gm->name();
+          switch (gm->type()) {
+            case ObjectType::ARRAY:
+              m.type = "array";
+              break;
+            case ObjectType::GROUP:
+              m.type = "group";
+              break;
+            default:
+              m.type = "unknown";
+              break;
+          }
+          m.relative = gm->relative();
+          member_snapshot.push_back(std::move(m));
+        }
+        tile_ai::put_members(*client, group_uri_, member_snapshot);
       }
     }
   }

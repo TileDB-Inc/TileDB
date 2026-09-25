@@ -9,6 +9,7 @@ env:
   TILEDB_AZURE: OFF
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
+  TILEDB_TILE_AI: OFF
   TILEDB_TOOLS: ON
   TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableAssert'
 
@@ -20,7 +21,7 @@ jobs:
       matrix:
         os: [windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
-        environ: [azure, s3, gcs, serialization]
+        environ: [azure, s3, gcs, serialization, tile_ai]
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
@@ -43,6 +44,12 @@ jobs:
             TILEDB_AZURE: OFF
             TILEDB_SERIALIZATION: ON
             TILEDB_WEBP: ON
+          - environ: 'tile_ai'
+            TILEDB_S3: OFF
+            TILEDB_AZURE: OFF
+            TILEDB_SERIALIZATION: ON
+            TILEDB_TILE_AI: ON
+            TILEDB_WEBP: OFF
 
     name: ${{ matrix.os }} - ${{ matrix.environ }}
 
@@ -53,6 +60,7 @@ jobs:
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
       TILEDB_GCS: ${{ matrix.TILEDB_GCS }} #gcs }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
+      TILEDB_TILE_AI: ${{ matrix.TILEDB_TILE_AI }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
       TILEDB_RUST: 'OFF'
@@ -142,6 +150,9 @@ jobs:
           }
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
+          }
+          if ($env:TILEDB_TILE_AI -eq "ON") {
+            $bootstrapOptions = "-EnableTileAi " + $bootstrapOptions
           }
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"

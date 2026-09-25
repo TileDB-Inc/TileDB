@@ -123,6 +123,12 @@ TEST_CASE(
 #else
   CHECK(x["s3"]["enabled"] == false);
 #endif  // HAVE_S3
+
+#ifdef HAVE_TILE_AI
+  CHECK(x["tile_ai"]["enabled"] == true);
+#else
+  CHECK(x["tile_ai"]["enabled"] == false);
+#endif  // HAVE_TILE_AI
 }
 
 TEST_CASE("as_built: Validate support key", "[as_built][support]") {

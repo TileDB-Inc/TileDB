@@ -118,6 +118,46 @@ size_t write_memory_callback_cb(
   return bytes_received;
 }
 
+/** Destination of a ranged GET: a caller-owned buffer of fixed capacity. */
+struct RangeSink {
+  void* dest;
+  uint64_t capacity;
+  uint64_t written;
+};
+
+/**
+ * @brief Callback storing a ranged GET's body into a fixed-capacity buffer
+ *
+ * Bytes beyond the buffer's capacity are consumed and dropped so libcurl
+ * completes the transfer instead of reporting a write error.
+ */
+size_t write_range_callback(
+    void* contents, size_t size, size_t nmemb, void* userdata) {
+  const size_t content_nbytes = size * nmemb;
+  auto write_cb_state = static_cast<WriteCbState*>(userdata);
+  auto sink = static_cast<RangeSink*>(write_cb_state->arg);
+
+  if (write_cb_state->reset) {
+    sink->written = 0;
+    write_cb_state->reset = false;
+  }
+
+  const size_t to_copy = static_cast<size_t>(
+      std::min<uint64_t>(content_nbytes, sink->capacity - sink->written));
+  if (to_copy > 0) {
+    std::memcpy(
+        static_cast<char*>(sink->dest) + sink->written, contents, to_copy);
+    sink->written += to_copy;
+  }
+
+  return content_nbytes;
+}
+
+/** @brief Callback consuming and discarding a response body. */
+size_t write_discard_callback(void*, size_t size, size_t nmemb, void*) {
+  return size * nmemb;
+}
+
 /**
  * Callback for reading data to POST.
  *
@@ -177,6 +217,12 @@ size_t write_header_callback(
     std::string header_key = header.substr(0, header_key_end_pos);
     std::transform(
         header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
+
+    if (pmHeader->etag != nullptr && header_key == "etag") {
+      // Drop the ": " separator and the trailing CR LF.
+      *pmHeader->etag = header.substr(
+          header_key_end_pos + 2, header_length - header_key_end_pos - 4);
+    }
 
     if (header_key == constants::redirection_header_key) {
       // Fetch the header value. Subtract 2 from the `header_length` to
@@ -252,6 +298,7 @@ Status Curl::init(
   headerData.redirect_uri_map = res_headers;
   headerData.redirect_uri_map_lock = res_mtx;
   headerData.should_cache_redirect = should_cache_redirect;
+  headerData.etag = nullptr;
 
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);
@@ -1296,6 +1343,95 @@ Status Curl::put_data_common(
   curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
 
   return Status::Ok();
+}
+
+long Curl::get_range(
+    stats::Stats* const stats,
+    const std::string& url,
+    const uint64_t offset,
+    const uint64_t nbytes,
+    void* const buffer,
+    uint64_t* const bytes_read) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr) {
+    throw CurlException("Error getting data; curl instance is null.");
+  }
+
+  RangeSink sink{buffer, nbytes, 0};
+  const std::string range =
+      std::to_string(offset) + "-" + std::to_string(offset + nbytes - 1);
+
+  /* HTTP GET of one byte range, no headers of our own */
+  curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+  curl_easy_setopt(curl, CURLOPT_RANGE, range.c_str());
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, nullptr);
+
+  CURLcode ret;
+  static const std::string no_uri;
+  headerData.uri = &no_uri;
+  throw_if_not_ok(make_curl_request_common(
+      stats, url.c_str(), &ret, nullptr, &write_range_callback, &sink));
+  if (ret != CURLE_OK) {
+    throw CurlException(
+        "Error in libcurl GET operation: libcurl error message '" +
+            get_curl_errstr(ret) + "'",
+        ret);
+  }
+
+  *bytes_read = sink.written;
+  auto&& [st, http_code] = last_http_status_code();
+  throw_if_not_ok(st);
+  return http_code.value();
+}
+
+long Curl::put_bytes(
+    stats::Stats* const stats,
+    const std::string& url,
+    BufferList* data,
+    std::string* const etag) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr) {
+    throw CurlException("Error putting data; curl instance is null.");
+  }
+
+  /* HTTP PUT of the bytes as they are, no headers of our own; "Expect:"
+   * suppresses libcurl's 100-continue round trip on large bodies */
+  curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+  curl_easy_setopt(
+      curl,
+      CURLOPT_INFILESIZE_LARGE,
+      static_cast<curl_off_t>(data->total_size()));
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
+  struct curl_slist* headers = curl_slist_append(nullptr, "Expect:");
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+  std::string etag_value;
+  headerData.etag = &etag_value;
+  static const std::string no_uri;
+  headerData.uri = &no_uri;
+  CURLcode ret;
+  auto st = make_curl_request_common(
+      stats, url.c_str(), &ret, data, &write_discard_callback, nullptr);
+  headerData.etag = nullptr;
+  curl_slist_free_all(headers);
+  throw_if_not_ok(st);
+  if (ret != CURLE_OK) {
+    throw CurlException(
+        "Error in libcurl PUT operation: libcurl error message '" +
+            get_curl_errstr(ret) + "'",
+        ret);
+  }
+
+  if (etag != nullptr) {
+    *etag = std::move(etag_value);
+  }
+  auto&& [status_st, http_code] = last_http_status_code();
+  throw_if_not_ok(status_st);
+  return http_code.value();
 }
 
 }  // namespace tiledb::sm

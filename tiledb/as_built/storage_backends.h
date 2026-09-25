@@ -61,6 +61,12 @@ static constexpr bool s3 = true;
 static constexpr bool s3 = false;
 #endif  // HAVE_S3
 
+#ifdef HAVE_TILE_AI
+static constexpr bool tile_ai = true;
+#else
+static constexpr bool tile_ai = false;
+#endif  // HAVE_TILE_AI
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -70,7 +76,8 @@ void to_json(json& j, const storage_backends&) {
   j = {
       {"azure", {{"enabled", azure}}},
       {"gcs", {{"enabled", gcs}}},
-      {"s3", {{"enabled", s3}}}};
+      {"s3", {{"enabled", s3}}},
+      {"tile_ai", {{"enabled", tile_ai}}}};
 }
 
 }  // namespace tiledb::as_built::parameters::storage_backends

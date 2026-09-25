@@ -69,6 +69,10 @@
 #include "tiledb/sm/filesystem/s3.h"
 #endif  // HAVE_S3
 
+#ifdef HAVE_TILE_AI
+#include "tiledb/sm/filesystem/tile_ai.h"
+#endif  // HAVE_TILE_AI
+
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -81,6 +85,8 @@ using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
+
+class TileAiClient;
 
 namespace filesystem {
 class VFSException : public StatusException {
@@ -133,6 +139,12 @@ static constexpr bool s3_enabled = true;
 #else
 static constexpr bool s3_enabled = false;
 #endif  // HAVE_S3
+
+#ifdef HAVE_TILE_AI
+static constexpr bool tile_ai_enabled = true;
+#else
+static constexpr bool tile_ai_enabled = false;
+#endif  // HAVE_TILE_AI
 
 #ifdef HAVE_AZURE
 static constexpr bool azure_enabled = true;
@@ -389,6 +401,13 @@ class VFS : FilesystemBase,
 
   /** Destructor. */
   ~VFS() = default;
+
+  /**
+   * Attaches the context's tile.ai client to the `tile://` backend. Without
+   * one the backend stays uninitialized and says so on first use, instead
+   * of failing every context that never touches a `tile://` URI.
+   */
+  void set_tile_ai_client(std::shared_ptr<TileAiClient> client);
 
   DISABLE_COPY_AND_COPY_ASSIGN(VFS);
   DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);
@@ -1015,6 +1034,10 @@ class VFS : FilesystemBase,
 
 #if HAVE_S3
   tdb_unique_ptr<FilesystemBase> tiledbfs_;
+#endif
+
+#ifdef HAVE_TILE_AI
+  TileAi tile_ai_;
 #endif
 
   /** The in-memory filesystem which is always supported */

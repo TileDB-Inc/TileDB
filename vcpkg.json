@@ -68,6 +68,12 @@
                 "rapidcheck"
             ]
         },
+        "tile-ai": {
+            "description": "Support the tile.ai storage backend",
+            "dependencies": [
+                "curl"
+            ]
+        },
         "tools": {
             "description": "Build tiledb command line tool",
             "dependencies": [

@@ -34,6 +34,7 @@
 #define TILEDB_CONTEXT_RESOURCES_H
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -47,6 +48,7 @@ class MemoryTracker;
 class MemoryTrackerManager;
 class MemoryTrackerReporter;
 class RestClient;
+class TileAiClient;
 
 /**
  * This class manages the context for the C API, wrapping a
@@ -70,6 +72,12 @@ class ContextResources {
       size_t compute_thread_count,
       size_t io_thread_count,
       std::string stats_name);
+
+  /**
+   * Destructor declared out-of-line so the `shared_ptr<TileAiClient>`
+   * member can use the forward-declared `TileAiClient` here.
+   */
+  ~ContextResources();
 
   DISABLE_COPY_AND_COPY_ASSIGN(ContextResources);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ContextResources);
@@ -109,6 +117,19 @@ class ContextResources {
 
   [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
     return rest_client_;
+  }
+
+  /**
+   * Catalog client for the tile.ai server. Peer of `rest_client()`.
+   * One instance handles both arrays and groups; per-call sites pass
+   * an `EntityType` argument to select the endpoint family.
+   *
+   * May be null when `rest.server_address` or `rest.token` is unset.
+   * Call sites guard on `uri.is_tile()` and null-check the pointer
+   * before dispatching.
+   */
+  [[nodiscard]] inline TileAiClient* tile_ai_client() const {
+    return tile_ai_client_.get();
   }
 
   [[nodiscard]] inline MemoryTrackerManager& memory_tracker_manager() const {
@@ -184,6 +205,13 @@ class ContextResources {
 
   /** The rest client (may be null if none was configured). */
   shared_ptr<RestClient> rest_client_;
+
+  /**
+   * Catalog client for the tile.ai server. May be null when
+   * `rest.server_address` or `rest.token` is unset; call sites guard on
+   * `uri.is_tile()` and null-check before dispatching.
+   */
+  shared_ptr<TileAiClient> tile_ai_client_;
 };
 
 }  // namespace tiledb::sm

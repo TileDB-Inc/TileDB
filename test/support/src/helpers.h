@@ -62,6 +62,7 @@ class [[nodiscard]] SetEnvScope {
 
  private:
   friend SetEnvScope setenv_local(const char*, const char*);
+  friend SetEnvScope unsetenv_local(const char*);
 
   SetEnvScope(const char* name, std::optional<std::string>&& old_value)
       : name_(name)
@@ -80,6 +81,14 @@ class [[nodiscard]] SetEnvScope {
  * @return 0 on success, -1 on error.
  */
 SetEnvScope setenv_local(const char* __name, const char* __value);
+
+/**
+ * Helper function to unset an environment variable across platforms. The
+ * previous value, if any, is restored when the returned scope ends.
+ *
+ * @param __name Name of the environment variable.
+ */
+SetEnvScope unsetenv_local(const char* __name);
 
 // A mutex for protecting the thread-unsafe Catch2 macros.
 extern std::mutex catch2_macro_mutex;

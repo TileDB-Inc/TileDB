@@ -141,6 +141,14 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::MEMFS);
 }
 
+void VFS::set_tile_ai_client(std::shared_ptr<TileAiClient> client) {
+#ifdef HAVE_TILE_AI
+  tile_ai_.init(std::move(client));
+#else
+  (void)client;
+#endif
+}
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -172,6 +180,13 @@ const FilesystemBase& VFS::get_fs(const URI& uri) const {
   }
   if (uri.is_memfs()) {
     return memfs_;
+  }
+  if (uri.is_tile()) {
+#ifdef HAVE_TILE_AI
+    return tile_ai_;
+#else
+    throw BuiltWithout("Tile.ai filesystem");
+#endif
   }
   if (uri.is_tiledb()) {
 #ifdef HAVE_S3
@@ -214,6 +229,8 @@ std::string VFS::abs_path(std::string_view path) {
     return path_copy;
   if (URI::is_memfs(path))
     return path_copy;
+  if (URI::is_tile(path))
+    return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
   return path_copy;
 }
@@ -223,7 +240,8 @@ Config VFS::config() const {
 }
 
 void VFS::create_dir(const URI& uri) const {
-  if (!(uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_tiledb())) {
+  if (!(uri.is_s3() || uri.is_azure() || uri.is_gcs() || uri.is_tiledb() ||
+        uri.is_tile())) {
     if (this->is_dir(uri))
       return;
   }
@@ -331,7 +349,7 @@ void VFS::remove_files(
 }
 
 uint64_t VFS::max_parallel_ops(const URI& uri) const {
-  if (uri.is_s3() || uri.is_tiledb()) {
+  if (uri.is_s3() || uri.is_tiledb() || uri.is_tile()) {
     return config_.get<uint64_t>("vfs.s3.max_parallel_ops", Config::must_find);
   } else if (uri.is_azure()) {
     return config_.get<uint64_t>(
@@ -392,7 +410,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure() ||
-        parent.is_tiledb())) {
+        parent.is_tiledb() || parent.is_tile())) {
     if (!this->is_dir(parent)) {
       return {};
     }
@@ -727,6 +745,8 @@ bool VFS::supports_fs(Filesystem fs) const {
 bool VFS::supports_uri_scheme(const URI& uri) const {
   if (uri.is_s3()) {
     return supports_fs(Filesystem::S3);
+  } else if (uri.is_tile()) {
+    return tile_ai_enabled;
   } else if (uri.is_azure()) {
     return supports_fs(Filesystem::AZURE);
   } else if (uri.is_gcs()) {
@@ -792,6 +812,15 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
           throw VFSException(
               "TileDB was built without S3 support, which is required for "
               "TileDB FS");
+        }
+      }
+      if (uri.is_tile()) {
+        if constexpr (tile_ai_enabled) {
+          throw VFSException(
+              "Cannot open file '" + uri.to_string() +
+              "'; tile storage does not support append mode");
+        } else {
+          throw BuiltWithout("Tile.ai filesystem");
         }
       }
       break;

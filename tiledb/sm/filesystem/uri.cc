@@ -67,7 +67,7 @@ URI::URI(std::string_view path, bool get_abs) {
     }
   } else if (
       URI::is_s3(path) || URI::is_azure(path) || URI::is_gcs(path) ||
-      URI::is_memfs(path) || URI::is_tiledb(path)) {
+      URI::is_memfs(path) || URI::is_tiledb(path) || URI::is_tile(path)) {
     uri_ = path;
   } else {
     uri_ = "";
@@ -184,6 +184,14 @@ bool URI::is_tiledb(std::string_view path) {
 
 bool URI::is_tiledb() const {
   return uri_.starts_with("tiledb://");
+}
+
+bool URI::is_tile(std::string_view path) {
+  return path.starts_with("tile://");
+}
+
+bool URI::is_tile() const {
+  return uri_.starts_with("tile://");
 }
 
 bool URI::is_timestamped_name() const {
@@ -442,7 +450,8 @@ std::string URI::to_path(const std::string& uri) {
     return uri.substr(std::string("mem://").size());
   }
 
-  if (is_s3(uri) || is_azure(uri) || is_gcs(uri) || is_tiledb(uri))
+  if (is_s3(uri) || is_azure(uri) || is_gcs(uri) || is_tiledb(uri) ||
+      is_tile(uri))
     return uri;
 
   // Error

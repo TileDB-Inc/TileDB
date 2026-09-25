@@ -178,6 +178,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-schema-evolution.cc
     src/unit-cppapi-stats.cc
     src/unit-cppapi-string-dims.cc
+    src/unit-cppapi-tile-ai.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-update-queries.cc

@@ -31,8 +31,11 @@
  */
 
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/filesystem/tile_ai.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/tile_ai_client.h"
 
 using namespace tiledb::common;
 
@@ -65,6 +68,17 @@ ContextResources::ContextResources(
           compute_tp(),
           *logger_.get(),
           create_memory_tracker())} {
+  // Construct the tile.ai catalog client (peer of rest_client) when
+  // `rest.server_address` and `rest.token` resolve; see
+  // `TileAi::resolve_credentials`. When unset, the pointer stays null
+  // and is_tile() call sites null-check before dispatching.
+  auto tile_ai_credentials = TileAi::resolve_credentials(config_);
+  if (!tile_ai_credentials.server_url.empty() &&
+      !tile_ai_credentials.api_key.empty()) {
+    tile_ai_client_ = tdb::make_shared<TileAiClient>(
+        HERE(), stats_.get(), config_, logger_, create_memory_tracker());
+    vfs_.set_tile_ai_client(tile_ai_client_);
+  }
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);
   serialization_memory_tracker_->set_type(MemoryTrackerType::SERIALIZATION);
 
@@ -79,6 +93,8 @@ ContextResources::ContextResources(
 
   memory_tracker_reporter_->start();
 }
+
+ContextResources::~ContextResources() = default;
 
 shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
   return memory_tracker_manager_->create_tracker();
