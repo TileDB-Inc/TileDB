@@ -86,7 +86,12 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+class MemoryTracker;
 class TileAiClient;
+
+namespace tile_ai {
+struct GroupMember;
+}
 
 namespace filesystem {
 class VFSException : public StatusException {
@@ -403,11 +408,25 @@ class VFS : FilesystemBase,
   ~VFS() = default;
 
   /**
-   * Attaches the context's tile.ai client to the `tile://` backend. Without
-   * one the backend stays uninitialized and says so on first use, instead
-   * of failing every context that never touches a `tile://` URI.
+   * Builds the `tile://` backend's client when `rest.server_address` and
+   * `rest.token` resolve. Without them the backend stays uninitialized and
+   * says so on first use, instead of failing every context that never
+   * touches a `tile://` URI. A no-op when built without the backend.
    */
-  void set_tile_ai_client(std::shared_ptr<TileAiClient> client);
+  void init_tile_ai(
+      stats::Stats* parent_stats,
+      const shared_ptr<Logger>& logger,
+      shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Registers a `tile://` array with the tile.ai catalog. */
+  void create_tile_ai_array(const URI& uri) const;
+
+  /** Registers a `tile://` group with the tile.ai catalog. */
+  void create_tile_ai_group(const URI& uri) const;
+
+  /** Replaces a `tile://` group's membership in the tile.ai catalog. */
+  void put_tile_ai_members(
+      const URI& uri, const std::vector<tile_ai::GroupMember>& members) const;
 
   DISABLE_COPY_AND_COPY_ASSIGN(VFS);
   DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);
@@ -1038,6 +1057,10 @@ class VFS : FilesystemBase,
 
 #ifdef HAVE_TILE_AI
   TileAi tile_ai_;
+  shared_ptr<TileAiClient> tile_ai_client_;
+
+  /** The catalog client, or a "server not configured" error for `what`. */
+  TileAiClient& tile_ai_client(const std::string& what) const;
 #endif
 
   /** The in-memory filesystem which is always supported */

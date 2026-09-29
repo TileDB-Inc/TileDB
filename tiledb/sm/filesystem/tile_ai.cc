@@ -14,16 +14,6 @@
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 
-namespace tiledb::sm {
-
-TileAiCredentials TileAi::resolve_credentials(const Config& config) {
-  return {
-      std::string(config.get_with_source("rest.server_address").second),
-      std::string(config.get_with_source("rest.token").second)};
-}
-
-}  // namespace tiledb::sm
-
 #ifdef HAVE_TILE_AI
 
 namespace tiledb::sm {
@@ -41,6 +31,12 @@ constexpr uint64_t kMultipartPartSizeBytes = 5ULL * 1024 * 1024;
 
 TileAi::TileAi() = default;
 TileAi::~TileAi() = default;
+
+TileAiCredentials TileAi::resolve_credentials(const Config& config) {
+  return {
+      std::string(config.get_with_source("rest.server_address").second),
+      std::string(config.get_with_source("rest.token").second)};
+}
 
 void TileAi::init(std::shared_ptr<TileAiClient> client) {
   client_ = std::move(client);

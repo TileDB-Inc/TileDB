@@ -104,13 +104,7 @@ void Group::create(ContextResources& resources, const URI& uri) {
   // A tile:// group is registered with the catalog; any other backend
   // just creates the directory.
   if (uri.is_tile()) {
-    auto* client = resources.tile_ai_client();
-    if (client == nullptr) {
-      throw GroupException(
-          "Cannot create tile:// group; server not configured (set "
-          "rest.server_address and rest.token)");
-    }
-    tile_ai::create_group(*client, uri);
+    resources.vfs().create_tile_ai_group(uri);
   } else {
     resources.vfs().create_dir(uri);
   }
@@ -306,10 +300,10 @@ void Group::close() {
       }
 
       // For tile:// groups, push the canonical membership through the
-      // tile_ai_client (peer of rest_client). Mirrors the `remote_`
-      // branch above structurally:
+      // VFS's tile.ai backend. Mirrors the `remote_` branch above
+      // structurally:
       //   remote_   -> RestClient::patch_group_to_rest
-      //   tile://   -> TileAiClient::put_members
+      //   tile://   -> VFS::put_tile_ai_members
       //   other     -> storage layout is the source of truth, no push.
       //
       // The PUT is a full-sync replacement, so the snapshot reflects
@@ -321,12 +315,6 @@ void Group::close() {
       // `members()` yet; they only land there after a successful
       // re-load.
       if (group_uri_.is_tile() && !members_to_modify().empty()) {
-        auto* client = resources_.tile_ai_client();
-        if (client == nullptr) {
-          throw GroupException(
-              "Cannot commit tile:// group members; server not "
-              "configured (set rest.server_address and rest.token)");
-        }
         auto snapshot = members();
         for (const auto& gm : members_to_modify()) {
           snapshot[gm->key()] = gm;
@@ -353,7 +341,7 @@ void Group::close() {
           m.relative = gm->relative();
           member_snapshot.push_back(std::move(m));
         }
-        tile_ai::put_members(*client, group_uri_, member_snapshot);
+        resources_.vfs().put_tile_ai_members(group_uri_, member_snapshot);
       }
     }
   }

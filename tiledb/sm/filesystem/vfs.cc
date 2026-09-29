@@ -44,6 +44,10 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
 
+#ifdef HAVE_TILE_AI
+#include "tiledb/sm/rest/tile_ai_client.h"
+#endif
+
 #include <iostream>
 #include <list>
 #include <sstream>
@@ -141,11 +145,56 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::MEMFS);
 }
 
-void VFS::set_tile_ai_client(std::shared_ptr<TileAiClient> client) {
+void VFS::init_tile_ai(
+    [[maybe_unused]] stats::Stats* const parent_stats,
+    [[maybe_unused]] const shared_ptr<Logger>& logger,
+    [[maybe_unused]] shared_ptr<MemoryTracker> memory_tracker) {
 #ifdef HAVE_TILE_AI
-  tile_ai_.init(std::move(client));
+  auto credentials = TileAi::resolve_credentials(config_);
+  if (credentials.server_url.empty() || credentials.api_key.empty()) {
+    return;
+  }
+  tile_ai_client_ = tdb::make_shared<TileAiClient>(
+      HERE(), parent_stats, config_, logger, std::move(memory_tracker));
+  tile_ai_.init(tile_ai_client_);
+#endif
+}
+
+#ifdef HAVE_TILE_AI
+TileAiClient& VFS::tile_ai_client(const std::string& what) const {
+  if (tile_ai_client_ == nullptr) {
+    throw VFSException(
+        "Cannot " + what +
+        "; server not configured (set rest.server_address and rest.token)");
+  }
+  return *tile_ai_client_;
+}
+#endif
+
+void VFS::create_tile_ai_array([[maybe_unused]] const URI& uri) const {
+#ifdef HAVE_TILE_AI
+  tile_ai::create_array(tile_ai_client("create tile:// array"), uri);
 #else
-  (void)client;
+  throw BuiltWithout("Tile.ai filesystem");
+#endif
+}
+
+void VFS::create_tile_ai_group([[maybe_unused]] const URI& uri) const {
+#ifdef HAVE_TILE_AI
+  tile_ai::create_group(tile_ai_client("create tile:// group"), uri);
+#else
+  throw BuiltWithout("Tile.ai filesystem");
+#endif
+}
+
+void VFS::put_tile_ai_members(
+    [[maybe_unused]] const URI& uri,
+    [[maybe_unused]] const std::vector<tile_ai::GroupMember>& members) const {
+#ifdef HAVE_TILE_AI
+  tile_ai::put_members(
+      tile_ai_client("commit tile:// group members"), uri, members);
+#else
+  throw BuiltWithout("Tile.ai filesystem");
 #endif
 }
 

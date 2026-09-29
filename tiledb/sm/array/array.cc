@@ -56,7 +56,6 @@
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/rest/tile_ai_client.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
@@ -206,13 +205,7 @@ void Array::create(
   // A tile:// array is registered with the catalog; any other backend
   // just creates the directory.
   if (array_uri.is_tile()) {
-    auto* client = resources.tile_ai_client();
-    if (client == nullptr) {
-      throw ArrayException(
-          "Cannot create tile:// array; server not configured (set "
-          "rest.server_address and rest.token)");
-    }
-    tile_ai::create_array(*client, array_uri);
+    resources.vfs().create_tile_ai_array(array_uri);
   } else {
     resources.vfs().create_dir(array_uri);
   }
