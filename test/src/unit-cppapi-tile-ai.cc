@@ -301,7 +301,8 @@ struct TileAiCppApiFx {
       const std::string& key,
       const std::vector<int32_t>& values) const {
     Array array(ctx_, uri, TILEDB_WRITE);
-    array.put_metadata(key, TILEDB_INT32, values.size(), values.data());
+    array.put_metadata(
+        key, TILEDB_INT32, static_cast<uint32_t>(values.size()), values.data());
     array.close();
   }
 
