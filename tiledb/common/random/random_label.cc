@@ -32,6 +32,8 @@
 
 #include "tiledb/common/random/random_label.h"
 
+#include <locale>
+
 namespace tiledb::common {
 
 /* ********************************* */
@@ -69,6 +71,7 @@ RandomLabelWithTimestamp RandomLabelGenerator::generate(uint64_t timestamp) {
 
   // Generate and format a 128-bit, 32-digit hexadecimal random number
   std::stringstream ss;
+  ss.imbue(std::locale::classic());
   ss << std::hex << std::setw(8) << std::setfill('0') << counter_;
   ss << std::hex << std::setw(8) << std::setfill('0')
      << static_cast<uint32_t>(prng());

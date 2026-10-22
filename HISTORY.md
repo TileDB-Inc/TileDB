@@ -27,6 +27,7 @@
 
 ## Defects removed
 
+* Make random labels and timestamped storage names independent of the global locale.
 * Fix building `tests` with `s3` enabled. [#5624](https://github.com/TileDB-Inc/TileDB/pull/5624)
 * Use function-local static for `logger_prefix_` to ensure safe, single-time initialization. [#5630](https://github.com/TileDB-Inc/TileDB/pull/5630)
 * Check `non_empty_domain.sizes` size before access. [#5650](https://github.com/TileDB-Inc/TileDB/pull/5650)

@@ -32,6 +32,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
+#include <locale>
 #include <sstream>
 
 using namespace tiledb::common;
@@ -54,6 +55,7 @@ std::string generate_timestamped_name(
   }
 
   std::stringstream ss;
+  ss.imbue(std::locale::classic());
   ss << "/__" << timestamp_start << "_" << timestamp_end << "_"
      << lbl.random_label_;
 

@@ -29,11 +29,13 @@
  */
 
 #include <math.h>
+#include <locale>
 #include <ranges>
 #include <string>
 
 #include <test/support/tdb_catch.h>
 #include "../random_label.h"
+#include "tiledb/common/scoped_executor.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -83,6 +85,37 @@ TEST_CASE("RandomLabelGenerator: validation", "[RandomLabelGenerator]") {
   // Validate that label0_2 had a different prefix generated.
   auto prefix0_2 = prefix_as_uint32(label0_2.random_label_);
   REQUIRE(std::max(prefix0_2, prefix0) - std::min(prefix0_2, prefix0) > 1);
+}
+
+TEST_CASE(
+    "RandomLabelGenerator: locale-independent formatting",
+    "[RandomLabelGenerator][locale]") {
+  const bool grouped = GENERATE(false, true);
+  auto label = [grouped]() {
+    struct GroupedNumbers : std::numpunct<char> {
+      char do_thousands_sep() const override {
+        return '.';
+      }
+      std::string do_grouping() const override {
+        return "\3";
+      }
+    };
+
+    const auto previous_locale = std::locale();
+    const ScopedExecutor restore_locale(
+        [&]() { std::locale::global(previous_locale); });
+    std::locale::global(
+        grouped ? std::locale(std::locale::classic(), new GroupedNumbers) :
+                  std::locale::classic());
+    TestRandomLabelGenerator generator;
+    return generator.generate_at(123456789);
+  }();
+
+  CHECK(label.timestamp_ == 123456789);
+  CHECK(label.random_label_.size() == 32);
+  CHECK(
+      label.random_label_.find_first_not_of("0123456789abcdef") ==
+      std::string::npos);
 }
 
 TEST_CASE(
