@@ -31,9 +31,11 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <locale>
 
 #include "../generate_uri.h"
 #include "../parse_uri.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb::storage_format;
@@ -85,6 +87,42 @@ TEST_CASE(
     // Check new fragment name's timestamp range
     auto name_timestamps{name.substr(0, 6)};
     CHECK(name_timestamps == "/__1_2");
+  }
+}
+
+TEST_CASE(
+    "StorageFormat: Generate: locale-independent timestamped names",
+    "[storage_format][generate][generate_timestamped_name][locale]") {
+  const bool grouped = GENERATE(false, true);
+  const auto version = GENERATE(
+      std::optional<format_version_t>{}, std::optional<format_version_t>{1234});
+  std::string name;
+  {
+    struct GroupedNumbers : std::numpunct<char> {
+      char do_thousands_sep() const override {
+        return '.';
+      }
+      std::string do_grouping() const override {
+        return "\3";
+      }
+    };
+
+    const auto previous_locale = std::locale();
+    const tiledb::common::ScopedExecutor restore_locale(
+        [&]() { std::locale::global(previous_locale); });
+    std::locale::global(
+        grouped ? std::locale(std::locale::classic(), new GroupedNumbers) :
+                  std::locale::classic());
+    name = generate_timestamped_name(123456789, 123456790, version);
+  }
+
+  const std::string prefix = "/__123456789_123456790_";
+  CHECK(name.substr(0, prefix.size()) == prefix);
+  CHECK(name.size() == prefix.size() + 32 + (version.has_value() ? 5 : 0));
+  const auto label = name.substr(prefix.size(), 32);
+  CHECK(label.find_first_not_of("0123456789abcdef") == std::string::npos);
+  if (version.has_value()) {
+    CHECK(name.substr(name.find_last_of('_')) == "_1234");
   }
 }
 
